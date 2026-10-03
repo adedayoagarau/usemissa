@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bell, BellPlus, ArrowRight } from "lucide-react";
+import { ArrowRight, Bell, BellPlus, CalendarClock, Hourglass, NotebookPen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -90,10 +90,6 @@ export function ApplicationReminders({
     [timeOfDay, setTimeOfDay] = useState(DEFAULT_REMINDER_TIME),
     [dialogOpenedAt, setDialogOpenedAt] = useState(0);
   const request = useRef<{ signature: string; key: string } | null>(null);
-  const preparing =
-    application && applicationView(application.myStatus) === "saved";
-  const canAdd =
-    application && applicationView(application.myStatus) !== "history";
   const deadlineDay =
     dialog === "new" && application?.deadline
       ? reminderDateForOffset(application.deadline, offset)
@@ -167,6 +163,35 @@ export function ApplicationReminders({
       setBusy(false);
     }
   }
+  function openNew(nextKind: "preparation" | "deadline" | "response") {
+    setKind(nextKind);
+    setTitle(
+      nextKind === "response" ? "Check for a response" : "Prepare my application",
+    );
+    setWhen(nextMorning());
+    setRepeat(0);
+    setDialogOpenedAt(Date.now());
+    // Seed the deadline defaults so a deadline that is already today
+    // opens on a time that is still ahead instead of the 9am default.
+    if (application?.deadline) {
+      const now = new Date();
+      const schedule = firstViableDeadlineSchedule(
+        application.deadline,
+        now,
+        DEADLINE_DEFAULT_OFFSETS,
+        application.deadlineTime,
+      ) ?? {
+        offsetDays: 0,
+        timeOfDay: viableTimeOfDay(application.deadline, now),
+      };
+      setOffset(schedule.offsetDays);
+      setTimeOfDay(schedule.timeOfDay);
+    } else {
+      setTimeOfDay(DEFAULT_REMINDER_TIME);
+    }
+    setError("");
+    setDialog("new");
+  }
   const scheduled =
     items?.filter((i) => ["scheduled", "needs-review"].includes(i.state)) ?? [];
   return (
@@ -187,44 +212,13 @@ export function ApplicationReminders({
         >
           {application ? "Reminders" : "Coming up"}
         </h2>
-        {canAdd ? (
-          <Button
-            variant="ghost"
-            onClick={() => {
-              setKind(preparing ? "preparation" : "response");
-              setTitle(
-                preparing ? "Prepare my application" : "Check for a response",
-              );
-              setWhen(nextMorning());
-              setRepeat(0);
-              setDialogOpenedAt(Date.now());
-              // Seed the deadline defaults so a deadline that is already today
-              // opens on a time that is still ahead instead of the 9am default.
-              if (application?.deadline) {
-                const now = new Date();
-                const schedule = firstViableDeadlineSchedule(
-                  application.deadline,
-                  now,
-                  DEADLINE_DEFAULT_OFFSETS,
-                  application.deadlineTime,
-                ) ?? {
-                  offsetDays: 0,
-                  timeOfDay: viableTimeOfDay(application.deadline, now),
-                };
-                setOffset(schedule.offsetDays);
-                setTimeOfDay(schedule.timeOfDay);
-              } else {
-                setTimeOfDay(DEFAULT_REMINDER_TIME);
-              }
-              setError("");
-              setDialog("new");
-            }}
-          >
-            <BellPlus />
-            Set reminder
-          </Button>
-        ) : null}
       </div>
+      {application ? (
+        <p className="text-sm text-muted-foreground">
+          Reminders arrive in your Missa Inbox and by email when your
+          notification settings allow it. Quiet hours are respected.
+        </p>
+      ) : null}
       {!items && !error ? (
         <div role="status" aria-label="Loading reminders">
           <Skeleton className="h-16 w-full" />
@@ -238,7 +232,18 @@ export function ApplicationReminders({
           </Button>
         </div>
       ) : null}
-      {scheduled.map((item) => (
+      {application && items ? (
+        <ReminderSlots
+          application={application}
+          items={scheduled}
+          onOpen={(item) => {
+            setError("");
+            setDialog(item);
+          }}
+          onNew={openNew}
+        />
+      ) : null}
+      {!application ? scheduled.map((item) => (
         <button
           key={item.id}
           type="button"
@@ -268,8 +273,8 @@ export function ApplicationReminders({
           </span>
           <ArrowRight className="mt-1 size-4 shrink-0" />
         </button>
-      ))}
-      {items && !scheduled.length ? (
+      )) : null}
+      {items && !scheduled.length && !application ? (
         <p className="text-sm text-muted-foreground">
           {application
             ? "No upcoming reminders."
@@ -326,25 +331,6 @@ export function ApplicationReminders({
                 );
               }}
             >
-              {preparing &&
-              application.deadline &&
-              ["fixed", "exact"].includes(application.deadlineKind) ? (
-                <Field>
-                  <FieldLabel htmlFor="reminder-kind">
-                    Remind me about
-                  </FieldLabel>
-                  <NativeSelect
-                    id="reminder-kind"
-                    value={kind}
-                    onChange={(e) => setKind(e.target.value)}
-                  >
-                    <option value="preparation">
-                      Preparing my application
-                    </option>
-                    <option value="deadline">The application deadline</option>
-                  </NativeSelect>
-                </Field>
-              ) : null}
               {kind === "deadline" ? (
                 <>
                   <p className="text-sm text-muted-foreground">
@@ -544,5 +530,126 @@ export function ApplicationReminders({
         </DialogContent>
       </Dialog>
     </section>
+  );
+}
+
+type SlotKind = "preparation" | "deadline" | "response";
+
+/**
+ * The three reminders an application can carry, always in lifecycle order.
+ * A slot that does not apply at the current stage says why instead of
+ * disappearing, so the creator can see what Missa will and will not send.
+ */
+function ReminderSlots({
+  application,
+  items,
+  onOpen,
+  onNew,
+}: {
+  application: ApplicationSummary;
+  items: ApplicationReminder[];
+  onOpen: (item: ApplicationReminder) => void;
+  onNew: (kind: SlotKind) => void;
+}) {
+  const stage = applicationView(application.myStatus);
+  const confirmedDeadline = Boolean(
+    application.deadline &&
+      ["fixed", "exact"].includes(application.deadlineKind),
+  );
+  const slots: Array<{
+    kind: SlotKind;
+    label: string;
+    icon: typeof Bell;
+    unavailable?: string;
+  }> = [
+    {
+      kind: "preparation",
+      label: "Preparation reminder",
+      icon: NotebookPen,
+      unavailable:
+        stage === "saved" ? undefined : "Stopped when you recorded a submission",
+    },
+    {
+      kind: "deadline",
+      label: "Deadline reminder",
+      icon: CalendarClock,
+      unavailable:
+        stage !== "saved"
+          ? "Not needed after submission"
+          : !confirmedDeadline
+            ? "Needs a confirmed deadline. Use a preparation reminder instead."
+            : undefined,
+    },
+    {
+      kind: "response",
+      label: "Response check-in",
+      icon: Hourglass,
+      unavailable:
+        stage === "saved"
+          ? "Starts after you record a submission"
+          : stage === "history"
+            ? "Stopped when you recorded an outcome"
+            : undefined,
+    },
+  ];
+  return (
+    <ul className="divide-y divide-border border-y border-border">
+      {slots.map((slot) => {
+        const item = items.find((candidate) => candidate.kind === slot.kind);
+        const Icon = slot.icon;
+        return (
+          <li
+            key={slot.kind}
+            className="flex min-h-16 items-center gap-3 py-3"
+            data-slot-kind={slot.kind}
+          >
+            <Icon
+              className={
+                item
+                  ? "size-5 shrink-0 text-primary"
+                  : "size-5 shrink-0 text-muted-foreground"
+              }
+              aria-hidden="true"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium">{slot.label}</p>
+              <p className="text-xs text-muted-foreground">
+                {item ? (
+                  <>
+                    <span className="font-mono tabular-nums">
+                      {whenLabel(item)}
+                    </span>
+                    {item.repeatDays ? ` · Every ${item.repeatDays} days` : ""}
+                    {!item.inAppEnabled
+                      ? " · Paused by your notification settings"
+                      : ""}
+                  </>
+                ) : (
+                  (slot.unavailable ?? "Not set")
+                )}
+              </p>
+            </div>
+            {item ? (
+              <Button
+                variant="ghost"
+                onClick={() => onOpen(item)}
+                aria-label={`Change ${slot.label.toLowerCase()}`}
+              >
+                Change
+              </Button>
+            ) : slot.unavailable ? null : (
+              <Button
+                variant="outline"
+                onClick={() => onNew(slot.kind)}
+                aria-label={`Set ${slot.label.toLowerCase()}`}
+              >
+                <BellPlus />
+                Set
+              </Button>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }

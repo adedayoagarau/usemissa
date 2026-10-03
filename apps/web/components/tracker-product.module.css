@@ -720,6 +720,15 @@
   height: 14px;
 }
 
+/* Inline: adjacent bordered controls sit 12px apart (DESIGN.md §6). */
+.cardActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
 .board {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));

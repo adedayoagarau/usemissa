@@ -5,8 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowRight,
+  ArrowUpRight,
   Bell,
-  BellOff,
   CalendarDays,
   Check,
   ChevronDown,
@@ -22,12 +22,26 @@ import {
 import type { MyStatus, OpportunityType } from "@missa/radar-engine";
 import { CalendarFeedButton } from "@/components/calendar-feed-button";
 import { STATUS_LABELS } from "@/lib/statusLabels";
+import { Button } from "@/components/ui/button";
+import { calendarDaysUntil } from "@/lib/deadlineLabel";
+import { estimateStartBy } from "@/lib/start-by";
+import type {
+  ApplicationDetail,
+  PreparationItemSummary,
+} from "@/lib/application-workspace-types";
+import { ApplicationRecordSheet } from "@/components/missa/application-record-sheet";
+import {
+  parseRecordSection,
+  type ApplicationRecordSection,
+} from "@/components/missa/application-record";
+import { StartByDate } from "@/components/missa/start-by-date";
 import {
   readFirstSaveReceipt,
   setFirstSaveGuidanceDismissed,
 } from "@/lib/firstSaveClient";
 import type { FirstSaveReceipt } from "@/lib/firstSaveTypes";
 import {
+  parseApplicationId,
   resolveTrackerFocus,
   trackerStage,
   viewShowsStatus,
@@ -56,6 +70,10 @@ export type TrackerProductItem = {
   workId?: string;
   workTitle?: string;
   importId?: string;
+  /** Applicable checklist steps, when the relational record is available. */
+  preparationItems?: PreparationItemSummary[];
+  /** Scheduled reminders for this application. */
+  reminders?: { count: number; nextDueAt?: string };
 };
 
 export type TrackerHostedSubmission = {
@@ -123,15 +141,21 @@ function formatDate(value: string): string {
   }).format(date);
 }
 
+/** Days until the deadline, computed locally when the server did not send it. */
+function daysLeft(item: TrackerProductItem): number | undefined {
+  if (item.daysToDeadline !== undefined) return item.daysToDeadline;
+  if (!item.deadline || item.deadlineKind === "rolling") return undefined;
+  return calendarDaysUntil(item.deadline.slice(0, 10)) ?? undefined;
+}
+
 function timingLabel(item: TrackerProductItem): string {
   if (item.deadline) {
+    const days = daysLeft(item);
     const date = formatDate(item.deadline);
-    if (item.daysToDeadline === 0) return `${date} · due today`;
-    if (item.daysToDeadline === 1) return `${date} · due tomorrow`;
-    if (item.daysToDeadline !== undefined && item.daysToDeadline > 1)
-      return `${date} · ${item.daysToDeadline} days left`;
-    if (item.daysToDeadline !== undefined && item.daysToDeadline < 0)
-      return `${date} · deadline passed`;
+    if (days === 0) return `${date} · due today`;
+    if (days === 1) return `${date} · due tomorrow`;
+    if (days !== undefined && days > 1) return `${date} · ${days} days left`;
+    if (days !== undefined && days < 0) return `${date} · deadline passed`;
     return date;
   }
   if (item.deadlineKind === "rolling") return "Rolling deadline";
@@ -170,17 +194,18 @@ function itemAction(
       label: "View submission",
     };
   if (item.isManual) return { href: "/import", label: "Review import" };
-  if (stageFor(item.myStatus) === "Saved")
-    return {
-      href: `/opportunities/${item.opportunityId}`,
-      label: "Review opportunity",
-    };
-  if (stageFor(item.myStatus) === "Preparing")
-    return {
-      href: `/opportunities/${item.opportunityId}`,
-      label: "Continue preparing",
-    };
-  return { href: `/opportunities/${item.opportunityId}`, label: "Open record" };
+  return {
+    href: `/tracker?application=${encodeURIComponent(item.opportunityId)}`,
+    label: "Open record",
+  };
+}
+
+function reminderSummary(item: TrackerProductItem): string {
+  if (!item.reminders?.count) return "No reminders";
+  const next = item.reminders.nextDueAt
+    ? ` · next ${new Intl.DateTimeFormat("en", { day: "numeric", month: "short" }).format(new Date(item.reminders.nextDueAt))}`
+    : "";
+  return `${item.reminders.count} ${item.reminders.count === 1 ? "reminder" : "reminders"}${next}`;
 }
 
 function matches(item: TrackerProductItem, query: string): boolean {
@@ -326,7 +351,7 @@ function TrackerCard({
   stale,
   onStatus,
   onWork,
-  onReminder,
+  onOpen,
   onRemove,
 }: {
   item: TrackerProductItem;
@@ -339,11 +364,23 @@ function TrackerCard({
   stale?: boolean;
   onStatus: (item: TrackerProductItem, status: MyStatus) => void;
   onWork: (item: TrackerProductItem, workId?: string) => void;
-  onReminder: (item: TrackerProductItem, notify: boolean) => void;
+  onOpen: (
+    item: TrackerProductItem,
+    section: ApplicationRecordSection,
+    trigger: HTMLElement,
+  ) => void;
   onRemove: (item: TrackerProductItem) => void;
 }) {
   const action = itemAction(item, hosted);
   const stage = stageFor(item.myStatus);
+  const startBy =
+    !hosted && (stage === "Saved" || stage === "Preparing") && item.preparationItems
+      ? estimateStartBy({
+          deadline: item.deadline,
+          deadlineKind: item.deadlineKind,
+          items: item.preparationItems,
+        })
+      : null;
   return (
     <article
       className={styles.itemCard}
@@ -373,7 +410,14 @@ function TrackerCard({
             <CalendarDays aria-hidden="true" />
             Timing
           </dt>
-          <dd>{timingLabel(item)}</dd>
+          <dd>
+            {timingLabel(item)}
+            {startBy ? (
+              <span className="-ms-2 block">
+                <StartByDate startBy={startBy} title={item.title} />
+              </span>
+            ) : null}
+          </dd>
         </div>
         <div>
           <dt>
@@ -431,16 +475,15 @@ function TrackerCard({
             </select>
           </label>
         ) : null}
-        {!item.isManual && item.revision ? (
+        {!item.isManual ? (
           <button
             type="button"
             className={styles.quietButton}
-            disabled={busy}
-            aria-pressed={Boolean(item.notify)}
-            onClick={() => onReminder(item, !item.notify)}
+            onClick={(event) => onOpen(item, "timing", event.currentTarget)}
+            aria-label={`${reminderSummary(item)}. Manage reminders for ${item.title}`}
           >
-            {item.notify ? <Bell aria-hidden="true" /> : <BellOff aria-hidden="true" />}
-            {item.notify ? "Deadline reminders on" : "Deadline reminders off"}
+            <Bell aria-hidden="true" />
+            {reminderSummary(item)}
           </button>
         ) : null}
         {!item.isManual && item.revision ? (
@@ -460,10 +503,34 @@ function TrackerCard({
         <p>{error}</p>
         {stale ? <button type="button" className={styles.quietButton} onClick={() => window.location.reload()}>Reload latest Tracker state</button> : null}
       </div> : null}
-      <Link href={action.href} className={styles.rowAction}>
-        {action.label}
-        <ArrowRight aria-hidden="true" />
-      </Link>
+      {item.isManual ? (
+        <Link href={action.href} className={styles.rowAction}>
+          {action.label}
+          <ArrowRight aria-hidden="true" />
+        </Link>
+      ) : (
+        <div className={styles.cardActions}>
+          <Button
+            variant="outline"
+            onClick={(event) => onOpen(item, "overview", event.currentTarget)}
+            data-record-trigger={item.opportunityId}
+          >
+            {stage === "Saved"
+              ? "Start preparing"
+              : stage === "Preparing"
+                ? "Continue preparing"
+                : "Open record"}
+            <ArrowRight aria-hidden="true" />
+          </Button>
+          <Link
+            href={`/opportunities/${encodeURIComponent(item.opportunityId)}`}
+            className={styles.quietLink}
+          >
+            View opportunity
+            <ArrowUpRight aria-hidden="true" />
+          </Link>
+        </div>
+      )}
     </article>
   );
 }
@@ -561,6 +628,7 @@ export function TrackerProduct({
   const [firstSaveDismissed, setFirstSaveDismissed] = useState(false);
   const firstSaveRef = useRef<HTMLElement>(null);
   const reopenGuidanceRef = useRef<HTMLButtonElement>(null);
+  const recordTrigger = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const stored = readFirstSaveReceipt(accountId);
@@ -669,6 +737,68 @@ export function TrackerProduct({
     router.replace(suffix ? `${pathname}?${suffix}` : pathname, {
       scroll: false,
     });
+  }
+
+  // The open record is derived from the URL, so every `?application=` link —
+  // Inbox, email, Calendar, Library, Home, or this page — opens the same record.
+  const requestedRecord = parseApplicationId(searchParams.get("application"));
+  const recordId =
+    requestedRecord &&
+    items.some(
+      (item) => item.opportunityId === requestedRecord && !item.isManual,
+    )
+      ? requestedRecord
+      : null;
+  const recordSection = parseRecordSection(searchParams.get("section"));
+
+  /** Update record params in place; the list data does not need reloading. */
+  function setRecordUrl(changes: Record<string, string | undefined>) {
+    const next = new URLSearchParams(window.location.search);
+    for (const [key, value] of Object.entries(changes)) {
+      if (!value) next.delete(key);
+      else next.set(key, value);
+    }
+    const suffix = next.toString();
+    window.history.replaceState(null, "", suffix ? `${pathname}?${suffix}` : pathname);
+  }
+
+  function openRecord(
+    item: TrackerProductItem,
+    section: ApplicationRecordSection,
+    trigger: HTMLElement,
+  ) {
+    recordTrigger.current = trigger;
+    setRecordUrl({
+      application: item.opportunityId,
+      section: section === "overview" ? undefined : section,
+    });
+  }
+
+  function closeRecord() {
+    if (recordId)
+      recordTrigger.current ??= document.querySelector<HTMLElement>(
+        `[data-record-trigger="${CSS.escape(recordId)}"]`,
+      );
+    setRecordUrl({ application: undefined, section: undefined });
+  }
+
+  function applyRecordChange(detail: ApplicationDetail) {
+    setItems((current) =>
+      current.map((candidate) =>
+        candidate.opportunityId === detail.opportunityId
+          ? {
+              ...candidate,
+              myStatus: detail.myStatus,
+              revision: detail.revision,
+              notify: detail.notify,
+              workId: detail.workId ?? undefined,
+              workTitle: detail.workTitle ?? undefined,
+              preparationItems: detail.preparationItems,
+            }
+          : candidate,
+      ),
+    );
+    setAnnouncement(`${detail.title} updated.`);
   }
 
   function changeView(nextView: View) {
@@ -814,33 +944,6 @@ export function TrackerProduct({
     }
   }
 
-  async function updateReminder(item: TrackerProductItem, notify: boolean) {
-    if (!item.revision) return;
-    const previous = Boolean(item.notify);
-    setBusyId(item.opportunityId);
-    setErrors((current) => ({ ...current, [item.opportunityId]: "" }));
-    setItems((current) => current.map((candidate) =>
-      candidate.opportunityId === item.opportunityId ? { ...candidate, notify } : candidate));
-    try {
-      const response = await fetch(`/api/me/tracker/${encodeURIComponent(item.opportunityId)}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json", "Idempotency-Key": crypto.randomUUID() },
-        body: JSON.stringify({ notify, expectedRevision: item.revision }),
-      });
-      const payload = await response.json().catch(() => ({})) as { error?: string; tracked?: { revision?: number } };
-      if (!response.ok) throw new Error(payload.error ?? "Reminder preference could not be updated");
-      setItems((current) => current.map((candidate) =>
-        candidate.opportunityId === item.opportunityId
-          ? { ...candidate, notify, revision: payload.tracked?.revision ?? candidate.revision }
-          : candidate));
-      setAnnouncement(`${item.title} deadline reminders are ${notify ? "on" : "off"}.`);
-    } catch (error) {
-      setItems((current) => current.map((candidate) =>
-        candidate.opportunityId === item.opportunityId ? { ...candidate, notify: previous } : candidate));
-      setErrors((current) => ({ ...current, [item.opportunityId]: error instanceof Error ? error.message : "Reminder preference could not be updated" }));
-    } finally { setBusyId(undefined); }
-  }
-
   async function removeItem(item: TrackerProductItem) {
     if (!item.revision || !window.confirm(`Remove ${item.title} from your Tracker? Its private status history and checklist will also be removed.`)) return;
     setBusyId(item.opportunityId);
@@ -874,7 +977,7 @@ export function TrackerProduct({
         stale={staleItems.has(item.opportunityId)}
         onStatus={updateStatus}
         onWork={updateWork}
-        onReminder={updateReminder}
+        onOpen={openRecord}
         onRemove={removeItem}
       />
     );
@@ -884,8 +987,8 @@ export function TrackerProduct({
     const stage = stageFor(item.myStatus);
     return (
       (stage === "Saved" || stage === "Preparing") &&
-      item.daysToDeadline !== undefined &&
-      item.daysToDeadline <= 7
+      daysLeft(item) !== undefined &&
+      daysLeft(item)! <= 7
     );
   });
 
@@ -1462,6 +1565,19 @@ export function TrackerProduct({
           )}
         </section>
       ) : null}
+
+      <ApplicationRecordSheet
+        opportunityId={recordId}
+        hosted={recordId ? submissionByOpportunity.get(recordId) : undefined}
+        works={works}
+        section={recordSection}
+        returnFocus={recordTrigger}
+        onSectionChange={(section) =>
+          setRecordUrl({ section: section === "overview" ? undefined : section })
+        }
+        onChanged={applyRecordChange}
+        onClose={closeRecord}
+      />
     </div>
   );
 }

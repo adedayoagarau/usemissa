@@ -628,23 +628,30 @@
       ],
       "boundary": "Interactive public feature explorer with original fictional campaign photography. The homepage uses a one-work portfolio teaser; real public catalogue deadlines, local notification switches, and clearly labelled resettable sample submissions remain interactive. No private API write, delivery or publication. Existing app destinations retained. User-triggered motion with reduced-motion equivalent. Homepage preview starts with the White theme; five local theme choices remain interactive. Approved marketing-only forest, citron and sky surfaces use the scoped palette token chain."
     },
-    "composition.applications-workspace": {
-      "semantic": "ApplicationsWorkspace",
-      "implementation": "apps/web/components/missa/applications-workspace.tsx",
+    "composition.application-record": {
+      "semantic": "ApplicationRecord",
+      "implementation": "apps/web/components/missa/application-record.tsx",
+      "container": "apps/web/components/missa/application-record-sheet.tsx",
       "composition": [
-        "Button",
+        "Sheet",
         "Tabs",
+        "Button",
         "Dialog",
-        "Collapsible",
         "Field",
         "Input",
         "Textarea",
         "NativeSelect",
-        "ApplicationLabels",
+        "Switch",
+        "Alert",
+        "Empty",
         "Skeleton",
-        "ApplicationPreparation"
+        "ApplicationPreparation",
+        "ApplicationReminders",
+        "ApplicationCalendarDelivery",
+        "StartByDate"
       ],
-      "boundary": "Account-owned canonical applications and preparation; explicit recorded events, no submission on external navigation."
+      "appearance": "right-side-sheet-full-width-below-640px-with-same-route-peer-tabs",
+      "boundary": "The one canonical record for a tracked application, opened by /tracker?application=<id>&section=<overview|prepare|timing|materials|history> from every surface. Lifecycle Saved, Preparing, Ready, Submitted, In review, Outcome; each reached step shows its recorded date and provenance (recorded by you, Missa-hosted submission, received from the organization, inferred from source information) and never an invented date. External navigation never records a submission. One Forest action per region. No AI wording."
     },
     "composition.library-material": {
       "semantic": "LibraryMaterialSheet",

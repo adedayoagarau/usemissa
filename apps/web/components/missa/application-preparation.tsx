@@ -40,8 +40,11 @@ type Library = {
 
 export function ApplicationPreparation({
   opportunityId,
+  onChanged,
 }: {
   opportunityId: string;
+  /** Called after any saved checklist change, e.g. to refresh start-by. */
+  onChanged?: () => void;
 }) {
   const [data, setData] = useState<Checklist | null>(null),
     [library, setLibrary] = useState<Library>({
@@ -101,6 +104,7 @@ export function ApplicationPreparation({
       await load();
       request.current = null;
       setDialog(null);
+      onChanged?.();
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Please try again.");
