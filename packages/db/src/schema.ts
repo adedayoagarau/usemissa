@@ -5582,6 +5582,8 @@ export const publicationEditorialSpecs = pgTable(
       .default(sql`ARRAY['pdf', 'docx']::text[]`),
     specificGuidelines: text("specific_guidelines"),
     createdAt,
+    sourceUrl: text("source_url").notNull(),
+    recordedOn: date("recorded_on").notNull(),
     updatedAt,
   },
   (table) => [
@@ -5608,6 +5610,8 @@ export const publicationCompensationDetails = pgTable(
     feeWaiverPolicy: text("fee_waiver_policy"),
     submissionFeeCents: integer("submission_fee_cents").notNull().default(0),
     createdAt,
+    sourceUrl: text("source_url").notNull(),
+    recordedOn: date("recorded_on").notNull(),
     updatedAt,
   },
   (table) => [
@@ -5665,6 +5669,8 @@ export const publicationTelemetryAnalytics = pgTable(
       withTimezone: true,
     }),
     createdAt,
+    sourceUrl: text("source_url").notNull(),
+    recordedOn: date("recorded_on").notNull(),
     updatedAt,
   },
   (table) => [
@@ -5708,6 +5714,8 @@ export const publicationAestheticProfiles = pgTable(
       .notNull()
       .default("8.5"),
     isDebutChampion: boolean("is_debut_champion").notNull().default(false),
+    sourceUrl: text("source_url").notNull(),
+    recordedOn: date("recorded_on").notNull(),
     updatedAt,
   },
   (table) => [
@@ -5748,6 +5756,8 @@ export const opportunityContestJudges = pgTable(
           resultingPressOrPrize?: string;
         }>
       >(),
+    sourceUrl: text("source_url").notNull(),
+    recordedOn: date("recorded_on").notNull(),
     updatedAt,
   },
   (table) => [

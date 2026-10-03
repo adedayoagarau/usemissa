@@ -39,24 +39,37 @@ function isUndefinedTableError(error: unknown): error is PostgresError {
  * enabled with MISSA_RANKINGS_SEED_PREVIEW=1. They are never used to describe
  * a real publication's standing.
  */
-export function seedRankingsPreviewAllowed(env: Record<string, string | undefined> = process.env): boolean {
+export function seedRankingsPreviewAllowed(
+  env: Record<string, string | undefined> = process.env,
+): boolean {
   if (env.MISSA_RANKINGS_SEED_PREVIEW === "1") return true;
   return env.VERCEL_ENV !== "production";
 }
 
 export type MagazineRankingDataSource = "seed" | "database" | "empty";
 
-function previewOrEmptyPage(filter: MagazineRankingsFilter): MagazineRankingPage & {
+function previewOrEmptyPage(
+  filter: MagazineRankingsFilter,
+): MagazineRankingPage & {
   dataSource: MagazineRankingDataSource;
 } {
   const genre = filter.genre ?? "overall";
   if (!seedRankingsPreviewAllowed()) {
-    return { dataSource: "empty", items: [], total: 0, year: filter.year ?? new Date().getUTCFullYear(), genre };
+    return {
+      dataSource: "empty",
+      items: [],
+      total: 0,
+      year: filter.year ?? new Date().getUTCFullYear(),
+      genre,
+    };
   }
   const all = getFallbackRankings(genre);
   return {
     dataSource: "seed",
-    items: all.slice(filter.offset ?? 0, (filter.offset ?? 0) + (filter.limit ?? 50)),
+    items: all.slice(
+      filter.offset ?? 0,
+      (filter.offset ?? 0) + (filter.limit ?? 50),
+    ),
     total: all.length,
     year: filter.year ?? 2026,
     genre,
@@ -68,6 +81,9 @@ function previewRow(
   genre: RankingGenre,
   score: ScoreBreakdown & { rankPosition: number },
 ): MagazineRankingRow {
+  const pushcart = input.pushcart
+    .filter((entry) => genre === "overall" || entry.genre === genre)
+    .sort((a, b) => a.rank - b.rank)[0];
   return {
     profileId: input.profileId,
     name: input.name,
@@ -98,6 +114,14 @@ function previewRow(
     blindReading: input.blindReading,
     digitalArchive: input.digitalArchive,
     telemetryReports: 0,
+    pushcartRank: pushcart?.rank ?? null,
+    pushcartGenre: pushcart?.genre ?? null,
+    anthologySelections: input.anthologyCitations.filter(
+      (citation) =>
+        genre === "overall" ||
+        citation.genre === genre ||
+        citation.genre === "hybrid",
+    ).length,
     factSources: {},
     pillarStatus: score.pillarStatus,
     coverage: score.coverage,
@@ -106,9 +130,13 @@ function previewRow(
   };
 }
 
-function getFallbackRankings(genre: RankingGenre = "overall"): MagazineRankingRow[] {
+function getFallbackRankings(
+  genre: RankingGenre = "overall",
+): MagazineRankingRow[] {
   if (!memoryCache) {
-    const inputs = new Map(SEED_MAGAZINES.map((input) => [input.profileId, input]));
+    const inputs = new Map(
+      SEED_MAGAZINES.map((input) => [input.profileId, input]),
+    );
     const rows: MagazineRankingRow[] = [];
     for (const item of rankMagazines(SEED_MAGAZINES, 2026)) {
       const input = inputs.get(item.profileId)!;
@@ -128,7 +156,9 @@ function getFallbackRankings(genre: RankingGenre = "overall"): MagazineRankingRo
 }
 
 export function getMagazineRankingRepository(): {
-  listRankings: (filter?: MagazineRankingsFilter) => Promise<MagazineRankingPage & { dataSource: MagazineRankingDataSource }>;
+  listRankings: (
+    filter?: MagazineRankingsFilter,
+  ) => Promise<MagazineRankingPage & { dataSource: MagazineRankingDataSource }>;
   getMagazineStanding: (profileId: string) => Promise<MagazineRankingRow[]>;
   getTelemetrySummary: (profileId: string) => Promise<MagazineTelemetrySummary>;
   getIndexCoverage: () => Promise<MagazineIndexCoverage | null>;
@@ -168,20 +198,31 @@ export function getMagazineRankingRepository(): {
       getIndexCoverage: async () => null,
       getIndexAnalytics: async () => null,
       // Without a database nothing is stored, so nothing is reported as saved.
-      recordSubmissionTelemetry: async () => ({ success: false, newMedianDays: null }),
+      recordSubmissionTelemetry: async () => ({
+        success: false,
+        newMedianDays: null,
+      }),
     };
   }
 
   if (!globalThis.__missaRankingReadRepo) {
-    const pool = new Pool(missaPostgresPoolConfig(readConnectionString, "catalogue"));
-    globalThis.__missaRankingReadRepo = new PostgresMagazineRankingRepository(pool);
+    const pool = new Pool(
+      missaPostgresPoolConfig(readConnectionString, "catalogue"),
+    );
+    globalThis.__missaRankingReadRepo = new PostgresMagazineRankingRepository(
+      pool,
+    );
   }
 
   const readRepo = globalThis.__missaRankingReadRepo;
   const applicationConnectionString = process.env.DATABASE_URL?.trim();
   if (applicationConnectionString && !globalThis.__missaRankingWriteRepo) {
-    const pool = new Pool(missaPostgresPoolConfig(applicationConnectionString, "creator"));
-    globalThis.__missaRankingWriteRepo = new PostgresMagazineRankingRepository(pool);
+    const pool = new Pool(
+      missaPostgresPoolConfig(applicationConnectionString, "creator"),
+    );
+    globalThis.__missaRankingWriteRepo = new PostgresMagazineRankingRepository(
+      pool,
+    );
   }
   const writeRepo = globalThis.__missaRankingWriteRepo;
 
