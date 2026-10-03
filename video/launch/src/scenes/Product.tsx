@@ -22,7 +22,7 @@ export const Product: React.FC = () => {
   const ground = progress(t, start, 0.55, ease.standard);
   const gather = progress(t, start, 0.55, ease.exit);
   const cardIn = progress(t, start + 0.35, 0.7);
-  const markIn = progress(t, cue("together") + 0.45, 0.6);
+  const markIn = progress(t, cue("together") - 0.05, 0.6);
   const leave = progress(t, scenes.product.to - 0.3, 0.3, ease.exit);
 
   const cardScale = shape === "tall" ? 1.2 : 1;

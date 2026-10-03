@@ -6,7 +6,7 @@ import { Creators } from "./scenes/Creators";
 import { EndCard } from "./scenes/EndCard";
 import { Product } from "./scenes/Product";
 import { Scattered } from "./scenes/Scattered";
-import { scenes, VO_OFFSET } from "./timing";
+import { scenes, VO_OFFSET, VOICEOVER_FILE } from "./timing";
 
 loadFonts();
 
@@ -33,7 +33,7 @@ export const Launch: React.FC = () => {
         );
       })}
       <Sequence from={Math.round(VO_OFFSET * fps)} name="voiceover">
-        <Audio src={staticFile("audio/voiceover-temitope.mp3")} />
+        <Audio src={staticFile(VOICEOVER_FILE)} />
       </Sequence>
     </AbsoluteFill>
   );

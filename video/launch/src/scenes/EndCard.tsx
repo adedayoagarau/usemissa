@@ -17,11 +17,11 @@ export const EndCard: React.FC = () => {
   const lift = progress(t, cue("layer") - 0.25, 0.6, ease.standard);
   const cta = progress(t, cue("end") + 0.35, 0.6);
 
-  // per-word timing across the spoken line (25.10–27.55 in the audio)
-  const lineStart = cue("layer");
-  const lineEnd = cue("end");
-  const words = [...LINE_ONE, ...LINE_TWO];
-  const wordAt = (i: number) => mix(lineStart - 0.1, lineEnd - 0.75, i / (words.length - 1));
+  // per-word timing: "The opportunity layer" then a beat, then "for EVERY creator."
+  const wordAt = (i: number) =>
+    i < LINE_ONE.length
+      ? mix(cue("layer") - 0.1, cue("layer") + 0.75, i / (LINE_ONE.length - 1))
+      : mix(cue("forEvery") - 0.1, cue("end") - 0.45, (i - LINE_ONE.length) / (LINE_TWO.length - 1));
 
   const headlineSize = (shape === "wide" ? 104 : shape === "tall" ? 86 : 96) * u;
 

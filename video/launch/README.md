@@ -21,8 +21,22 @@ assets as the site. Those copies are git-ignored.
 
 ## Script
 
-Voiceover: ElevenLabs, voice **Temitope** (calm, warm, clear Nigerian English),
-`eleven_multilingual_v2`, take 2 of 4. File: `public/audio/voiceover-temitope.mp3`.
+Voiceover: ElevenLabs **eleven_v4** with audio tags, voice **Temitope** (warm,
+clear Nigerian English), take D of 4. File: `public/audio/voiceover-temitope-v4.mp3`.
+The tagged prompt shapes the delivery: curious on the list, a sigh at the
+scatter, relief on Missa, confident on the four actions, warm on the
+creators, and proud on the close:
+
+```text
+[curious] Grants. Residencies. Prizes. Open calls.
+[sighs] They're scattered across the internet... each with its own deadline, fee and rules.
+[relieved] [warmly] Missa brings them together.
+[confident] Compare the facts. Open the official source. Save your decision. Track what comes next.
+[warmly] For writers, painters, filmmakers and musicians.
+[short pause] [proudly] Missa. [warmly] The opportunity layer for EVERY creator.
+```
+
+Spoken words:
 
 > Grants. Residencies. Prizes. Open calls.
 > They're scattered across the internet, each with its own deadline, fee and rules.
@@ -46,8 +60,8 @@ actions, and none of the rejected patterns or words.
 
 ## Sync
 
-`src/timing.ts` holds the start of every spoken phrase. These were measured
-from the voiceover waveform: 17 voiced segments, one per phrase. Every scene and
+`src/timing.ts` holds the start of every spoken cue. These were measured from
+the voiceover waveform with `node scripts/measure-vo.mjs <file> 0.1 0.04`. Every scene and
 word reveal reads from that map. If you replace the voiceover, re-measure
 those numbers and the whole film re-times itself.
 
