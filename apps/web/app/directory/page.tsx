@@ -7,14 +7,25 @@ import {
 } from "@/lib/directory-filters";
 import type { ProfileKind } from "@missa/radar-adapters";
 import type { Metadata } from "next";
+import { listingMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Directory — Arts Organizations, Residencies & Publishers",
-  description:
-    "Explore Missa's directory of artist residencies, grant foundations, literary journals, small presses, and contemporary galleries worldwide.",
-};
+export function generateMetadata({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
+  return listingMetadata(
+    {
+      title: "Directory — Arts Organizations, Residencies & Publishers | Missa",
+      description:
+        "Explore Missa's directory of artist residencies, grant foundations, literary journals, small presses, and contemporary galleries worldwide.",
+      path: "/directory",
+    },
+    searchParams,
+  );
+}
 
 const PAGE_SIZE = 48;
 

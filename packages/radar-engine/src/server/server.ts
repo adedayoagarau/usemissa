@@ -7,7 +7,7 @@ import { saveStore, type RadarStore } from '../store/store.js';
 import { buildInboxDigest } from '../alerts/alerts.js';
 import { isMyStatus } from '../tracker/tracker.js';
 import { AuthError } from '../auth/accounts.js';
-import { createFeedToken, createSessionToken, verifyFeedToken, verifySessionToken } from '../auth/crypto.js';
+import { createFeedToken, createSessionToken, isSessionIssuedAfterRevocation, verifyFeedToken, verifySessionToken } from '../auth/crypto.js';
 import { UI_HTML } from './ui.js';
 
 const SESSION_COOKIE = 'missa_session';
@@ -161,7 +161,7 @@ export class RadarServer {
     const token = parseCookies(req.headers.cookie)[SESSION_COOKIE];
     const payload = token ? verifySessionToken(token, this.sessionSecret, new Date()) : undefined;
     const account = payload ? this.engine.store.accounts.get(payload.accountId) : undefined;
-    if (!account) throw httpError(401, 'Not authenticated');
+    if (!account || !isSessionIssuedAfterRevocation(payload?.issuedAt, account)) throw httpError(401, 'Not authenticated');
     return account;
   }
 
