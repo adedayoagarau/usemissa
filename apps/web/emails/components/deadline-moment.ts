@@ -32,6 +32,8 @@ export type DeadlineMomentProps = {
   preheader: string;
   context: string;
   hero: MomentHero;
+  /** Progress dots under the hero: done of target, drawn only for targets up to 10 so the row fits a phone. */
+  progress?: { done: number; target: number };
   lede: string;
   panel: MomentPanel;
   action: { label: string; url: string };
@@ -55,6 +57,18 @@ function hero(value: MomentHero): string {
         <td valign="bottom" style="padding:0 20px 0 0;font-family:${f.editorial};font-size:96px;line-height:84px;font-weight:500;letter-spacing:-0.04em;color:${c.citron};">${keepLight(escapeHtml(value.figure))}</td>
         <td valign="bottom" style="padding:0 0 6px;font-family:${f.editorial};font-size:30px;line-height:34px;font-weight:400;color:${c.onForest};">${keepLight(escapeHtml(value.words))}</td>
       </tr>
+    </table>`;
+}
+
+function dots(progress: { done: number; target: number }): string {
+  if (progress.target > 10) return '';
+  const dot = (filled: boolean) =>
+    filled
+      ? `<td style="padding:0 10px 0 0;"><div style="width:22px;height:22px;border-radius:11px;${fill(c.citron)}font-size:0;line-height:0;">&nbsp;</div></td>`
+      : `<td style="padding:0 10px 0 0;"><div style="width:20px;height:20px;border-radius:11px;border:1px solid ${c.onForestMuted};font-size:0;line-height:0;">&nbsp;</div></td>`;
+  return `
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin-top:28px;" aria-label="${progress.done} of ${progress.target}">
+      <tr>${Array.from({ length: progress.target }, (_, index) => dot(index < progress.done)).join('')}</tr>
     </table>`;
 }
 
@@ -117,6 +131,7 @@ export function renderDeadlineMoment(props: DeadlineMomentProps): string {
         </table>
         <div style="height:52px;line-height:52px;font-size:0;">&nbsp;</div>
         ${props.hero.kind === 'statement' ? keepLight(hero(props.hero)) : hero(props.hero)}
+        ${props.progress ? dots(props.progress) : ''}
         ${keepLight(`<p style="margin:26px 0 0;max-width:520px;font-family:${f.editorial};font-size:19px;line-height:29px;color:${c.onForestSoft};">${escapeHtml(props.lede)}</p>`)}
       </td>
     </tr>
