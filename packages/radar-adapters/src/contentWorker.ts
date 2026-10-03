@@ -66,10 +66,15 @@ interface ReviewRow extends QueryResultRow {
   processing_succeeded_at: Date | string | null;
   organization_confirmed: boolean;
   submission_state: string;
+  generated_at: Date | string | null;
 }
 
 const CONTENT_INTERVAL_MINUTES = 2;
 const BACKLOG_DRAIN_DELAY_MS = 2_000;
+/** Write-ups held for missing confirmation are re-checked this often, since confirmations land later. */
+const NEEDS_CONFIRMATION_RECHECK = '6 hours';
+/** After this long without confirmation the write-up is blocked and the page shows the listing facts only. */
+const NEEDS_CONFIRMATION_GIVE_UP_MS = 7 * 24 * 60 * 60 * 1000;
 
 function batchSize(): number {
   const value = Number(process.env.RADAR_CONTENT_BATCH_SIZE ?? 50);
@@ -137,6 +142,12 @@ async function seedContentJobs(pool: Pool): Promise<void> {
        and c.input_version = j.input_version
        and c.review_status = 'pending'
        and j.status = 'failed'`,
+  );
+  // Nobody works the human queue: re-check held write-ups so late confirmations release them.
+  await pool.query(
+    `update radar_content_review_jobs
+     set status = 'pending-review', next_attempt_at = now(), lease_until = null, updated_at = now()
+     where status = 'needs-human' and updated_at < now() - interval '${NEEDS_CONFIRMATION_RECHECK}'`,
   );
 }
 
@@ -338,8 +349,13 @@ async function reviewRow(pool: Pool, opportunityId: string): Promise<ReviewRow |
   const result = await pool.query<ReviewRow>(
     `select c.content, s.url as source_url,
        coalesce(evidence.processing_succeeded_at, o.processing_succeeded_at) as processing_succeeded_at,
-       coalesce(evidence.organization_confirmed, false) as organization_confirmed,
-       o.submission_state
+       (coalesce(evidence.organization_confirmed, false)
+         or exists (
+           select 1 from opportunity_profile_links link
+           where link.opportunity_id = o.id and link.status = 'confirmed' and link.verified_until > now()
+         )
+         or (o.organization_id is not null and exists (select 1 from gary_profiles p where p.id = o.organization_id))) as organization_confirmed,
+       o.submission_state, c.generated_at
      from opportunity_contents c
      join opportunities o on o.id = c.opportunity_id
      join opportunity_sources s on s.id = o.source_id
@@ -354,18 +370,33 @@ async function reviewRow(pool: Pool, opportunityId: string): Promise<ReviewRow |
   return result.rows[0] ?? null;
 }
 
+type ContentReviewResult = ReturnType<typeof reviewOpportunityContent>;
+
+/** Turns a write-up still waiting on confirmation after seven days into a final block, so nothing waits on a person. */
+export function expireUnconfirmedContent(result: ContentReviewResult, generatedAt: Date | string | null, now: Date = new Date()): ContentReviewResult {
+  if (result.decision !== 'needs-human' || !generatedAt) return result;
+  const generated = new Date(generatedAt).getTime();
+  if (!Number.isFinite(generated) || now.getTime() - generated < NEEDS_CONFIRMATION_GIVE_UP_MS) return result;
+  return {
+    ...result,
+    decision: 'blocked',
+    reasons: [...result.reasons, 'Confirmation did not arrive within seven days, so the page shows the listing facts only.'],
+    checks: { ...result.checks, confirmationExpired: true },
+  };
+}
+
 async function reviewJob(pool: Pool, runId: string, job: ContentJob): Promise<OpportunityContentDecision> {
   const row = await reviewRow(pool, job.opportunityId);
   if (!row) {
     await pool.query(`update radar_content_review_jobs set status = 'blocked', last_error = 'Content projection is missing', lease_until = null, updated_at = now() where id = $1`, [job.id]);
     return 'error';
   }
-  const result = reviewOpportunityContent(row.content, {
+  const result = expireUnconfirmedContent(reviewOpportunityContent(row.content, {
     sourceUrl: row.source_url,
     sourceProcessedAt: iso(row.processing_succeeded_at),
     organizationConfirmed: row.organization_confirmed,
     submissionState: row.submission_state,
-  });
+  }), row.generated_at);
   const reviewedContent: OpportunityContent = {
     ...row.content,
     review: {
