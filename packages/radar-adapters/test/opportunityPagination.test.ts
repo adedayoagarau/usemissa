@@ -30,8 +30,16 @@ test("the candidate query for a later page starts after the cursor", () => {
  */
 const databaseUrl = process.env.DATABASE_URL;
 
-test("browse pages through every matching call exactly once", { skip: !databaseUrl }, async () => {
+test("browse pages through every matching call exactly once", { skip: !databaseUrl }, async (t) => {
   const pool = new Pool({ connectionString: databaseUrl, max: 2 });
+  const schema = await pool.query<{ ready: boolean }>(
+    "select to_regclass('public.opportunity_contents') is not null and to_regclass('public.opportunity_source_evidence') is not null as ready",
+  );
+  if (!schema.rows[0]!.ready) {
+    await pool.end();
+    t.skip("opportunity target schema is not applied to this database");
+    return;
+  }
   const p = `opp_page${randomBytes(4).toString("hex")}`;
   const source = `${p}-source`;
   const ids: string[] = [];
