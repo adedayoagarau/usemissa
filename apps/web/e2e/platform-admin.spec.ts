@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from '@axe-core/playwright';
 
-test("admin can open the control room and operational loop", async ({
+test("admin can open the dashboard and operational loop", async ({
   page,
 }) => {
   const login = await page.request.post("/api/auth/login", {
@@ -11,10 +11,10 @@ test("admin can open the control room and operational loop", async ({
 
   await page.goto("/admin");
   await expect(
-    page.getByRole("heading", { name: "Control Room" }),
+    page.getByRole("heading", { level: 1, name: /^Dashboard:/ }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Operations", exact: true }),
+    page.getByRole("link", { name: "Worklist", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Customers", exact: true }),
@@ -32,7 +32,7 @@ test("admin can open the control room and operational loop", async ({
     page.getByRole("link", { name: "Content", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Analytics", exact: true }),
+    page.getByRole("link", { name: "Product events", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Messaging", exact: true }),
@@ -45,21 +45,25 @@ test("admin can open the control room and operational loop", async ({
   ).toBeVisible();
   for (const group of [
     "Overview",
-    "Sources & automation",
-    "Content & taxonomy",
-    "Customers & organizations",
-    "Communication & support",
-    "Finance & governance",
+    "Analytics",
+    "People",
+    "Content & sources",
+    "Automation",
+    "Money",
   ]) {
     await expect(page.getByText(group, { exact: true })).toBeVisible();
   }
+  await expect(page.getByRole("link", { name: "Data", exact: true })).toBeVisible();
+  for (const label of ["Traffic", "Sign-ups & users", "Funnels", "Revenue", "Health", "Share metrics"]) {
+    await expect(page.getByRole("link", { name: label, exact: true })).toBeVisible();
+  }
   const diagnostics = page.getByRole("button", {
-    name: "Diagnostics & audit",
+    name: "Advanced",
   });
   await expect(diagnostics).toBeVisible();
   await diagnostics.click();
   await expect(page.getByRole("link", { name: "System", exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Audit", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Audit log", exact: true })).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Governance", exact: true }),
   ).toBeVisible();
@@ -160,7 +164,7 @@ test("admin can open the control room and operational loop", async ({
   await page.goto('/admin');
   const controlRoomAccessibility = await new AxeBuilder({ page }).analyze();
   expect(controlRoomAccessibility.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);
-  await page.screenshot({ path: 'outputs/platform-admin-control-room-mobile.png', fullPage: true });
+  await page.screenshot({ path: 'outputs/platform-admin-dashboard-mobile.png', fullPage: true });
 
   await page.goto('/admin/operations');
   const firstQueueRow = page.locator('[data-queue-row]').first();
@@ -181,6 +185,13 @@ test("admin can open the control room and operational loop", async ({
     for (const route of [
       "/admin",
       "/admin/operations",
+      "/admin/data",
+      "/admin/traffic",
+      "/admin/growth",
+      "/admin/funnels",
+      "/admin/revenue",
+      "/admin/health",
+      "/admin/metrics",
       "/admin/radar",
       "/admin/analytics",
       "/admin/support",
@@ -197,7 +208,7 @@ test("admin can open the control room and operational loop", async ({
     }
     await page.goto("/admin");
     await expect(
-      page.getByRole("heading", { name: "Control Room" }),
+      page.getByRole("heading", { level: 1, name: /^Dashboard:/ }),
     ).toBeVisible();
     if (width < 1024) {
       await expect(
@@ -207,7 +218,7 @@ test("admin can open the control room and operational loop", async ({
         .getByRole("button", { name: "Open platform admin navigation" })
         .click();
       await expect(
-        page.getByText("Sources & automation", { exact: true }),
+        page.getByText("Automation", { exact: true }),
       ).toBeVisible();
       await page.keyboard.press("Escape");
     }

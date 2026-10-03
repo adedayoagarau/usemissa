@@ -1,8 +1,8 @@
-import PlatformAdminControlRoom from '@/components/platform-admin-control-room';
+import PlatformAdminDashboard from '@/components/platform-admin-dashboard';
 import { AdminPageFrame } from '@/components/platform-admin';
-import { getPlatformAdminOverview } from '@/lib/platformAdmin';
+import { getPlatformAdminDashboard } from '@/lib/platformAdminDashboard';
 
-export default async function PlatformAdminControlRoomPage() {
-  const overview = await getPlatformAdminOverview();
-  return <AdminPageFrame><PlatformAdminControlRoom overview={overview} /></AdminPageFrame>;
+export default async function PlatformAdminDashboardPage() {
+  const data = await getPlatformAdminDashboard();
+  return <AdminPageFrame><PlatformAdminDashboard data={data} /></AdminPageFrame>;
 }
