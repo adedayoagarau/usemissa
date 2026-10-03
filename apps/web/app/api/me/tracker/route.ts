@@ -3,11 +3,13 @@ import { NextResponse } from "next/server";
 import {
   creatorRelationalAuthorityEnabled,
   CreatorIdempotencyConflictError,
+  TrackingLimitReachedError,
   OpportunityRevalidationRequiredError,
   OpportunityVersionHeadMissingError,
 } from "@missa/radar-adapters";
 
 import { getSessionAccount } from "@/lib/auth";
+import { trackingLimitBody } from "@/lib/trackingLimit";
 import { getOpportunityRepository } from "@/lib/opportunityRepository";
 import {
   firstSaveMaterialFingerprint,
@@ -180,6 +182,9 @@ export async function POST(request: Request) {
       },
     );
   } catch (error) {
+    if (error instanceof TrackingLimitReachedError) {
+      return NextResponse.json(trackingLimitBody(error), { status: 409, headers: noStore });
+    }
     if (error instanceof CreatorIdempotencyConflictError) {
       return NextResponse.json(
         { error: error.message },

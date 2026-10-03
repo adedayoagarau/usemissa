@@ -7,6 +7,7 @@ import {
   CreatorIdempotencyConflictError,
 } from "./creatorRepository.js";
 import { canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
+import { assertTrackingAllowance } from "./creatorEntitlements.js";
 import { recommendationSignalId } from "./recommendation/evidenceStorage.js";
 import { DECISION_STATUS_SQL, expectedResponse, isoDate, type ExpectedResponse } from "./trackerResponseDates.js";
 import type { FirstSaveProvenance } from "./recommendation/provenance.js";
@@ -597,6 +598,7 @@ export async function saveCanonicalOpportunityToTracker(
       return null;
     }
 
+    await assertTrackingAllowance(client, accountId, opportunityId);
     const inserted = await client.query<TrackerRow>(
       `insert into tracked_opportunities
          (id, account_id, opportunity_id, status, tracked_at, updated_at)
@@ -761,6 +763,7 @@ export async function saveCanonicalOpportunityToTrackerGuarded(
       );
     }
 
+    await assertTrackingAllowance(client, accountId, opportunityId);
     const inserted = await client.query<TrackerRow>(
       `insert into tracked_opportunities
          (id, account_id, opportunity_id, status, tracked_at, updated_at)

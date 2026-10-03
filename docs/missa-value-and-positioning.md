@@ -121,7 +121,7 @@ The model is freemium. The free tier stays genuinely useful because it brings pe
 ### What stays free
 
 - Discovery, Opportunity pages, official-source links, and verification detail. Trust and facts are never paywalled.
-- Saving and tracking a limited number of active opportunities.
+- Saving and tracking up to 10 calls in progress at once (not yet submitted, deadline still ahead). Submitted, decided and closed calls never count, so the limit never penalises applying. Enforced by `creatorEntitlements.ts`; plans live in `creator_plans` (migration 0080).
 - A basic calendar and email reminders. A free user never misses a deadline because they did not pay; at least one email reminder is always sent.
 
 ### What creators pay for

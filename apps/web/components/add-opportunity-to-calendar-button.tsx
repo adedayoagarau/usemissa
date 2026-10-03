@@ -5,6 +5,7 @@ import { useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarPlus } from "lucide-react";
 import type { OpportunityBrowseProjection } from "@missa/radar-engine";
+import { showSaveFailure } from "@/lib/saveFailureToast";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import styles from "./add-opportunity-to-calendar-button.module.css";
@@ -104,9 +105,12 @@ export function AddOpportunityToCalendarButton({
             const body = (await response.json().catch(() => ({}))) as {
               calendar?: { status?: string };
               error?: string;
+              code?: string;
+              actionHref?: string;
+              actionLabel?: string;
             };
             if (!response.ok) {
-              toast.error(body.error ?? "We could not add this deadline.");
+              showSaveFailure(body, "We could not add this deadline.");
               return;
             }
             toast.success(

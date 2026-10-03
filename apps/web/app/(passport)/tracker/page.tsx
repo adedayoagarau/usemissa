@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
+  creatorEntitlements,
+  creatorPoolFor,
   creatorRelationalAuthorityEnabled,
   listCanonicalTrackedOpportunities,
 } from "@missa/radar-adapters";
@@ -150,8 +152,16 @@ export default async function TrackerPage({
         .works.map((work) => ({ id: work.id, title: work.title }))
     : [];
 
+  const entitlements = postgresTracker && process.env.DATABASE_URL
+    ? await creatorEntitlements(creatorPoolFor(process.env.DATABASE_URL), session.account.id).catch(() => undefined)
+    : undefined;
+  const allowance = entitlements?.activeTrackedLimit != null
+    ? { active: entitlements.activeTracked, limit: entitlements.activeTrackedLimit }
+    : undefined;
+
   return (
     <TrackerProduct
+      allowance={allowance}
       initialItems={initialItems}
       hostedSubmissions={hostedSubmissions}
       works={works}
