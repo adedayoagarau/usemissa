@@ -69,10 +69,13 @@ export type CalendarConnectionView = {
 };
 export type CalendarSyncLease = {
   jobId: string;
+  accountId: string;
   connectionId: string;
   provider: CalendarProvider;
   operation: "upsert" | "delete";
   eventId: string;
+  /** 1-based attempt number this lease represents. */
+  attempt: number;
   refreshToken: string;
   calendarId: string;
   providerEventId?: string;
@@ -85,6 +88,13 @@ const stateHash = (value: string) =>
   )
     .update(value)
     .digest("hex");
+
+/** Deliveries per job before it is terminally failed (about two hours of backoff). */
+export const CALENDAR_SYNC_MAX_ATTEMPTS = 8;
+/** A running job whose lease is older than this is presumed abandoned. */
+export const CALENDAR_SYNC_LEASE_SECONDS = 300;
+const calendarErrorCode = (value: string) =>
+  value.replace(/[^a-z0-9_-]/gi, "_").slice(0, 80) || "provider_failed";
 
 const hashToken = (token: string) =>
   createHash("sha256").update(token).digest("hex");
@@ -210,6 +220,12 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
       ],
     );
     const connectionId = connection.rows[0]!.id;
+    // Reconnecting after a lost connection gives exhausted and parked jobs a
+    // fresh set of attempts against the new credential.
+    await this.query(
+      `update calendar_sync_jobs set status='queued',attempt_count=0,lease_until=null,next_attempt_at=null,last_error_code=null,updated_at=now() where connection_id=$1 and (status in ('failed','queued') or (status='running' and (lease_until is null or lease_until<now())))`,
+      [connectionId],
+    );
     await this.query(
       `insert into calendar_sync_jobs(connection_id,event_id,operation,dedupe_key) select $1,id,'upsert','bootstrap:'||id||':'||revision from creator_calendar_events where account_id=$2 on conflict(connection_id,dedupe_key) do nothing`,
       [connectionId, accountId],
@@ -242,24 +258,52 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
     }
   }
 
+  /**
+   * Leases the next due provider sync job. Without an account it drains due
+   * work across every account (the scheduled creator tick); with one it only
+   * touches that creator's jobs (the in-app sync request).
+   *
+   * A job is due when it is queued, when a retryable failure's backoff has
+   * elapsed, or when a previous worker died mid-delivery and its lease has
+   * expired. Jobs that have used CALENDAR_SYNC_MAX_ATTEMPTS stay failed until
+   * the creator retries them or reconnects the provider.
+   */
   async leaseSyncJob(
-    accountId: string,
+    accountId?: string,
   ): Promise<CalendarSyncLease | undefined> {
     const client = await this.pool.connect();
     try {
       await client.query("begin");
+      // A killed worker can leave its last permitted attempt "running" for
+      // ever; close it out so the event shows a failure instead of "Syncing".
+      await client.query(
+        `update calendar_sync_jobs j set status='failed',lease_until=null,next_attempt_at=null,last_error_code='lease_expired',updated_at=now()
+           from calendar_provider_connections c
+          where c.id=j.connection_id and ($1::text is null or c.account_id=$1)
+            and j.status='running' and (j.lease_until is null or j.lease_until<now()) and j.attempt_count>=$2`,
+        [accountId ?? null, CALENDAR_SYNC_MAX_ATTEMPTS],
+      );
       const result = await client.query<{
         job_id: string;
+        account_id: string;
         connection_id: string;
         provider: CalendarProvider;
         operation: "upsert" | "delete";
         event_id: string;
+        attempt_count: number;
         refresh_token_ciphertext: string;
         calendar_id_ciphertext: string;
         provider_event_id_ciphertext: string | null;
       }>(
-        `select j.id job_id,c.id connection_id,c.provider,j.operation,j.event_id,c.refresh_token_ciphertext,c.calendar_id_ciphertext,p.provider_event_id_ciphertext from calendar_sync_jobs j join calendar_provider_connections c on c.id=j.connection_id left join calendar_event_projections p on p.connection_id=c.id and p.event_id=j.event_id where c.account_id=$1 and c.status='active' and j.status in ('queued','failed') and (j.next_attempt_at is null or j.next_attempt_at<=now()) order by j.created_at for update of j skip locked limit 1`,
-        [accountId],
+        `select j.id job_id,c.account_id,c.id connection_id,c.provider,j.operation,j.event_id,j.attempt_count,c.refresh_token_ciphertext,c.calendar_id_ciphertext,p.provider_event_id_ciphertext
+           from calendar_sync_jobs j
+           join calendar_provider_connections c on c.id=j.connection_id
+           left join calendar_event_projections p on p.connection_id=c.id and p.event_id=j.event_id
+          where ($1::text is null or c.account_id=$1) and c.status='active' and j.attempt_count<$2
+            and ((j.status in ('queued','failed') and (j.next_attempt_at is null or j.next_attempt_at<=now()))
+              or (j.status='running' and (j.lease_until is null or j.lease_until<now())))
+          order by j.created_at for update of j skip locked limit 1`,
+        [accountId ?? null, CALENDAR_SYNC_MAX_ATTEMPTS],
       );
       const row = result.rows[0];
       if (!row) {
@@ -267,15 +311,15 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
         return undefined;
       }
       await client.query(
-        `update calendar_sync_jobs set status='running',attempt_count=attempt_count+1,lease_until=now()+interval '5 minutes',updated_at=now() where id=$1`,
-        [row.job_id],
+        `update calendar_sync_jobs set status='running',attempt_count=attempt_count+1,lease_until=now()+make_interval(secs => $2),updated_at=now() where id=$1`,
+        [row.job_id, CALENDAR_SYNC_LEASE_SECONDS],
       );
       await client.query("commit");
       const event =
         row.operation === "upsert"
           ? (
               await this.events(
-                accountId,
+                row.account_id,
                 new Date("1970-01-01"),
                 new Date("2100-01-01"),
               )
@@ -283,10 +327,12 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
           : undefined;
       return {
         jobId: row.job_id,
+        accountId: row.account_id,
         connectionId: row.connection_id,
         provider: row.provider,
         operation: row.operation,
         eventId: row.event_id,
+        attempt: row.attempt_count + 1,
         refreshToken: decryptCalendarCredential(row.refresh_token_ciphertext),
         calendarId: decryptCalendarCredential(row.calendar_id_ciphertext),
         ...(row.provider_event_id_ciphertext
@@ -327,7 +373,7 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
         );
       }
       await client.query(
-        `update calendar_sync_jobs set status='succeeded',lease_until=null,last_error_code=null,updated_at=now() where id=$1`,
+        `update calendar_sync_jobs set status='succeeded',lease_until=null,next_attempt_at=null,last_error_code=null,updated_at=now() where id=$1`,
         [lease.jobId],
       );
       await client.query(
@@ -342,17 +388,77 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
       client.release();
     }
   }
-  async failSyncJob(jobId: string, errorCode: string) {
-    await this.query(
-      `update calendar_sync_jobs set status='failed',lease_until=null,last_error_code=$2,next_attempt_at=now()+least(interval '1 hour',interval '30 seconds'*power(2,least(attempt_count,7))),updated_at=now() where id=$1`,
-      [jobId, errorCode.replace(/[^a-z0-9_-]/gi, "_").slice(0, 80)],
+  /**
+   * Records a failed delivery. Retries back off exponentially (one minute,
+   * doubling, capped at one hour); once the job has used CALENDAR_SYNC_MAX_ATTEMPTS it is
+   * terminally failed and the event shows "Sync failed" with a Retry action.
+   */
+  async failSyncJob(
+    jobId: string,
+    errorCode: string,
+  ): Promise<{ terminal: boolean }> {
+    const result = await this.query<{ terminal: boolean }>(
+      `update calendar_sync_jobs
+          set status='failed',lease_until=null,last_error_code=$2,
+              next_attempt_at=case when attempt_count>=$3 then null
+                else now()+least(interval '1 hour',interval '30 seconds'*power(2,least(attempt_count,7))) end,
+              updated_at=now()
+        where id=$1 and status='running'
+        returning attempt_count>=$3 as terminal`,
+      [jobId, calendarErrorCode(errorCode), CALENDAR_SYNC_MAX_ATTEMPTS],
     );
+    return { terminal: result.rows[0]?.terminal === true };
+  }
+
+  /**
+   * The provider rejected the stored refresh token (revoked consent, expired
+   * grant). Mark the connection as errored so the calendar shows "Connection
+   * lost" with Reconnect, and put the job back in the queue without spending
+   * an attempt: it runs again once the creator reconnects.
+   */
+  async requireCalendarReconnect(
+    lease: Pick<CalendarSyncLease, "jobId" | "connectionId">,
+    errorCode = "reconnect_required",
+  ) {
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      await client.query(
+        `update calendar_provider_connections set status='error',revision=revision+1,updated_at=now() where id=$1 and status='active'`,
+        [lease.connectionId],
+      );
+      await client.query(
+        `update calendar_sync_jobs set status='queued',lease_until=null,next_attempt_at=null,last_error_code=$2,attempt_count=greatest(attempt_count-1,0),updated_at=now() where id=$1 and status='running'`,
+        [lease.jobId, calendarErrorCode(errorCode)],
+      );
+      await client.query("commit");
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Persists a refresh token the provider rotated during an access-token
+   * refresh (Microsoft rotates on every refresh). Encrypted exactly like the
+   * token stored at connect time; a revoked connection is never resurrected.
+   */
+  async rotateCalendarRefreshToken(connectionId: string, refreshToken: string) {
+    if (!refreshToken) return { rotated: false };
+    const encrypted = encryptCalendarCredential(refreshToken);
+    const result = await this.query(
+      `update calendar_provider_connections set refresh_token_ciphertext=$2,token_key_version=$3,updated_at=now() where id=$1 and status<>'revoked'`,
+      [connectionId, encrypted.ciphertext, encrypted.keyVersion],
+    );
+    return { rotated: result.rowCount === 1 };
   }
 
   async retryCalendarSync(accountId: string, eventId: string) {
     const result = await this.query<{ id: string }>(
       `update calendar_sync_jobs j
-          set status='queued',lease_until=null,last_error_code=null,next_attempt_at=now(),updated_at=now()
+          set status='queued',lease_until=null,last_error_code=null,next_attempt_at=now(),attempt_count=0,updated_at=now()
         where j.id = (
           select j2.id
             from calendar_sync_jobs j2
