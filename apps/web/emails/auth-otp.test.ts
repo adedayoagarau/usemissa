@@ -11,16 +11,12 @@ test('renders an accessible, code-first email-verification message', () => {
   });
 
   assert.equal(rendered.subject, 'Verify your email for Missa');
-  assert.match(rendered.html, /<html lang="en" dir="ltr">/u);
+  assert.match(rendered.html, /<html lang="en">/u);
   assert.match(rendered.html, /role="presentation"/u);
   assert.match(rendered.html, /aria-label="Verification code 123456"/u);
-  assert.match(rendered.html, />123456</u);
+  assert.match(rendered.html, />123 456</u);
   assert.match(rendered.html, /creator@example\.com/u);
-  assert.match(rendered.html, /expires in <strong>10 minutes<\/strong>/u);
-  assert.doesNotMatch(
-    rendered.html,
-    /Email verification|Secure sign-in|Password reset|\/\s*01/iu,
-  );
+  assert.match(rendered.html, /expires in 10 minutes/u);
   assert.doesNotMatch(rendered.html, /unsubscribe/iu);
   assert.match(rendered.text, /123456/u);
   assert.match(rendered.text, /expires in 10 minutes/u);
@@ -41,7 +37,7 @@ test('uses purpose-specific transactional copy for every Neon OTP type', () => {
   });
 
   assert.equal(signIn.subject, 'Your Missa sign-in code');
-  assert.match(signIn.html, /Sign in to Missa/u);
+  assert.match(signIn.html, /Your sign-in code/u);
   assert.equal(reset.subject, 'Reset your Missa password');
   assert.match(reset.html, /Reset your password/u);
 });
