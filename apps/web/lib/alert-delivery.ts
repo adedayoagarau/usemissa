@@ -26,6 +26,27 @@ function eligibleByPreference(alert: Alert, preference: CreatorNotificationPrefe
   return true;
 }
 
+/** What a Selected for you label shows about an opportunity the engine holds. */
+function digestOpportunity(engine: RadarEngine, id: string) {
+  const opportunity = engine.store.opportunities.get(id);
+  if (!opportunity) return undefined;
+  const { fields } = opportunity;
+  const cents = fields.fee.amountCents;
+  const feeStatus = cents === 0 ? 'no-fee' : cents && cents > 0 ? 'paid' : 'unknown';
+  return {
+    opportunityId: opportunity.id,
+    title: fields.title,
+    organizationName:
+      fields.organizationName ?? (fields.organizationId ? engine.store.organizations.get(fields.organizationId)?.name : undefined) ?? '',
+    deadline: fields.deadline.date ?? null,
+    type: fields.type,
+    feeStatus,
+    feeCents: feeStatus === 'paid' ? (cents ?? null) : null,
+    feeCurrency: fields.fee.currency ?? null,
+    prize: fields.prize ?? null,
+  };
+}
+
 /** Deliver one bounded digest per submitter. Alerts stay in Inbox and are only
  * marked delivered after Resend accepts the message, so retries are safe. */
 export async function deliverPendingAlertEmails(engine: RadarEngine, now = new Date()): Promise<AlertDeliveryReport> {
@@ -91,10 +112,12 @@ export async function deliverPendingAlertEmails(engine: RadarEngine, now = new D
       .digest('hex')
       .slice(0, 24)}`;
 
-    const { subject, html } = renderAlertDigestEmail({
+    const { subject, html, text } = renderAlertDigestEmail({
       alerts: eligibleAlerts,
       accountId: account.id,
       email: account.email,
+      opportunity: (id) => digestOpportunity(engine, id),
+      now,
     });
 
     const report = await sendMail({
@@ -105,8 +128,9 @@ export async function deliverPendingAlertEmails(engine: RadarEngine, now = new D
       idempotencyKey: effectKey,
       subject,
       html,
+      text,
       templateKey: 'alert-digest',
-      templateVersion: 'alert-digest.v2',
+      templateVersion: 'selected-for-you.v1',
       metadata: { alertCount: eligibleAlerts.length },
       connectionString,
       retryFailed: true,
