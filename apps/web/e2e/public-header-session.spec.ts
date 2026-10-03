@@ -87,3 +87,21 @@ test("signed-in people see their account on public pages, and logging out clears
   ).toBeVisible();
   await expect(accountMenu(page, email)).toHaveCount(0);
 });
+
+test("a session created outside the login form also shows on public pages", async ({
+  page,
+}) => {
+  const email = `header-api-${Date.now()}@example.com`;
+  const signup = await page.request.post("/api/auth/signup", {
+    data: {
+      email,
+      password: "correct-horse-battery",
+      givenName: "Ada",
+      familyName: "Okafor",
+    },
+  });
+  expect(signup.status()).toBe(201);
+
+  await page.goto("/about");
+  await expect(accountMenu(page, email)).toBeVisible();
+});
