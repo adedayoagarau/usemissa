@@ -8,7 +8,7 @@ import { persistOrganizationMutation, requireOrganizationAccess } from '@/lib/or
  * membersOf(organizationId), so this reads RadarStore.memberships directly. */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const result = await requireOrganizationAccess(request, id);
+  const result = await requireOrganizationAccess(request, id, { capability: 'people.read' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
 
   const engine = result.access.radar;
@@ -34,7 +34,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
 
   const body = organizationMemberMutationSchema.safeParse(await request.json());

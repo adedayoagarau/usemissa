@@ -1,12 +1,27 @@
 import { get } from '@vercel/blob';
 import { NextResponse } from 'next/server';
-import { requireOrganizationAccess } from '@/lib/organizationAccess';
+import {
+  callerReviewAssignmentsForSubmission,
+  organizationAccessCan,
+  ORGANIZATION_ROLE_FORBIDDEN,
+  requireOrganizationAccess,
+} from '@/lib/organizationAccess';
+import { workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
-/** Streams a private submission file only after the organization scope check. */
+/** Streams a private submission file only after the organization scope and
+ * role check: `submissions.read` holders, or the Work's assigned reviewer. */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string; workId: string }> }) {
   const { id, workId } = await params;
-  const result = await requireOrganizationAccess(request, id);
+  const result = await requireOrganizationAccess(request, id, { capability: 'organization.read' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+  if (!organizationAccessCan(result.access, 'submissions.read')) {
+    // Without the Organization-wide capability, only a reviewer assigned to
+    // this Work's Submission may open its private file.
+    const assignedWork = workspaceRelationalAuthorityEnabled() ? undefined : result.access.scope.work(workId);
+    if (!assignedWork || callerReviewAssignmentsForSubmission(result.access, assignedWork.submissionId).length === 0) {
+      return NextResponse.json({ error: ORGANIZATION_ROLE_FORBIDDEN }, { status: 403 });
+    }
+  }
   const work = result.access.scope.work(workId);
   const requestedIndex = Number(new URL(request.url).searchParams.get('index') ?? '0');
   const fileUrl = Number.isInteger(requestedIndex) && requestedIndex >= 0 ? work?.fileUrls?.[requestedIndex] ?? (requestedIndex === 0 ? work?.fileUrl : undefined) : undefined;

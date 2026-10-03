@@ -8,7 +8,7 @@ const outcomes = ['accepted', 'declined', 'waitlisted'] as const;
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string; workId: string }> }) {
   const { id, workId } = await params;
-  const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status, headers });
   if (!workspaceRelationalAuthorityEnabled() && !result.access.scope.work(workId)) return NextResponse.json({ error: 'Unknown Work for this organization' }, { status: 404, headers });
   const body = await request.json().catch(() => ({}));
@@ -83,7 +83,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string; workId: string }> }) {
   const { id, workId } = await params;
-  const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status, headers });
   if (!workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: 'Decision removal requires relational Workspace authority' }, { status: 409, headers });
   const body = await request.json().catch(() => ({}));

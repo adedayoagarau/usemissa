@@ -6,7 +6,7 @@ const headers = { 'Cache-Control': 'private, no-store' };
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string; taskId: string }> }) {
   const { id, taskId } = await params;
-  const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status, headers });
   const body = await request.json().catch(() => ({}));
   if (body.status !== 'pending' && body.status !== 'complete') return NextResponse.json({ error: 'status must be pending or complete' }, { status: 400, headers });

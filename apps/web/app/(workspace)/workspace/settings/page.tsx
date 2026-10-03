@@ -3,7 +3,8 @@ import { OrganizationReviewSettings } from '@/components/organization-review-set
 import { getWorkspacePageAccess } from '@/lib/workspacePage';
 
 export default async function WorkspaceSettingsPage({ searchParams }: { searchParams: Promise<{ organizationId?: string; section?: string }> }) {
-  const access = await getWorkspacePageAccess(searchParams, 'workspace/settings');
+  const section = (await searchParams).section;
+  const access = await getWorkspacePageAccess(searchParams, 'workspace/settings', section === 'review' ? 'reviews.read' : 'billing.read');
   if (!access.organizationId)
     return (
       <main className="mx-auto max-w-2xl px-6 py-12">
@@ -20,7 +21,7 @@ export default async function WorkspaceSettingsPage({ searchParams }: { searchPa
         <h1 className="mt-2 font-heading text-3xl font-medium tracking-tight text-foreground">Settings & billing</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">Manage your plan and payout details. Only organization owners and admins can make changes.</p>
       </header>
-      <div className="mt-6">{(await searchParams).section === 'review' ? <OrganizationReviewSettings organizationId={access.organizationId} canManage={canManage} /> : <OrganizationBilling organizationId={access.organizationId} canManage={canManage} />}</div>
+      <div className="mt-6">{section === 'review' ? <OrganizationReviewSettings organizationId={access.organizationId} canManage={canManage} /> : <OrganizationBilling organizationId={access.organizationId} canManage={canManage} />}</div>
     </main>
   );
 }

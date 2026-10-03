@@ -1,6 +1,6 @@
 import { expect, request as playwrightRequest, test } from '@playwright/test';
 
-test('organization members can read but cannot change structure or elevate roles', async ({ baseURL }) => {
+test('organization members read only their role capabilities and cannot change structure or elevate roles', async ({ baseURL }) => {
   const admin = await playwrightRequest.newContext({ baseURL });
   const member = await playwrightRequest.newContext({ baseURL });
 
@@ -34,6 +34,13 @@ test('organization members can read but cannot change structure or elevate roles
 
     const readableTeams = await member.get(`/api/orgs/${organizationId}/teams`);
     expect(readableTeams.ok()).toBeTruthy();
+
+    // A legacy member holds opportunities.read only: Organization-wide
+    // ledgers, people, and billing stay with owners and admins.
+    for (const path of ['submissions', 'members', 'billing', 'insights', 'delivery-tasks']) {
+      const forbiddenRead = await member.get(`/api/orgs/${organizationId}/${path}`);
+      expect(forbiddenRead.status(), path).toBe(403);
+    }
 
     const forbiddenTeam = await member.post(`/api/orgs/${organizationId}/teams`, {
       data: { name: 'Unauthorized team' },

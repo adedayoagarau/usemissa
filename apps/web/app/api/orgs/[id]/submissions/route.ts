@@ -6,7 +6,7 @@ import { getRelationalWorkspace, workspaceRelationalAuthorityEnabled } from '@/l
  * across all Open Calls (draft and published). */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const result = await requireOrganizationAccess(request, id);
+  const result = await requireOrganizationAccess(request, id, { capability: 'submissions.read' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
 
   if (workspaceRelationalAuthorityEnabled()) {

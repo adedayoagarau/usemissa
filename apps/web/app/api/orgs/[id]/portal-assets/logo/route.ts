@@ -7,7 +7,7 @@ const acceptedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml']
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const access = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const access = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   if (!process.env.BLOB_READ_WRITE_TOKEN) return NextResponse.json({ error: 'Logo storage is not configured' }, { status: 503 });
   const form = await request.formData();

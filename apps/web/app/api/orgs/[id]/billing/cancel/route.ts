@@ -3,7 +3,7 @@ import { requireOrganizationAccess, persistOrganizationMutation } from '@/lib/or
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
   const organization = result.access.radar.store.organizations.get(id)!;
   if (!organization.billingSubscriptionId) return NextResponse.json({ error: 'No active subscription to cancel.' }, { status: 400 });

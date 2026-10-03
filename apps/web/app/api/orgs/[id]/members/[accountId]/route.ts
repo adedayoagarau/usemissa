@@ -18,7 +18,7 @@ function wouldRemoveLastAdmin(memberships: Array<{ accountId: string; organizati
 
 export async function PATCH(request: Request, { params }: { params: Promise<Params> }) {
   const { id, accountId } = await params;
-  const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
 
   const body = organizationRoleSchema.safeParse((await request.json()).role);
@@ -38,7 +38,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<Para
 
 export async function DELETE(request: Request, { params }: { params: Promise<Params> }) {
   const { id, accountId } = await params;
-  const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
   const membership = result.access.radar.store.memberships.find((candidate) => candidate.organizationId === id && candidate.accountId === accountId);
   if (!membership) return NextResponse.json({ error: 'Organization membership not found' }, { status: 404 });
