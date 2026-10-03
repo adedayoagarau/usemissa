@@ -180,6 +180,7 @@ export default async function TrackerPage({
       initialLayout={safeLayout(first(raw.layout))}
       initialQuery={first(raw.q).slice(0, 200)}
       initialImportId={first(raw.import).slice(0, 240)}
+      recordsAvailable={postgresTracker}
       emailEvidence={(() => {
         const flags = emailIntegrationFlags();
         return flags.gmailSync || flags.emailForwarding;
