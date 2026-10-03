@@ -260,13 +260,18 @@ function fold(value: string): string {
     .trim()} `;
 }
 
-// Listing sites and submission platforms. Their name is where a record was
-// found, not who runs the opportunity, so it never belongs in a title.
+// Listing sites, opportunity newsletters, and submission platforms. Their name
+// is where a record was found, not who runs the opportunity, so it never
+// belongs in a title. Several were found in production attached to dozens of
+// other organizations' calls (Chateau Orquevaux, Studio Ofo, ART COMP).
 const LISTING_PLATFORMS = new Set([
-  'artcall', 'artconnect', 'artinfoland', 'artis', 'cafe', 'callforentry', 'chill subs', 'creative organization', 'curatorspace',
-  'curatorspace partner', 'duotrope', 'dutchculture', 'archdaily', 'entrythingy', 'filmfreeway', 'grants gov', 'newpages', 'newpages com',
-  'on the move', 'playbill', 'poets and writers', 'res artis', 'sessionize', 'submittable', 'transartists', 'zapplication',
+  'art comp', 'artcall', 'artconnect', 'artinfoland', 'artis', 'cafe', 'callforentry', 'chateau orquevaux', 'chill subs', 'cmf fmc',
+  'community of literary magazines and presses', 'creative organization', 'curatorspace', 'curatorspace partner', 'duotrope', 'dutchculture',
+  'archdaily', 'entrythingy', 'eri', 'filmfreeway', 'grants gov', 'music in africa', 'newpages', 'newpages com', 'on the move', 'playbill',
+  'poets and writers', 'res artis', 'sessionize', 'studio ofo', 'submittable', 'transartists', 'tur', 'vis', 'zapplication',
 ]);
+// "Submittable for Horror Writers Assoc." names the platform and then the organization.
+const PLATFORM_PREFIX = /^(?:submittable|filmfreeway|curatorspace)\s+for\s+/i;
 const PLACEHOLDER_NAME = /^(?:please\s+wait|loading|just\s+a\s+moment|redirecting|access\s+denied|attention\s+required|untitled|home|error|(?:page\s+)?not\s+found|forms?|professionals?|faqs?|open\s+call\s+faqs?|contest\s+information)\b/i;
 const DOMAIN_NAME = /\b[\w-]+\.(?:com|org|net|co|io|gov|edu|info|uk|ca|eu)\b/i;
 // A name made only of label words is a section heading, not an organization,
@@ -302,7 +307,7 @@ export function isUsableOrganizationName(name: string): boolean {
 
 function cleanOrganizationName(value: string | null | undefined): string | null {
   if (!value) return null;
-  const cleaned = trimEdges(collapse(stripDecorations(value)));
+  const cleaned = trimEdges(collapse(stripDecorations(value))).replace(PLATFORM_PREFIX, '');
   return cleaned.length > 0 && isUsableOrganizationName(cleaned) ? cleaned : null;
 }
 

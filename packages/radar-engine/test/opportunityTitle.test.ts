@@ -89,8 +89,12 @@ test('never puts a placeholder, listing site, domain, or run-together slug in a 
     assert.equal(isUsableOrganizationName(name), false, name);
     assert.equal(normalizeOpportunityTitle('Poetry', { organizationName: name }).needsOrganization, true, name);
   }
-  for (const name of ['FICTION', 'Open Calls']) assert.equal(isUsableOrganizationName(name), false, name);
-  for (const name of ['32 Poems', 'I-70 Review', '7.13 Books', 'Creative Screenwriting', 'In a Flash', 'Rattle', 'WILDsound Writing Festival', 'Chateau Orquevaux', 'Rijksakademie', 'Constellations', 'PRS for Music Foundation', 'The Ex-Puritan']) {
+  for (const name of ['FICTION', 'Open Calls', 'Chateau Orquevaux', 'Studio Ofo', 'ART COMP']) assert.equal(isUsableOrganizationName(name), false, name);
+  assert.equal(
+    normalizeOpportunityTitle('2026 Anthology', { organizationName: 'Submittable for Horror Writers Assoc.' }).title,
+    'Horror Writers Assoc. — 2026 Anthology',
+  );
+  for (const name of ['32 Poems', 'I-70 Review', '7.13 Books', 'Creative Screenwriting', 'In a Flash', 'Rattle', 'WILDsound Writing Festival', 'Hangar / Center of Artistic Research', 'Rijksakademie', 'Constellations', 'PRS for Music Foundation', 'The Ex-Puritan']) {
     assert.equal(isUsableOrganizationName(name), true, name);
   }
 });
