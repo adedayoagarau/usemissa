@@ -949,9 +949,12 @@ function facetFilterQuery(
   taxonomyReads: boolean,
   garyVisualsReads: boolean,
   parameterOffset: number,
+  options: { keepCursor?: boolean } = {},
 ): SqlQuery {
+  // Facet and total counts describe the whole result, so they drop the page
+  // cursor; the page's candidate list keeps it.
   const built = buildOpportunityBrowseQuery(
-    { ...query, cursor: undefined, limit: 1 },
+    { ...query, cursor: options.keepCursor ? query.cursor : undefined, limit: 1 },
     context,
     { taxonomyReads, garyVisualsReads },
   );
@@ -1021,6 +1024,7 @@ export function buildOpportunityCandidateQuery(
     taxonomyReads,
     garyVisualsReads,
     0,
+    { keepCursor: true },
   );
   const evidenceJoin = query.verifiedOnly ? `left join lateral (
     select e.verified_until
