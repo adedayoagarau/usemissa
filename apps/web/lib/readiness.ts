@@ -21,6 +21,7 @@ export interface ReadinessReport {
     scim: ReadinessCheck;
     malwareScanning: ReadinessCheck;
     sharedRateLimiting: ReadinessCheck;
+    creatorWorker?: ReadinessCheck;
   };
   status: "ready" | "degraded";
 }
@@ -94,4 +95,35 @@ export function readinessReport(
     checks,
     status: requiredReady ? "ready" : "degraded",
   };
+}
+
+/** The creator worker sleeps 60s between passes. */
+export const CREATOR_TICK_INTERVAL_MS = 60_000;
+/**
+ * A pass can legitimately take a few minutes (email delivery, the 30s calendar
+ * export budget), so "2x interval" is measured on the full cycle and floored
+ * at ten minutes. Override with MISSA_CREATOR_TICK_STALE_AFTER_SECONDS.
+ */
+export function creatorTickStaleAfterMs(env: ReadinessEnv = process.env) {
+  const configured = Number(env.MISSA_CREATOR_TICK_STALE_AFTER_SECONDS);
+  return Number.isFinite(configured) && configured > 0
+    ? configured * 1_000
+    : Math.max(2 * CREATOR_TICK_INTERVAL_MS, 10 * 60_000);
+}
+
+/**
+ * Freshness of the scheduled creator pass (reminders, deadline sweep, email,
+ * calendar export). Not required for serving requests, so a stale worker
+ * marks this check degraded without failing overall readiness. `missing` means
+ * no pass has ever been recorded against this database.
+ */
+export function creatorWorkerCheck(
+  lastSuccessAt: string | undefined,
+  nowMs: number,
+  staleAfterMs: number,
+): ReadinessCheck {
+  if (!lastSuccessAt) return { state: "missing", required: false };
+  const at = Date.parse(lastSuccessAt);
+  const fresh = Number.isFinite(at) && nowMs - at <= staleAfterMs;
+  return { state: fresh ? "ready" : "degraded", required: false };
 }
