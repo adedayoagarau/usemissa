@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionAccount } from "@/lib/auth";
 import { getCreatorCalendarRepository } from "@/lib/creatorRepositories";
-import { deliverCalendarSync } from "@/lib/calendar-providers";
+import { drainCalendarSyncJobs } from "@/lib/calendar-sync";
 const h = { "Cache-Control": "private, no-store" };
 export async function POST(request: Request) {
   const session = await getSessionAccount(request.headers.get("cookie"));
@@ -16,25 +16,16 @@ export async function POST(request: Request) {
       { status: "unavailable", processed: 0 },
       { status: 503, headers: h },
     );
-  let processed = 0,
-    failed = 0;
-  for (let index = 0; index < 20; index++) {
-    const lease = await repository.leaseSyncJob(session.account.id);
-    if (!lease) break;
-    try {
-      const providerEventId = await deliverCalendarSync(lease);
-      await repository.completeSyncJob(lease, providerEventId);
-      processed++;
-    } catch (error) {
-      await repository.failSyncJob(
-        lease.jobId,
-        error instanceof Error ? error.message : "provider_failed",
-      );
-      failed++;
-    }
-  }
+  const { processed, failed, reconnectRequired } = await drainCalendarSyncJobs(
+    repository,
+    { accountId: session.account.id, maxJobs: 20 },
+  );
   return NextResponse.json(
-    { status: failed ? "partial" : "complete", processed, failed },
+    {
+      status: failed || reconnectRequired ? "partial" : "complete",
+      processed,
+      failed: failed + reconnectRequired,
+    },
     { headers: h },
   );
 }
