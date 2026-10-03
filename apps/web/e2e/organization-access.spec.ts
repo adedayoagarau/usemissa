@@ -20,7 +20,18 @@ test('organization members read only their role capabilities and cannot change s
     const invite = await admin.post(`/api/orgs/${organizationId}/members`, {
       data: { email: 'ada@example.com', role: 'member' },
     });
-    expect(invite.status()).toBe(201);
+    // Invites answer 202 with the same body whether or not the email has an account.
+    expect(invite.status()).toBe(202);
+    const unknownInvite = await admin.post(`/api/orgs/${organizationId}/members`, {
+      data: { email: 'no-account-here@example.com', role: 'member' },
+    });
+    expect(unknownInvite.status()).toBe(202);
+    expect(Object.keys(await unknownInvite.json()).sort()).toEqual(Object.keys(await invite.json()).sort());
+
+    const ownerGrant = await admin.post(`/api/orgs/${organizationId}/members`, {
+      data: { email: 'ada@example.com', role: 'owner' },
+    });
+    expect(ownerGrant.status()).toBe(403);
 
     const createTeam = await admin.post(`/api/orgs/${organizationId}/teams`, {
       data: { name: 'Editorial' },
