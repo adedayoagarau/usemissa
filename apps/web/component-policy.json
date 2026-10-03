@@ -841,6 +841,25 @@
       "motion": "never",
       "boundary": "Opportunity type plus at most one personal status or availability label"
     },
+    "StartByDate": {
+      "base": "Button",
+      "implementation": "components/missa/start-by-date.tsx",
+      "composition": ["Button", "Popover"],
+      "motion": "never",
+      "boundary": "Latest sensible start date worked back from the deadline and the remaining checklist (lib/start-by.ts). Always labelled an estimate; reasoning one click away in a Popover. Ochre only when the start-by day is today or has passed. Only the date is set in Fragment Mono."
+    },
+    "ApplicationCalendarDelivery": {
+      "base": "Button",
+      "implementation": "components/missa/application-calendar-delivery.tsx",
+      "motion": "indicator-while-confirmed-active",
+      "boundary": "Read-only delivery state for one application: private feed on/off, each provider connection (synced or reconnect), and planned sessions with Syncing…, Synced, Sync failed + Retry. Synced only after the provider queue reports success; the spinner shows only while a job is queued or running."
+    },
+    "ApplicationEmailEvidence": {
+      "base": "Button",
+      "implementation": "components/missa/application-email-evidence.tsx",
+      "motion": "never",
+      "boundary": "Email forwarding or Gmail evidence only suggests a status. Nothing changes until the creator confirms; confirming records the event with source=email and closes the suggestion in one transaction. Shown only when an email integration is enabled."
+    },
     "GoalSubmissionProgress": {
       "base": "Progress",
       "implementation": "components/missa/goal-submission-progress.tsx",

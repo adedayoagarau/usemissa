@@ -27,6 +27,7 @@ export function ApplicationRecordSheet({
   onChanged,
   onClose,
   returnFocus,
+  emailEvidence,
 }: {
   opportunityId: string | null;
   hosted?: TrackerHostedSubmission;
@@ -37,6 +38,7 @@ export function ApplicationRecordSheet({
   onClose: () => void;
   /** The control that opened the record; focus returns there on close. */
   returnFocus?: RefObject<HTMLElement | null>;
+  emailEvidence?: boolean;
 }) {
   return (
     <Sheet
@@ -69,6 +71,7 @@ export function ApplicationRecordSheet({
               initialSection={section}
               onSectionChange={onSectionChange}
               onChanged={onChanged}
+              emailEvidence={emailEvidence}
             />
           ) : null}
         </div>

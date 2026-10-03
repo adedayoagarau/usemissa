@@ -10,7 +10,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { startByLabel, type StartBy } from "@/lib/start-by";
+import { startByLabel, startByParts, type StartBy } from "@/lib/start-by";
 
 /**
  * "Start by 14 Oct" with its reasoning one click away. The trigger is a real
@@ -38,7 +38,15 @@ export function StartByDate({ startBy, title }: { startBy: StartBy; title: strin
           }
         >
           <Hourglass aria-hidden="true" />
-          <span className="font-mono tabular-nums">{startByLabel(startBy)}</span>
+          <span>
+            {startByParts(startBy).text}
+            {startByParts(startBy).date ? (
+              <>
+                {" "}
+                <span className="font-mono tabular-nums">{startByParts(startBy).date}</span>
+              </>
+            ) : null}
+          </span>
         </span>
       </PopoverTrigger>
       <PopoverContent align="start">

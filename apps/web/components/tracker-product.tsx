@@ -588,6 +588,7 @@ export function TrackerProduct({
   initialQuery,
   initialImportId,
   initialApplicationId = "",
+  emailEvidence = false,
   allowance,
 }: {
   /** Free-plan tracking allowance; omitted for plans without a limit. */
@@ -603,6 +604,8 @@ export function TrackerProduct({
   initialImportId: string;
   /** Opportunity or receipt id from a deep link; selects that record. */
   initialApplicationId?: string;
+  /** Email forwarding or Gmail sync is on, so records can show email evidence. */
+  emailEvidence?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -1577,6 +1580,7 @@ export function TrackerProduct({
         }
         onChanged={applyRecordChange}
         onClose={closeRecord}
+        emailEvidence={emailEvidence}
       />
     </div>
   );

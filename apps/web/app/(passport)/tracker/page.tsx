@@ -19,6 +19,7 @@ import {
 import { parseApplicationId, parseTrackerView } from "@/lib/trackerViews";
 import { ApplicationWorkspaceRepository } from "@/lib/application-workspace";
 import { CreatorReminderRepository } from "@/lib/creator-reminders";
+import { emailIntegrationFlags } from "@/lib/email-integrations";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -179,6 +180,10 @@ export default async function TrackerPage({
       initialLayout={safeLayout(first(raw.layout))}
       initialQuery={first(raw.q).slice(0, 200)}
       initialImportId={first(raw.import).slice(0, 240)}
+      emailEvidence={(() => {
+        const flags = emailIntegrationFlags();
+        return flags.gmailSync || flags.emailForwarding;
+      })()}
     />
   );
 }

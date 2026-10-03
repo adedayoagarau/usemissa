@@ -49,7 +49,9 @@ export type StartBy = {
   reasons: StartByReason[];
 };
 
-const fmt = (days: number) => (days === 1 ? "1 day" : `${Number.isInteger(days) ? days : days.toFixed(1)} days`);
+const num = (days: number) => (Number.isInteger(days) ? String(days) : days.toFixed(1));
+const fmt = (days: number) => (days === 1 ? "1 day" : `${num(days)} days`);
+const range = (low: number, high: number) => (low === high ? fmt(high) : `${num(low)}–${num(high)} days`);
 
 export function estimateStartBy({
   deadline,
@@ -84,13 +86,13 @@ export function estimateStartBy({
       workDays += effort.high;
       continue;
     }
-    const range = item.linked ? REVIEW_LINKED : (effort ?? UNKNOWN);
-    workDays += range.high;
+    const effortRange = item.linked ? REVIEW_LINKED : (effort ?? UNKNOWN);
+    workDays += effortRange.high;
     reasons.push({
       label: item.label,
       detail: item.linked
-        ? `Linked from Library · ${fmt(range.low)}–${fmt(range.high)} to review`
-        : `${fmt(range.low)}–${fmt(range.high)}${effort ? "" : " · general estimate"}`,
+        ? `Linked from Library · ${range(effortRange.low, effortRange.high)} to review`
+        : `${range(effortRange.low, effortRange.high)}${effort ? "" : " · general estimate"}`,
     });
   }
   const daysNeeded = Math.ceil(Math.max(workDays, leadDays)) + BUFFER_DAYS;
@@ -106,6 +108,12 @@ export function estimateStartBy({
     daysUntil,
     reasons,
   };
+}
+
+/** The label split so only the date itself is set as data. */
+export function startByParts(startBy: StartBy): { text: string; date?: string } {
+  if (startBy.status !== "ahead") return { text: startByLabel(startBy) };
+  return { text: "Start by", date: startByLabel(startBy).replace(/^Start by /u, "") };
 }
 
 /** "Start by 14 Oct", "Start today", "Start-by passed 2 days ago". */

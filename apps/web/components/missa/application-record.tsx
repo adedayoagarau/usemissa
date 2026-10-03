@@ -67,6 +67,7 @@ import { deadlineCountdown, closingTimeLabel } from "@/lib/application-timing";
 import { estimateStartBy } from "@/lib/start-by";
 import { ApplicationPreparation } from "./application-preparation";
 import { StartByDate } from "./start-by-date";
+import { ApplicationEmailEvidence, emailDay } from "./application-email-evidence";
 import { ApplicationReminders } from "./application-reminders";
 import { ApplicationCalendarDeliveryPanel } from "./application-calendar-delivery";
 import { TrackerResponseForecaster } from "@/components/tracker/tracker-response-forecaster";
@@ -154,6 +155,7 @@ export function ApplicationRecord({
   hosted,
   works = [],
   initialSection = "overview",
+  emailEvidence = false,
   onChanged,
   onSectionChange,
 }: {
@@ -161,6 +163,8 @@ export function ApplicationRecord({
   hosted?: TrackerHostedSubmission;
   works?: Array<{ id: string; title: string }>;
   initialSection?: ApplicationRecordSection;
+  /** Email forwarding or Gmail sync is enabled for this workspace. */
+  emailEvidence?: boolean;
   /** Called after any saved change with the latest record. */
   onChanged?: (detail: ApplicationDetail) => void;
   onSectionChange?: (section: ApplicationRecordSection) => void;
@@ -175,6 +179,7 @@ export function ApplicationRecord({
   const [status, setStatus] = useState<MyStatus>("submitted");
   const [when, setWhen] = useState(today());
   const [recordNote, setRecordNote] = useState("");
+  const [evidenceId, setEvidenceId] = useState<string>();
   const request = useRef<{ body: string; key: string; revision: number } | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
 
@@ -290,7 +295,12 @@ export function ApplicationRecord({
     }
   }
 
-  function recordStatus(nextStatus: MyStatus, occurredOn: string, note: string) {
+  function recordStatus(
+    nextStatus: MyStatus,
+    occurredOn: string,
+    note: string,
+    emailCandidateId?: string,
+  ) {
     return send(
       {
         action: "record",
@@ -298,6 +308,7 @@ export function ApplicationRecord({
         occurredOn,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         note,
+        ...(emailCandidateId ? { emailCandidateId } : {}),
       },
       `${STATUS_LABELS[nextStatus]} recorded`,
     );
@@ -373,6 +384,7 @@ export function ApplicationRecord({
     setError("");
     setWhen(today());
     setRecordNote("");
+    setEvidenceId(undefined);
     if (mode === "notes") setNotes(data.notes);
     if (mode === "submission") setStatus("submitted");
     if (mode === "response")
@@ -549,7 +561,7 @@ export function ApplicationRecord({
         className="gap-6"
       >
         <div className="-mx-1 overflow-x-auto px-1">
-          <TabsList variant="line" className="min-h-11 gap-4">
+          <TabsList variant="line" className="min-h-11 w-full gap-0 sm:w-fit sm:gap-4">
             {APPLICATION_RECORD_SECTIONS.map((candidate) => (
               <TabsTrigger key={candidate.id} value={candidate.id} size="touch">
                 {candidate.label}
@@ -564,6 +576,23 @@ export function ApplicationRecord({
         </div>
 
         <TabsContent value="overview" className="space-y-8">
+          {emailEvidence && !hosted ? (
+            <ApplicationEmailEvidence
+              opportunityId={opportunityId}
+              beforeSubmission={beforeSubmission}
+              busy={busy}
+              onConfirmSubmission={(evidence) =>
+                recordStatus("submitted", emailDay(evidence.receivedAt), "", evidence.id)
+              }
+              onReviewResponse={(evidence) => {
+                openDialog("response");
+                if (evidence.proposedStatus && RESPONSE_STATUSES.includes(evidence.proposedStatus))
+                  setStatus(evidence.proposedStatus);
+                setWhen(emailDay(evidence.receivedAt));
+                setEvidenceId(evidence.id);
+              }}
+            />
+          ) : null}
           <section
             aria-labelledby="record-next-title"
             className="space-y-4 rounded-xl border border-border p-6"
@@ -980,7 +1009,7 @@ export function ApplicationRecord({
               const done =
                 dialog === "notes"
                   ? send({ action: "notes", notes }, "Notes saved")
-                  : recordStatus(status, when, recordNote);
+                  : recordStatus(status, when, recordNote, evidenceId);
               void done.then((ok) => {
                 if (ok) setDialog(null);
               });
@@ -1057,6 +1086,12 @@ export function ApplicationRecord({
                 </Field>
               </>
             )}
+            {evidenceId ? (
+              <p className="text-xs text-muted-foreground">
+                Recorded with the matching email as evidence. Check the status
+                before saving; Missa only suggested it.
+              </p>
+            ) : null}
             {error ? (
               <p role="alert" className="text-sm text-destructive">
                 {error}
