@@ -117,12 +117,16 @@ export {
   applyCreatorSubscription,
   creatorBillingAccount,
   type CreatorBillingAccount,
+  type CreatorSubscriptionResult,
   type CreatorSubscriptionUpdate,
 } from "./creatorBilling.js";
 export {
+  ACTIVE_TRACKED_STATUSES,
   assertBulkTrackingWithinAllowance,
+  assertRoomForActiveCall,
   assertTrackingAllowance,
   CREATOR_PLAN_LIMITS,
+  isActiveTrackedStatus,
   creatorEntitlements,
   creatorPlan,
   FREE_ACTIVE_TRACKED_LIMIT,
@@ -148,6 +152,8 @@ export {
   type CreatorWorkConnections,
 } from "./creatorLibraryRepository.js";
 export {
+  CALENDAR_SYNC_LEASE_SECONDS,
+  CALENDAR_SYNC_MAX_ATTEMPTS,
   CreatorCalendarError,
   PostgresCreatorCalendarRepository,
   type CreatorCalendarItem,
@@ -283,6 +289,18 @@ export {
   type HumanContentReviewDecision,
 } from "./contentReviewAdmin.js";
 export {
+  emptyPublicationHoldQueue,
+  holdReasonsFromChecks,
+  mapPublicationHoldRow,
+  planPublicationApproval,
+  readPublicationHoldQueue,
+  resolvePublicationHold,
+  type PublicationApprovalPlan,
+  type PublicationHoldDecision,
+  type PublicationHoldQueueData,
+  type PublicationHoldRow,
+} from "./publicationHoldAdmin.js";
+export {
   classifyPublicationCandidate,
   publicationReviewMembershipHash,
   readPublicationReviewPreview,
@@ -341,7 +359,13 @@ export {
 export {
   runReviewTick,
   reviewCandidate,
+  editorialReview,
+  reviewPublishMode,
+  REVIEW_HOLD_REASON_TEXT,
+  type EditorialReviewResult,
   type ReviewCandidate,
+  type ReviewHoldReason,
+  type ReviewPublishMode,
 } from "./reviewWorker.js";
 export { runContentReviewTick } from "./contentWorker.js";
 export {
@@ -427,8 +451,13 @@ export {
   finishWorkerRun,
   heartbeatWorkerRun,
   readWorkerRunLifecycle,
+  readWorkerTickHealth,
+  recordWorkerTick,
   startWorkerRun,
+  workerTickRunId,
   type RadarWorkerKind,
+  type WorkerTickHealth,
+  type WorkerTickOutcome,
   type WorkerRunLifecycleStatus,
   type WorkerRunProgress,
 } from "./workerTelemetry.js";

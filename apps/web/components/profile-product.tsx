@@ -347,14 +347,27 @@ export function ProfileProduct({
   initialProfile,
   savedSearches,
   following,
+  integrations = { gmailSync: false, emailForwarding: false },
 }: {
   initialSection: ProfileSection;
   initialProfile: ProfileProductData;
   savedSearches: RadarProfile[];
   following: Following[];
+  /** Email integrations turned on for this deployment. Integrations is
+   * hidden when none are. */
+  integrations?: { gmailSync: boolean; emailForwarding: boolean };
 }) {
   const router = useRouter();
-  const [active, setActive] = useState(initialSection);
+  const integrationsAvailable =
+    integrations.gmailSync || integrations.emailForwarding;
+  const sections = SECTION_DEFINITIONS.filter(
+    (item) => item.id !== "integrations" || integrationsAvailable,
+  );
+  const [active, setActive] = useState<ProfileSection>(
+    initialSection === "integrations" && !integrationsAvailable
+      ? "overview"
+      : initialSection,
+  );
   const [profile, setProfile] = useState(initialProfile);
   const [revision, setRevision] = useState(initialProfile.revision);
   const [preferencesRevision, setPreferencesRevision] = useState(initialProfile.preferencesRevision);
@@ -384,6 +397,9 @@ export function ProfileProduct({
   const [closeAccountOpen, setCloseAccountOpen] = useState(false);
   const [closeAccountText, setCloseAccountText] = useState("");
   const [closingAccount, setClosingAccount] = useState(false);
+  const [signOutEverywhereOpen, setSignOutEverywhereOpen] = useState(false);
+  const [signingOutEverywhere, setSigningOutEverywhere] = useState(false);
+  const [signOutEverywhereError, setSignOutEverywhereError] = useState<string>();
   const [isPending, startTransition] = useTransition();
 
   const identityDirty = !same({ displayName, bio }, savedIdentity);
@@ -683,7 +699,7 @@ export function ProfileProduct({
 
       <nav className={styles.sectionNav} aria-label="Profile sections">
         <Link href="/profile/portfolio" className={buttonVariants({ variant: "ghost" })}><Eye aria-hidden="true" />Public profile</Link>
-        {SECTION_DEFINITIONS.map((item) => {
+        {sections.map((item) => {
           const Icon = item.icon;
           return (
             <button
@@ -705,7 +721,7 @@ export function ProfileProduct({
             <Eye aria-hidden="true" />
             <span><strong>Public profile</strong><small>Build and preview your portfolio</small></span>
           </Link>
-          {SECTION_DEFINITIONS.map((item) => {
+          {sections.map((item) => {
             const Icon = item.icon;
             return (
               <button
@@ -782,7 +798,7 @@ export function ProfileProduct({
                   <h3>Profile sections</h3>
                   <p>Each consequential area has its own save boundary.</p>
                 </header>
-                {SECTION_DEFINITIONS.filter(
+                {sections.filter(
                   (item) => item.id !== "overview",
                 ).map((item) => {
                   const Icon = item.icon;
@@ -1244,7 +1260,7 @@ export function ProfileProduct({
             </div>
           ) : null}
 
-          {active === "integrations" ? (
+          {active === "integrations" && integrationsAvailable ? (
             <div className={styles.embedded}>
               <Alert>
                 <Link2 aria-hidden="true" />
@@ -1255,8 +1271,8 @@ export function ProfileProduct({
                   history.
                 </AlertDescription>
               </Alert>
-              <GmailSyncCard />
-              <EmailForwardingCard />
+              {integrations.gmailSync ? <GmailSyncCard /> : null}
+              {integrations.emailForwarding ? <EmailForwardingCard /> : null}
             </div>
           ) : null}
           {active === "searches" ? (
@@ -1296,6 +1312,17 @@ export function ProfileProduct({
               </div>
               <div className={styles.importCallout}>
                 <div>
+                  <h3>Sign out of all devices</h3>
+                  <p>
+                    Ends every Missa session, including this one. Use this after signing in on a shared device or if you think someone else has access.
+                  </p>
+                </div>
+                <Button variant="outline" onClick={() => setSignOutEverywhereOpen(true)}>
+                  Sign out everywhere
+                </Button>
+              </div>
+              <div className={styles.importCallout}>
+                <div>
                   <h3>Close your account</h3>
                   <p>
                     Your private workspace will stop accepting sign-ins. Published profiles are removed from public view; audit records are retained where required.
@@ -1329,6 +1356,44 @@ export function ProfileProduct({
             <AlertDialogCancel>Keep editing</AlertDialogCancel>
             <AlertDialogAction onClick={discardCurrent}>
               Discard and continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={signOutEverywhereOpen} onOpenChange={(open) => { if (signingOutEverywhere) return; setSignOutEverywhereOpen(open); if (!open) setSignOutEverywhereError(undefined); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign out of all devices?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Every browser and device signed in to your Missa account, including this one, will need to sign in again. Your data is not changed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {signOutEverywhereError ? (
+            <p role="alert" className={styles.error}>
+              {signOutEverywhereError}
+            </p>
+          ) : null}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={signingOutEverywhere}>Stay signed in</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={signingOutEverywhere}
+              onClick={(event) => {
+                event.preventDefault();
+                setSigningOutEverywhere(true);
+                setSignOutEverywhereError(undefined);
+                fetch("/api/auth/logout-all", { method: "POST" })
+                  .then(async (response) => {
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) throw new Error(data.error || "Could not sign you out of all devices.");
+                    window.location.href = "/login";
+                  })
+                  .catch((reason: unknown) => {
+                    setSignOutEverywhereError(reason instanceof Error ? reason.message : "Could not sign you out of all devices.");
+                    setSigningOutEverywhere(false);
+                  });
+              }}
+            >
+              {signingOutEverywhere ? "Signing out…" : "Sign out everywhere"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -101,6 +101,16 @@ export default async function OnboardingPage() {
     const user = engine.store.users.get(session.account.userId!);
     if (user) {
       initialDisplayName = user.displayName.trim();
+      initialCountryCode = user.attributes.countryCode ?? "";
+      initialCity = user.attributes.city ?? "";
+      initialTimezone = user.attributes.timezone ?? "";
+      initialCareerStage = coerceCareerStage(
+        user.opportunityPreferences?.careerStages[0],
+      );
+      initialTravelWillingness = coerceTravelWillingness(
+        user.opportunityPreferences?.travelWillingness,
+      );
+      initialNoFeeOnly = user.opportunityPreferences?.noFeeOnly ?? false;
       if (user.taxonomyPreferences) {
         const mapping = mapTaxonomyToPracticeLabels(
           user.taxonomyPreferences.map((t) => t.termId),

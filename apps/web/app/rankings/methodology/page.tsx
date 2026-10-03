@@ -1,5 +1,6 @@
 import { publicIndexLayoutStyles as catalogueStyles } from "@/components/missa/public-index-layout";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { unstable_cache } from "next/cache";
 import { ArrowLeft, ArrowRight } from "lucide-react";
@@ -9,11 +10,12 @@ import { BetaBadge } from "@/components/ui/beta-badge";
 import { Button } from "@/components/ui/button";
 import { getMagazineRankingRepository } from "@/lib/magazineRankingRepository";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "How the rankings work · Missa Literary Magazine Index",
   description:
     "How Missa ranks literary magazines: what it counts, where each fact comes from, and what the numbers show.",
-};
+  path: "/rankings/methodology",
+});
 
 export const dynamic = "force-dynamic";
 

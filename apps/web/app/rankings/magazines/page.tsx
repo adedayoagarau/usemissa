@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { publicIndexLayoutStyles as catalogueStyles } from "@/components/missa/public-index-layout";
 import type { Metadata } from "next";
+import { listingMetadata } from "@/lib/seo";
 import { cookies } from "next/headers";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { MagazineRankingsInteractive } from "@/components/rankings/magazine-rankings-interactive";
@@ -17,11 +18,21 @@ import { unstable_cache } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Missa Literary Magazine Index",
-  description:
-    "The independent literary magazine rankings evaluated across anthology accolades, contributor compensation, turnaround speed, and submission access.",
-};
+export function generateMetadata({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
+  return listingMetadata(
+    {
+      title: "Missa Literary Magazine Index",
+      description:
+        "The independent literary magazine rankings evaluated across anthology accolades, contributor compensation, turnaround speed, and submission access.",
+      path: "/rankings/magazines",
+    },
+    searchParams,
+  );
+}
 
 const getCachedMagazineRankings = unstable_cache(
   async (genre: RankingGenre) =>

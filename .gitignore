@@ -18,3 +18,4 @@ apps/web/e2e/storage-state.json
 test-results/
 .impeccable/
 *.impeccable/
+.claude/settings.local.json

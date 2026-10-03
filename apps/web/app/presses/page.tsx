@@ -1,10 +1,22 @@
 import type { Metadata } from "next";
+import { listingMetadata } from "@/lib/seo";
 import { DirectoryCategoryPage } from "@/components/directory-category-page";
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = {
-  title: "Independent presses",
-  description: "Explore independent presses and the writing they publish.",
-};
+export function generateMetadata({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
+  return listingMetadata(
+    {
+      title: "Independent presses | Missa",
+      description:
+        "Explore independent presses and the writing they publish.",
+      path: "/presses",
+    },
+    searchParams,
+  );
+}
 export default function Page({
   searchParams,
 }: {

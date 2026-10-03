@@ -57,6 +57,12 @@
       "appearance": "white-editorial-with-refractive-forest-scene",
       "boundary": "Optional /welcome entry; finite gesture-driven artwork; real /onboarding and /opportunities links; does not alter account onboarding state."
     },
+    "composition.admin-publication-review": {
+      "semantic": "PlatformAdminPublicationReview",
+      "implementation": "apps/web/components/platform-admin-publication-review.tsx",
+      "composition": ["Button", "Field", "Input", "Textarea", "AlertDialog", "Alert", "Empty", "Sonner"],
+      "boundary": "Platform-admin decision queue for review-agent holds. Approve publishes through the database publication gates; block suppresses. Hold reasons are plain text, not badges."
+    },
     "composition.application-tracker-preview": {
       "semantic": "ApplicationTrackerPreview",
       "composition": ["Button", "Field", "Input", "Textarea", "NativeSelect"],
@@ -120,15 +126,22 @@
     },
     "composition.creator-onboarding": {
       "semantic": "CreatorOnboarding",
+      "implementation": "apps/web/components/creator-onboarding.tsx",
       "composition": [
         "Button",
         "Checkbox",
+        "RadioGroup",
+        "Switch",
+        "Combobox",
+        "Field",
         "Input",
-        "NativeSelect",
+        "InputGroup",
+        "Alert",
+        "Spinner",
         "Link"
       ],
-      "appearance": "editorial-onboarding-with-practices-interests-private-location-and-confirmed-profile-address",
-      "boundary": "Given and family names are supplied by the person and remain distinct from the normalized public handle. Country, city, timezone, career stage, travel willingness, and fee preference are private matching inputs."
+      "appearance": "split-editorial-onboarding-with-step-navigation-sticky-actions-live-private-summary-and-profile-preview",
+      "boundary": "Given and family names are supplied by the person and remain distinct from the normalized public handle. Country, city, timezone, career stage, travel willingness, and fee preference are private matching inputs. Country and time zone use searchable Combobox lists; time zones are validated on the server. Finish later saves the current choices and marks setup skipped; only a completed setup opens on the summary."
     },
     "composition.creator-workspace": {
       "semantic": "CreatorWorkspace",

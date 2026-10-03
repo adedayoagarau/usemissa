@@ -10,14 +10,19 @@ import {
   SourceHealthTable,
   WarningList,
 } from "@/components/platform-admin";
+import PlatformAdminPublicationReview from "@/components/platform-admin-publication-review";
 import { getPlatformAdminView } from "@/lib/platformAdmin";
+import { getPublicationReviewQueue } from "@/lib/platformAdminViews";
 
 export default async function PlatformAdminRadarPage({
   searchParams,
 }: {
   searchParams: Promise<{ focus?: string }>;
 }) {
-  const area = await getPlatformAdminView("radar");
+  const [area, publicationQueue] = await Promise.all([
+    getPlatformAdminView("radar"),
+    getPublicationReviewQueue(),
+  ]);
   const focus = (await searchParams).focus;
   const data = area.data;
 
@@ -75,6 +80,8 @@ export default async function PlatformAdminRadarPage({
           </p>
         )}
         <WarningList warnings={area.warnings} />
+
+        <PlatformAdminPublicationReview queue={publicationQueue} />
 
         <section aria-labelledby="source-stats">
           <SectionHeading eyebrow="Current counts" title="Source statistics" />

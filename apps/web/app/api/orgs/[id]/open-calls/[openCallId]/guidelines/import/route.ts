@@ -4,7 +4,7 @@ import { persistOrganizationMutation, requireOrganizationAccess } from '@/lib/or
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string; openCallId: string }> }) {
   const { id, openCallId } = await params;
-  const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
   const openCall = result.access.scope.openCall(openCallId);
   if (!openCall) return NextResponse.json({ error: 'Unknown opportunity for this organization' }, { status: 404 });

@@ -12,7 +12,8 @@ export type RadarWorkerKind =
   | "taxonomy-discovery-worker"
   | "enrichment-worker"
   | "review-worker"
-  | "content-worker";
+  | "content-worker"
+  | "creator-worker";
 
 export interface WorkerRunProgress {
   inputCount?: number;
@@ -258,4 +259,107 @@ export async function finishWorkerRun(
   } catch {
     // Best-effort shutdown telemetry.
   }
+}
+
+export interface WorkerTickOutcome {
+  status: "completed" | "failed";
+  startedAt: Date;
+  inputCount?: number;
+  outputCount?: number;
+  error?: string;
+}
+
+export interface WorkerTickHealth {
+  status: string;
+  heartbeatAt?: string;
+  lastSuccessAt?: string;
+  lastFailureAt?: string;
+}
+
+/** Stable run id for a short-tick lane that keeps one liveness row. */
+export const workerTickRunId = (workerKind: RadarWorkerKind) =>
+  `worker:${workerKind}`;
+
+/**
+ * Records one pass of a short, frequently repeating lane (the creator tick
+ * runs every minute) by upserting a single liveness row instead of appending
+ * a run per tick. The row reads "running" while passes succeed, so the admin
+ * worker-lane table shows it as live until its heartbeat goes stale, and
+ * "failed" with the error after a failed pass. `metadata.lastSuccessAt`
+ * survives failures so readiness can measure how long the lane has been
+ * unhealthy. Best-effort: telemetry never fails the tick.
+ */
+export async function recordWorkerTick(
+  pool: Pool,
+  workerKind: RadarWorkerKind,
+  outcome: WorkerTickOutcome,
+): Promise<void> {
+  const now = new Date().toISOString();
+  const durationMs = Math.max(0, Date.now() - outcome.startedAt.getTime());
+  const details = {
+    ...metadata(workerKind, { lastError: outcome.error }),
+    runType: "worker-tick",
+    lastRunAt: now,
+    durationMs,
+    ...(outcome.status === "completed"
+      ? { lastSuccessAt: now }
+      : { lastFailureAt: now }),
+  };
+  try {
+    await pool.query(
+      `insert into radar_agent_runs
+         (id, agent_kind, status, correlation_id, started_at, heartbeat_at,
+          completed_at, input_count, output_count, error, metadata)
+       values ($1, $2, $3, $1, $4, now(), now(), $5, $6, $7, $8::jsonb)
+       on conflict (id) do update
+         set status = excluded.status,
+             started_at = excluded.started_at,
+             heartbeat_at = now(),
+             completed_at = now(),
+             input_count = excluded.input_count,
+             output_count = excluded.output_count,
+             error = excluded.error,
+             metadata = (radar_agent_runs.metadata - 'lastError') || excluded.metadata`,
+      [
+        workerTickRunId(workerKind),
+        workerKind,
+        outcome.status === "completed" ? "running" : "failed",
+        outcome.startedAt.toISOString(),
+        outcome.inputCount ?? 0,
+        outcome.outputCount ?? 0,
+        outcome.error?.slice(0, 500) ?? null,
+        JSON.stringify(details),
+      ],
+    );
+  } catch {
+    // Observability must not take down a productive worker tick.
+  }
+}
+
+/** Reads the liveness row written by recordWorkerTick. */
+export async function readWorkerTickHealth(
+  pool: Pool,
+  workerKind: RadarWorkerKind,
+): Promise<WorkerTickHealth | undefined> {
+  const result = await pool.query<{
+    status: string;
+    heartbeat_at: Date | string | null;
+    last_success_at: string | null;
+    last_failure_at: string | null;
+  }>(
+    `select status, heartbeat_at, metadata->>'lastSuccessAt' as last_success_at,
+            metadata->>'lastFailureAt' as last_failure_at
+       from radar_agent_runs where id = $1`,
+    [workerTickRunId(workerKind)],
+  );
+  const row = result.rows[0];
+  if (!row) return undefined;
+  return {
+    status: row.status,
+    ...(row.heartbeat_at
+      ? { heartbeatAt: new Date(row.heartbeat_at).toISOString() }
+      : {}),
+    ...(row.last_success_at ? { lastSuccessAt: row.last_success_at } : {}),
+    ...(row.last_failure_at ? { lastFailureAt: row.last_failure_at } : {}),
+  };
 }

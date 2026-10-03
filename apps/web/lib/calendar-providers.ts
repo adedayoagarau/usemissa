@@ -52,13 +52,40 @@ export function calendarAuthorization(
   }
   return { url: `${c.authorize}?${query}`, redirectUri: c.redirectUri };
 }
+/**
+ * A provider call failed. `code` is a short, non-secret identifier stored on
+ * the sync job (it is shown to the creator next to "Sync failed").
+ */
+export class CalendarProviderError extends Error {
+  constructor(
+    message: string,
+    readonly code: string,
+  ) {
+    super(message);
+    this.name = "CalendarProviderError";
+  }
+}
+/**
+ * The stored refresh token no longer works (consent revoked, grant expired or
+ * rotated away). Only the creator can fix this by reconnecting.
+ */
+export class CalendarReconnectRequiredError extends CalendarProviderError {
+  constructor() {
+    super("Calendar connection needs to be reconnected.", "reconnect_required");
+    this.name = "CalendarReconnectRequiredError";
+  }
+}
 async function json(url: string, init: RequestInit) {
   const response = await fetch(url, {
       ...init,
       signal: AbortSignal.timeout(15_000),
     }),
     body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error("Calendar provider declined the request.");
+  if (!response.ok)
+    throw new CalendarProviderError(
+      "Calendar provider declined the request.",
+      `provider_http_${response.status}`,
+    );
   return body as Record<string, unknown>;
 }
 export async function exchangeCalendarCode(
@@ -155,14 +182,33 @@ export async function revokeCalendarProvider(
   } /* Microsoft has no per-token revocation endpoint; local credential destruction and the user's consent portal are the supported boundary. */
 }
 
-async function providerAccessToken(
+export type CalendarDeliveryHooks = {
+  /**
+   * Called before the provider is used when the token endpoint returned a new
+   * refresh token. Microsoft rotates on every refresh and the previous token
+   * eventually stops working, so the caller must persist it (encrypted).
+   */
+  onRefreshTokenRotated?: (refreshToken: string) => Promise<unknown>;
+};
+
+/**
+ * Exchanges the stored refresh token for an access token. `invalid_grant`
+ * (Google and Microsoft identity platform alike) means the grant is gone and
+ * throws CalendarReconnectRequiredError; a rotated refresh token is handed to
+ * `onRefreshTokenRotated`.
+ */
+export async function providerAccessToken(
   provider: CalendarProvider,
   refreshToken: string,
+  hooks: CalendarDeliveryHooks = {},
 ) {
   const c = config(provider);
   if (!c.clientId || !c.clientSecret)
-    throw new Error("provider_not_configured");
-  const body = await json(c.token, {
+    throw new CalendarProviderError(
+      "Calendar provider is not configured.",
+      "provider_not_configured",
+    );
+  const response = await fetch(c.token, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -172,14 +218,42 @@ async function providerAccessToken(
       grant_type: "refresh_token",
       scope: c.scope,
     }),
+    signal: AbortSignal.timeout(15_000),
   });
+  const body = (await response.json().catch(() => ({}))) as Record<
+    string,
+    unknown
+  >;
+  if (!response.ok) {
+    if (body.error === "invalid_grant")
+      throw new CalendarReconnectRequiredError();
+    throw new CalendarProviderError(
+      "Calendar provider declined the token refresh.",
+      `token_refresh_${response.status}`,
+    );
+  }
   const token = String(body.access_token || "");
-  if (!token) throw new Error("access_token_missing");
+  if (!token)
+    throw new CalendarProviderError(
+      "Calendar provider returned no access token.",
+      "access_token_missing",
+    );
+  const rotated =
+    typeof body.refresh_token === "string" ? body.refresh_token : "";
+  if (rotated && rotated !== refreshToken && hooks.onRefreshTokenRotated)
+    await hooks.onRefreshTokenRotated(rotated);
   return token;
 }
 
-export async function deliverCalendarSync(lease: CalendarSyncLease) {
-  const token = await providerAccessToken(lease.provider, lease.refreshToken),
+export async function deliverCalendarSync(
+  lease: CalendarSyncLease,
+  hooks: CalendarDeliveryHooks = {},
+) {
+  const token = await providerAccessToken(
+      lease.provider,
+      lease.refreshToken,
+      hooks,
+    ),
     auth = { Authorization: `Bearer ${token}` };
   if (lease.operation === "delete") {
     if (!lease.providerEventId) return undefined;

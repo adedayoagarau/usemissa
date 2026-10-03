@@ -6,6 +6,7 @@ import { getEngine, persistRadar } from '@/lib/engine';
 import { getCreatorLibraryRepository } from '@/lib/creatorRepositories';
 import { creatorLibraryError, creatorLibraryJson, libraryEnvelope } from '@/lib/creatorLibraryRoute';
 import { creatorFileStorageReady, localCreatorFileStorageEnabled, readLocalCreatorFile, deleteLocalCreatorFile } from '@/lib/creator-file-storage';
+import { libraryFileResponseHeaders } from '@/lib/library-file-policy';
 export const runtime='nodejs';
 
 const headers = { 'Cache-Control': 'private, no-store' };
@@ -24,12 +25,13 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   try {
     if(localCreatorFileStorageEnabled()){
       const bytes=await readLocalCreatorFile(file.storageKey);
-      return new NextResponse(bytes,{headers:{...headers,'content-type':file.contentType,'content-length':String(bytes.byteLength),'content-disposition':`inline; filename*=UTF-8''${encodeURIComponent(file.filename)}`}});
+      return new NextResponse(bytes,{headers:{...headers,...libraryFileResponseHeaders(file),'content-length':String(bytes.byteLength)}});
     }
     const blob = await get(file.storageKey, { access: 'private', useCache: true, ...(token ? { token } : {}) });
     if (!blob || blob.statusCode !== 200) return NextResponse.json({ error: 'File bytes are unavailable.' }, { status: 404, headers });
-    const disposition = `inline; filename*=UTF-8''${encodeURIComponent(file.filename)}`;
-    return new NextResponse(blob.stream, { headers: { ...headers, 'content-type': blob.blob.contentType || file.contentType, 'content-length': String(blob.blob.size), 'content-disposition': disposition } });
+    // Serve with the type and disposition from the Library allowlist, never
+    // the type recorded at upload, so older uploads cannot render as HTML.
+    return new NextResponse(blob.stream, { headers: { ...headers, ...libraryFileResponseHeaders(file), 'content-length': String(blob.blob.size) } });
   } catch {
     return NextResponse.json({ error: 'File bytes are unavailable.' }, { status: 502, headers });
   }
