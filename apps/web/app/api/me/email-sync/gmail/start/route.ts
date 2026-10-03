@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getSessionAccount } from '@/lib/auth';
 import { getEngine, persistRadar } from '@/lib/engine';
+import { gmailSyncUnavailable } from '@/lib/email-integrations';
 
-export async function GET(request: Request) {
+export async function GET(request: Request) { const unavailable = gmailSyncUnavailable(); if (unavailable) return unavailable;
   const session = await getSessionAccount(request.headers.get('cookie'));
   const fallback = new URL('/profile?gmail=error&reason=not-authenticated', request.url);
   if (!session?.account.userId) return NextResponse.redirect(fallback);

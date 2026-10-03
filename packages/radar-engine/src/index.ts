@@ -165,7 +165,14 @@ export {
   type TrackerImportTaxonomyReview,
   type TrackerImportResult,
 } from './import/trackerImport.js';
-export { buildServerDemoWorld, type ServerDemoWorld, type DemoCredential } from './fixtures/serverDemo.js';
+export {
+  buildServerDemoWorld,
+  demoSeedAllowed,
+  DemoSeedRefusedError,
+  type DemoSeedEnv,
+  type ServerDemoWorld,
+  type DemoCredential,
+} from './fixtures/serverDemo.js';
 export { buildDemoWorld, ManualClock } from './fixtures/seed.js';
 export {
   DIRECTORY_IDENTITY_CONFIDENCE_THRESHOLD,
