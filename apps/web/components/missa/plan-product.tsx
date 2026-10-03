@@ -16,6 +16,8 @@ type PlanProductProps = {
   /** When a cancelled Plus subscription ends, ISO 8601. */
   endsAt: string | null;
   offers: Offer[];
+  /** Prices shown are the visitor's regional prices. */
+  regional?: boolean;
   checkout: "success" | "cancelled" | null;
 };
 
@@ -119,6 +121,7 @@ export function PlanProduct(props: PlanProductProps) {
           ) : (
             <p className={styles.soon}>Plus is coming soon.</p>
           )}
+          {props.offers.length && props.regional ? <p className={styles.small}>Plus is priced for where you are.</p> : null}
           {props.offers.length ? <p className={styles.small}>Payments are handled by Stripe. Cancel any time; Plus stays on until the end of the period you paid for.</p> : null}
         </section>
       ) : null}

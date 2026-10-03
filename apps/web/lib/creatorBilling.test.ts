@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { CreatorSubscriptionUpdate } from '@missa/radar-adapters';
-import { applyCreatorBillingEvent, creatorAccountFor, periodEnd, plusOffers, priceLabel } from './creatorBilling';
+import { applyCreatorBillingEvent, creatorAccountFor, periodEnd, plusOffers, priceLabel, pricingRegion, requestCountry } from './creatorBilling';
 
 const subscription = {
   id: 'sub_1',
@@ -68,5 +68,44 @@ test('prices read naturally in their own currency, and no Stripe key means no of
     assert.deepEqual(await plusOffers(), []);
   } finally {
     if (previous !== undefined) process.env.STRIPE_SECRET_KEY = previous;
+  }
+});
+
+test('African countries get the Africa price region; everywhere else and unknown pay the standard price', () => {
+  for (const country of ['NG', 'gh', 'KE', 'ZA', 'EG', 'MA', 'SN']) assert.equal(pricingRegion(country), 'africa', country);
+  for (const country of ['GB', 'US', 'IN', 'BR', 'FR']) assert.equal(pricingRegion(country), 'standard', country);
+  assert.equal(pricingRegion(null), 'standard');
+  assert.equal(requestCountry(new Headers({ 'x-vercel-ip-country': 'ng' })), 'NG');
+  assert.equal(requestCountry(new Headers()), null);
+});
+
+test('a region uses its own price when set and falls back to the standard price per interval', async () => {
+  const env = { ...process.env };
+  const realFetch = globalThis.fetch;
+  const prices: Record<string, { unit_amount: number; currency: string }> = {
+    price_std_month: { unit_amount: 600, currency: 'usd' },
+    price_std_year: { unit_amount: 6000, currency: 'usd' },
+    price_af_month: { unit_amount: 200, currency: 'usd' },
+  };
+  globalThis.fetch = (async (url: string | URL) => {
+    const id = decodeURIComponent(String(url).split('/prices/')[1] ?? '');
+    const price = prices[id];
+    return new Response(JSON.stringify(price ? { id, active: true, ...price } : { error: { message: 'No such price' } }), { status: price ? 200 : 404 });
+  }) as typeof fetch;
+  Object.assign(process.env, {
+    STRIPE_SECRET_KEY: 'sk_test_fixture',
+    STRIPE_PRICE_CREATOR_PLUS_MONTHLY: 'price_std_month',
+    STRIPE_PRICE_CREATOR_PLUS_YEARLY: 'price_std_year',
+    STRIPE_PRICE_CREATOR_PLUS_MONTHLY_AFRICA: 'price_af_month',
+  });
+  try {
+    const at = Date.now() + 3_600_000; // past any earlier test's cache
+    const africa = await plusOffers('africa', at);
+    assert.deepEqual(africa.map((offer) => [offer.interval, offer.label]), [['month', '$2 a month'], ['year', '$60 a year']]);
+    const standard = await plusOffers('standard', at);
+    assert.deepEqual(standard.map((offer) => offer.label), ['$6 a month', '$60 a year']);
+  } finally {
+    globalThis.fetch = realFetch;
+    process.env = env;
   }
 });

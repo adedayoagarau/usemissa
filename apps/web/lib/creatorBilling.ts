@@ -5,6 +5,11 @@ import type { CreatorSubscriptionUpdate } from '@missa/radar-adapters';
  * STRIPE_PRICE_CREATOR_PLUS_MONTHLY and STRIPE_PRICE_CREATOR_PLUS_YEARLY name
  * the Stripe prices, and Missa shows whatever amount and currency they hold.
  * With neither set, or no STRIPE_SECRET_KEY, Plus shows as coming soon.
+ *
+ * Prices respect geography: a creator in a pricing region (Africa first) sees
+ * that region's prices, named by the same variables with the region suffix
+ * (STRIPE_PRICE_CREATOR_PLUS_MONTHLY_AFRICA). A region without its own price
+ * for an interval falls back to the standard price.
  */
 
 export type PlusInterval = 'month' | 'year';
@@ -23,6 +28,23 @@ const PRICE_ENV: Record<PlusInterval, string> = {
   month: 'STRIPE_PRICE_CREATOR_PLUS_MONTHLY',
   year: 'STRIPE_PRICE_CREATOR_PLUS_YEARLY',
 };
+
+export type PricingRegion = 'standard' | 'africa';
+
+/** African Union member states (ISO 3166-1 alpha-2), the first regional price. */
+const AFRICA = new Set(
+  'DZ AO BJ BW BF BI CV CM CF TD KM CD CG CI DJ EG GQ ER SZ ET GA GM GH GN GW KE LS LR LY MG MW ML MR MU MA MZ NA NE NG RW EH ST SN SC SL SO ZA SS SD TZ TG TN UG ZM ZW'.split(' '),
+);
+
+/** The pricing region for a two-letter country code; unknown or missing countries pay the standard price. */
+export function pricingRegion(country: string | null | undefined): PricingRegion {
+  return country && AFRICA.has(country.trim().toUpperCase()) ? 'africa' : 'standard';
+}
+
+/** The visitor's country as Vercel reports it, from request headers. */
+export function requestCountry(headers: Pick<Headers, 'get'>): string | null {
+  return headers.get('x-vercel-ip-country')?.trim().toUpperCase() || null;
+}
 
 const STRIPE = 'https://api.stripe.com/v1';
 
@@ -56,25 +78,36 @@ export function priceLabel(amount: number, currency: string, interval: PlusInter
   return `${money} a ${interval}`;
 }
 
-let cached: { at: number; offers: PlusOffer[] } | undefined;
+const cached = new Map<PricingRegion, { at: number; offers: PlusOffer[] }>();
 
-/** The Plus prices configured in Stripe, cheapest interval first. Empty when billing is not set up. */
-export async function plusOffers(now = Date.now()): Promise<PlusOffer[]> {
+async function priceOffer(priceId: string, interval: PlusInterval): Promise<PlusOffer | undefined> {
+  try {
+    const price = await stripe<{ id: string; unit_amount: number | null; currency: string; active: boolean }>(`/prices/${encodeURIComponent(priceId)}`);
+    if (!price.active || price.unit_amount === null) return undefined;
+    return { interval, priceId: price.id, amount: price.unit_amount, currency: price.currency, label: priceLabel(price.unit_amount, price.currency, interval) };
+  } catch {
+    // A missing or archived price leaves that interval out rather than breaking the page.
+    return undefined;
+  }
+}
+
+/**
+ * The Plus prices for a pricing region, monthly first. Each interval uses the
+ * region's own price when one is set and active, otherwise the standard price.
+ * Empty when billing is not set up.
+ */
+export async function plusOffers(region: PricingRegion = 'standard', now = Date.now()): Promise<PlusOffer[]> {
   if (!secret()) return [];
-  if (cached && now - cached.at < 10 * 60_000) return cached.offers;
+  const hit = cached.get(region);
+  if (hit && now - hit.at < 10 * 60_000) return hit.offers;
   const offers: PlusOffer[] = [];
   for (const interval of ['month', 'year'] as const) {
-    const priceId = process.env[PRICE_ENV[interval]]?.trim();
-    if (!priceId) continue;
-    try {
-      const price = await stripe<{ id: string; unit_amount: number | null; currency: string; active: boolean }>(`/prices/${encodeURIComponent(priceId)}`);
-      if (!price.active || price.unit_amount === null) continue;
-      offers.push({ interval, priceId: price.id, amount: price.unit_amount, currency: price.currency, label: priceLabel(price.unit_amount, price.currency, interval) });
-    } catch {
-      // A missing or archived price leaves that interval out rather than breaking the page.
-    }
+    const regional = region === 'standard' ? undefined : process.env[`${PRICE_ENV[interval]}_${region.toUpperCase()}`]?.trim();
+    const standard = process.env[PRICE_ENV[interval]]?.trim();
+    const offer = (regional ? await priceOffer(regional, interval) : undefined) ?? (standard ? await priceOffer(standard, interval) : undefined);
+    if (offer) offers.push(offer);
   }
-  cached = { at: now, offers };
+  cached.set(region, { at: now, offers });
   return offers;
 }
 
@@ -84,10 +117,13 @@ export async function startPlusCheckout(input: {
   email?: string;
   customerId?: string | null;
   interval: PlusInterval;
+  /** Where the visitor is, from the request; picks the regional price. */
+  country: string | null;
   origin: string;
   idempotencyKey?: string;
 }): Promise<string> {
-  const offer = (await plusOffers()).find((candidate) => candidate.interval === input.interval);
+  const region = pricingRegion(input.country);
+  const offer = (await plusOffers(region)).find((candidate) => candidate.interval === input.interval);
   if (!offer) throw new Error('Plus is not available for that billing period yet');
   const form = new URLSearchParams({
     mode: 'subscription',
@@ -97,10 +133,16 @@ export async function startPlusCheckout(input: {
     cancel_url: `${input.origin}/plan?checkout=cancelled`,
     client_reference_id: input.accountId,
     allow_promotion_codes: 'true',
+    // A billing address is required so the country behind a regional price is on record.
+    billing_address_collection: 'required',
     'metadata[account_id]': input.accountId,
     'metadata[creator_plan]': 'plus',
+    'metadata[pricing_region]': region,
+    'metadata[request_country]': input.country ?? 'unknown',
     'subscription_data[metadata][account_id]': input.accountId,
     'subscription_data[metadata][creator_plan]': 'plus',
+    'subscription_data[metadata][pricing_region]': region,
+    'subscription_data[metadata][request_country]': input.country ?? 'unknown',
   });
   if (input.customerId) form.set('customer', input.customerId);
   else if (input.email) form.set('customer_email', input.email);

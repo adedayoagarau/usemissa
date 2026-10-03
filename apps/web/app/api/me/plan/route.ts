@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { creatorBillingAccount, creatorEntitlements, creatorPoolFor } from '@missa/radar-adapters';
 import { getSessionAccount } from '@/lib/auth';
-import { plusOffers } from '@/lib/creatorBilling';
+import { plusOffers, pricingRegion, requestCountry } from '@/lib/creatorBilling';
 
 const headers = { 'Cache-Control': 'private, no-store' };
 
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const pool = creatorPoolFor(process.env.DATABASE_URL);
   const client = await pool.connect();
   try {
-    const [entitlements, billing, offers] = await Promise.all([creatorEntitlements(client, session.account.id), creatorBillingAccount(pool, session.account.id), plusOffers()]);
+    const [entitlements, billing, offers] = await Promise.all([creatorEntitlements(client, session.account.id), creatorBillingAccount(pool, session.account.id), plusOffers(pricingRegion(requestCountry(request.headers)))]);
     return NextResponse.json(
       {
         plan: entitlements.plan,

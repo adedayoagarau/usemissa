@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { creatorBillingAccount, creatorPoolFor } from '@missa/radar-adapters';
 import { getSessionAccount } from '@/lib/auth';
-import { startPlusCheckout, type PlusInterval } from '@/lib/creatorBilling';
+import { requestCountry, startPlusCheckout, type PlusInterval } from '@/lib/creatorBilling';
 
 const headers = { 'Cache-Control': 'private, no-store' };
 
@@ -21,6 +21,7 @@ export async function POST(request: Request) {
       email: session.account.email,
       customerId: billing?.customerId,
       interval: interval as PlusInterval,
+      country: requestCountry(request.headers),
       origin,
       idempotencyKey: request.headers.get('Idempotency-Key')?.trim().slice(0, 200) || undefined,
     });
