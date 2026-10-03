@@ -4,7 +4,7 @@ import { getRelationalWorkspace, workspaceCommandEnvelope, workspaceMutationErro
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string; configurationId: string }> }) {
   const { id, configurationId } = await params;
-  const access = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const access = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   if (!workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: 'Relational Workspace authority is required' }, { status: 503 });
   try {

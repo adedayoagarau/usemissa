@@ -7,7 +7,7 @@ type Params = { id: string; versionId: string };
 
 export async function PATCH(request: Request, { params }: { params: Promise<Params> }) {
   const { id, versionId } = await params;
-  const access = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const access = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   if (!workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: 'Relational Workspace authority is required' }, { status: 503 });
   const body = await request.json();

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { getWorkspacePageAccess } from '@/lib/workspacePage';
 
 export default async function WorkspaceReviewsPage({ searchParams }: { searchParams: Promise<{ organizationId?: string }> }) {
-  const access = await getWorkspacePageAccess(searchParams, 'workspace/reviews');
+  const access = await getWorkspacePageAccess(searchParams, 'workspace/reviews', 'reviews.read');
   if (!access.organizationId)
     return (
       <main className="mx-auto max-w-2xl px-6 py-12">

@@ -1,6 +1,6 @@
 import { expect, request as playwrightRequest, test } from '@playwright/test';
 
-test('organization members can read but cannot change structure or elevate roles', async ({ baseURL }) => {
+test('organization members read only their role capabilities and cannot change structure or elevate roles', async ({ baseURL }) => {
   const admin = await playwrightRequest.newContext({ baseURL });
   const member = await playwrightRequest.newContext({ baseURL });
 
@@ -20,7 +20,18 @@ test('organization members can read but cannot change structure or elevate roles
     const invite = await admin.post(`/api/orgs/${organizationId}/members`, {
       data: { email: 'ada@example.com', role: 'member' },
     });
-    expect(invite.status()).toBe(201);
+    // Invites answer 202 with the same body whether or not the email has an account.
+    expect(invite.status()).toBe(202);
+    const unknownInvite = await admin.post(`/api/orgs/${organizationId}/members`, {
+      data: { email: 'no-account-here@example.com', role: 'member' },
+    });
+    expect(unknownInvite.status()).toBe(202);
+    expect(Object.keys(await unknownInvite.json()).sort()).toEqual(Object.keys(await invite.json()).sort());
+
+    const ownerGrant = await admin.post(`/api/orgs/${organizationId}/members`, {
+      data: { email: 'ada@example.com', role: 'owner' },
+    });
+    expect(ownerGrant.status()).toBe(403);
 
     const createTeam = await admin.post(`/api/orgs/${organizationId}/teams`, {
       data: { name: 'Editorial' },
@@ -34,6 +45,16 @@ test('organization members can read but cannot change structure or elevate roles
 
     const readableTeams = await member.get(`/api/orgs/${organizationId}/teams`);
     expect(readableTeams.ok()).toBeTruthy();
+
+    // A legacy member holds opportunities.read only: Organization-wide
+    // ledgers, people, and billing stay with owners and admins.
+    for (const path of ['submissions', 'members', 'billing', 'insights', 'delivery-tasks']) {
+      const forbiddenRead = await member.get(`/api/orgs/${organizationId}/${path}`);
+      expect(forbiddenRead.status(), path).toBe(403);
+    }
+
+    const paidCheckout = await admin.post(`/api/orgs/${organizationId}/billing`, { data: { plan: 'pro' } });
+    expect(paidCheckout.status()).toBe(503);
 
     const forbiddenTeam = await member.post(`/api/orgs/${organizationId}/teams`, {
       data: { name: 'Unauthorized team' },

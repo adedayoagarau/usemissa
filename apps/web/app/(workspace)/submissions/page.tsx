@@ -1,4 +1,5 @@
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
+import { legacyWorkspaceMembership } from '@/lib/workspacePage';
 import { cookies } from 'next/headers';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
@@ -45,13 +46,17 @@ export default async function SubmissionsPage({
   }
 
   const filters = await searchParams;
-  const organizationId = session.memberships.find((membership) => membership.organizationId === filters.organizationId)?.organizationId ?? session.memberships[0].organizationId;
-  if (filters.organizationId !== organizationId) {
-    const params = new URLSearchParams({ organizationId });
+  // The inbox is the Organization-wide Submission ledger: the same
+  // `submissions.read` capability as GET /api/orgs/[id]/submissions.
+  const selection = legacyWorkspaceMembership(session.memberships, filters.organizationId, 'submissions.read');
+  if (selection.kind === 'not-found') notFound();
+  if (selection.kind === 'redirect') {
+    const params = new URLSearchParams({ organizationId: selection.organizationId });
     if (filters.q) params.set('q', filters.q);
     if (filters.status) params.set('status', filters.status);
     redirect(`/submissions?${params.toString()}`);
   }
+  const organizationId = selection.membership.organizationId;
   const radarEngine = await getEngine();
   const workspaceEngine = await getWorkspaceEngine();
 

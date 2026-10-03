@@ -13,7 +13,7 @@ function render(template: string, values: Record<string, string>): string {
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status, headers });
   const idempotencyKey = request.headers.get('Idempotency-Key')?.trim().slice(0, 200) || undefined;
   const batchKey = idempotencyKey ?? randomUUID();

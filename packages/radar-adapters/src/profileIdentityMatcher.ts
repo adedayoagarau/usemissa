@@ -299,10 +299,7 @@ async function persistDecisions(client: PoolClient, opportunityId: string, decis
          jsonb_build_object('matcherVersion', $12::text, 'rule', 'exact-host-plus-call-identity',
            'identityBasis', $13::text),
          $14, $15, now(), now() + interval '7 days')
-       on conflict (id) do update set
-         profile_id = excluded.profile_id,
-         opportunity_id = excluded.opportunity_id,
-         relation = excluded.relation,
+       on conflict (profile_id, opportunity_id, relation) do update set
          status = excluded.status,
          confidence = excluded.confidence,
          matched_host = excluded.matched_host,

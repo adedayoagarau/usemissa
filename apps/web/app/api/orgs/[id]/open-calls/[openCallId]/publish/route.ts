@@ -4,7 +4,7 @@ import { getRelationalWorkspace, workspaceCommandEnvelope, workspaceMutationErro
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string; openCallId: string }> }) {
   const { id, openCallId } = await params;
-  const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
   if (!workspaceRelationalAuthorityEnabled() && !result.access.scope.openCall(openCallId)) {
     return NextResponse.json({ error: 'Unknown opportunity for this organization' }, { status: 404 });

@@ -7,7 +7,7 @@ type Params = { id: string; configurationId: string };
 
 export async function GET(request: Request, { params }: { params: Promise<Params> }) {
   const { id, configurationId } = await params;
-  const access = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const access = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   if (!workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: 'Relational Workspace authority is required' }, { status: 503 });
   const configuration = await (await getRelationalWorkspace()).portalConfiguration(id, configurationId);
@@ -16,7 +16,7 @@ export async function GET(request: Request, { params }: { params: Promise<Params
 
 export async function PATCH(request: Request, { params }: { params: Promise<Params> }) {
   const { id, configurationId } = await params;
-  const access = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const access = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   if (!workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: 'Relational Workspace authority is required' }, { status: 503 });
   const body = await request.json();

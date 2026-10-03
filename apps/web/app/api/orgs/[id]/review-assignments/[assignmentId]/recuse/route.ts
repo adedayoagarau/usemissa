@@ -4,7 +4,7 @@ import { getRelationalWorkspace, workspaceCommandEnvelope, workspaceMutationErro
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string; assignmentId: string }> }) {
   const { id, assignmentId } = await params;
-  const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
   if (!workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: 'Recusal is not available yet' }, { status: 503 });
   const body = await request.json().catch(() => ({}));
