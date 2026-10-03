@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { publicIndexLayoutStyles as catalogueStyles } from "@/components/missa/public-index-layout";
 import type { Metadata } from "next";
+import { listingMetadata } from "@/lib/seo";
 import { cookies } from "next/headers";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { getMagazineRankingRepository } from "@/lib/magazineRankingRepository";
@@ -12,11 +13,21 @@ import { Building, Compass } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Compare Rankings & Opportunities · Missa Index",
-  description:
-    "Compare literary magazines and artist residencies side-by-side across funding, awards, turnaround, and community ratings.",
-};
+export function generateMetadata({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
+  return listingMetadata(
+    {
+      title: "Compare Rankings & Opportunities · Missa Index",
+      description:
+        "Compare literary magazines and artist residencies side-by-side across funding, awards, turnaround, and community ratings.",
+      path: "/rankings/compare",
+    },
+    searchParams,
+  );
+}
 
 export default async function ComparePage({
   searchParams,

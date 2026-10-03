@@ -25,6 +25,10 @@ import {
   HOMEPAGE_CATEGORIES,
   categorySearch,
 } from "@/lib/homepage-opportunity-categories";
+import {
+  formatHomepageStat,
+  visibleHomepageStats,
+} from "@/lib/homepageStatDisplay";
 import "@/components/design-system/homepage-carousel-tokens.css";
 import "@/components/design-system/homepage-marketing-palette.css";
 import styles from "./homepage-next-opening.module.css";
@@ -97,6 +101,7 @@ export function HomepageNextOpening({
   }, [attempt]);
 
   const select = (index: number) => api?.scrollTo(index, Boolean(reduced));
+  const openTotal = counts ? formatHomepageStat(counts.open) : null;
   if (layout === "compact") {
     return (
       <section
@@ -117,14 +122,16 @@ export function HomepageNextOpening({
               aria-busy={!counts && !statsError}
             >
               {counts ? (
-                <Link href={`/opportunities?${categorySearch([])}`}>
-                  <strong className="font-mono">
-                    {new Intl.NumberFormat("en").format(counts.open)}
-                  </strong>
-                  <span>
-                    Open opportunities <span aria-hidden="true">↗</span>
-                  </span>
-                </Link>
+                openTotal ? (
+                  <Link href={`/opportunities?${categorySearch([])}`}>
+                    <strong className="font-mono">
+                      {openTotal}
+                    </strong>
+                    <span>
+                      Open opportunities <span aria-hidden="true">↗</span>
+                    </span>
+                  </Link>
+                ) : null
               ) : statsError ? (
                 <>
                   <p>Totals are unavailable.</p>
@@ -185,7 +192,7 @@ export function HomepageNextOpening({
         </div>
         {counts ? (
           <div className={styles.stats}>
-            {[
+            {visibleHomepageStats([
               {
                 label: "Open opportunities",
                 value: counts.open,
@@ -210,7 +217,7 @@ export function HomepageNextOpening({
                 copy: "The people and places behind the calls.",
                 href: "/directory",
               },
-            ].map((stat) => (
+            ]).map((stat) => (
               <Link key={stat.label} href={stat.href} className={styles.stat}>
                 <span className={styles.statLabel}>
                   {stat.label}{" "}
@@ -219,7 +226,7 @@ export function HomepageNextOpening({
                   </span>
                 </span>
                 <strong>
-                  {new Intl.NumberFormat("en").format(stat.value)}
+                  {stat.formatted}
                   <span className={styles.plus}>+</span>
                 </strong>
                 <p>{stat.copy}</p>

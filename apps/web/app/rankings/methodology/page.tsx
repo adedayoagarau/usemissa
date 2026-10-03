@@ -1,6 +1,7 @@
 import { publicIndexLayoutStyles as catalogueStyles } from "@/components/missa/public-index-layout";
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -17,11 +18,12 @@ import {
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { BetaBadge } from "@/components/ui/beta-badge";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Ranking Methodology · Missa Literary Magazine Index",
   description:
     "How the Missa Literary Magazine Index evaluates publication prestige, writer compensation, turnaround dignity, and submission ethics.",
-};
+  path: "/rankings/methodology",
+});
 
 export default function RankingsMethodologyPage() {
   return (
