@@ -286,11 +286,8 @@ function sourceTaxonomyTermIds(source: SourceDefinition): string[] {
 function writingTaxonomyRules(source: SourceDefinition): Array<{ termId: string; pattern: RegExp }> {
   const manifest = source.config.sourceManifest as { desk?: string; id?: string; artFormVerticalIds?: string[] } | undefined;
   if (manifest?.desk !== "writing") return [];
-  const dedicated = manifest.id !== "chill-subs-contests";
   const rules = new Map<string, RegExp>();
-  rules.set("taxterm_pf-writing-and-literature", dedicated
-    ? /./
-    : /\b(?:writ(?:e|er|ing|ten)|literary|poetr?y|poem|fiction|nonfiction|non-fiction|essay|memoir|prose|story|stories|novel|book|manuscript|chapbook|playwrit|screenwrit|journal|magazine)\b/i);
+  rules.set("taxterm_pf-writing-and-literature", /./);
   const verticalPatterns: Record<string, RegExp> = {
     poetry: /\b(?:poetry|poem|poet|chapbook)\b/i,
     "literary-fiction": /\b(?:fiction|story|stories|novel|prose)\b/i,

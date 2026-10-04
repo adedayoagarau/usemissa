@@ -20,9 +20,9 @@ import {
 
 test("runs only the bounded first tranche by default and keeps publication authority closed", () => {
   assert.deepEqual(validateSourceManifest(), []);
-  assert.equal(FIRST_TRANCHE_SOURCE_MANIFEST.length, 17);
+  assert.equal(FIRST_TRANCHE_SOURCE_MANIFEST.length, 16);
   const sources = createFirstTrancheSources();
-  assert.equal(sources.length, 17);
+  assert.equal(sources.length, 16);
   assert.deepEqual(
     createWorkerSources().map((source) => source.id),
     sources.map((source) => source.id),
@@ -47,14 +47,13 @@ test("runs only the bounded first tranche by default and keeps publication autho
           "Festhome Festivals",
           "ArtDeadline Opportunities",
           "Res Artis Open Calls",
-          "Chill Subs Contests",
         ].includes(source.name),
       )
       .map((source) => source.schedule.lane),
-    ["core-daily", "core-daily", "core-daily", "core-daily", "core-daily"],
+    ["core-daily", "core-daily", "core-daily", "core-daily"],
   );
   assert.equal(sources.some((source) => source.name === "Res Artis Open Calls"), true);
-  assert.equal(sources.some((source) => source.name === "Chill Subs Contests"), true);
+  assert.equal(sources.some((source) => source.name === "Chill Subs Contests"), false);
 });
 
 test("adapts cadence from changes, deadlines, and durable failure streaks", () => {

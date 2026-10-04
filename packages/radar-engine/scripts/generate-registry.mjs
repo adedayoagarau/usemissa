@@ -36,7 +36,7 @@ function entry(name, url, verticalId, opts = {}) {
     disciplines: opts.disciplines,
     geography: opts.geography,
     checkIntervalHours: opts.checkIntervalHours ?? TIER_CADENCE[tier],
-    active: true,
+    active: opts.active ?? true,
     organizationName: tier === 0 ? name : undefined,
     followsOutboundLinks: opts.followsOutboundLinks ?? tier === 2,
     discoveryAdapterId: opts.discoveryAdapterId,
@@ -573,9 +573,12 @@ const PLATFORMS = [
     opportunityTypes: ['magazine', 'contest'],
     notes: 'Paid market database — use as discovery seed only; crawl outbound guideline URLs.',
   }),
+  // Kept (inactive) so later source ids keep their numbers; its terms forbid scraping.
   directory('Chill Subs', 'https://www.chillsubs.com/', 'platform-chill-subs', {
     opportunityTypes: ['magazine', 'contest'],
-    notes: 'Literary discovery — crawl outbound submission guideline pages.',
+    active: false,
+    followsOutboundLinks: false,
+    notes: 'Not crawled: the site forbids automated access. Missa keeps its own magazine schedules.',
   }),
   directory('Submission Grinder', 'https://thegrinder.diabolicalplots.com/', 'platform-chill-subs', {
     opportunityTypes: ['magazine'],
