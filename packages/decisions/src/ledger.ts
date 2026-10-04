@@ -130,7 +130,7 @@ function round(value: number | null): number | null {
   return value === null ? null : Math.round(value * 10_000) / 10_000;
 }
 
-/** Writes to data_decisions (migration 0088). */
+/** Writes to data_decisions (migration 0090). */
 export function createPostgresDecisionLedger(db: Queryable): DecisionLedger {
   return {
     async record(records) {

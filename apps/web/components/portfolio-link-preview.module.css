@@ -1,0 +1,45 @@
+.hint {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted-foreground);
+}
+.eyebrow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--muted-foreground);
+}
+.eyebrow svg {
+  height: 16px;
+  width: 16px;
+}
+.linkPreview {
+  padding: 20px;
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow-wrap: anywhere;
+  display: grid;
+  gap: 12px;
+}
+.linkPreview h3 {
+  font-size: 20px;
+}
+.linkPreview p {
+  font-size: 14px;
+  line-height: 1.6;
+}
+.linkPreview a {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  text-decoration: underline;
+  min-height: 44px;
+  color: var(--primary);
+}
+.linkPreview a svg {
+  width: 16px;
+  height: 16px;
+}

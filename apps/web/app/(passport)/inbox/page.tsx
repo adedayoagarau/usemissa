@@ -1,14 +1,24 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type { Alert, AlertKind } from '@missa/radar-engine';
-import type { CreatorInboxAlertView } from '@missa/radar-adapters';
+import {
+  creatorFeatures,
+  creatorPlan,
+  creatorPoolFor,
+  getPlanningPreferences,
+  planningPreferencesAvailable,
+  type CreatorInboxAlertView,
+  type CreatorPlanningPreferences,
+} from '@missa/radar-adapters';
 
 import { InboxProduct, type InboxProductGroup, type InboxProductItem } from '@/components/inbox-product';
+import type { DeadlinePlanFeatures } from '@/components/notification-preferences-panel';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { CreatorReminderRepository } from '@/lib/creator-reminders';
 import { getEngine } from '@/lib/engine';
 import { getCreatorInboxRepository } from '@/lib/creatorRepositories';
 import { notificationPreferencesView } from '@/lib/sms-preferences';
+import { changeNoticeSummary, deadlineNoticeView, isDeadlineNoticeKind } from '@/lib/inbox-notice-kinds';
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -41,7 +51,14 @@ function groupFor(kind: AlertKind): InboxProductGroup {
   return 'discovery';
 }
 
-type InboxSourceAlert = Pick<Alert, 'id' | 'kind' | 'title' | 'body' | 'reason' | 'createdAt' | 'opportunityId'> & { read: boolean; revision?: number };
+type InboxSourceAlert = Pick<Alert, 'id' | 'kind' | 'title' | 'body' | 'reason' | 'createdAt' | 'opportunityId'> & {
+  read: boolean;
+  revision?: number;
+  /** The notice's own link, from the relational Inbox. */
+  actionHref?: string | null;
+  /** Relational notices are written as customer copy, so change notices can show their own was/now text. */
+  relational?: boolean;
+};
 
 function goalHref(alert: InboxSourceAlert): string | undefined {
   const id = /^Goal check-in · \/goals\?goal=([0-9a-f-]{36})$/i.exec(alert.reason)?.[1];
@@ -84,19 +101,51 @@ function actionFor(alert: InboxSourceAlert): Pick<InboxProductItem, 'actionHref'
 }
 
 function toProductItem(alert: InboxSourceAlert): InboxProductItem {
+  // Deadline-management notices (and kinds this page does not know yet) are
+  // stored as strings wider than the engine's AlertKind.
+  const kind: string = alert.kind;
+  if (isDeadlineNoticeKind(kind)) {
+    return {
+      id: alert.id,
+      kind,
+      ...deadlineNoticeView({ kind, title: alert.title, body: alert.body, opportunityId: alert.opportunityId, actionHref: alert.actionHref }),
+      createdAt: alert.createdAt,
+      unread: !alert.read,
+      revision: alert.revision,
+    };
+  }
+  const changeSummary = alert.relational ? changeNoticeSummary(kind, alert.body) : null;
   return {
     id: alert.id,
     kind: alert.kind,
     group: groupFor(alert.kind),
-    category: goalHref(alert) ? "Goal check-in" : categories[alert.kind],
+    category: goalHref(alert) ? "Goal check-in" : (categories[alert.kind] ?? 'Update'),
     title: alert.title,
-    summary: safeSummary(alert),
+    summary: changeSummary ?? safeSummary(alert),
     reason: safeReason(alert),
     createdAt: alert.createdAt,
     unread: !alert.read,
     revision: alert.revision,
     ...actionFor(alert),
   };
+}
+
+/**
+ * Planning preferences and the plan's deadline features for the Deadlines
+ * settings; absent without a database or before migration 0088, so the
+ * section is hidden rather than shown with saves that cannot succeed.
+ */
+async function deadlineSettings(accountId: string): Promise<{ preferences: CreatorPlanningPreferences | null; features: DeadlinePlanFeatures }> {
+  if (!process.env.DATABASE_URL) return { preferences: null, features: {} };
+  const pool = creatorPoolFor(process.env.DATABASE_URL);
+  const [preferences, plan] = await Promise.all([
+    planningPreferencesAvailable(pool)
+      .then((available) => (available ? getPlanningPreferences(pool, accountId) : null))
+      .catch(() => null),
+    creatorPlan(pool, accountId).catch(() => 'free' as const),
+  ]);
+  const features = creatorFeatures(plan);
+  return { preferences, features: { deadlineDayAlarm: features.deadlineDayAlarm, openingAlerts: features.openingAlerts } };
 }
 
 export default async function InboxPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
@@ -107,21 +156,30 @@ export default async function InboxPage({ searchParams }: { searchParams?: Promi
   const raw = searchParams ? await searchParams : {};
   const requestedView = Array.isArray(raw.view) ? raw.view[0] : raw.view;
   const repository = getCreatorInboxRepository();
+  const links = repository ? await new CreatorReminderRepository().inboxLinks(session.account.id) : [];
   const items = repository
-    ? (await repository.alerts(session.account.id)).map((alert: CreatorInboxAlertView) => toProductItem({ ...alert, read: Boolean(alert.readAt) }))
+    ? (await repository.alerts(session.account.id)).map((alert: CreatorInboxAlertView) =>
+        toProductItem({ ...alert, read: Boolean(alert.readAt), relational: true, actionHref: links.find((link) => link.id === alert.id)?.href ?? null }))
     : [...(await getEngine()).store.alerts.values()]
         .filter((alert) => alert.audience === 'user' && alert.userId === session.account.userId)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .map(toProductItem);
 
   if (repository) {
-    const links = await new CreatorReminderRepository().inboxLinks(session.account.id);
     for (const item of items) {
       const link = links.find(l => l.id === item.id);
+      if (isDeadlineNoticeKind(item.kind)) {
+        // Their own link and copy already apply; a reminder behind the notice can still be snoozed.
+        item.reminderId = link?.reminderId ?? undefined;
+        continue;
+      }
+      // Change notices link to the Tracker too, but keep their own category and reason.
+      if (link?.href.startsWith('/tracker?') && item.group === 'changes') { item.actionHref = link.href; item.actionLabel = 'Open application'; continue; }
       if (link?.href.startsWith('/tracker?')) { item.actionHref = link.href; item.actionLabel = 'Open application'; item.reminderId = link.reminderId ?? undefined; item.reason = 'You scheduled this reminder.'; item.category = item.kind === 'response-overdue' ? 'Response check-in' : 'Application reminder'; }
       if (link?.href.startsWith('/opportunities/') && item.kind === 'followed-org-new-call') { item.actionHref = link.href; item.actionLabel = 'View opportunity'; item.reason = link.reason; item.summary = link.body; item.category = 'Following'; }
     }
   }
   const initialPreferences = await notificationPreferencesView(session.account.id);
-  return <InboxProduct initialItems={items} initialPreferences={initialPreferences} initialView={requestedView === 'email' ? 'email' : requestedView === 'reminders' ? 'reminders' : 'briefing'} />;
+  const planning = await deadlineSettings(session.account.id);
+  return <InboxProduct initialItems={items} initialPreferences={initialPreferences} initialPlanning={planning.preferences} planFeatures={planning.features} initialView={requestedView === 'email' ? 'email' : requestedView === 'reminders' ? 'reminders' : 'briefing'} />;
 }

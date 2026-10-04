@@ -28,15 +28,17 @@ test("draft schema preserves partial input but publication validates links and s
   ).toBe(false);
 });
 
-test("unselected books and untitled work are excluded from public data and media access", () => {
+test("hidden shelf items and untitled work are excluded from public data and media access", () => {
   const draft = portfolioSchema.parse({
     name: "Maya",
-    sections: [],
-    book: {
-      title: "Private book",
-      cover:
-        "/api/creator/portfolio-media/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-    },
+    modules: [{ id: "shelf", visible: false }],
+    shelf: [
+      {
+        title: "Private book",
+        cover:
+          "/api/creator/portfolio-media/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      },
+    ],
     works: [
       {
         title: "",
@@ -47,7 +49,7 @@ test("unselected books and untitled work are excluded from public data and media
     ],
   });
   const projection = publicPortfolioProjection(draft);
-  expect(projection.book.title).toBe("");
+  expect(projection.shelf).toEqual([]);
   expect(projection.works).toEqual([]);
   expect(portfolioMediaIds(projection)).toEqual([]);
 });
