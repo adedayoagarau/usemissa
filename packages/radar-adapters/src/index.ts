@@ -806,3 +806,16 @@ export { CONFIRMED_DATES_PREDICATE, type OpportunityRepositoryQueryWithDeadlineF
 export * from "./creatorObligationMutations.js";
 export { updateCanonicalTrackerPersonalTarget, CanonicalTrackerValidationError } from "./canonicalTracker.js";
 export type { CreatorReminderTextKind } from "./creatorReminderText.js";
+export { CREATOR_OPENING_NOTICE_KINDS, CREATOR_REMINDER_NOTICE_KINDS } from "./creatorReminderEmail.js";
+export { weeklyDigestPlanning, type WeeklyDigestPlanItem, type WeeklyDigestPlanning } from "./weeklyDigest.js";
+export {
+  calendarFeedAccountForToken,
+  calendarFeedForToken,
+  calendarFeedItemsForAccount,
+  type CalendarFeedData,
+  type CalendarFeedForecast,
+  type CalendarFeedObligation,
+  type CalendarFeedStage,
+  type CalendarFeedTier,
+  type CalendarFeedTracked,
+} from "./calendarFeedItems.js";
