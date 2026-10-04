@@ -2,6 +2,7 @@ import { DeepSeekHtmlAdapter } from "./adapters/deepseek.js";
 import { FeedAdapter } from "./adapters/feed.js";
 import { GenericHtmlAdapter } from "./adapters/html.js";
 import { JsonApiAdapter } from "./adapters/json.js";
+import { ChillSubsNextAdapter } from "./adapters/chillSubs.js";
 import { evaluateCandidateReplayGate } from "./candidateGate.js";
 import { createFirstTrancheSources } from "./catalog.js";
 import { executeShadowPipeline, shadowJob } from "./execution.js";
@@ -30,7 +31,7 @@ const registry = new AdapterRegistry()
   .register(new DeepSeekHtmlAdapter())
   .register(new FeedAdapter())
   .register(new JsonApiAdapter())
-  ;
+  .register(new ChillSubsNextAdapter());
 const store = new PostgresShadowRunStore(pool);
 const artifacts = [];
 

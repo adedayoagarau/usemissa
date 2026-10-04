@@ -2,6 +2,7 @@ import { GenericHtmlAdapter } from "./adapters/html.js";
 import { DeepSeekHtmlAdapter } from "./adapters/deepseek.js";
 import { FeedAdapter } from "./adapters/feed.js";
 import { JsonApiAdapter } from "./adapters/json.js";
+import { ChillSubsNextAdapter } from "./adapters/chillSubs.js";
 import { createFirstTrancheSources } from "./catalog.js";
 import {
   assertIngestionV2SchemaReady,
@@ -35,7 +36,7 @@ const registry = new AdapterRegistry()
   .register(new DeepSeekHtmlAdapter())
   .register(new FeedAdapter())
   .register(new JsonApiAdapter())
-  ;
+  .register(new ChillSubsNextAdapter());
 const sources = createFirstTrancheSources(adapterId);
 const runStore = new PostgresShadowRunStore(pool);
 

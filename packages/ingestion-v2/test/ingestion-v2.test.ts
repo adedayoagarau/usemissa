@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AdapterRegistry, DeepSeekHtmlAdapter, FeedAdapter, GaryObservationAdapter, GenericHtmlAdapter, INGESTION_V2_VERSION, JsonApiAdapter, MemoryShadowRunStore, assertIngestionV2DatabaseRole, assessEvidenceQuality, buildOpportunityIdentity, closeExpiredPublishedV2Opportunities, closeExpiredReviewableV2Opportunities, compareExtractionResults, compareOpportunityIdentity, compareSourceAdapters, createBenchmarkSources, createFirstTrancheSources, createIngestionCatalog, createRun, createSnapshotId, evaluateCandidateReplayGate, evaluatePromotionGate, executeShadowPipeline, findCanonicalDuplicateMatches, handoffApprovedCandidate, hasCurrentDeadlineOrWindow, isAggregateOpportunityPage, opportunityTaxonomyTermIds, redisOptionsFromUrl, resolveCurrentDeadline, robotsAllowsPath, reviewForPublication, sanitizeSourceText, scoreBenchmarkCase, shadowJob, sourceIsDue, sourceIsOpen, summarizeBenchmarkScorecards, writeWithDeepSeek } from "../src/index.js";
+import { AdapterRegistry, ChillSubsNextAdapter, DeepSeekHtmlAdapter, FeedAdapter, GaryObservationAdapter, GenericHtmlAdapter, INGESTION_V2_VERSION, JsonApiAdapter, MemoryShadowRunStore, assertIngestionV2DatabaseRole, assessEvidenceQuality, buildOpportunityIdentity, closeExpiredPublishedV2Opportunities, closeExpiredReviewableV2Opportunities, compareExtractionResults, compareOpportunityIdentity, compareSourceAdapters, createBenchmarkSources, createFirstTrancheSources, createIngestionCatalog, createRun, createSnapshotId, evaluateCandidateReplayGate, evaluatePromotionGate, executeShadowPipeline, findCanonicalDuplicateMatches, handoffApprovedCandidate, hasCurrentDeadlineOrWindow, isAggregateOpportunityPage, opportunityTaxonomyTermIds, redisOptionsFromUrl, resolveCurrentDeadline, robotsAllowsPath, reviewForPublication, sanitizeSourceText, scoreBenchmarkCase, shadowJob, sourceIsDue, sourceIsOpen, summarizeBenchmarkScorecards, writeWithDeepSeek } from "../src/index.js";
 
 test("creates shadow runs without publishing mode", () => {
   const source = createBenchmarkSources()[0]!;
@@ -167,6 +167,120 @@ test("extracts JSON listing envelopes and applies a quality gate", async () => {
   const quality = assessEvidenceQuality(snapshot, result);
   assert.equal(result.fields.some((field) => field.fieldName === "deadline"), true);
   assert.equal(quality.decision, "review");
+});
+
+test("joins Chill Subs call ids to organizer submission URLs and collapses genre variants", async () => {
+  const adapter = new ChillSubsNextAdapter();
+  const source = {
+    id: "chill-subs-test",
+    name: "Chill Subs Contests",
+    url: "https://www.chillsubs.com/browse/contests",
+    adapterId: adapter.id,
+    kind: "directory" as const,
+    geography: ["global"],
+    opportunityTypes: ["contest"],
+    config: { transport: "chill-subs-next" },
+    schedule: { lane: "core-daily" as const, cadenceHours: 24 },
+  };
+  const run = createRun(source);
+  const rootPayload = {
+    props: {
+      pageProps: {
+        browseData: [
+          {
+            id: "call-poetry",
+            title: "Example Writing Contest",
+            name: "Example Review",
+            key: "example-review",
+            entityType: "magazine",
+            entityStatus: "active",
+            status: "open",
+            description: "A contest represented once for each accepted genre.",
+            readingPeriod: { subWindows: [{ closeDate: "2099-08-18T03:59:59.000Z" }] },
+          },
+          {
+            id: "call-fiction",
+            title: "Example Writing Contest",
+            name: "Example Review",
+            key: "example-review",
+            entityType: "magazine",
+            entityStatus: "active",
+            status: "open",
+            readingPeriod: { subWindows: [{ closeDate: "2099-08-18T03:59:59.000Z" }] },
+          },
+          {
+            id: "call-closed",
+            title: "Closed Contest",
+            name: "Example Review",
+            key: "example-review",
+            entityType: "magazine",
+            entityStatus: "active",
+            status: "closed",
+            readingPeriod: { subWindows: [{ closeDate: "2099-08-19T03:59:59.000Z" }] },
+          },
+        ],
+      },
+    },
+  };
+  const rootSnapshot = {
+    id: "snap_chill_root",
+    runId: run.id,
+    sourceId: source.id,
+    url: source.url,
+    finalUrl: source.url,
+    fetchedAt: new Date().toISOString(),
+    statusCode: 200,
+    contentType: "text/html",
+    contentHash: "root",
+    html: `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify(rootPayload)}</script>`,
+    rendered: false,
+  };
+  const root = await adapter.extract({ run, source }, rootSnapshot);
+  assert.equal(root.candidateLinks.length, 1);
+  assert.equal(root.candidateLinks[0]?.stableId, "call-poetry");
+  assert.equal(
+    root.candidateLinks[0]?.url,
+    "https://www.chillsubs.com/magazine/example-review?call=call-poetry",
+  );
+
+  const profileUrl = root.candidateLinks[0]!.url;
+  const profilePayload = {
+    props: {
+      pageProps: {
+        listing: {
+          name: "Example Review",
+          subCalls: [
+            {
+              id: "call-poetry",
+              title: "Example Writing Contest",
+              status: "open",
+              link: "https://example-review.test/submit/contest",
+              description: "Official contest guidelines.",
+              readingPeriod: { subWindows: [{ closeDate: "2099-08-18T03:59:59.000Z" }] },
+            },
+          ],
+        },
+      },
+    },
+  };
+  const profileSnapshot = {
+    ...rootSnapshot,
+    id: "snap_chill_profile",
+    url: profileUrl,
+    finalUrl: profileUrl,
+    contentHash: "profile",
+    html: `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify(profilePayload)}</script>`,
+  };
+  const profile = await adapter.extract(
+    { run, source: { ...source, url: profileUrl } },
+    profileSnapshot,
+  );
+  assert.equal(profile.candidateLinks[0]?.url, "https://example-review.test/submit/contest");
+  assert.equal(profile.candidateLinks[0]?.role, "apply");
+  assert.equal(
+    profile.fields.find((entry) => entry.fieldName === "deadline")?.normalizedValue,
+    "2099-08-18T03:59:59.000Z",
+  );
 });
 
 test("extracts Grants.gov nested API records and preserves POST detail requests", async () => {
@@ -600,6 +714,18 @@ test("rejects known directory and funding-guide URLs before canonical handoff", 
   assert.equal(isAggregateOpportunityPage(extraction, "https://www.transartists.org/en/air/sapporo-artist-residence"), true);
   assert.equal(isAggregateOpportunityPage(extraction, "https://www.transartists.org/en/deadlines"), true);
   assert.equal(isAggregateOpportunityPage(extraction, "https://www.transartists.org/en/news/current-open-call"), false);
+});
+
+test("keeps source coverage separate from each Chill Subs opportunity art form", () => {
+  const chill = createFirstTrancheSources().find((source) => (source.config.sourceManifest as { id?: string } | undefined)?.id === "chill-subs-contests");
+  assert.ok(chill);
+  const extraction = (title: string) => ({ fields: [{ fieldName: "title", rawValue: title, normalizedValue: title, confidence: 1, provenance: { adapterId: "test", method: "fixture", sourceUrl: chill.url, snapshotId: "snap" } }], candidateLinks: [], warnings: [] });
+  assert.deepEqual(opportunityTaxonomyTermIds(chill, extraction("Resonance Issue One — Cover Art Submissions")), []);
+  const poetry = opportunityTaxonomyTermIds(chill, extraction("Sublingua Prize for Poetry"));
+  assert.ok(poetry.includes("taxterm_pf-writing-and-literature"));
+  assert.ok(poetry.length > 1);
+  assert.ok(opportunityTaxonomyTermIds(chill, extraction("Flash Creative Nonfiction Contest")).length > 1);
+  assert.ok(opportunityTaxonomyTermIds(chill, extraction("Flash Fiction Contest")).length > 1);
 });
 
 test("prefers an explicit source-card extension over a stale application deadline", () => {
