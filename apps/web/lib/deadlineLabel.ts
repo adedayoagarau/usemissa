@@ -1,18 +1,22 @@
+import { calendarDateIn, daysBetween, describeDeadline } from "./deadline-moment";
+
+/**
+ * Compatibility wrappers over `describeDeadline` for older callers. New code
+ * should call `describeDeadline` directly so exact close times and time zones
+ * are honoured.
+ */
+
 export interface DeadlineLabel {
   label: string;
   urgent: boolean;
 }
 
-function parseCalendarDate(isoDate: string) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
-  if (!match) return null;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
-    return null;
+function runtimeTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
   }
-  return { year, month, day };
 }
 
 /**
@@ -23,30 +27,15 @@ function parseCalendarDate(isoDate: string) {
  * because the viewer is west of UTC in the evening.
  */
 export function calendarDaysUntil(isoDate: string, now = new Date()): number | null {
-  const parsed = parseCalendarDate(isoDate);
-  if (!parsed) return null;
-  const target = Date.UTC(parsed.year, parsed.month - 1, parsed.day);
-  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-  return Math.round((target - today) / 86_400_000);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return null;
+  return daysBetween(calendarDateIn(now, runtimeTimeZone()), isoDate);
 }
 
 export function formatDeadlineLabel(
   isoDate: string,
   now = new Date(),
 ): DeadlineLabel | null {
-  const parsed = parseCalendarDate(isoDate);
-  const days = calendarDaysUntil(isoDate, now);
-  if (!parsed || days === null) return null;
-  const formatted = new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-  }).format(new Date(Date.UTC(parsed.year, parsed.month - 1, parsed.day)));
-
-  if (days < 0) return { label: `Closed ${formatted}`, urgent: false };
-  if (days === 0) return { label: "Closes today", urgent: true };
-  if (days === 1) return { label: "Closes tomorrow", urgent: true };
-  if (days <= 30) {
-    return { label: `Closes ${formatted} · ${days} days left`, urgent: days <= 7 };
-  }
-  return { label: `Closes ${formatted}`, urgent: false };
+  if (calendarDaysUntil(isoDate, now) === null) return null;
+  const moment = describeDeadline({ kind: "exact", date: isoDate }, { now });
+  return { label: moment.label, urgent: moment.urgent };
 }
