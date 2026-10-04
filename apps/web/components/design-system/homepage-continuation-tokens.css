@@ -23,7 +23,6 @@
   --home-active-surface: var(--accent-deep);
   --home-active-ink: var(--primary-foreground);
   --home-theme-sage: var(--accent-tint);
-  --home-theme-paper: var(--ochre-tint);
   --home-theme-mineral: var(--mineral-blue-tint);
   --home-theme-night: var(--ink);
   --home-notification-secondary: color-mix(

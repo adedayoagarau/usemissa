@@ -13,7 +13,6 @@ const SAMPLE = sampleCreatorPortfolio();
 const THEMES = [
   { id: "white", label: "White" },
   { id: "sage", label: "Sage" },
-  { id: "paper", label: "Paper" },
   { id: "mineral", label: "Mineral" },
   { id: "night", label: "Night" },
 ] as const;

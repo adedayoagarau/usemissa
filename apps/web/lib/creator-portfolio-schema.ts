@@ -17,13 +17,13 @@ const itemId = z
   .regex(/^[A-Za-z0-9_-]{1,40}$/)
   .optional();
 
-export const PORTFOLIO_THEMES = ["sage", "paper", "mineral", "night"] as const;
+export const PORTFOLIO_THEMES = ["sage", "mineral", "night"] as const;
 export type PortfolioTheme = (typeof PORTFOLIO_THEMES)[number];
 
 /**
- * Older preview drafts carried `theme: "white"` before the public palette
- * settled on these four values. Coerce any unknown or legacy value to the
- * canonical default so a stored draft keeps loading.
+ * Older drafts carried `theme: "white"` or the retired `"paper"` theme (its
+ * cream canvas conflicted with PRODUCT.md). Coerce any unknown or legacy value
+ * to the canonical default so a stored draft or snapshot keeps loading.
  */
 export function coercePortfolioTheme(value: unknown): PortfolioTheme {
   return typeof value === "string" &&
@@ -407,7 +407,14 @@ export function publicationIssue(draft: PortfolioData): string | undefined {
 }
 
 /** Publish only what the preview shows; hidden and untitled items stay private. */
-export function publicPortfolioProjection(draft: PortfolioData): PortfolioData {
+/**
+ * What visitors may see. Publishing stores this with `keepOutcomeIds` so each
+ * read can re-verify Confirmed entries; every read strips the ids again.
+ */
+export function publicPortfolioProjection(
+  draft: PortfolioData,
+  { keepOutcomeIds = false }: { keepOutcomeIds?: boolean } = {},
+): PortfolioData {
   const visible = new Set(
     orderedModules(draft.modules)
       .filter((entry) => entry.visible)
@@ -431,7 +438,9 @@ export function publicPortfolioProjection(draft: PortfolioData): PortfolioData {
       "record",
       draft.record
         .filter((item) => item.title.trim())
-        .map(({ outcomeId: _outcomeId, ...item }) => item),
+        .map(({ outcomeId, ...item }) =>
+          keepOutcomeIds && outcomeId ? { ...item, outcomeId } : item,
+        ),
     ),
     events: show(
       "upcoming",

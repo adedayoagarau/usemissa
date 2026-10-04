@@ -676,7 +676,6 @@ export function BasicsEditor({ draft, update, upload, onError }: EditorProps) {
 
 const THEME_LABELS: Record<PortfolioData["theme"], string> = {
   sage: "Sage",
-  paper: "Paper",
   mineral: "Mineral",
   night: "After hours",
 };

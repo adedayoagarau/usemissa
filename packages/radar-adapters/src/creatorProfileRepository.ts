@@ -240,6 +240,13 @@ export class PostgresCreatorProfileRepository extends CreatorRepositoryBase {
     return result.rows[0]?.published_data;
   }
 
+  /** The published snapshot with its owner, so provenance can be re-verified on read. */
+  async publishedPortfolio(userId:string): Promise<{ accountId: string; data: unknown } | undefined> {
+    const result=await this.query<{account_id:string;published_data:unknown}>(`select p.account_id, p.published_data from creator_portfolio_drafts p join radar_accounts a on a.id=p.account_id where a.data->>'userId'=$1 and coalesce(a.data->>'active','true') <> 'false' and p.published_at is not null`,[userId]);
+    const row=result.rows[0];
+    return row ? { accountId: row.account_id, data: row.published_data } : undefined;
+  }
+
   async ownPortfolioMedia(accountId:string, ids:string[]) {
     const result=await this.query<{id:string}>('select id from creator_portfolio_media where account_id=$1 and id=any($2::uuid[])',[accountId,ids]);
     return result.rows.length === new Set(ids).size;

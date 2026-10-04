@@ -71,7 +71,7 @@ test("each lens, theme and hero stays readable and accessible", async ({
   for (const query of [
     "lens=visual&theme=night&hero=plate",
     "lens=sound&theme=mineral&hero=type",
-    "lens=stage&theme=paper",
+    "lens=stage&theme=mineral&hero=portrait",
     "sparse=1",
   ]) {
     await page.goto(`/design-system/creator-profile-v2?${query}`);

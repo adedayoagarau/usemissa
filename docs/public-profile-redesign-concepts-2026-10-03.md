@@ -123,9 +123,9 @@ date }`, `events[]`, `press[] { quote, source, url }`, `featuredWork`.
 
 ## Open questions
 
-1. Retire the **Paper** theme? Its ochre tint reads as cream, which PRODUCT.md
-   lists as an anti-reference. The concepts use Default, Sage, Mineral and
-   After hours.
+1. ~~Retire the **Paper** theme?~~ Decided October 2026: retired. Its ochre
+   tint read as cream, which PRODUCT.md lists as an anti-reference. Stored
+   Paper profiles render as Sage.
 2. Which organization actions count as **Confirmed** — a decision recorded in
    a hosted application only, or also a manual confirmation request?
 3. Inquiry abuse controls: require sign-in, rate limits, or both?

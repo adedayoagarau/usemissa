@@ -35,7 +35,7 @@ type Opportunity = ReturnType<
   typeof opportunityBrowseResponseSchema.parse
 >["items"][number];
 type Feature = "portfolio" | "applications" | "notifications" | "goals";
-type Theme = "white" | "sage" | "paper" | "mineral" | "night";
+type Theme = "white" | "sage" | "mineral" | "night";
 const FEATURES = [
   {
     id: "portfolio",
@@ -88,7 +88,6 @@ const SAMPLE = sampleCreatorPortfolio();
 const THEMES: { id: Theme; label: string }[] = [
   { id: "white", label: "White" },
   { id: "sage", label: "Sage" },
-  { id: "paper", label: "Paper" },
   { id: "mineral", label: "Mineral" },
   { id: "night", label: "Night" },
 ];

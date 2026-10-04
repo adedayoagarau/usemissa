@@ -1,7 +1,31 @@
 import { resolveHandle } from "@missa/radar-adapters";
 import { cache } from "react";
 import { getCreatorProfileRepository } from "@/lib/creatorRepositories";
-import { portfolioSchema } from "@/lib/creator-portfolio-schema";
+import { verifiedOutcomes } from "@/lib/accepted-outcomes";
+import {
+  portfolioSchema,
+  publicPortfolioProjection,
+  withServerProvenance,
+} from "@/lib/creator-portfolio-schema";
+
+/**
+ * A user's published snapshot as visitors may see it. Confirmed entries are
+ * re-checked against the owner's current acceptances on every read, so a
+ * withdrawn decision stops showing as Confirmed without a republish.
+ */
+export const readPublishedPortfolio = cache(async (userId: string) => {
+  const published =
+    await getCreatorProfileRepository()?.publishedPortfolio(userId);
+  const parsed = portfolioSchema.safeParse(published?.data);
+  if (!published || !parsed.success) return undefined;
+  const confirmable = parsed.data.record.some((item) => item.outcomeId);
+  return publicPortfolioProjection(
+    withServerProvenance(
+      parsed.data,
+      confirmable ? await verifiedOutcomes(published.accountId) : new Map(),
+    ),
+  );
+});
 
 /**
  * Reads the published snapshot for an `@handle` route segment. Shared by the
@@ -20,12 +44,9 @@ export const loadPublishedPortfolio = cache(async (raw: string) => {
     resolved.subjectType !== "user"
   )
     return null;
-  const repo = getCreatorProfileRepository();
-  const parsed = portfolioSchema.safeParse(
-    await repo?.publicPortfolio(resolved.subjectId),
-  );
-  if (!parsed.success) return null;
-  return { resolved, portfolio: parsed.data, segment };
+  const portfolio = await readPublishedPortfolio(resolved.subjectId);
+  if (!portfolio) return null;
+  return { resolved, portfolio, segment };
 });
 
 /** Published media as a data URL for renderers that can't fetch gated routes. */

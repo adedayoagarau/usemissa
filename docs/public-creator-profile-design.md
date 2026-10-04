@@ -61,7 +61,7 @@ Link preview requests are debounced and cancelled when the URL changes. The prev
 
 Publication association uses the installed Combobox with async name-only public-directory search, canonical ID/name/kind/profile path, duplicate path suppression, keyboard choice and manual-name fallback. Editing the name removes a stale association. The organization heading links to its directory profile while the publication action keeps the actual work URL. Association is a creator-added credit and conveys no endorsement/verification; it currently persists in the private device draft only. One publication record remains supported in this slice.
 
-Appearance offers Sage studio, Paper, Mineral and After hours using existing palette tokens. Selection updates the preview and persists with the draft; typography/layout are fixed. Public background uploads are intentionally outside this variant.
+Appearance offers Sage studio, Mineral and After hours using existing palette tokens (Paper was retired in October 2026; stored Paper drafts render as Sage). Selection updates the preview and persists with the draft; typography/layout are fixed. Public background uploads are intentionally outside this variant.
 
 The focused browser suite verifies the full-page journey, progressive work fields, media preview, autosave/reload/reorder, content filtering, link loading/failure/retry, private-address rejection, directory selection and separate credit/work URLs, theme persistence and public/editor accessibility. Live example.com metadata and the actual directory query were also exercised read-only. Signed-in real-account editing remains guarded by the existing session but is tested through the equivalent sample-account editor; production publishing is not certified.
 

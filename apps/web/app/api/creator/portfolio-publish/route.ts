@@ -43,6 +43,7 @@ export async function POST(request: Request) {
         parsed.data,
         await verifiedOutcomes(session.account.id),
       ),
+      { keepOutcomeIds: true },
     );
     const issue = publicationIssue(projection);
     if (issue) return NextResponse.json({ error: issue }, { status: 400 });

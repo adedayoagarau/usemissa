@@ -11,15 +11,13 @@ import {
 } from "./creator-portfolio-schema";
 
 test("portfolio theme defaults to sage and keeps the public palette", () => {
-  assert.deepEqual(
-    [...PORTFOLIO_THEMES],
-    ["sage", "paper", "mineral", "night"],
-  );
+  assert.deepEqual([...PORTFOLIO_THEMES], ["sage", "mineral", "night"]);
   assert.equal(portfolioSchema.parse({}).theme, "sage");
 });
 
 test("coerces legacy and unknown theme values to the canonical default", () => {
   assert.equal(coercePortfolioTheme("white"), "sage");
+  assert.equal(coercePortfolioTheme("paper"), "sage");
   assert.equal(coercePortfolioTheme("sage"), "sage");
   assert.equal(coercePortfolioTheme("night"), "night");
   assert.equal(coercePortfolioTheme(undefined), "sage");
@@ -27,8 +25,9 @@ test("coerces legacy and unknown theme values to the canonical default", () => {
   assert.equal(coercePortfolioTheme(42), "sage");
 });
 
-test("schema coerces the removed white theme so stored drafts keep loading", () => {
+test("schema coerces the removed white and paper themes so stored drafts keep loading", () => {
   assert.equal(portfolioSchema.parse({ theme: "white" }).theme, "sage");
+  assert.equal(portfolioSchema.parse({ theme: "paper" }).theme, "sage");
 });
 
 const mediaUrl = (n: string) =>
@@ -151,4 +150,37 @@ test("press quotes need a source link before publishing", () => {
   assert.match(publicationIssue(draft) ?? "", /source link/);
   draft.press[0].url = "https://example.com/review";
   assert.equal(publicationIssue(draft), undefined);
+});
+
+test("published snapshots keep decision ids privately so each read can re-verify them", () => {
+  const draft = portfolioSchema.parse({
+    name: "Riley",
+    record: [
+      { title: "Anything", outcomeId: "decision_1", venue: "Typed venue" },
+    ],
+  });
+  const accepted = new Map([
+    ["decision_1", { title: "Tidal glossary", venue: "The Quiet Review" }],
+  ]);
+  const stored = publicPortfolioProjection(
+    withServerProvenance(draft, accepted),
+    { keepOutcomeIds: true },
+  );
+  assert.equal(stored.record[0].outcomeId, "decision_1");
+  assert.equal(stored.record[0].provenance, "confirmed");
+
+  // Still accepted: visitors see Confirmed, never the decision id.
+  const live = publicPortfolioProjection(
+    withServerProvenance(stored, accepted),
+  );
+  assert.equal(live.record[0].provenance, "confirmed");
+  assert.equal(live.record[0].title, "Tidal glossary");
+  assert.equal(live.record[0].outcomeId, undefined);
+
+  // Withdrawn after publishing: the next read no longer says Confirmed.
+  const withdrawn = publicPortfolioProjection(
+    withServerProvenance(portfolioSchema.parse(stored), new Map()),
+  );
+  assert.equal(withdrawn.record[0].provenance, "added");
+  assert.equal(withdrawn.record[0].outcomeId, undefined);
 });

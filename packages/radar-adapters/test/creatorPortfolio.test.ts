@@ -39,6 +39,7 @@ test('portfolio snapshots, ownership, revisions, media privacy and legacy draft 
   assert.equal(await repo.deletePortfolioMedia(media,'a'),'published');
   assert.equal(await repo.deletePortfolioMedia(orphan,'a'),'deleted');
   assert.deepEqual(await repo.publicPortfolio('user-a'),{name:'Version one'});
+  assert.deepEqual(await repo.publishedPortfolio('user-a'),{accountId:'a',data:{name:'Version one'}});
   await db.exec(`update radar_accounts set data=jsonb_set(data,'{active}','false'::jsonb) where id='a'`);
   assert.equal(await repo.publicPortfolio('user-a'),undefined);
   await db.exec(`update radar_accounts set data=jsonb_set(data,'{active}','true'::jsonb) where id='a'`);
