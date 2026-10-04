@@ -24,15 +24,24 @@ import Image from "next/image";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
+  calendarDeadlineFactEvents,
+  calendarFilterFor,
   calendarSourceEvents,
   calendarEventsOnDay,
   calendarConflicts,
   canSetDeadlineReminder,
+  isDeadlineLaneEvent,
+  type CalendarFilter,
+  type CalendarView,
   type PlanningEvent,
 } from "@/lib/calendar-planning";
+import {
+  DateConfidenceBadge,
+  dateConfidenceDescription,
+} from "@/components/missa/deadline-badges";
 import { firstViableDeadlineSchedule } from "@/lib/reminder-schedule";
 import { toast } from "sonner";
-import { CalendarFeedButton } from "@/components/calendar-feed-button";
+import { CalendarFeedCard } from "@/components/calendar-feed-button";
 import {
   Autocomplete,
   AutocompleteContent,
@@ -77,20 +86,51 @@ function OpportunityMark({
     </span>
   );
 }
-type View = "month" | "week" | "day" | "agenda";
-type CalendarFilter =
-  "deadline" | "preparation" | "goal" | "reminder" | "personal";
+type View = CalendarView;
 const calendarFilters: Array<{
   key: CalendarFilter;
   label: string;
   color: string;
 }> = [
   { key: "deadline", label: "Application deadlines", color: "ochre" },
+  { key: "stage", label: "Stages", color: "mineral" },
   { key: "preparation", label: "Time to prepare", color: "blue" },
+  { key: "obligation", label: "Plan steps", color: "plum" },
+  { key: "predicted", label: "Predicted dates", color: "predicted" },
   { key: "goal", label: "Goal dates", color: "forest" },
   { key: "reminder", label: "Reminders", color: "sage" },
   { key: "personal", label: "Personal time", color: "ink" },
 ];
+const ALL_FILTERS: Record<CalendarFilter, boolean> = {
+  deadline: true,
+  stage: true,
+  preparation: true,
+  obligation: true,
+  predicted: true,
+  goal: true,
+  reminder: true,
+  personal: true,
+};
+const KIND_LABELS: Record<PlanningEvent["kind"], string> = {
+  tracker: "Application deadline",
+  stage: "Stage",
+  tier: "Fee tier closes",
+  obligation: "Plan step",
+  forecast: "Predicted date",
+  goal: "Goal date",
+  reminder: "Reminder",
+  personal: "Personal time",
+};
+const KIND_INTROS: Partial<Record<PlanningEvent["kind"], string>> = {
+  tracker: "This is the official date attached to your saved application.",
+  stage: "A stage the organization lists for this call.",
+  tier: "After this date the entry fee changes to the next tier.",
+  obligation: "A step from your plan for this application.",
+  forecast:
+    "Missa estimated this from past cycles. The organization has not announced it yet.",
+  goal: "Move this date here and Missa will update the linked goal.",
+  reminder: "A reminder from your application plan.",
+};
 type ProviderState = {
   connections: Array<{
     provider: "google" | "microsoft";
@@ -108,7 +148,13 @@ const inputDate = (v: string) => {
 };
 const format = (v: string, o: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat(undefined, o).format(new Date(v));
-export function CalendarWorkspace({ userId }: { userId: string }) {
+export function CalendarWorkspace({
+  userId,
+  initialView = "month",
+}: {
+  userId: string;
+  initialView?: CalendarView;
+}) {
   const editorRef = useRef<HTMLElement>(null);
   const editorTriggerRef = useRef<HTMLElement | null>(null);
   const pendingMutation = useRef<{ signature: string; key: string } | null>(
@@ -119,15 +165,10 @@ export function CalendarWorkspace({ userId }: { userId: string }) {
   >([]);
   const [saving, setSaving] = useState(false);
   const [cursor, setCursor] = useState(new Date()),
-    [view, setView] = useState<View>("month"),
+    [view, setView] = useState<View>(initialView),
     [events, setEvents] = useState<EventItem[]>([]),
-    [filters, setFilters] = useState<Record<CalendarFilter, boolean>>({
-      deadline: true,
-      preparation: true,
-      goal: true,
-      reminder: true,
-      personal: true,
-    }),
+    [filters, setFilters] =
+      useState<Record<CalendarFilter, boolean>>(ALL_FILTERS),
     [selected, setSelected] = useState<EventItem>(),
     [editing, setEditing] = useState<Partial<EventItem>>(),
     [query, setQuery] = useState(""),
@@ -241,7 +282,47 @@ export function CalendarWorkspace({ userId }: { userId: string }) {
                 event.opportunityId === item.opportunityId,
             ),
         );
-      setEvents([...personal, ...tracker]);
+      const provenance: Record<
+        string,
+        {
+          state: EventItem["confidence"];
+          lastCheckedAt?: string;
+          previousDate?: string;
+        }
+      > = data.provenance ?? {};
+      const withProvenance = (event: EventItem): EventItem => {
+        const fact =
+          event.opportunityId && isDeadlineLaneEvent(event) &&
+          event.kind === "tracker"
+            ? provenance[event.opportunityId]
+            : undefined;
+        return fact
+          ? {
+              ...event,
+              confidence: fact.state,
+              lastCheckedAt: fact.lastCheckedAt,
+              previousDeadline: event.previousDeadline ?? fact.previousDate,
+            }
+          : event;
+      };
+      const facts = calendarDeadlineFactEvents(
+        {
+          stages: data.stages,
+          tiers: data.tiers,
+          obligations: data.obligations,
+          forecasts: data.forecasts,
+        },
+        isoDay(new Date()),
+      ).map((event) =>
+        event.opportunityId && provenance[event.opportunityId] &&
+        event.kind !== "forecast"
+          ? {
+              ...event,
+              lastCheckedAt: provenance[event.opportunityId].lastCheckedAt,
+            }
+          : event,
+      );
+      setEvents([...personal, ...tracker, ...facts].map(withProvenance));
     } catch (e) {
       const message =
         e instanceof Error ? e.message : "Calendar could not load.";
@@ -420,19 +501,9 @@ export function CalendarWorkspace({ userId }: { userId: string }) {
     d.setDate(start.getDate() + i);
     return d;
   });
-  const filterForEvent = (event: EventItem): CalendarFilter =>
-    event.kind === "tracker"
-      ? "deadline"
-      : event.kind === "goal"
-        ? "goal"
-        : event.kind === "reminder"
-          ? "reminder"
-          : event.purpose === "preparation"
-            ? "preparation"
-            : "personal";
   const visible = events.filter(
       (e) =>
-        filters[filterForEvent(e)] &&
+        filters[calendarFilterFor(e)] &&
         (!query ||
           `${e.title} ${e.sourceLabel ?? ""}`
             .toLowerCase()
@@ -877,15 +948,32 @@ export function CalendarWorkspace({ userId }: { userId: string }) {
     }));
     toast.success("Calendar disconnected.");
   }
+  const dayLane =
+    view === "day" ? onDay(isoDay(cursor)).filter(isDeadlineLaneEvent) : [];
   const agenda = (
     view === "agenda"
       ? visible.filter(
           (e) => new Date(e.endAt) >= new Date(`${isoDay(cursor)}T00:00:00`),
         )
-      : onDay(isoDay(cursor))
+      : onDay(isoDay(cursor)).filter((event) => !isDeadlineLaneEvent(event))
   )
     .slice()
     .sort((a, b) => a.startAt.localeCompare(b.startAt));
+  const laneButton = (event: EventItem) => (
+    <button
+      key={event.id}
+      type="button"
+      className={`${styles.laneEvent} ${styles[event.color]}`}
+      onClick={() => setSelected(event)}
+    >
+      <strong>{event.title}</strong>
+      <small>
+        {event.confidence && event.confidence !== "confirmed"
+          ? `${event.sourceLabel ?? KIND_LABELS[event.kind]} · ${event.confidence === "changed" ? "Changed" : event.confidence === "predicted" ? "Predicted" : "Needs checking"}`
+          : (event.sourceLabel ?? KIND_LABELS[event.kind])}
+      </small>
+    </button>
+  );
   const monthEvents = visible.filter((event) => {
     const date = new Date(event.startAt);
     return date.getFullYear() === year && date.getMonth() === month;
@@ -1091,15 +1179,7 @@ export function CalendarWorkspace({ userId }: { userId: string }) {
             <button
               type="button"
               className={styles.resetFilters}
-              onClick={() =>
-                setFilters({
-                  deadline: true,
-                  preparation: true,
-                  goal: true,
-                  reminder: true,
-                  personal: true,
-                })
-              }
+              onClick={() => setFilters(ALL_FILTERS)}
             >
               Show all
             </button>
@@ -1233,6 +1313,10 @@ export function CalendarWorkspace({ userId }: { userId: string }) {
                                 <Target />
                               ) : e.kind === "reminder" ? (
                                 <Bell />
+                              ) : e.kind === "obligation" ? (
+                                <CheckCircle2 />
+                              ) : e.kind === "forecast" ? (
+                                <Clock3 />
                               ) : (
                                 <CalendarDays />
                               )}
@@ -1270,6 +1354,28 @@ export function CalendarWorkspace({ userId }: { userId: string }) {
                 </div>
               </>
             ) : view === "week" ? (
+              <div className={styles.weekScroller}>
+              <div
+                className={styles.deadlineLane}
+                role="group"
+                aria-label="Deadlines this week"
+              >
+                <span className={styles.laneLabel}>Deadlines</span>
+                <div className={styles.laneDays}>
+                  {weekDays.map((day) => {
+                    const key = isoDay(day),
+                      items = onDay(key).filter(isDeadlineLaneEvent);
+                    return (
+                      <div key={key} className={styles.laneDay}>
+                        <span className="sr-only">
+                          {format(day.toISOString(), { dateStyle: "full" })}
+                        </span>
+                        {items.map((event) => laneButton(event))}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
               <div
                 className={styles.weekView}
                 role="group"
@@ -1277,7 +1383,9 @@ export function CalendarWorkspace({ userId }: { userId: string }) {
               >
                 {weekDays.map((day) => {
                   const key = isoDay(day),
-                    items = onDay(key),
+                    items = onDay(key).filter(
+                      (event) => !isDeadlineLaneEvent(event),
+                    ),
                     isToday = key === isoDay(new Date());
                   return (
                     <section
@@ -1405,6 +1513,7 @@ export function CalendarWorkspace({ userId }: { userId: string }) {
                   );
                 })}
               </div>
+              </div>
             ) : (
               <div className={styles.agenda}>
                 <header>
@@ -1418,6 +1527,22 @@ export function CalendarWorkspace({ userId }: { userId: string }) {
                     <small>{agenda.length} scheduled items</small>
                   </span>
                 </header>
+                {view === "day" ? (
+                  <div
+                    className={styles.dayLane}
+                    role="group"
+                    aria-label="Deadlines on this day"
+                  >
+                    <span className={styles.laneLabel}>Deadlines</span>
+                    {dayLane.length ? (
+                      <div className={styles.dayLaneItems}>
+                        {dayLane.map((event) => laneButton(event))}
+                      </div>
+                    ) : (
+                      <small>No official dates on this day.</small>
+                    )}
+                  </div>
+                ) : null}
                 {agenda.length ? (
                   agenda.map((e) => (
                     <button
@@ -1456,7 +1581,11 @@ export function CalendarWorkspace({ userId }: { userId: string }) {
                     </button>
                   ))
                 ) : (
-                  <p>No events on this day.</p>
+                  <p>
+                    {view === "day" && dayLane.length
+                      ? "Nothing else on this day."
+                      : "No events on this day."}
+                  </p>
                 )}
               </div>
             )}
@@ -1480,32 +1609,19 @@ export function CalendarWorkspace({ userId }: { userId: string }) {
                   ) : (
                     <i className={styles[selected.color]} />
                   )}
-                  <span>
-                    {selected.kind === "tracker"
-                      ? "Application deadline"
-                      : selected.kind === "goal"
-                        ? "Goal date"
-                        : selected.kind === "reminder"
-                          ? "Reminder"
-                          : "Personal time"}
-                  </span>
+                  <span>{KIND_LABELS[selected.kind]}</span>
                 </div>
                 <h2 className="font-heading">{selected.title}</h2>
-                {selected.kind === "tracker" ? (
+                {KIND_INTROS[selected.kind] ? (
                   <p className={styles.sheetIntro}>
-                    This is the official date attached to your saved
-                    application.
+                    {KIND_INTROS[selected.kind]}
                   </p>
                 ) : null}
-                {selected.kind === "goal" ? (
-                  <p className={styles.sheetIntro}>
-                    Move this date here and Missa will update the linked goal.
-                  </p>
-                ) : null}
-                {selected.kind === "reminder" ? (
-                  <p className={styles.sheetIntro}>
-                    A reminder from your application plan.
-                  </p>
+                {selected.confidence ? (
+                  <div className={styles.provenance}>
+                    <DateConfidenceBadge state={selected.confidence} />
+                    <small>{dateConfidenceDescription(selected.confidence)}</small>
+                  </div>
                 ) : null}
                 <dl>
                   <div>
@@ -1535,6 +1651,45 @@ export function CalendarWorkspace({ userId }: { userId: string }) {
                       <span>
                         <dt>Details</dt>
                         <dd>{selected.description}</dd>
+                      </span>
+                    </div>
+                  ) : null}
+                  {selected.kind !== "personal" && selected.sourceLabel ? (
+                    <div>
+                      <BookOpen />
+                      <span>
+                        <dt>Source</dt>
+                        <dd>{selected.sourceLabel}</dd>
+                      </span>
+                    </div>
+                  ) : null}
+                  {selected.lastCheckedAt ? (
+                    <div>
+                      <CheckCircle2 />
+                      <span>
+                        <dt>Last checked</dt>
+                        <dd>
+                          {format(selected.lastCheckedAt, {
+                            dateStyle: "medium",
+                          })}
+                        </dd>
+                      </span>
+                    </div>
+                  ) : null}
+                  {selected.previousDeadline &&
+                  selected.deadlineReconciliationStatus !== "needs-review" ? (
+                    <div>
+                      <Clock3 />
+                      <span>
+                        <dt>Previous date</dt>
+                        <dd>
+                          Moved from{" "}
+                          {format(`${selected.previousDeadline.slice(0, 10)}T12:00:00`, {
+                            dateStyle: "medium",
+                          })}{" "}
+                          to{" "}
+                          {format(selected.startAt, { dateStyle: "medium" })}
+                        </dd>
                       </span>
                     </div>
                   ) : null}
@@ -1586,7 +1741,7 @@ export function CalendarWorkspace({ userId }: { userId: string }) {
                       </dd>
                     </span>
                   </div>
-                  {selected.kind !== "personal" ? (
+                  {["tracker", "goal", "reminder"].includes(selected.kind) ? (
                     <div>
                       <CheckCircle2 />
                       <span>
@@ -1630,7 +1785,9 @@ export function CalendarWorkspace({ userId }: { userId: string }) {
                           ? "Open goal"
                           : selected.kind === "reminder"
                             ? "Open reminder"
-                            : "Open application"}
+                            : selected.actionHref.startsWith("/opportunities/")
+                              ? "Open opportunity"
+                              : "Open application"}
                       </Link>
                     ) : null}
                     {selected.opportunityId &&
@@ -2089,7 +2246,7 @@ export function CalendarWorkspace({ userId }: { userId: string }) {
                     </small>
                   </span>
                 </div>
-                <CalendarFeedButton userId={userId} />
+                <CalendarFeedCard userId={userId} />
               </div>
             </div>
           </section>
@@ -2147,6 +2304,7 @@ export function CalendarWorkspace({ userId }: { userId: string }) {
                 >
                   <option value="personal">Personal time</option>
                   <option value="preparation">Application preparation</option>
+                  <option value="personal-target">Personal target</option>
                   <option value="attendance">Attendance</option>
                   <option value="unavailable">Unavailable</option>
                 </NativeSelect>

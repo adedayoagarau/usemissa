@@ -265,11 +265,11 @@
 .providerCard > button,.providerCard > a { grid-column:1/-1; align-self:end; display:flex; align-items:center; justify-content:center; min-height:38px; padding:8px 12px; border:1px solid var(--border-strong); border-radius:8px; background:var(--background); color:var(--foreground); font-size:13px; font-weight:700; text-decoration:none; }
 .providerCard[data-state='connected'] > button { color:var(--primary); }
 .providerCard > button:disabled { color:var(--muted-foreground); }
-.localCalendar { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:17px 18px; border-top:1px solid var(--border); }
-.localCalendar > div { display:flex; align-items:center; gap:12px; }
-.localCalendar svg { width:19px; color:var(--primary); }
-.localCalendar span { display:grid; gap:3px; }
-.localCalendar small { color:var(--muted-foreground); font-size:12px; }
+.localCalendar { display:grid; gap:16px; padding:17px 18px; border-top:1px solid var(--border); }
+.localCalendar > div:first-child { display:flex; align-items:center; gap:12px; }
+.localCalendar > div:first-child svg { width:19px; color:var(--primary); }
+.localCalendar > div:first-child span { display:grid; gap:3px; }
+.localCalendar > div:first-child small { color:var(--muted-foreground); font-size:12px; }
 .shell {
   border: 1px solid color-mix(in srgb, var(--border-strong) 72%, transparent);
   border-radius: 18px;
@@ -892,4 +892,85 @@
   .moveConfirm h2 { font-size:27px; }
   .moveDates { gap:7px; }
   .moveDates > span { padding:10px 8px; }
+}
+
+/* Deadline facts: stages, plan steps and predicted dates. Each colour sits next
+   to a text label in the event, the legend and the details panel. */
+.mineral {
+  background: var(--background) !important;
+  border-color: var(--mineral-blue) !important;
+}
+.plum {
+  background: color-mix(in srgb, var(--chart-1) 14%, var(--background)) !important;
+  border-color: var(--chart-1) !important;
+}
+.predicted {
+  background: var(--background) !important;
+  border-color: var(--muted-foreground) !important;
+  border-style: dashed !important;
+}
+.legend i.mineral { border: 2px solid var(--mineral-blue) !important; }
+.legend i.predicted { border: 1px dashed var(--muted-foreground) !important; }
+.weekScroller { display: grid; min-width: 0; }
+.deadlineLane { border-bottom: 1px solid var(--border); background: var(--background); }
+.laneLabel {
+  display: block;
+  padding: 10px 12px 0;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.laneDays { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.laneDay {
+  display: grid;
+  min-width: 0;
+  min-height: 44px;
+  align-content: start;
+  gap: 6px;
+  padding: 8px 9px;
+  border-right: 1px solid var(--border);
+}
+.laneDay:last-child { border-right: 0; }
+.laneEvent {
+  display: grid;
+  min-width: 0;
+  min-height: var(--touch-target-min, 44px);
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid;
+  border-radius: 8px;
+  text-align: left;
+}
+.laneEvent strong,
+.laneEvent small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.laneEvent strong { font-size: 11px; line-height: 1.25; }
+.laneEvent small { color: color-mix(in srgb, var(--foreground) 70%, transparent); font-size: 9px; }
+.laneEvent:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.dayLane {
+  display: grid;
+  gap: 8px;
+  padding: 12px 18px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.dayLane .laneLabel { padding: 0; }
+.dayLane small { color: var(--muted-foreground); font-size: 12px; }
+.dayLaneItems { display: grid; gap: 8px; }
+.dayLaneItems .laneEvent strong { font-size: 13px; }
+.dayLaneItems .laneEvent small { font-size: 11px; }
+.provenance {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  margin: -12px 0 20px;
+}
+.provenance small { max-width: 34ch; color: var(--muted-foreground); font-size: 12px; line-height: 1.45; }
+@media (max-width: 1000px) {
+  .deadlineLane { min-width: 840px; }
+  .calendar:has(.weekScroller) { overflow-x: auto; }
 }

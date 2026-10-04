@@ -11,7 +11,7 @@ export type PlanningEvent = {
   allDay: boolean;
   color: string;
   revision: number;
-  kind: "personal" | "tracker" | "reminder" | "goal";
+  kind: PlanningEventKind;
   opportunityId?: string | null;
   sourceId?: string;
   sourceRevision?: number;
@@ -26,7 +26,27 @@ export type PlanningEvent = {
   deadlineReconciliationStatus?: "current" | "needs-review" | "dismissed";
   deadlineTime?: string;
   deadlineTimezone?: string;
+  /** Whether the date is the organization's, predicted, changed or unconfirmed. */
+  confidence?: PlanningDateConfidence;
+  /** When Missa last checked the official source for this date. */
+  lastCheckedAt?: string;
 };
+
+export type PlanningEventKind =
+  | "personal"
+  | "tracker"
+  | "reminder"
+  | "goal"
+  | "stage"
+  | "tier"
+  | "obligation"
+  | "forecast";
+
+export type PlanningDateConfidence =
+  | "confirmed"
+  | "predicted"
+  | "changed"
+  | "needs-checking";
 
 export function canSetDeadlineReminder(event: PlanningEvent): boolean {
   return (
@@ -193,6 +213,288 @@ export function calendarSourceEvents(
       );
   return result;
 }
+export type CalendarView = "month" | "week" | "day" | "agenda";
+
+/** The initial Calendar view from `?view=`; month when absent or unknown. */
+export function parseCalendarView(
+  value: string | null | undefined,
+): CalendarView {
+  return value === "week" || value === "day" || value === "agenda"
+    ? value
+    : "month";
+}
+
+export type CalendarFilter =
+  | "deadline"
+  | "stage"
+  | "preparation"
+  | "obligation"
+  | "predicted"
+  | "goal"
+  | "reminder"
+  | "personal";
+
+/** Which legend toggle shows or hides an event. Fee tier closes count as deadlines. */
+export function calendarFilterFor(event: PlanningEvent): CalendarFilter {
+  switch (event.kind) {
+    case "tracker":
+    case "tier":
+      return "deadline";
+    case "stage":
+      return "stage";
+    case "obligation":
+      return "obligation";
+    case "forecast":
+      return "predicted";
+    case "goal":
+      return "goal";
+    case "reminder":
+      return "reminder";
+    default:
+      return event.purpose === "preparation" ? "preparation" : "personal";
+  }
+}
+
+const OFFICIAL_DEADLINE_PURPOSES = new Set([
+  "application-deadline",
+  "official-deadline",
+]);
+
+/**
+ * Week and Day views show official dates in an all-day "Deadlines" lane
+ * above the day's own time: the deadline itself, fee tier closes and stages.
+ */
+export function isDeadlineLaneEvent(event: PlanningEvent): boolean {
+  if (!event.allDay) return false;
+  if (event.kind === "tier" || event.kind === "stage") return true;
+  return (
+    event.kind === "tracker" &&
+    OFFICIAL_DEADLINE_PURPOSES.has(event.purpose ?? "")
+  );
+}
+
+export type CalendarStageInput = {
+  opportunityId: string;
+  title: string;
+  stage: {
+    id: string;
+    kind: string;
+    label: string;
+    dueOn: string;
+    confidence: "confirmed" | "probable";
+  };
+};
+
+export type CalendarTierInput = {
+  opportunityId: string;
+  title: string;
+  /** The call's official deadline; a tier closing that day is the deadline itself. */
+  deadline?: string;
+  tier: {
+    id: string;
+    tier: string;
+    label: string;
+    closesOn: string;
+    closesAt?: string;
+    timezone?: string;
+    feeCents?: number;
+    feeCurrency?: string;
+    confidence: "confirmed" | "probable";
+  };
+};
+
+export type CalendarObligationInput = {
+  id: string;
+  opportunityId: string | null;
+  opportunityTitle: string | null;
+  kind: "start-by" | "sub-deadline" | "personal-target" | "obligation";
+  label: string;
+  dueOn: string;
+  state: "open" | "done" | "skipped";
+  revision: number;
+};
+
+export type CalendarForecastInput = {
+  opportunityId: string;
+  title: string;
+  deadline?: string;
+  relation: "tracked" | "following";
+  forecast: {
+    expectedOpenStart?: string;
+    expectedOpenEnd?: string;
+    expectedClose?: string;
+    confidence: "high" | "medium" | "low";
+    basedOnCycles: number;
+  };
+};
+
+export type CalendarDeadlineFacts = {
+  stages?: CalendarStageInput[];
+  tiers?: CalendarTierInput[];
+  obligations?: CalendarObligationInput[];
+  forecasts?: CalendarForecastInput[];
+};
+
+const OBLIGATION_LABELS: Record<CalendarObligationInput["kind"], string> = {
+  "start-by": "Start by",
+  "sub-deadline": "Step due",
+  "personal-target": "Your target date",
+  obligation: "After acceptance",
+};
+
+/** An amount for compact calendar labels, e.g. "$15". */
+export function calendarFee(cents: number, currency = "USD"): string {
+  try {
+    return new Intl.NumberFormat("en", {
+      style: "currency",
+      currency,
+      minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+      maximumFractionDigits: 2,
+    }).format(cents / 100);
+  } catch {
+    return `${(cents / 100).toFixed(2)} ${currency}`;
+  }
+}
+
+const trackerHref = (opportunityId: string) =>
+  `/tracker?application=${encodeURIComponent(opportunityId)}`;
+
+/**
+ * Calendar events for the deadline facts around the creator's calls: stages,
+ * fee tier closes, open steps from their plan, and predicted next cycles.
+ * Predictions only appear while no current deadline is published, and are
+ * always labelled as predictions.
+ */
+export function calendarDeadlineFactEvents(
+  facts: CalendarDeadlineFacts,
+  today = new Date().toISOString().slice(0, 10),
+): PlanningEvent[] {
+  const result: PlanningEvent[] = [];
+  for (const { opportunityId, title, stage } of facts.stages ?? []) {
+    const event = day(
+      `stage:${stage.id}`,
+      `${stage.label} · ${title}`,
+      stage.dueOn,
+      "stage",
+      stage.confidence === "confirmed" ? "Stage date" : "Stage date · likely",
+      trackerHref(opportunityId),
+      stage.id,
+      undefined,
+      opportunityId,
+      { purpose: "stage" },
+    );
+    result.push({
+      ...event,
+      color: "mineral",
+      confidence:
+        stage.confidence === "confirmed" ? "confirmed" : "needs-checking",
+    });
+  }
+  for (const { opportunityId, title, deadline, tier } of facts.tiers ?? []) {
+    if (deadline && tier.closesOn.slice(0, 10) === deadline.slice(0, 10))
+      continue;
+    const fee =
+      tier.feeCents === undefined
+        ? ""
+        : tier.feeCents === 0
+          ? " · No fee"
+          : ` · ${calendarFee(tier.feeCents, tier.feeCurrency)} fee`;
+    const event = day(
+      `tier:${tier.id}`,
+      `${tier.label} closes · ${title}`,
+      tier.closesOn,
+      "tier",
+      `Fee tier closes${fee}`,
+      trackerHref(opportunityId),
+      tier.id,
+      undefined,
+      opportunityId,
+      {
+        purpose: "tier-close",
+        deadlineTime: tier.closesAt,
+        deadlineTimezone: tier.timezone,
+      },
+    );
+    result.push({
+      ...event,
+      confidence:
+        tier.confidence === "confirmed" ? "confirmed" : "needs-checking",
+    });
+  }
+  for (const obligation of facts.obligations ?? []) {
+    if (obligation.state !== "open") continue;
+    const event = day(
+      `obligation:${obligation.id}`,
+      obligation.opportunityTitle
+        ? `${obligation.label} · ${obligation.opportunityTitle}`
+        : obligation.label,
+      obligation.dueOn,
+      "obligation",
+      OBLIGATION_LABELS[obligation.kind],
+      obligation.opportunityId
+        ? trackerHref(obligation.opportunityId)
+        : "/tracker",
+      obligation.id,
+      obligation.revision,
+      obligation.opportunityId ?? undefined,
+      { purpose: `obligation-${obligation.kind}` },
+    );
+    result.push({ ...event, color: "plum" });
+  }
+  for (const item of facts.forecasts ?? []) {
+    if (item.deadline && item.deadline.slice(0, 10) >= today) continue;
+    const href =
+      item.relation === "tracked"
+        ? trackerHref(item.opportunityId)
+        : `/opportunities/${encodeURIComponent(item.opportunityId)}`;
+    const basis = `Predicted from ${item.forecast.basedOnCycles} past cycles`;
+    const openStart = item.forecast.expectedOpenStart;
+    const openEnd =
+      item.forecast.expectedOpenEnd && openStart &&
+      item.forecast.expectedOpenEnd >= openStart
+        ? item.forecast.expectedOpenEnd
+        : openStart;
+    if (openStart && openEnd && openEnd >= today) {
+      result.push({
+        ...day(
+          `forecast-open:${item.opportunityId}`,
+          `Predicted opening · ${item.title}`,
+          openStart,
+          "forecast",
+          basis,
+          href,
+          undefined,
+          undefined,
+          item.opportunityId,
+          { purpose: "forecast-open" },
+        ),
+        endAt: `${openEnd}T23:59:59.999`,
+        color: "predicted",
+        confidence: "predicted",
+      });
+    }
+    const close = item.forecast.expectedClose;
+    if (close && close >= today)
+      result.push({
+        ...day(
+          `forecast-close:${item.opportunityId}`,
+          `Predicted deadline · ${item.title}`,
+          close,
+          "forecast",
+          basis,
+          href,
+          undefined,
+          undefined,
+          item.opportunityId,
+          { purpose: "forecast-close" },
+        ),
+        color: "predicted",
+        confidence: "predicted",
+      });
+  }
+  return result;
+}
+
 export function calendarEventsOnDay(events: PlanningEvent[], date: string) {
   const start = new Date(`${date}T00:00:00`),
     end = new Date(start);
