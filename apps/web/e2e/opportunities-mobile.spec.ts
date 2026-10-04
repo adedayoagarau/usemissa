@@ -6,7 +6,7 @@ async function signUp(page: Page) {
     data: {
       email: `opportunity-mobile-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`,
       password: 'correct-horse-battery',
-      displayName: 'Opportunity Mobile QA',
+      givenName: 'Opportunity', familyName: 'Mobile QA',
     },
   });
   expect(signup.status()).toBe(201);

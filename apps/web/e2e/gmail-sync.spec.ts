@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('Gmail Sync keeps review mode default and requires explicit Autopilot consent', async ({ page }) => {
   const email = `gmail-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`;
-  const signup = await page.request.post('/api/auth/signup', { data: { email, password: 'correct-horse-battery', displayName: 'Gmail User' } });
+  const signup = await page.request.post('/api/auth/signup', { data: { email, password: 'correct-horse-battery', givenName: 'Gmail', familyName: 'User' } });
   expect(signup.status()).toBe(201);
 
   let mode: 'review' | 'autopilot' = 'review';
