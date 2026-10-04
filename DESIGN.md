@@ -548,10 +548,10 @@ An AI-generated component that duplicates an approved item fails review.
 | Know when to start             | `StartByDate`                 | `Button` + `Popover` reasoning; estimate wording; Ochre only when today or passed              |
 | See calendar delivery          | `ApplicationCalendarDelivery` | Feed, provider and session rows; `Spinner` only while syncing; Retry and Reconnect actions     |
 | Confirm email evidence         | `ApplicationEmailEvidence`    | Suggestion panel; creator confirms; never changes state on its own                             |
-| Start the creator's week       | `CreatorHome`                 | Three numbered moves from Tracker state, hairline lists, goal `Progress`; rows open the record |
+| Start the creator's week       | `CreatorHome`                 | Situation sentence, one lead move with `ApplicationRunway` and next steps, week `Tabs`, Tracker `Tabs`, goal pace |
 | Edit a Work                    | `WorkEditor`                  | `Field`, form controls, `Sortable`, media blocks, `Dialog`/`Sheet`, process feedback           |
 | Manage calendar                | `OpportunityCalendar`         | `Calendar`, labelled events, `Popover` or side panel, provider sync status                     |
-| Configure Profile              | `ProfileSettingsForm`         | `Tabs` only for same-route peer sections, `Field`, form controls, inline feedback              |
+| Configure Profile              | `ProfileSettingsForm`         | Grouped section navigation; visibility `RadioGroup` beside each public field with a live preview; `Collapsible` groups; one sticky save bar per section |
 | Present an artist              | `PortfolioIdentityHeader`     | editorial typography, `Avatar`/media, restrained actions; no dashboard chrome                  |
 | Present portfolio work         | `PortfolioWorkCard`           | media with aspect ratio, editorial title, credits, accessible captions                         |
 | Operate submissions            | `SubmissionTable`             | `Table`, semantic workflow states, row actions, responsive labelled records                    |
@@ -675,6 +675,7 @@ than selecting the primitive variant or color directly.
 | Opens soon                     | `OpportunityStatusBadge state="opening-soon"` | Mineral information                                 | Never                                          |
 | Open or always open            | `OpportunityStatusBadge state="open"`         | Quiet Forest; explicit label                        | Never                                          |
 | Closing soon                   | `UrgencyBadge`                                | Ochre warning; exact date or days remaining         | Never                                          |
+| Personal application state     | `ApplicationStateBadge`                       | Tone by meaning; declined and withdrawn neutral     | Never                                          |
 | Closed or archived             | `OpportunityStatusBadge state="closed"`       | Neutral muted                                       | Never                                          |
 | Free to submit                 | `FeeBadge amount={0}`                         | Quiet Lichen when scan value warrants it            | Never                                          |
 | Confirmed organization         | `AuthorityBadge`                              | Forest or Mineral with scoped text                  | Never                                          |

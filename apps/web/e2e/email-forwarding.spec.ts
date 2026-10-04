@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 async function account(page: Page) {
   const email = `forward-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`;
-  expect((await page.request.post('/api/auth/signup', { data: { email, password: 'correct-horse-battery', displayName: 'Forward User' } })).status()).toBe(201);
+  expect((await page.request.post('/api/auth/signup', { data: { email, password: 'correct-horse-battery', givenName: 'Forward', familyName: 'User' } })).status()).toBe(201);
   const profile = await page.request.get('/api/me/profile'); return (await profile.json()) as { id: string };
 }
 function signed(payload: string) { const timestamp = Math.floor(Date.now() / 1000).toString(); return { timestamp, signature: createHmac('sha256', 'local-inbound-secret-change-me').update(`${timestamp}.${payload}`).digest('hex') }; }

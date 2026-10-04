@@ -2,7 +2,8 @@ import { expect, test, type Page } from '@playwright/test';
 
 async function createAccount(page: Page, name = 'Export Test User') {
   const email = `export-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`;
-  const signup = await page.request.post('/api/auth/signup', { data: { email, password: 'correct-horse-battery', displayName: name } });
+  const [givenName, ...familyNameParts] = name.trim().split(/\s+/);
+  const signup = await page.request.post('/api/auth/signup', { data: { email, password: 'correct-horse-battery', givenName, familyName: familyNameParts.join(' ') } });
   expect(signup.status()).toBe(201);
   const owner = await page.request.get('/api/me/profile');
   expect(owner.ok()).toBeTruthy();
@@ -21,8 +22,9 @@ async function trackFirstOpportunity(page: Page, userId: string) {
 test('profile data export downloads tracker JSON and enforces an account cooldown', async ({ page }) => {
   const profile = await createAccount(page);
   await trackFirstOpportunity(page, profile.id);
+  // The old Data link lands on Account and data.
   await page.goto('/profile?section=data');
-  await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Account and data' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Download JSON' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Download CSV' })).toBeVisible();
   await expect(page.getByText(/Works, Files, and Saved Answers/)).toBeVisible();
