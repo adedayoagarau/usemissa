@@ -8,6 +8,7 @@ import {
 import { adaptiveCadenceHours } from "./scheduling.js";
 import type { SourceRefreshPolicy } from "./sourceManifest.js";
 import type { IngestionV2SourceRefreshHistory } from "./persistence.js";
+import type { PublisherDecisionContext } from "./publisher.js";
 
 export interface ScheduledSourceStore {
   claimDue(limit: number): Promise<string[]>;
@@ -37,6 +38,8 @@ export interface PostgresShadowBatchOptions {
   sources: Iterable<SourceDefinition>;
   runStore: ShadowRunStore;
   scheduleStore: ScheduledSourceStore;
+  /** Jev decisions beside the publisher's DeepSeek gate. */
+  decisions?: PublisherDecisionContext;
   limit?: number;
   now?: () => Date;
   logger?: Pick<Console, "info" | "warn">;
@@ -134,7 +137,7 @@ export async function runDuePostgresShadowBatch(
         source,
         job,
         options.runStore,
-        { logger, forceReprocess: reviewMode },
+        { logger, forceReprocess: reviewMode, decisions: options.decisions },
       );
       if (options.afterArtifact) {
         try {

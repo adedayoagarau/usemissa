@@ -20,6 +20,7 @@ import {
   type ScheduledSourceStore,
 } from "./postgresRunner.js";
 import { AdapterRegistry } from "./registry.js";
+import { publisherDecisionContextFromEnv } from "./publisher.js";
 import { createJevModelExtractionGate } from "./extractGate.js";
 import { assertIngestionV2DatabaseRole } from "./safety.js";
 import { evaluateCandidateReplayGate } from "./candidateGate.js";
@@ -44,6 +45,7 @@ const registry = new AdapterRegistry()
   .register(new ChillSubsNextAdapter());
 const sources = createFirstTrancheSources(adapterId);
 const runStore = new PostgresShadowRunStore(pool);
+const decisions = publisherDecisionContextFromEnv(pool);
 
 const configuredReviewIds = new Set(
   (process.env.MISSA_INGESTION_V2_REVIEW_SOURCE_IDS ?? "")
@@ -94,6 +96,7 @@ async function runDueBatch(): Promise<void> {
       sources,
       runStore,
       scheduleStore,
+      decisions,
       limit: batchLimit,
       reviewSourceIds,
       afterArtifact: async (source, artifact) => {
