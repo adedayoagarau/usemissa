@@ -585,6 +585,34 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
     }
   }
 
+  /**
+   * Applications in preparation whose confirmed deadline on a published call
+   * is still ahead but which have no official calendar deadline. Save adds
+   * that event after the save commits, so a failed write leaves the
+   * application here until the creator pass adds it. Official deadlines
+   * cannot be deleted by the creator, so a missing one is always a gap.
+   */
+  async missingOfficialDeadlines(accountId?: string, limit = 200) {
+    const result = await this.pool.query<{ account_id: string; opportunity_id: string }>(
+      `select t.account_id,t.opportunity_id
+         from tracked_opportunities t
+         join opportunities o on o.id=t.opportunity_id
+        where ($1::text is null or t.account_id=$1)
+          and t.status in (${PRE_SUBMISSION})
+          and o.publication_state='published'
+          and o.deadline_kind in ('exact','fixed')
+          and o.deadline_date >= current_date
+          and not exists (
+            select 1 from creator_calendar_events e
+             where e.account_id=t.account_id and e.opportunity_id=t.opportunity_id and e.purpose='official-deadline'
+          )
+        order by t.account_id,t.opportunity_id
+        limit $2`,
+      [accountId ?? null, limit],
+    );
+    return result.rows.map((row) => ({ accountId: row.account_id, opportunityId: row.opportunity_id }));
+  }
+
   async ensureGoalDate(accountId: string, goalId: string) {
     const client = await this.pool.connect();
     try {

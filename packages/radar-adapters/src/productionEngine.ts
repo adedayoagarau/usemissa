@@ -254,6 +254,10 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
             throw error;
           }
         }
+        // Release the previous baseline before cloning: holding the old
+        // baseline, the live store and the new clone at once is the peak that
+        // OOM-killed /api/cron/tick (V8 heap limit inside structuredClone).
+        persistedStore = engine.store;
         persistedStore = cloneStore(engine.store);
       });
       pendingPersist = next.catch(() => undefined);
@@ -267,6 +271,7 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
         engine.store.manualTrackerEntries = [...engine.store.manualTrackerEntries.filter((row) => row.userId !== input.userId), ...output.manualTrackerEntries];
         if (output.auditEntry && !engine.store.auditLog.some((entry) => entry.id === output!.auditEntry!.id)) engine.store.auditLog.push(output.auditEntry);
         snapshotVersion = output.snapshotVersion;
+        persistedStore = engine.store;
         persistedStore = cloneStore(engine.store);
       });
       pendingPersist = next.catch(() => undefined);

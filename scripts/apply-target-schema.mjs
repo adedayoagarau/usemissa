@@ -118,6 +118,8 @@ const migrationFiles = [
   '0088_deadline_management.sql',
   '0089_creator_profile_connections.sql',
   '0090_decision_ledger.sql',
+  '0091_honest_defaults.sql',
+  '0092_opportunity_program_identity.sql',
 ];
 
 

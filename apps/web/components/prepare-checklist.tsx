@@ -9,11 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 type Item = { id: string; label: string; state: 'missing' | 'ready' | 'complete' | 'not-applicable'; source: string; revision?: number; note?: string; libraryWorkId?: string; libraryFileId?: string; savedAnswerId?: string };
 type View = { checklist: { revision?: number }; items: Item[]; progress: { total: number; complete: number; ready: number; notApplicable: number; percent: number }; requirementsConfirmed: boolean };
 type Library = { works: { id: string; title: string }[]; files: { id: string; filename: string }[]; savedAnswers: { id: string; name: string }[] };
-export function PrepareChecklist({ opportunityId, enabled }: { opportunityId: string; enabled: boolean }) {
+export function PrepareChecklist({ opportunityId, enabled, onLoaded }: { opportunityId: string; enabled: boolean; /** Called after each load, so checks built on the checklist can rerun. */ onLoaded?: () => void }) {
   const [view, setView] = useState<View | null>(null);
   const [library, setLibrary] = useState<Library>({ works: [], files: [], savedAnswers: [] });
   const [pending, startTransition] = useTransition();
-  const load = useCallback(() => fetch(`/api/me/opportunities/${opportunityId}/checklist`, { cache: 'no-store' }).then((res) => res.ok ? res.json() as Promise<View> : null).then(setView), [opportunityId]);
+  const load = useCallback(() => fetch(`/api/me/opportunities/${opportunityId}/checklist`, { cache: 'no-store' }).then((res) => res.ok ? res.json() as Promise<View> : null).then((next) => { setView(next); onLoaded?.(); }), [opportunityId, onLoaded]);
   useEffect(() => { if (enabled) void load(); }, [enabled, load]);
   useEffect(() => { if (enabled) void fetch('/api/me/library', { cache: 'no-store' }).then((res) => res.ok ? res.json() as Promise<Library> : null).then((data) => { if (data) setLibrary(data); }); }, [enabled]);
   if (!enabled || !view) return null;
