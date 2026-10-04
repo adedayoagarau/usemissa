@@ -1417,12 +1417,41 @@ export function ContactEditor({
         title="About and contact"
         lead="Your bio is edited in Basics. Choose how people can reach you; everything here is public once you publish."
       />
+      <div className={styles.switchRow}>
+        <Switch
+          checked={draft.inquiries}
+          aria-label="Let visitors message you through Missa"
+          onCheckedChange={(inquiries) =>
+            update((current) => ({ ...current, inquiries }))
+          }
+        />
+        <span>
+          Let visitors message you through Missa. Messages arrive in your
+          profile inbox; your email stays private.
+        </span>
+      </div>
+      <div className={styles.switchRow}>
+        <Switch
+          checked={draft.invitations}
+          aria-label="Let organizations invite you to apply"
+          onCheckedChange={(invitations) =>
+            update((current) => ({ ...current, invitations }))
+          }
+        />
+        <span>
+          Let organizations on Missa invite you to apply to their open calls.
+        </span>
+      </div>
       <TextField
         label="Public email"
         type="email"
         value={draft.contact.email}
         autoComplete="email"
-        hint="Shown as an Email button. Your sign-in email is never shared."
+        hint={
+          draft.inquiries
+            ? "Optional. Shown in About and contact. Your sign-in email is never shared."
+            : "Shown as a Get in touch button. Your sign-in email is never shared."
+        }
         onChange={contact("email")}
       />
       <TextField

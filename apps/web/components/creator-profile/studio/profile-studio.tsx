@@ -10,6 +10,7 @@ import {
   ArrowUpRight,
   Check,
   Eye,
+  Inbox,
   Monitor,
   Smartphone,
 } from "lucide-react";
@@ -248,6 +249,18 @@ export function ProfileStudio({
             <Eye aria-hidden="true" />
             Preview profile
           </Button>
+          {isAccount && (
+            <Link
+              href="/profile/inbox"
+              className={cn(
+                buttonVariants({ variant: "ghost" }),
+                styles.viewLive,
+              )}
+            >
+              <Inbox aria-hidden="true" />
+              Profile inbox
+            </Link>
+          )}
           {isAccount && controller.publishedAt && address && (
             <a
               href={`/@${address}`}
