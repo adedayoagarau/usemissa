@@ -58,7 +58,9 @@ export type WeeklyDigestRecipient = {
 export const weeklyDigestKey = (accountId: string, isoWeek: string) => `weekly-digest:${accountId}:${isoWeek}`;
 
 const PRE_SUBMISSION = "'interested','saved','preparing','draft-started','ready-to-submit'";
-const OPEN = "'open','closing-soon','deadline-extended'";
+/** Opportunity statuses that accept submissions, as a SQL list. */
+export const OPEN_STATUS_SQL = "'open','closing-soon','deadline-extended'";
+const OPEN = OPEN_STATUS_SQL;
 
 /**
  * Accounts due a weekly digest now: weekly cadence and email on, it is Sunday
@@ -100,6 +102,32 @@ export async function weeklyDigestRecipients(pool: Pool, limit = 200): Promise<W
   }));
 }
 
+/**
+ * The creator's discipline and genre preferences, expanded to narrower terms
+ * (as in browse). Opens a query with `matches(opportunity_id, preference,
+ * preferred_label)`; `$1` must be the account id. Shared by the weekly digest
+ * and the Season page so both agree on what "matches you" means.
+ */
+export const PREFERENCE_MATCH_CTE = `with recursive expanded(root_id, term_id, preference) as (
+      select term_id, term_id, preference from account_taxonomy_preferences where account_id=$1
+      union
+      select e.root_id, r.subject_term_id, e.preference
+        from taxonomy_term_relations r join expanded e on r.object_term_id=e.term_id
+       where r.relation_type='broader'
+    ), matches as (
+      select a.opportunity_id, e.preference, t.preferred_label
+        from expanded e
+        join opportunity_taxonomy_terms a on a.term_id=e.term_id and a.certainty<>'rejected'
+        join taxonomy_terms t on t.id=e.root_id
+    )`;
+
+/** An opportunity matches when an included or preferred term covers it and no excluded term does. */
+export function preferenceMatchPredicate(alias = "o"): string {
+  if (!/^[a-z][a-z0-9_]*$/i.test(alias)) throw new Error("Invalid SQL alias for preference matching");
+  return `exists (select 1 from matches m where m.opportunity_id=${alias}.id and m.preference in ('include','prefer'))
+       and not exists (select 1 from matches m where m.opportunity_id=${alias}.id and m.preference='exclude')`;
+}
+
 type ItemRow = {
   id: string; title: string; organization_name: string | null; deadline: string | null; reason: string | null;
   type: string; fee_status: string; fee_cents: number | null; fee_currency: string | null; prize: string | null;
@@ -128,18 +156,7 @@ const item = (row: ItemRow, fallback: string): WeeklyDigestItem => ({
  */
 export async function buildWeeklyDigest(pool: Pool, accountId: string, perSection = 6): Promise<WeeklyDigest> {
   const matched = `
-    with recursive expanded(root_id, term_id, preference) as (
-      select term_id, term_id, preference from account_taxonomy_preferences where account_id=$1
-      union
-      select e.root_id, r.subject_term_id, e.preference
-        from taxonomy_term_relations r join expanded e on r.object_term_id=e.term_id
-       where r.relation_type='broader'
-    ), matches as (
-      select a.opportunity_id, e.preference, t.preferred_label
-        from expanded e
-        join opportunity_taxonomy_terms a on a.term_id=e.term_id and a.certainty<>'rejected'
-        join taxonomy_terms t on t.id=e.root_id
-    )
+    ${PREFERENCE_MATCH_CTE}
     select o.id,o.title,coalesce(org.data->>'name',o.organization_id) organization_name,o.deadline_date::text deadline,${FACTS},
            (select 'Because you chose ' || m.preferred_label from matches m
              where m.opportunity_id=o.id and m.preference in ('include','prefer')
@@ -147,8 +164,7 @@ export async function buildWeeklyDigest(pool: Pool, accountId: string, perSectio
       from opportunities o
       left join radar_organizations org on org.id=o.organization_id
      where o.publication_state='published' and o.status in (${OPEN})
-       and exists (select 1 from matches m where m.opportunity_id=o.id and m.preference in ('include','prefer'))
-       and not exists (select 1 from matches m where m.opportunity_id=o.id and m.preference='exclude')
+       and ${preferenceMatchPredicate("o")}
        and not exists (select 1 from tracked_opportunities t where t.account_id=$1 and t.opportunity_id=o.id)`;
   const newForYou = await pool.query<ItemRow>(
     `${matched}

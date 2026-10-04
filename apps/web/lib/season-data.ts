@@ -1,4 +1,5 @@
 import {
+  countSeasonMatchingOpenCalls,
   creatorFeatures,
   creatorPlan,
   creatorPoolFor,
@@ -11,7 +12,17 @@ import {
 import type { OpportunityDeadlineFacts } from "@missa/radar-engine";
 import { addDays } from "./deadline-moment";
 import { creatorToday } from "./deadline-planning";
-import type { SeasonCall, SeasonForecast, SeasonObligation, SeasonTier } from "./season-plan";
+import {
+  seasonCrunchRange,
+  type SeasonCall,
+  type SeasonForecast,
+  type SeasonMatchingCalls,
+  type SeasonObligation,
+  type SeasonTier,
+} from "./season-plan";
+
+/** How far ahead the crunch-weeks strip looks on the full season plan. */
+export const SEASON_CRUNCH_WEEKS = 26;
 
 export type SeasonData = {
   today: string;
@@ -19,6 +30,8 @@ export type SeasonData = {
   obligations: SeasonObligation[];
   tiers: Record<string, SeasonTier[]>;
   forecasts: SeasonForecast[];
+  /** Matching open calls for the crunch weeks; null when they could not be read. */
+  matching: SeasonMatchingCalls | null;
   features: { capacityPlanning: boolean; seasonPlan: boolean };
   weeklyHours: number | null;
 };
@@ -32,12 +45,13 @@ export async function loadSeasonData(connectionString: string, accountId: string
   const pool = creatorPoolFor(connectionString);
   // The creator's own date, so "today" here agrees with the capacity report.
   const today = await creatorToday(accountId, now);
-  const [calls, obligations, forecasts, preferences, plan] = await Promise.all([
+  const [calls, obligations, forecasts, preferences, plan, matching] = await Promise.all([
     listSeasonTrackedCalls(pool, accountId),
     listObligations(pool, accountId, { to: addDays(today, 200), states: ["open"] }).catch(() => []),
     listWatchedForecasts(pool, accountId).catch(() => []),
     getPlanningPreferences(pool, accountId).catch(() => null),
     creatorPlan(pool, accountId).catch(() => "free" as const),
+    countSeasonMatchingOpenCalls(pool, accountId, seasonCrunchRange(today, SEASON_CRUNCH_WEEKS)).catch(() => null),
   ]);
   const facts = await loadDeadlineFacts(
     pool,
@@ -87,6 +101,7 @@ export async function loadSeasonData(connectionString: string, accountId: string
       relation: item.relation,
       forecast: item.forecast,
     })),
+    matching,
     features: { capacityPlanning: features.capacityPlanning, seasonPlan: features.seasonPlan },
     weeklyHours: preferences?.weeklyHoursAvailable ?? null,
   };

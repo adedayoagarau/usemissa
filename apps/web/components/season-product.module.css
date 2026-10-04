@@ -108,21 +108,33 @@
 .bar { display: grid; min-width: 0; gap: 4px; justify-items: center; }
 .barValue { min-height: 16px; color: var(--muted-foreground); font-size: 11px; font-variant-numeric: tabular-nums; }
 .barTrack {
-  position: relative;
-  display: block;
+  display: flex;
   width: 100%;
   max-width: 28px;
   height: 96px;
+  align-items: flex-end;
+  gap: 1px;
   border-bottom: 1px solid var(--border);
 }
 .barFill {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  display: block;
+  flex: 1 1 0;
+  min-width: 0;
   border-radius: 4px 4px 0 0;
   background: var(--chart-4);
 }
+/* The second series: outlined and striped, so it never relies on colour alone. */
+.barMatching {
+  display: block;
+  flex: 1 1 0;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--chart-1);
+  border-bottom: 0;
+  border-radius: 4px 4px 0 0;
+  background: repeating-linear-gradient(135deg, var(--chart-1) 0 1px, transparent 1px 4px);
+}
+.barMatching[data-empty="true"] { border: 0; background: none; }
 .bar[data-crunch="true"] .barFill { background: var(--chart-3); }
 .bar[data-crunch="true"] .barValue { color: var(--foreground); font-weight: 700; }
 .barLabel {
@@ -143,6 +155,11 @@
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--chart-4); }
 .swatchBusy { background: var(--chart-3); }
+.swatchMatching {
+  box-sizing: border-box;
+  border: 1px solid var(--chart-1);
+  background: repeating-linear-gradient(135deg, var(--chart-1) 0 1px, transparent 1px 4px);
+}
 
 .totals { display: grid; gap: 12px; margin: 0; }
 .totalGroup {

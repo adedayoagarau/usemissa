@@ -111,11 +111,15 @@ const unfold = (ics: string) => ics.replace(/\r\n /g, "");
 const events = (ics: string) => unfold(ics).split("BEGIN:VEVENT").slice(1);
 const eventFor = (ics: string, uid: string) => events(ics).find((block) => block.includes(`UID:${uid}@usemissa.com`));
 
-test("an exact deadline uses the organisation's timezone and alarms from the reminder offsets", () => {
+test("an exact deadline is written in UTC, names the organisation's time zone and alarms from the reminder offsets", () => {
   const ics = calendarFeed(data, parseCalendarFeedOptions(new URLSearchParams()), now, "https://usemissa.com");
   const deadline = eventFor(ics, "opp_timed-deadline");
   assert.ok(deadline);
-  assert.match(deadline, /DTSTART;TZID=America\/New_York:20261007T235900/);
+  // 23:59 in New York on 7 October is 03:59 UTC on 8 October.
+  assert.match(deadline, /DTSTART:20261008T035900Z/);
+  assert.doesNotMatch(ics, /TZID/, "no event relies on a time zone definition block");
+  assert.doesNotMatch(ics, /BEGIN:VTIMEZONE/);
+  assert.match(deadline, /America\/New York time/);
   assert.match(deadline, /SUMMARY:Closes: Poetry Fellowship/);
   assert.match(deadline, /TRIGGER:-P7D/);
   assert.match(deadline, /TRIGGER:-P1D/);
@@ -135,7 +139,7 @@ test("a date-only deadline stays all-day with morning alarms", () => {
   assert.match(deadline, /TRIGGER:-PT15H/);
 });
 
-test("a timed date without a known timezone is written in UTC", () => {
+test("a timed tier close is written in UTC", () => {
   const ics = calendarFeed(data, parseCalendarFeedOptions(new URLSearchParams()), now);
   const tier = eventFor(ics, "tier-tier_1")!;
   assert.match(tier, /DTSTART:20261010T235900Z/);
