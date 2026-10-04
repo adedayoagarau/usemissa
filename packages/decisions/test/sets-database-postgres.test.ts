@@ -8,7 +8,7 @@ import {
   databaseApplyTargets,
 } from "../src/index.js";
 
-// Runs against a database with the target schema through 0089, e.g.
+// Runs against a database with the target schema through 0091, e.g.
 // DATABASE_URL=postgres://missa:missa@localhost:5432/missa_schema_check
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -27,7 +27,7 @@ test(
     const pool = new pg.Pool({ connectionString: databaseUrl, max: 2 });
     if (!(await schemaReady(pool))) {
       await pool.end();
-      t.skip("Schema through 0089 is not applied");
+      t.skip("Schema through 0091 is not applied");
       return;
     }
     const prefix = `database-test-${randomUUID()}`;

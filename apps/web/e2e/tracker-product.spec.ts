@@ -137,3 +137,46 @@ test('Tracker exposes a stale-edit recovery error', async ({ page }) => {
   await expect(page.locator('article[data-selected="true"]').getByRole('alert')).toContainText('changed in another session');
   await expect(page.getByRole('button', { name: 'Reload latest Tracker state' })).toBeVisible();
 });
+
+test('Tracker details sheet opens from a row and returns focus when closed', async ({ page }) => {
+  const opportunity = await trackerAccount(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`/tracker?view=saved&application=${encodeURIComponent(opportunity.id)}`);
+
+  const card = page.locator('article[data-selected="true"]');
+  const details = card.getByRole('button', { name: `Details for ${opportunity.title}` });
+  await details.click();
+  const sheet = page.getByRole('dialog');
+  await expect(sheet.getByRole('heading', { name: opportunity.title, exact: true })).toBeVisible();
+  await expect(sheet.locator('#sheet-deadline-title')).toBeVisible();
+  await expect(page).toHaveURL(/item=/);
+
+  await page.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+  await expect(details).toBeFocused();
+  await expect(page).not.toHaveURL(/item=/);
+
+  // The deep link opens the same sheet directly.
+  await page.goto(`/tracker?view=saved&item=${encodeURIComponent(opportunity.id)}`);
+  const linked = page.getByRole('dialog');
+  await expect(linked.getByRole('heading', { name: opportunity.title, exact: true })).toBeVisible();
+  await linked.getByRole('button', { name: 'Close', exact: true }).last().click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test('Tracker Plan view groups calls in preparation by time left', async ({ page }) => {
+  const opportunity = await trackerAccount(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/tracker?view=plan');
+
+  const views = page.getByRole('navigation', { name: 'Tracker views' });
+  await expect(views.getByRole('button', { name: 'Plan', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('heading', { name: 'Plan by time left' })).toBeVisible();
+  for (const bucket of ['Act now', 'Develop', 'Plan ahead', 'Later'])
+    await expect(page.getByRole('heading', { name: bucket, exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: opportunity.title, exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBeFalsy();
+
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);
+});

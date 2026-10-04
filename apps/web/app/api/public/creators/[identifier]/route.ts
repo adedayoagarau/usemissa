@@ -1,7 +1,7 @@
 import { readUserHandle, resolveHandle } from "@missa/radar-adapters";
 import { NextResponse } from "next/server";
 
-import { portfolioSchema } from "@/lib/creator-portfolio-schema";
+import { readPublishedPortfolio } from "@/lib/published-portfolio";
 import { getCreatorProfileRepository } from "@/lib/creatorRepositories";
 import { getEngine } from "@/lib/engine";
 import { publicCreatorProjection } from "@/lib/public-creator-projection";
@@ -73,11 +73,11 @@ export async function GET(
   const profile = repository
     ? await repository.publicProfile(userId)
     : (await getEngine()).publicUserProfile(userId);
-  const parsedPortfolio = repository
-    ? portfolioSchema.safeParse(await repository.publicPortfolio(userId))
+  const published = repository
+    ? await readPublishedPortfolio(userId)
     : undefined;
-  const portfolio = parsedPortfolio?.success
-    ? { ...parsedPortfolio.data, handle: handle ?? parsedPortfolio.data.handle }
+  const portfolio = published
+    ? { ...published, handle: handle ?? published.handle }
     : undefined;
   const publicProfile = profile && !profile.isPrivate ? profile : undefined;
 

@@ -317,10 +317,10 @@ export function countryState(input: {
 // ---------------------------------------------------------------------------
 
 /**
- * The declared payment_type values. Migration 0089 checks the column against
+ * The declared payment_type values. Migration 0091 checks the column against
  * this list; keep both in step. It includes every value Missa's writers store
  * today ("token", "stipend", "grant", "fellowship", "prize") so the check
- * never rejects an existing writer. Text 0089 could not place is stored as
+ * never rejects an existing writer. Text 0091 could not place is stored as
  * "unknown" with the original in metadata.payment_type_previous; that text is
  * what paymentTypeNormalisation reads.
  */
@@ -341,7 +341,7 @@ export const PAYMENT_TYPES = [
 ] as const;
 export type PaymentType = (typeof PAYMENT_TYPES)[number];
 
-/** Spellings migration 0089 maps deterministically; keep in step with it. */
+/** Spellings migration 0091 maps deterministically; keep in step with it. */
 const PAYMENT_TYPE_SPELLINGS: Record<string, PaymentType> = {
   "contributor-copies": "contributor-copy",
   "contributors-copy": "contributor-copy",

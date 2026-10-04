@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -13,7 +13,9 @@ import {
   Clock3,
   FileCheck2,
   FolderKanban,
+  Hourglass,
   Import,
+  ListChecks,
   Library,
   ListFilter,
   Search,
@@ -21,6 +23,24 @@ import {
 } from "lucide-react";
 import type { MyStatus, OpportunityType } from "@missa/radar-engine";
 import { CalendarFeedButton } from "@/components/calendar-feed-button";
+import { Button } from "@/components/ui/button";
+import { UrgencyBadge } from "@/components/missa/deadline-badges";
+import {
+  TrackerItemSheet,
+  type TrackerFeatures,
+} from "@/components/missa/tracker-item-sheet";
+import { addDays, formatShortDate } from "@/lib/deadline-moment";
+import {
+  attentionObligations,
+  dueLabel,
+  planBuckets,
+  quietLabel,
+  rowDeadline,
+  rowResponseClock,
+  viewerToday,
+  type AttentionObligation,
+  type ViewerClock,
+} from "@/lib/tracker-plan";
 import { STATUS_LABELS } from "@/lib/statusLabels";
 import {
   readFirstSaveReceipt,
@@ -56,6 +76,20 @@ export type TrackerProductItem = {
   workId?: string;
   workTitle?: string;
   importId?: string;
+  /** tracked_opportunities.id; present for relational Tracker items. */
+  trackedId?: string;
+  /** Provider-stated closing instant (ISO), when the source gives one. */
+  deadlineTime?: string;
+  /** IANA zone the provider states the deadline in. */
+  deadlineTimezone?: string;
+  /** The creator's own finish date, before the deadline. */
+  personalTargetOn?: string;
+  /** Last time the creator worked on this call. */
+  lastActivityAt?: string;
+  /** Date the creator submitted. */
+  submittedAt?: string;
+  cycleLabel?: string;
+  carriedFromTrackedId?: string;
 };
 
 export type TrackerHostedSubmission = {
@@ -78,6 +112,7 @@ type Stage = TrackerStage;
 
 const primaryViews: Array<{ id: View; label: string }> = [
   { id: "active", label: "Active" },
+  { id: "plan", label: "Plan" },
   { id: "saved", label: "Saved" },
   { id: "submissions", label: "Submissions" },
   { id: "calendar", label: "Calendar" },
@@ -123,23 +158,21 @@ function formatDate(value: string): string {
   }).format(date);
 }
 
-function timingLabel(item: TrackerProductItem): string {
-  if (item.deadline) {
-    const date = formatDate(item.deadline);
-    if (item.daysToDeadline === 0) return `${date} · due today`;
-    if (item.daysToDeadline === 1) return `${date} · due tomorrow`;
-    if (item.daysToDeadline !== undefined && item.daysToDeadline > 1)
-      return `${date} · ${item.daysToDeadline} days left`;
-    if (item.daysToDeadline !== undefined && item.daysToDeadline < 0)
-      return `${date} · deadline passed`;
-    return date;
-  }
-  if (item.deadlineKind === "rolling") return "Rolling deadline";
-  if (item.deadlineKind === "until-filled") return "Until filled";
-  if (item.deadlineKind === "conflicting") return "Deadline needs review";
-  if (item.expectedResponseBy)
-    return `Response context · ${formatDate(item.expectedResponseBy)}`;
-  return "Deadline not listed";
+/** The row's deadline line, with the urgency badge inside the last week. */
+function DeadlineText({
+  item,
+  clock,
+}: {
+  item: TrackerProductItem;
+  clock: ViewerClock;
+}) {
+  const moment = rowDeadline(item, clock);
+  return (
+    <span className={styles.deadlineText}>
+      <span>{moment.label}</span>
+      {moment.urgent ? <UrgencyBadge label={moment.shortLabel} /> : null}
+    </span>
+  );
 }
 
 function typeLabel(type: OpportunityType): string {
@@ -324,10 +357,12 @@ function TrackerCard({
   highlighted,
   selected,
   stale,
+  clock,
   onStatus,
   onWork,
   onReminder,
   onRemove,
+  onDetails,
 }: {
   item: TrackerProductItem;
   works: Array<{ id: string; title: string }>;
@@ -337,13 +372,17 @@ function TrackerCard({
   highlighted?: boolean;
   selected?: boolean;
   stale?: boolean;
+  clock: ViewerClock;
   onStatus: (item: TrackerProductItem, status: MyStatus) => void;
   onWork: (item: TrackerProductItem, workId?: string) => void;
   onReminder: (item: TrackerProductItem, notify: boolean) => void;
   onRemove: (item: TrackerProductItem) => void;
+  onDetails: (item: TrackerProductItem, trigger: HTMLElement) => void;
 }) {
   const action = itemAction(item, hosted);
   const stage = stageFor(item.myStatus);
+  const quiet = quietLabel(item, clock);
+  const response = rowResponseClock(item, clock);
   return (
     <article
       className={styles.itemCard}
@@ -373,7 +412,9 @@ function TrackerCard({
             <CalendarDays aria-hidden="true" />
             Timing
           </dt>
-          <dd>{timingLabel(item)}</dd>
+          <dd>
+            <DeadlineText item={item} clock={clock} />
+          </dd>
         </div>
         <div>
           <dt>
@@ -384,9 +425,35 @@ function TrackerCard({
         </div>
       </dl>
 
+      {response ? (
+        <p className={styles.itemSignal}>
+          <Hourglass aria-hidden="true" />
+          <span>
+            {response.label}
+            {response.basis ? <small>{response.basis}</small> : null}
+          </span>
+        </p>
+      ) : null}
+      {quiet ? (
+        <p className={styles.itemSignal}>
+          <Clock3 aria-hidden="true" />
+          <span>{quiet}</span>
+        </p>
+      ) : null}
+
       {item.notes ? <p className={styles.itemNote}>{item.notes}</p> : null}
 
       <div className={styles.itemControls}>
+        <Button
+          type="button"
+          variant="outline"
+          data-details-for={item.opportunityId}
+          aria-haspopup="dialog"
+          onClick={(event) => onDetails(item, event.currentTarget)}
+        >
+          <ListChecks aria-hidden="true" />
+          Details<span className="sr-only"> for {item.title}</span>
+        </Button>
         {!item.isManual ? (
           <label>
             <span>Status</span>
@@ -521,6 +588,9 @@ export function TrackerProduct({
   initialQuery,
   initialImportId,
   initialApplicationId = "",
+  initialItemId = "",
+  initialNow,
+  features = {},
   allowance,
 }: {
   /** Free-plan tracking allowance; omitted for plans without a limit. */
@@ -536,11 +606,19 @@ export function TrackerProduct({
   initialImportId: string;
   /** Opportunity or receipt id from a deep link; selects that record. */
   initialApplicationId?: string;
+  /** Opportunity id from `?item=`; opens that item's details sheet. */
+  initialItemId?: string;
+  /** Server time (ISO) so the first render matches the server's. */
+  initialNow?: string;
+  /** Plan features from creatorFeatures(plan). */
+  features?: TrackerFeatures;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [items, setItems] = useState(initialItems);
+  // A server refresh (for example after carrying a call forward) brings new items.
+  useEffect(() => setItems(initialItems), [initialItems]);
   const [focus] = useState(() =>
     resolveTrackerFocus({
       view: initialView,
@@ -561,6 +639,51 @@ export function TrackerProduct({
   const [firstSaveDismissed, setFirstSaveDismissed] = useState(false);
   const firstSaveRef = useRef<HTMLElement>(null);
   const reopenGuidanceRef = useRef<HTMLButtonElement>(null);
+  // The first render uses the server's clock in UTC so hydration matches;
+  // the viewer's own zone takes over once the page is interactive.
+  const [clock, setClock] = useState<ViewerClock>(() => ({
+    now: initialNow ? new Date(initialNow) : new Date(),
+    timeZone: "UTC",
+  }));
+  const [sheetId, setSheetId] = useState(() =>
+    initialItems.some((item) => item.opportunityId === initialItemId)
+      ? initialItemId
+      : "",
+  );
+  const sheetTrigger = useRef<HTMLElement | null>(null);
+  const [dueSteps, setDueSteps] = useState<AttentionObligation[]>([]);
+
+  useEffect(() => {
+    let zone: string | undefined;
+    try {
+      zone = Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+    } catch {
+      zone = undefined;
+    }
+    setClock({ now: new Date(), timeZone: zone });
+  }, []);
+
+  const loadDueSteps = useCallback(async () => {
+    const today = viewerToday({ now: new Date() });
+    try {
+      const response = await fetch(
+        `/api/me/obligations?from=${today}&to=${addDays(today, 7)}&state=open`,
+        { cache: "no-store" },
+      );
+      if (!response.ok) return;
+      const payload = (await response.json()) as {
+        obligations?: AttentionObligation[];
+      };
+      if (Array.isArray(payload.obligations)) setDueSteps(payload.obligations);
+    } catch {
+      // Plan steps are an addition to Needs attention; the list stays useful without them.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!initialItems.some((item) => item.revision)) return;
+    void loadDueSteps();
+  }, [initialItems, loadDueSteps]);
 
   useEffect(() => {
     const stored = readFirstSaveReceipt(accountId);
@@ -872,22 +995,50 @@ export function TrackerProduct({
         highlighted={firstSaveReceipt?.opportunityId === item.opportunityId}
         selected={focus.opportunityId === item.opportunityId}
         stale={staleItems.has(item.opportunityId)}
+        clock={clock}
         onStatus={updateStatus}
         onWork={updateWork}
         onReminder={updateReminder}
         onRemove={removeItem}
+        onDetails={openDetails}
       />
     );
   }
 
+  function openDetails(item: TrackerProductItem, trigger?: HTMLElement) {
+    sheetTrigger.current = trigger ?? null;
+    setSheetId(item.opportunityId);
+    updateUrl({ item: item.opportunityId });
+  }
+
+  function closeDetails() {
+    const closing = sheetId;
+    setSheetId("");
+    updateUrl({ item: undefined });
+    if (!sheetTrigger.current && closing)
+      sheetTrigger.current = document.querySelector<HTMLElement>(
+        `[data-details-for="${CSS.escape(closing)}"]`,
+      );
+  }
+
+  const sheetItem = sheetId
+    ? items.find((item) => item.opportunityId === sheetId)
+    : undefined;
+
   const attention = activeItems.filter((item) => {
     const stage = stageFor(item.myStatus);
-    return (
-      (stage === "Saved" || stage === "Preparing") &&
-      item.daysToDeadline !== undefined &&
-      item.daysToDeadline <= 7
-    );
+    if (stage !== "Saved" && stage !== "Preparing") return false;
+    const moment = rowDeadline(item, clock);
+    return moment.state === "open" && moment.daysLeft !== null && moment.daysLeft <= 7;
   });
+  const today = viewerToday(clock);
+  const attentionSteps = attentionObligations(
+    dueSteps,
+    new Set(activeItems.map((item) => item.opportunityId)),
+    today,
+  );
+  const itemById = new Map(items.map((item) => [item.opportunityId, item]));
+  const planGroups = planBuckets(visibleItems, clock);
 
   const externalSubmissionItems = visibleItems.filter(
     (item) =>
@@ -1187,7 +1338,7 @@ export function TrackerProduct({
 
           {layout === "actions" ? (
             <div className={styles.actionsLayout}>
-              {attention.length ? (
+              {attention.length || attentionSteps.length ? (
                 <section
                   className={styles.attention}
                   aria-labelledby="tracker-attention-title"
@@ -1206,12 +1357,43 @@ export function TrackerProduct({
                         <Clock3 aria-hidden="true" />
                         <span>
                           <strong>{item.title}</strong>
-                          <small>{timingLabel(item)}</small>
+                          <small>
+                            <DeadlineText item={item} clock={clock} />
+                          </small>
                         </span>
                         <Link href={action.href}>
                           {action.label}
                           <ArrowRight aria-hidden="true" />
                         </Link>
+                      </div>
+                    );
+                  })}
+                  {attentionSteps.map((step) => {
+                    const tracked = step.opportunityId
+                      ? itemById.get(step.opportunityId)
+                      : undefined;
+                    return (
+                      <div key={`step-${step.id}`}>
+                        <ListChecks aria-hidden="true" />
+                        <span>
+                          <strong>{step.label}</strong>
+                          <small>
+                            {dueLabel(step.dueOn, today, (iso) => formatShortDate(iso, clock.now))}
+                            {step.opportunityTitle ? ` · ${step.opportunityTitle}` : ""}
+                          </small>
+                        </span>
+                        {tracked ? (
+                          <button
+                            type="button"
+                            className={styles.attentionButton}
+                            aria-haspopup="dialog"
+                            onClick={(event) => openDetails(tracked, event.currentTarget)}
+                          >
+                            Open plan
+                            <span className="sr-only"> for {tracked.title}</span>
+                            <ArrowRight aria-hidden="true" />
+                          </button>
+                        ) : null}
                       </div>
                     );
                   })}
@@ -1262,6 +1444,48 @@ export function TrackerProduct({
             </div>
           )}
         </>
+      ) : null}
+
+      {items.length && visibleItems.length && view === "plan" ? (
+        <section
+          className={styles.viewSection}
+          aria-labelledby="tracker-plan-title"
+        >
+          <header>
+            <div>
+              <p>Calls in preparation</p>
+              <h2 id="tracker-plan-title">Plan by time left</h2>
+            </div>
+          </header>
+          <p className={styles.explanation}>
+            Act now closes within 30 days, Develop within 90 and Plan ahead
+            within 180. Submitted calls stay in Submissions.
+          </p>
+          <div className={styles.grouped}>
+            {planGroups.map((group) => (
+              <section
+                key={group.key}
+                aria-labelledby={`tracker-plan-${group.key}`}
+                data-plan-bucket={group.key}
+              >
+                <header>
+                  <div>
+                    <p>Plan</p>
+                    <h2 id={`tracker-plan-${group.key}`}>{group.label}</h2>
+                  </div>
+                  <span>{group.items.length}</span>
+                </header>
+                {group.items.length ? (
+                  <div className={styles.itemList}>
+                    {group.items.map(renderItem)}
+                  </div>
+                ) : (
+                  <p className={styles.explanation}>Nothing here right now.</p>
+                )}
+              </section>
+            ))}
+          </div>
+        </section>
       ) : null}
 
       {items.length && visibleItems.length && view === "saved" ? (
@@ -1399,7 +1623,7 @@ export function TrackerProduct({
               return (
                 <Link href={action.href} key={item.opportunityId}>
                   <strong>{item.title}</strong>
-                  <span>{timingLabel(item)}</span>
+                  <span>{rowDeadline(item, clock).label}</span>
                 </Link>
               );
             })}
@@ -1462,6 +1686,31 @@ export function TrackerProduct({
           )}
         </section>
       ) : null}
+
+      <TrackerItemSheet
+        item={sheetItem}
+        open={Boolean(sheetItem)}
+        features={features}
+        clock={clock}
+        returnFocus={() => sheetTrigger.current}
+        onOpenChange={(open) => {
+          if (!open) closeDetails();
+        }}
+        onItemChange={(opportunityId, changes) =>
+          setItems((current) =>
+            current.map((candidate) =>
+              candidate.opportunityId === opportunityId
+                ? { ...candidate, ...changes }
+                : candidate,
+            ),
+          )
+        }
+        onCarried={(item) => {
+          setAnnouncement(`${item.title} is ready for its next cycle.`);
+          closeDetails();
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

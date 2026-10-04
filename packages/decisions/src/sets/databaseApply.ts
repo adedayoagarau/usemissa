@@ -5,7 +5,7 @@
  * nothing (or a value the target names as replaceable). A field a person or
  * source has filled is never overwritten. Each write cites its ledger row in
  * the table's metadata column where one exists, and the ledger row records
- * the value it replaced (data_decisions.applied_from, migration 0089).
+ * the value it replaced (data_decisions.applied_from, migration 0091).
  *
  * Prestige tiers and taxonomy disambiguation are deliberately absent: those
  * answers are for people to review, not for this script to apply.
@@ -93,7 +93,7 @@ export function databaseApplyTargets(
       table: "opportunity_call_profiles",
       idColumn: "opportunity_id",
       column: "payment_type",
-      // Only rows whose free text migration 0089 could not place: they hold
+      // Only rows whose free text migration 0091 could not place: they hold
       // 'unknown' with the text in metadata.payment_type_previous. Other
       // unknown rows are read from the page by the reading set, not here.
       writableWhen: `t.payment_type = 'unknown' AND t.metadata ? 'payment_type_previous'`,
@@ -353,7 +353,7 @@ export function applyWriteStatement(write: PlannedWrite): SqlStatement {
     values.push(`data_decisions:${write.decisionId}`);
     const citation = `$${values.length}::text`;
     // An earlier <column>_previous (for example the original text migration
-    // 0089 kept) wins over the value replaced now.
+    // 0091 kept) wins over the value replaced now.
     sets.push(
       `${column} = CASE WHEN previous.value IS NULL THEN '{}'::jsonb
                 ELSE jsonb_build_object('${target.column}_previous', previous.value) END

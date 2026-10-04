@@ -61,7 +61,7 @@ Link preview requests are debounced and cancelled when the URL changes. The prev
 
 Publication association uses the installed Combobox with async name-only public-directory search, canonical ID/name/kind/profile path, duplicate path suppression, keyboard choice and manual-name fallback. Editing the name removes a stale association. The organization heading links to its directory profile while the publication action keeps the actual work URL. Association is a creator-added credit and conveys no endorsement/verification; it currently persists in the private device draft only. One publication record remains supported in this slice.
 
-Appearance offers Sage studio, Paper, Mineral and After hours using existing palette tokens. Selection updates the preview and persists with the draft; typography/layout are fixed. Public background uploads are intentionally outside this variant.
+Appearance offers Sage studio, Mineral and After hours using existing palette tokens (Paper was retired in October 2026; stored Paper drafts render as Sage). Selection updates the preview and persists with the draft; typography/layout are fixed. Public background uploads are intentionally outside this variant.
 
 The focused browser suite verifies the full-page journey, progressive work fields, media preview, autosave/reload/reorder, content filtering, link loading/failure/retry, private-address rejection, directory selection and separate credit/work URLs, theme persistence and public/editor accessibility. Live example.com metadata and the actual directory query were also exercised read-only. Signed-in real-account editing remains guarded by the existing session but is tested through the equivalent sample-account editor; production publishing is not certified.
 
@@ -97,3 +97,127 @@ Validation: focused PostgreSQL test covers legacy migration, stale revisions, ow
 Next product page after reviewing this slice: For organizations. Account feature follow-ons include multiple books/publication entries, media storage management and a CDN pipeline; none are prerequisites for the existing single-book/single-credit editor.
 
 Final focused validation for this slice: seven Playwright tests passed (including the real account client component with mocked transport), the isolated PostgreSQL snapshot/ownership test passed, TypeScript and scoped ESLint passed, and the design-system policy passed. The temporary phone URL returned login successfully, redirected protected settings to login, and returned 401 for anonymous account data. A fresh isolated Chromium session at 390 px rendered the handle field without horizontal overflow; the user's phone draft was not modified by QA.
+
+## Profile v2 and studio (October 2026)
+
+This section supersedes the editor and visitor-page descriptions above. The
+account, handle, revision, media and snapshot rules from the September slice
+still apply.
+
+### Visitor page
+
+- **Routes:** `/@<handle>` (profile), `/@<handle>/cv` (printable CV, not
+  indexed), `/@<handle>/share.png` (1200×630 social image). Aliases redirect to
+  the canonical handle.
+- **Component:** `PublicCreatorProfile` in
+  `apps/web/components/creator-profile/public-profile.tsx`, policy intent
+  `composition.creator-portfolio`. One component renders the page, the studio
+  preview (`mode="preview"`, headings start at h2) and the homepage embed
+  (`mode="embedded"`, work only).
+- **Structure:** identity hero (Portrait, Plate or Type), Now line, Open-to
+  chips, then the creator's sections in their chosen order: Selected work,
+  Upcoming, Shelf, Track record, Press, About and contact. Empty or hidden
+  sections are left out, and so are their links in the section nav.
+- **Craft lens** sets the default section order and work-card emphasis
+  (reading excerpts for writing, captions for visual work, play buttons for
+  sound). It never changes what data is public.
+- **Provenance:** `ProvenanceBadge` (semantic component) explains Confirmed,
+  Linked and Added entries in a popover. Only the server can mark an entry
+  Confirmed (see the integration handoff).
+- **Availability:** `AvailabilityChip` (semantic component). An "from" date in
+  the past is shown as open.
+- **Layout:** container queries at 960 and 640 px so the studio's phone
+  preview shows the real mobile layout. Reduced motion removes transitions.
+  Muted text is mixed toward the foreground so it meets AA on every theme's
+  tinted surfaces.
+
+### Studio
+
+- **Route:** `/profile/portfolio` (account), and
+  `/design-system/creator-profile-settings` (device-only preview; `?sample=1`
+  seeds the fictional sample).
+- **Component:** `ProfileStudio` in
+  `apps/web/components/creator-profile/studio/`, policy intent
+  `composition.creator-profile-editor`.
+- **Layout:** section rail, editor and live preview at desktop widths (desktop
+  or phone preview, scaled to fit). Below 1180 px the preview moves to a
+  dialog. Below 760 px the rail and the editor are separate views with an
+  "All sections" back button.
+- **Rail:** Basics, Appearance, the content sections with move up/down and
+  a Show switch each, Address and publishing, and up to four suggestions.
+  Blocking suggestions (missing name, invalid link) disable publishing.
+- **Lists:** every list uses one pattern: compact rows, one open at a time,
+  move up/down, remove with Undo.
+- **Track record:** signed-in creators see their accepted Missa outcomes and
+  can add each as Confirmed. Its wording then comes from the decision and is
+  locked.
+- **States:** loading (editor inert), load failed with retry, pending,
+  saving, saved, failed, revision conflict, uploading, publishing,
+  published with unpublished changes.
+
+### Data
+
+`portfolioSchema` is v2: `lens`, `hero`, `statement`, `location`, `now`,
+`openTo`, `works` (with `kind`, `year`, `summary`, `caption`, `featured`),
+`shelf`, `record`, `events`, `press`, `contact` and `modules` (order and
+visibility). v1 drafts and snapshots (`book`, `credit`, `sections`) migrate on
+read, so no database migration is needed.
+
+### Validation
+
+- Unit tests: schema migration, provenance, projection, suggestions,
+  availability and calendar helpers. PGlite test for `acceptedOutcomes`.
+- Playwright: `creator-portfolio-journey.spec.ts` (sample profile across
+  lenses, themes and heroes at 1280/640/390/320 px with axe; studio flow at
+  390 px; desktop live preview; link preview recovery; media removal;
+  anonymous API rejection) and `creator-portfolio-account-ui.spec.ts` (real
+  `ProfileStudio` with mocked transport: confirmed outcome, publish, rename,
+  unpublish, conflict).
+- Not covered without a database: the live `/@handle`, CV and share image
+  routes. Their components are covered through the design-system routes.
+
+### Connections: messages, Follow and Invite to apply (October 2026)
+
+- **Get in touch** opens a message form (name, email, topic, message). It
+  goes to the creator's profile inbox and a notification email; the
+  creator's address is never shown. Per-sender limits (three a day to one
+  creator, ten in all) use a keyed hash of the sender's address, and a
+  hidden honeypot field is accepted and silently dropped.
+- **Follow** is for signed-in accounts; signed-out visitors go to login and
+  come back. Creators see followers, and the creators they follow, in the
+  inbox.
+- **Invite to apply** appears only for organization owners and managers. It
+  lists the organization's own open, published calls; the server re-checks
+  that on every invitation. One invitation per creator and call. The
+  organization isn't told when a creator declines.
+- **Profile inbox** (`/profile/inbox`, `ProfileInbox`): Messages,
+  Invitations, Followers and Following tabs, with read, archive, reply by
+  email, Not for me and Unfollow.
+- Creators can switch messages and invitations off in About and contact.
+  With messages off, a public email (if any) is the Get in touch button.
+- Storage: migration `0089_creator_profile_connections.sql`
+  (`creator_profile_follows`, `creator_inquiries`, `creator_invitations`)
+  and `PostgresCreatorConnectionsRepository`.
+
+### Confirmed on every read
+
+Published snapshots keep each Confirmed entry's decision id in storage
+only. The profile, CV, share image and public creators API re-check it
+against the owner's current acceptances on every read and strip it before
+output, so a withdrawn decision stops showing as Confirmed without a
+republish.
+
+### Live validation
+
+`e2e/creator-profile-relational.spec.ts` runs in the relational suite. It
+signs up real accounts, claims a handle, publishes, and covers `/@handle`,
+its CV and share image, messages, Follow, Invite to apply, the inbox and
+Confirmed re-verification against Postgres. Running it found and fixed a
+self-redirect on `/@handle` (Next passes the segment as `%40handle`) and a
+500 when claiming a handle in relational mode.
+
+### Known gaps
+
+Followers aren't notified when a creator publishes. Replies go through the
+creator's own email client, not Missa. The Paper theme was retired; stored
+Paper profiles render as Sage.

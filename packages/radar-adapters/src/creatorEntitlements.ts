@@ -9,10 +9,72 @@ export type CreatorPlan = "free" | "plus" | "pro";
  * Text (SMS) reminders cost Missa per message, so they come with Plus.
  */
 export const CREATOR_PLAN_LIMITS = {
-  free: { activeTrackedLimit: 10, smsReminders: false },
-  plus: { activeTrackedLimit: null, smsReminders: true },
-  pro: { activeTrackedLimit: null, smsReminders: true },
-} as const satisfies Record<CreatorPlan, { activeTrackedLimit: number | null; smsReminders: boolean }>;
+  free: {
+    activeTrackedLimit: 10,
+    smsReminders: false,
+    startByPlanning: false,
+    deadlineDayAlarm: false,
+    feeTierAlerts: false,
+    openingAlerts: false,
+    capacityPlanning: false,
+    seasonPlan: false,
+  },
+  plus: {
+    activeTrackedLimit: null,
+    smsReminders: true,
+    startByPlanning: true,
+    deadlineDayAlarm: true,
+    feeTierAlerts: true,
+    openingAlerts: true,
+    capacityPlanning: false,
+    seasonPlan: false,
+  },
+  pro: {
+    activeTrackedLimit: null,
+    smsReminders: true,
+    startByPlanning: true,
+    deadlineDayAlarm: true,
+    feeTierAlerts: true,
+    openingAlerts: true,
+    capacityPlanning: true,
+    seasonPlan: true,
+  },
+} as const satisfies Record<CreatorPlan, CreatorPlanLimits>;
+
+/**
+ * Deadline accuracy is never limited by plan: confirmed, predicted and changed
+ * labels, local close times, stages and tiers, calendar feed alarms, default
+ * reminders, the response clock and carry-to-next-cycle are on every plan.
+ * Plus adds planning and the extra alerts; Pro adds capacity and the season plan.
+ */
+export type CreatorPlanLimits = {
+  activeTrackedLimit: number | null;
+  smsReminders: boolean;
+  /** Start-by dates and lead-time sub-deadlines that move with the deadline. */
+  startByPlanning: boolean;
+  /** A morning-of alarm for calls not yet submitted. */
+  deadlineDayAlarm: boolean;
+  /** Reminders before an early-bird or other cheaper tier closes. */
+  feeTierAlerts: boolean;
+  /** Opens-soon and it-opened alerts for followed and recurring calls. */
+  openingAlerts: boolean;
+  /** Planned hours against available time across tracked calls. */
+  capacityPlanning: boolean;
+  /** The full season view; every plan sees this week's actions. */
+  seasonPlan: boolean;
+};
+
+export type CreatorFeature = Exclude<keyof CreatorPlanLimits, "activeTrackedLimit">;
+
+/** Whether a plan includes a feature. Product code asks this rather than checking plan names. */
+export function planIncludes(plan: CreatorPlan, feature: CreatorFeature): boolean {
+  return CREATOR_PLAN_LIMITS[plan][feature];
+}
+
+/** Plans that include a feature, for SQL that filters accounts by plan. */
+export function plansIncluding(feature: CreatorFeature): CreatorPlan[] {
+  return (Object.keys(CREATOR_PLAN_LIMITS) as CreatorPlan[]).filter((plan) => CREATOR_PLAN_LIMITS[plan][feature]);
+}
 
 export const FREE_ACTIVE_TRACKED_LIMIT = CREATOR_PLAN_LIMITS.free.activeTrackedLimit;
 
@@ -58,6 +120,12 @@ export type CreatorEntitlements = Readonly<{
   activeTrackedLimit: number | null;
   activeTracked: number;
 }>;
+
+/** The features the account's plan includes, keyed by feature. */
+export function creatorFeatures(plan: CreatorPlan): Record<CreatorFeature, boolean> {
+  const { activeTrackedLimit: _limit, ...features } = CREATOR_PLAN_LIMITS[plan];
+  return features;
+}
 
 type Queryable = Pick<PoolClient, "query">;
 

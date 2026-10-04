@@ -56,7 +56,7 @@ const ALIASES: Record<string, string> = {
 const migrationSql = readFileSync(
   join(
     dirname(fileURLToPath(import.meta.url)),
-    "../../../db/migrations/0089_honest_defaults.sql",
+    "../../../db/migrations/0091_honest_defaults.sql",
   ),
   "utf8",
 );
@@ -206,7 +206,7 @@ test("payment spellings map only when their meaning is plain", () => {
   assert.equal(normalizePaymentTypeText(null), null);
 });
 
-test("migration 0089 declares the same payment types and spellings", () => {
+test("migration 0091 declares the same payment types and spellings", () => {
   const check = /"payment_type" IN \(([^)]*)\)\) NOT VALID/.exec(migrationSql);
   assert.ok(check, "payment_type check present");
   const declared = [...check[1]!.matchAll(/'([^']+)'/g)].map((m) => m[1]);
@@ -223,7 +223,7 @@ test("migration 0089 declares the same payment types and spellings", () => {
   }
 });
 
-test("migration 0089 checks opportunity types against the contract enum", () => {
+test("migration 0091 checks opportunity types against the contract enum", () => {
   const check =
     /ADD CONSTRAINT "opportunities_type_check"\s+CHECK \("type" IN \(([^)]*)\)\)/.exec(
       migrationSql,

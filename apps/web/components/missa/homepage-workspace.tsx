@@ -19,7 +19,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { GoalSubmissionProgress } from "./goal-submission-progress";
-import { CreatorPortfolioStudio } from "@/components/creator-portfolio-studio";
+import { PublicCreatorProfile } from "@/components/creator-profile/public-profile";
+import { sampleCreatorPortfolio } from "@/lib/creator-profile-sample";
 import {
   Table,
   TableBody,
@@ -34,7 +35,7 @@ type Opportunity = ReturnType<
   typeof opportunityBrowseResponseSchema.parse
 >["items"][number];
 type Feature = "portfolio" | "applications" | "notifications" | "goals";
-type Theme = "white" | "sage" | "paper" | "mineral" | "night";
+type Theme = "white" | "sage" | "mineral" | "night";
 const FEATURES = [
   {
     id: "portfolio",
@@ -82,10 +83,11 @@ const FEATURES = [
     note: "This preview does not change your account.",
   },
 ] as const;
+const SAMPLE = sampleCreatorPortfolio();
+
 const THEMES: { id: Theme; label: string }[] = [
   { id: "white", label: "White" },
   { id: "sage", label: "Sage" },
-  { id: "paper", label: "Paper" },
   { id: "mineral", label: "Mineral" },
   { id: "night", label: "Night" },
 ];
@@ -313,11 +315,13 @@ export function HomepageWorkspace({
                           ))}
                         </div>
                       </div>
-                      <CreatorPortfolioStudio
+                      <PublicCreatorProfile
                         key={theme}
-                        embedded
-                        sampleTheme={theme}
-                        sampleWorkLimit={1}
+                        portfolio={SAMPLE}
+                        mode="embedded"
+                        sample
+                        theme={theme}
+                        workLimit={2}
                       />
                     </div>
                   )}
