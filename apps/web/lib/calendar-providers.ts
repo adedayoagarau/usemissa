@@ -279,11 +279,7 @@ export async function deliverCalendarSync(
           description: event.description,
           location: event.location,
           start: { date: event.startAt.slice(0, 10) },
-          end: {
-            date: new Date(new Date(event.endAt).getTime() + 86400000)
-              .toISOString()
-              .slice(0, 10),
-          },
+          end: { date: googleAllDayEnd(event.startAt, event.endAt) },
           extendedProperties: { private: { missaEventId: event.id } },
         }
       : {
@@ -323,4 +319,16 @@ export async function deliverCalendarSync(
       body: JSON.stringify(body),
     });
   return String(result.id || lease.providerEventId || "");
+}
+
+/**
+ * Google's all-day end date is exclusive, and Missa stores all-day events the
+ * same way (end at the following midnight). Use the last covered day plus one,
+ * never less than one day after the start.
+ */
+export function googleAllDayEnd(startAt: string, endAt: string): string {
+  const day = 86_400_000;
+  const startDay = Date.parse(`${startAt.slice(0, 10)}T00:00:00Z`);
+  const lastCovered = Date.parse(`${new Date(Date.parse(endAt) - 1).toISOString().slice(0, 10)}T00:00:00Z`);
+  return new Date(Math.max(startDay, lastCovered) + day).toISOString().slice(0, 10);
 }
