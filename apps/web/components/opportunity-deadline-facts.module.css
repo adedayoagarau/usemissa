@@ -1,0 +1,179 @@
+/* Deadline facts on an Opportunity page. Tokens only; nothing animates.
+   Dates use Fragment Mono through the `font-mono` utility in markup. */
+
+.summary {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  text-align: right;
+}
+
+.summaryLine {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.meta {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.section {
+  display: grid;
+  gap: 20px;
+  padding: 0 0 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.group {
+  display: grid;
+  gap: 10px;
+}
+
+.group h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.forecast {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--foreground);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.forecast svg {
+  width: 16px;
+  height: 16px;
+  color: var(--muted-foreground);
+}
+
+.tierList,
+.timeline {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tierRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.4fr);
+  align-items: start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.tierRow:last-child {
+  border-bottom: none;
+}
+
+.tierLabel {
+  display: grid;
+  gap: 2px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.currentText {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tierDate {
+  display: grid;
+  gap: 2px;
+}
+
+.tierBadges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 0 10px 16px;
+  border-left: 2px solid var(--border);
+  font-size: 14px;
+}
+
+.stage[data-past="true"] .stageLabel {
+  color: var(--muted-foreground);
+}
+
+.stageDate {
+  color: var(--foreground);
+}
+
+.stageBody {
+  display: grid;
+  gap: 2px;
+}
+
+.stageLabel {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.correction {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  min-height: 44px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.correction:hover {
+  color: var(--foreground);
+}
+
+.correction:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.correction svg {
+  width: 14px;
+  height: 14px;
+}
+
+@media (max-width: 640px) {
+  .tierRow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .stage {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}

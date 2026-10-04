@@ -350,7 +350,7 @@ def route_answer(definition: QuestionDefinition, answer: Mapping[str, Any] | Non
     return unavailable_outcome(definition, "Question policy does not match the question type")
 
 
-# ── Ledger (matches packages/decisions/src/ledger.ts and migration 0088) ─
+# ── Ledger (matches packages/decisions/src/ledger.ts and the data_decisions table) ─
 
 
 @dataclass(slots=True)

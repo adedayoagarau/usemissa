@@ -1,3 +1,4 @@
+import { createPostgresDecisionLedger, operationsDeciderFromEnv } from "@missa/decisions";
 import { GenericHtmlAdapter } from "./adapters/html.js";
 import { DeepSeekHtmlAdapter } from "./adapters/deepseek.js";
 import { FeedAdapter } from "./adapters/feed.js";
@@ -20,6 +21,7 @@ import {
 } from "./postgresRunner.js";
 import { AdapterRegistry } from "./registry.js";
 import { opportunityIdentityShadowFromEnv } from "./identity.js";
+import { createJevModelExtractionGate } from "./extractGate.js";
 import { assertIngestionV2DatabaseRole } from "./safety.js";
 import { evaluateCandidateReplayGate } from "./candidateGate.js";
 import { backfillV2SourceTaxonomy, closeExpiredPublishedV2Opportunities, closeExpiredReviewableV2Opportunities, handoffApprovedCandidate } from "./canonicalWriter.js";
@@ -31,10 +33,13 @@ const pool = createIngestionV2Pool();
 await assertIngestionV2SchemaReady(pool);
 
 const useDeepSeek = Boolean(process.env.DEEPSEEK_API_KEY);
+// Without JEV_API_KEY there is no gate and every eligible page calls DeepSeek.
+const decider = operationsDeciderFromEnv({ ledger: createPostgresDecisionLedger(pool) });
+const extractionGate = decider ? createJevModelExtractionGate(decider) : undefined;
 const adapterId = useDeepSeek ? "deepseek-html-v2" : "generic-html-v2";
 const registry = new AdapterRegistry()
   .register(new GenericHtmlAdapter())
-  .register(new DeepSeekHtmlAdapter())
+  .register(new DeepSeekHtmlAdapter({ extractionGate }))
   .register(new FeedAdapter())
   .register(new JsonApiAdapter())
   .register(new ChillSubsNextAdapter());
@@ -129,6 +134,10 @@ async function runDueBatch(): Promise<void> {
       console.log(
         `[missa-ingestion-v2] postgres batch claimed=${result.claimed} completed=${result.completed} unchanged=${result.unchanged} failed=${result.failed} skipped=${result.skipped}`,
       );
+    if (extractionGate) {
+      for (const line of extractionGate.usage.summary()) console.log(line);
+      extractionGate.usage.reset();
+    }
     try {
       let taxonomyRepairs = 0;
       for (const source of sources) taxonomyRepairs += await backfillV2SourceTaxonomy(pool, source);
