@@ -53,7 +53,6 @@ export async function deliverPasswordResetEmail(
     text,
     templateKey: 'password-reset',
     templateVersion: 'password-reset.v1',
-    metadata: { email: props.email },
     connectionString,
     retryFailed: true,
   });

@@ -387,14 +387,27 @@ function canonicalJson(value: JsonRecord | undefined): string {
   return JSON.stringify(Object.fromEntries(Object.entries(value ?? {}).sort(([left], [right]) => left.localeCompare(right))));
 }
 
-const MESSAGE_METADATA_KEYS = new Set(["workId", "decisionId", "alertCount", "signupId"]);
-function messageMetadata(value: JsonRecord | undefined): JsonRecord {
+// Message metadata is limited to identifiers and counts, so the ledger never
+// holds an address, a name or free text. Every key a sender passes must be
+// listed here, or the send fails before it is recorded.
+const MESSAGE_METADATA_IDENTIFIER_KEYS = new Set([
+  "workId", "decisionId", "signupId", "submissionId", "accountId", "id",
+  "inboxAlertId", "opportunityId", "goalId", "isoWeek",
+]);
+const MESSAGE_METADATA_COUNT_KEYS = new Set(["alertCount", "opportunityCount", "newForYou", "closingSoon", "yourDeadlines"]);
+export function platformMessageEffectMetadata(value: JsonRecord | undefined): JsonRecord {
   const result: JsonRecord = {};
   for (const [key, item] of Object.entries(value ?? {})) {
-    if (!MESSAGE_METADATA_KEYS.has(key)) throw new Error(`Unsupported message metadata key: ${key}`);
-    if (typeof item === "string") { assertIdentifier(item, `message metadata ${key}`); result[key] = item; }
-    else if (key === "alertCount" && Number.isInteger(item) && Number(item) >= 0 && Number(item) <= 10_000) result[key] = item;
-    else throw new Error(`Invalid message metadata ${key}`);
+    if (MESSAGE_METADATA_IDENTIFIER_KEYS.has(key) && typeof item === "string") {
+      assertIdentifier(item, `message metadata ${key}`);
+      result[key] = item;
+    } else if (MESSAGE_METADATA_COUNT_KEYS.has(key) && Number.isInteger(item) && Number(item) >= 0 && Number(item) <= 10_000) {
+      result[key] = item;
+    } else if (MESSAGE_METADATA_IDENTIFIER_KEYS.has(key) || MESSAGE_METADATA_COUNT_KEYS.has(key)) {
+      throw new Error(`Invalid message metadata ${key}`);
+    } else {
+      throw new Error(`Unsupported message metadata key: ${key}`);
+    }
   }
   return result;
 }
@@ -681,7 +694,7 @@ export async function beginPlatformMessageEffect(
   if (input.organizationId) assertIdentifier(input.organizationId, "organization id");
   if (input.actorAccountId) assertIdentifier(input.actorAccountId, "actor account id");
   const tenantKey = input.organizationId ? `org:${input.organizationId}` : `account:${input.recipientAccountId}`;
-  const metadata = messageMetadata(input.metadata);
+  const metadata = platformMessageEffectMetadata(input.metadata);
   const pool = new Pool({ connectionString, max: 1, connectionTimeoutMillis: 3_000 });
   try {
     const availability = await tableAvailability(pool, ["platform_message_effects", "platform_message_attempts", "audit_events", "outbox_events"]);
