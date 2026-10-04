@@ -150,13 +150,17 @@ describe("ManuscriptMatchEngine evidence", () => {
     assert.ok(card.matchScore > 50);
   });
 
-  it("marks down a recorded conflict with the brief", () => {
+  it("rules out a magazine whose recorded rules conflict with the brief", () => {
     const [card] = engine.scoreRows(
       [{ profile_id: "strict", name: "Strict Review", rk_simultaneous: "forbidden", rk_charges_fee: true }],
       { ...input, feeTolerance: "free_only" },
     );
     assert.equal(card.specs.allowsSimultaneous, false);
-    assert.ok(card.matchScore < 50);
+    assert.deepEqual(
+      card.decision.exclusions.map((exclusion) => exclusion.kind),
+      ["simultaneous", "fee"],
+    );
+    assert.ok(card.decision.scores.cost.score < 50);
   });
 
   it("credits prize records and names writers from the brief it has published", () => {

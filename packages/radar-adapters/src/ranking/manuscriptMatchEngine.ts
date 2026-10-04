@@ -1,8 +1,18 @@
 import { Pool } from "pg";
+import { recognitionForPublication } from "../literary/index.js";
 import {
-  normalizeWriterName,
-  recognitionForPublication,
-} from "../literary/index.js";
+  DECISION_MODEL_VERSION,
+  TIER_THRESHOLDS,
+  buildSubmissionPlan,
+  compareCandidates,
+  decideMagazine,
+  formFromGenreLabel,
+  type DecisionBrief,
+  type Exclusion,
+  type MagazineDecision,
+  type MagazineFacts,
+  type SubmissionPlan,
+} from "./submissionDecision.js";
 
 export interface ManuscriptMatchInput {
   genre: "fiction" | "poetry" | "nonfiction" | "flash" | "hybrid";
@@ -21,6 +31,13 @@ export interface ManuscriptMatchInput {
    * matching magazines in `searchResults`, scored against the same brief.
    */
   query?: string;
+  /** The writer's country, for prizes with nationality rules. */
+  writerCountry?: string;
+  /**
+   * The date reading periods are checked against (YYYY-MM-DD). Defaults to
+   * today in UTC; pass it to reproduce a plan exactly.
+   */
+  asOf?: string;
 }
 
 export type MatchCategory =
@@ -91,6 +108,23 @@ export interface ManuscriptMatchCard {
     /** Writers from the brief this magazine has published prize-recognised work by. */
     publishedComps: string[];
   };
+  /** Rules, the four scores, tier and prize routes from the decision model. */
+  decision: MagazineDecision;
+}
+
+export interface ExcludedMagazine {
+  profileId: string;
+  name: string;
+  slug: string;
+  exclusions: Exclusion[];
+}
+
+/** Which model produced a response, so a plan can be reproduced. */
+export interface DecisionModelInfo {
+  version: string;
+  asOf: string;
+  weights: "standard" | "debut";
+  tierThresholds: typeof TIER_THRESHOLDS;
 }
 
 /**
@@ -110,9 +144,19 @@ export interface ManuscriptMatchResponse {
   simultaneousPackets: ManuscriptMatchCard[];
   /** Magazines with a recorded prize or anthology record, best fit first. */
   prizeTrack: ManuscriptMatchCard[];
+  /** The submission plan for this brief. */
+  plan?: SubmissionPlan;
+  /** Full cards for every magazine in the plan, in plan order. */
+  planCards?: ManuscriptMatchCard[];
+  /** Magazines whose recorded rules rule the piece out, with the reasons (at most 150). */
+  excluded?: ExcludedMagazine[];
+  excludedCount?: number;
+  model?: DecisionModelInfo;
   /** Present only for a name search: every matching magazine, best fit first. */
   searchResults?: ManuscriptMatchCard[];
 }
+
+const EXCLUDED_LIST_LIMIT = 150;
 
 /** Searches shorter than this return no rows rather than the whole index. */
 export const MANUSCRIPT_SEARCH_MIN_LENGTH = 2;
@@ -185,12 +229,6 @@ export function rankingGenre(
   return "fiction";
 }
 
-const BAND_LABELS: Record<string, string> = {
-  under_3_months: "under 3 months",
-  "3_to_6_months": "3 to 6 months",
-  over_6_months: "over 6 months",
-};
-
 type AnthologyPiece = {
   anthology: string;
   award_year: number;
@@ -250,6 +288,10 @@ export class ManuscriptMatchEngine {
           mr.response_time_band as rk_response_band,
           mr.median_response_days as rk_median_days,
           mr.debut_friendly as rk_debut_friendly,
+          mr.blind_reading as rk_blind_reading,
+          mr.contributor_pay_cents as rk_contributor_pay_cents,
+          obs.reading_period as obs_reading_period,
+          obs.genres_json as obs_genres,
           aw.anthology_count,
           aw.anthology_authors,
           aw.anthology_recent,
@@ -314,6 +356,13 @@ export class ManuscriptMatchEngine {
           ORDER BY p.edition_year DESC, p.source_rank
           LIMIT 1
         ) pc ON TRUE
+        LEFT JOIN LATERAL (
+          SELECT o.reading_period, o.genres_json
+          FROM gary_profile_observations o
+          WHERE o.profile_id = gp.id
+          ORDER BY o.observed_at DESC NULLS LAST
+          LIMIT 1
+        ) obs ON TRUE
         LEFT JOIN publication_editorial_specs pes ON pes.profile_id = gp.id
         LEFT JOIN publication_compensation_details pcd ON pcd.profile_id = gp.id
         LEFT JOIN publication_telemetry_analytics pta ON pta.profile_id = gp.id
@@ -321,7 +370,7 @@ export class ManuscriptMatchEngine {
         WHERE (gp.profile_kind IN ('literary_magazine', 'small_press', 'organization', 'visual_arts_organization')
            OR mr.profile_id IS NOT NULL)
           AND ($1::text IS NULL OR gp.name ILIKE $1)
-        ORDER BY mr.total_score DESC NULLS LAST
+        ORDER BY mr.total_score DESC NULLS LAST, gp.id
         LIMIT $2;
       `;
 
@@ -357,14 +406,18 @@ export class ManuscriptMatchEngine {
     _limit: number,
   ): ManuscriptMatchResponse {
     const scoredCards = this.scoreRows(rows, input);
+    // Lanes hold only magazines whose recorded rules allow the piece now.
+    const eligible = scoredCards.filter(
+      (card) => card.decision.exclusions.length === 0,
+    );
 
-    const dreamReach = scoredCards
+    const dreamReach = eligible
       .filter((c) => c.prestigeTier === "tier_1")
       .slice(0, 10);
-    const debutChampions = scoredCards
+    const debutChampions = eligible
       .filter((c) => c.aesthetic.isDebutChampion && c.prestigeTier !== "tier_1")
       .slice(0, 10);
-    const rapidPro = scoredCards
+    const rapidPro = eligible
       .filter(
         (c) =>
           c.compensation.isProRate ||
@@ -374,10 +427,10 @@ export class ManuscriptMatchEngine {
             c.compensation.paysContributors === true),
       )
       .slice(0, 10);
-    const simultaneousPackets = scoredCards
+    const simultaneousPackets = eligible
       .filter((c) => c.specs.allowsSimultaneous !== false)
       .slice(0, 15);
-    const prizeTrack = scoredCards
+    const prizeTrack = eligible
       .filter(
         (c) =>
           c.recognition.pushcart !== null ||
@@ -386,47 +439,77 @@ export class ManuscriptMatchEngine {
       )
       .slice(0, 15);
 
+    const plan = buildSubmissionPlan(
+      scoredCards.map((card) => ({
+        profileId: card.profileId,
+        name: card.name,
+        slug: card.slug,
+        decision: card.decision,
+        allowsSimultaneous: card.specs.allowsSimultaneous,
+        medianResponseDays: card.telemetry.medianResponseDays,
+        responseBand: card.telemetry.responseBand,
+      })),
+    );
+    const byId = new Map(scoredCards.map((card) => [card.profileId, card]));
+    const planCards = [
+      ...plan.rounds.flatMap((round) => round.picks),
+      ...plan.opensLater,
+    ]
+      .map((pick) => byId.get(pick.profileId))
+      .filter((card): card is ManuscriptMatchCard => card !== undefined);
+    // Magazines opening later are listed in the plan, not again as ruled out.
+    const openingLater = new Set(plan.opensLater.map((pick) => pick.profileId));
+    const excluded: ExcludedMagazine[] = scoredCards
+      .filter(
+        (card) =>
+          card.decision.exclusions.length > 0 &&
+          !openingLater.has(card.profileId),
+      )
+      .map((card) => ({
+        profileId: card.profileId,
+        name: card.name,
+        slug: card.slug,
+        exclusions: card.decision.exclusions,
+      }))
+      .sort((a, b) =>
+        a.name.toLowerCase() < b.name.toLowerCase()
+          ? -1
+          : a.name.toLowerCase() > b.name.toLowerCase()
+            ? 1
+            : a.profileId < b.profileId
+              ? -1
+              : 1,
+      );
+
     return {
       status: "available",
       totalAnalyzed: rows.length,
-      matchedCount: scoredCards.length,
+      matchedCount: eligible.length,
       dreamReach,
       debutChampions,
       rapidPro,
       simultaneousPackets,
       prizeTrack,
+      plan,
+      planCards,
+      excluded: excluded.slice(0, EXCLUDED_LIST_LIMIT),
+      excludedCount: excluded.length,
+      model: decisionModelInfo(input),
     };
   }
 
   /**
-   * Score every row against the brief, best fit first.
-   *
-   * The score starts at 50 and moves only on recorded facts: guidelines,
-   * fees, pay, reply time, debut record, prize record and published writers.
-   * A missing fact neither adds nor subtracts; every point added has a
-   * matching reason the writer can read.
+   * Score every row against the brief with the decision model, in the
+   * model's fixed order (see compareCandidates).
    */
   scoreRows(rows: any[], input: ManuscriptMatchInput): ManuscriptMatchCard[] {
-    const scoredCards: ManuscriptMatchCard[] = [];
     const genre = rankingGenre(input.genre);
+    const brief = decisionBrief(input);
+    const asOf = resolveAsOf(input.asOf);
 
-    const normAestheticTags = (input.aestheticTags ?? []).map((t) =>
-      t.toLowerCase().trim(),
-    );
-    const compKeys = new Map(
-      (input.compAuthors ?? []).map((name) => [
-        normalizeWriterName(name),
-        name,
-      ]),
-    );
-
-    for (const row of rows) {
-      let score = 50;
-      const reasons: string[] = [];
-
-      // Guidelines
-      const maxWords = row.max_word_count ? Number(row.max_word_count) : null;
-      const minWords = row.min_word_count ? Number(row.min_word_count) : null;
+    const cards = rows.map((row): ManuscriptMatchCard => {
+      const maxWords = nullableNumber(row.max_word_count);
+      const minWords = nullableNumber(row.min_word_count);
       const allowsSimultaneous: boolean | null =
         row.allows_simultaneous !== null &&
         row.allows_simultaneous !== undefined
@@ -439,76 +522,14 @@ export class ManuscriptMatchEngine {
               : null;
       const requiresBlind = row.requires_blind_review ?? false;
 
-      if (input.wordCount && maxWords) {
-        if (input.wordCount <= maxWords) {
-          score += 10;
-          reasons.push(
-            `Within word limit (${input.wordCount.toLocaleString()} / max ${maxWords.toLocaleString()} words)`,
-          );
-        } else {
-          score -= 30;
-        }
-      }
-      if (input.wordCount && minWords && input.wordCount < minWords) {
-        score -= 20;
-      }
-
-      if (input.allowSimultaneous) {
-        if (allowsSimultaneous === true) {
-          score += 5;
-          reasons.push("Accepts simultaneous submissions");
-        } else if (allowsSimultaneous === false) {
-          score -= 20;
-        }
-      }
-
-      // Aesthetic profile (recorded comps and styles)
       const writingStyles: string[] = row.writing_styles ?? [];
       const authorComps: string[] = row.author_comps ?? [];
       const poetryForms: string[] = row.poetry_forms ?? [];
-
-      let compOverlapCount = 0;
-      for (const comp of compKeys.keys()) {
-        if (authorComps.some((c) => normalizeWriterName(c) === comp)) {
-          compOverlapCount++;
-        }
-      }
-      let styleOverlapCount = 0;
-      for (const style of normAestheticTags) {
-        if (
-          writingStyles.some((s) => s.toLowerCase().includes(style)) ||
-          poetryForms.some((f) => f.toLowerCase().includes(style))
-        ) {
-          styleOverlapCount++;
-        }
-      }
-      if (compOverlapCount > 0) {
-        score += Math.min(12, compOverlapCount * 6);
-        reasons.push("Lists a comparable writer you named");
-      }
-      if (styleOverlapCount > 0) {
-        score += Math.min(10, styleOverlapCount * 4);
-        reasons.push("Aesthetic style alignment");
-      }
-
-      // Debut friendliness
       const slushRatio = nullableNumber(row.unsolicited_slush_ratio_percent);
       const debutScore = nullableNumber(row.debut_author_friendly_score);
       const isDebutChampion =
         row.is_debut_champion === true || row.rk_debut_friendly === true;
-      if (input.isDebutAuthor) {
-        if (isDebutChampion) {
-          score += 10;
-          reasons.push("Publishes debut writers");
-        } else if (slushRatio !== null && slushRatio >= 70) {
-          score += 10;
-          reasons.push(
-            `${slushRatio}% of published work came from open submissions`,
-          );
-        }
-      }
 
-      // Fees
       const submissionFee =
         nullableNumber(row.submission_fee_cents) ??
         nullableNumber(row.rk_fee_cents) ??
@@ -520,19 +541,7 @@ export class ManuscriptMatchEngine {
             ? true
             : null;
       const hasFeeWaivers = row.has_fee_waivers === true;
-      if (chargesFee === false) {
-        score += input.feeTolerance === "free_only" ? 6 : 2;
-        reasons.push("Free to submit");
-      } else if (chargesFee === true && input.feeTolerance === "free_only") {
-        if (hasFeeWaivers) {
-          score += 2;
-          reasons.push("Fee waiver available");
-        } else {
-          score -= 15;
-        }
-      }
 
-      // Pay
       const payKind: string | null =
         row.pay_rate_kind || row.rk_pay_kind || null;
       const paysContributors: boolean | null =
@@ -543,46 +552,13 @@ export class ManuscriptMatchEngine {
             ? false
             : null);
       const isProRate = row.is_pro_rate === true;
-      if (input.minPayRate === "pro_rates_only") {
-        if (isProRate) {
-          score += 10;
-          reasons.push("Pays professional rates");
-        } else if (paysContributors === false) {
-          score -= 15;
-        }
-      } else if (input.minPayRate === "any_paying") {
-        if (paysContributors === true) {
-          score += 8;
-          reasons.push("Pays contributors");
-        } else if (paysContributors === false) {
-          score -= 15;
-        }
-      } else if (paysContributors === true) {
-        score += 4;
-        reasons.push("Pays contributors");
-      }
 
-      // Reply time
       const medianResponseDays =
         nullableNumber(row.median_response_days) ??
         nullableNumber(row.rk_median_days);
       const responseBand: string | null =
         medianResponseDays === null ? (row.rk_response_band ?? null) : null;
-      if (medianResponseDays !== null) {
-        if (medianResponseDays <= 60) {
-          score += 4;
-          reasons.push(`Replies in about ${medianResponseDays} days`);
-        } else if (medianResponseDays > 180) {
-          score -= 4;
-        }
-      } else if (responseBand === "under_3_months") {
-        score += 3;
-        reasons.push(`Usually replies in ${BAND_LABELS[responseBand]}`);
-      } else if (responseBand === "over_6_months") {
-        score -= 3;
-      }
 
-      // Prize record
       const pushcartRank = nullableNumber(row.pushcart_rank);
       const pushcart =
         pushcartRank !== null
@@ -592,49 +568,44 @@ export class ManuscriptMatchEngine {
               edition: Number(row.pushcart_edition),
             }
           : null;
-      if (pushcart) {
-        score += pushcart.rank <= 25 ? 10 : pushcart.rank <= 75 ? 7 : 4;
-        reasons.push(
-          `Ranked #${pushcart.rank} for Pushcart Prizes in ${pushcart.genre} (${pushcart.edition})`,
-        );
-      }
-
       const anthologyCount = nullableNumber(row.anthology_count) ?? 0;
       const anthologyRecent = parseAnthologyRecent(row.anthology_recent);
-      if (anthologyCount > 0) {
-        // Microfiction anthologies matter most to flash, then other fiction.
-        const weight =
-          input.genre === "flash" ? 2 : genre === "fiction" ? 1 : 0.5;
-        score += Math.min(10, anthologyCount * weight);
-        reasons.push(
-          `${anthologyCount} ${anthologyCount === 1 ? "piece" : "pieces"} chosen for Best Microfiction or Best Small Fictions`,
-        );
-      }
-
-      const prizePieces = recognitionForPublication(String(row.name ?? ""));
-      if (prizePieces.length > 0) {
-        const weight = genre === "fiction" ? 2 : 1;
-        score += Math.min(12, prizePieces.length * weight);
-        reasons.push(
-          `${prizePieces.length} ${prizePieces.length === 1 ? "story" : "stories"} chosen for the O. Henry Prize, Best American Short Stories or a major prize`,
-        );
-      }
-
-      // Writers from the brief this magazine has published recognised work by
-      const publishedComps = new Set<string>();
       const anthologyAuthors: string[] = row.anthology_authors ?? [];
-      for (const author of anthologyAuthors) {
-        const named = compKeys.get(normalizeWriterName(author));
-        if (named) publishedComps.add(named);
-      }
-      for (const piece of prizePieces) {
-        const named = compKeys.get(normalizeWriterName(piece.writer));
-        if (named) publishedComps.add(named);
-      }
-      if (publishedComps.size > 0) {
-        score += Math.min(20, publishedComps.size * 12);
-        reasons.unshift(`Published ${[...publishedComps].join(", ")}`);
-      }
+      const prizePieces = recognitionForPublication(String(row.name ?? ""));
+      const prestigeTier = indexTierKey(row.prestige_tier);
+
+      const facts: MagazineFacts = {
+        prestigeTier,
+        acceptedForms: acceptedForms(row.obs_genres),
+        readingPeriod:
+          typeof row.obs_reading_period === "string"
+            ? row.obs_reading_period
+            : null,
+        maxWords,
+        minWords,
+        allowsSimultaneous,
+        blindReading: nullableBoolean(row.rk_blind_reading),
+        chargesFee,
+        submissionFeeCents: submissionFee,
+        hasFeeWaivers,
+        paysContributors,
+        isProRate,
+        payKind,
+        contributorPayCents: nullableNumber(row.rk_contributor_pay_cents),
+        medianResponseDays,
+        responseBand,
+        acceptanceRatePercent: nullableNumber(row.acceptance_rate_percent),
+        slushRatioPercent: slushRatio,
+        isDebutFriendly: isDebutChampion,
+        writingStyles,
+        poetryForms,
+        authorComps,
+        pushcart,
+        anthologyCount,
+        anthologyAuthors,
+        prizePieces,
+      };
+      const decision = decideMagazine(facts, brief, asOf);
 
       const recent: ManuscriptRecognitionPiece[] = [
         ...prizePieces.map((piece) => ({
@@ -652,14 +623,15 @@ export class ManuscriptMatchEngine {
             work: piece.piece_title,
           })),
       ]
-        .sort((a, b) => b.year - a.year)
+        .sort(
+          (a, b) =>
+            b.year - a.year ||
+            (a.writer < b.writer ? -1 : a.writer > b.writer ? 1 : 0),
+        )
         .slice(0, 4);
 
-      const normalizedScore = Math.max(5, Math.min(99, Math.round(score)));
-
-      // Determine fit category
       let fitCategory: MatchCategory = "packet_builder";
-      if (indexTierKey(row.prestige_tier) === "tier_1") {
+      if (prestigeTier === "tier_1") {
         fitCategory = "dream_reach";
       } else if (isDebutChampion && slushRatio !== null && slushRatio >= 75) {
         fitCategory = "debut_champion";
@@ -671,15 +643,15 @@ export class ManuscriptMatchEngine {
         fitCategory = "rapid_pro";
       }
 
-      scoredCards.push({
+      return {
         profileId: row.profile_id,
         name: row.name,
         slug: manuscriptMatchProfileSlug(row.name, row.slug ?? row.profile_id),
         websiteUrl: row.website_url,
-        prestigeTier: indexTierKey(row.prestige_tier),
-        matchScore: normalizedScore,
+        prestigeTier,
+        matchScore: decision.composite,
         fitCategory,
-        reasons,
+        reasons: positiveReasons(decision),
         specs: {
           maxWordCount: maxWords,
           minWordCount: minWords,
@@ -723,12 +695,74 @@ export class ManuscriptMatchEngine {
           anthologySelections: anthologyCount,
           prizeSelections: prizePieces.length,
           recent,
-          publishedComps: [...publishedComps],
+          publishedComps: decision.publishedComps,
         },
-      });
-    }
+        decision,
+      };
+    });
 
-    scoredCards.sort((a, b) => b.matchScore - a.matchScore);
-    return scoredCards;
+    return cards.sort(compareCandidates);
   }
+}
+
+/** Today's date in UTC, or the brief's date when it is a valid ISO date. */
+function resolveAsOf(asOf: string | undefined): string {
+  if (asOf && /^\d{4}-\d{2}-\d{2}$/.test(asOf)) return asOf;
+  return new Date().toISOString().slice(0, 10);
+}
+
+export function decisionModelInfo(
+  input: ManuscriptMatchInput,
+): DecisionModelInfo {
+  return {
+    version: DECISION_MODEL_VERSION,
+    asOf: resolveAsOf(input.asOf),
+    weights: input.isDebutAuthor ? "debut" : "standard",
+    tierThresholds: TIER_THRESHOLDS,
+  };
+}
+
+function decisionBrief(input: ManuscriptMatchInput): DecisionBrief {
+  return {
+    form: input.genre,
+    wordCount: input.wordCount ?? null,
+    aestheticTags: input.aestheticTags ?? [],
+    compAuthors: input.compAuthors ?? [],
+    isDebutAuthor: input.isDebutAuthor === true,
+    feeTolerance: input.feeTolerance ?? "any",
+    minPayRate: input.minPayRate ?? "all",
+    allowSimultaneous: input.allowSimultaneous === true,
+    writerCountry: input.writerCountry?.trim() || null,
+  };
+}
+
+/** Recorded genre labels as form keys; null when none are recorded. */
+function acceptedForms(value: unknown): string[] | null {
+  let labels: unknown = value;
+  if (typeof value === "string") {
+    try {
+      labels = JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  if (!Array.isArray(labels)) return null;
+  const forms = [
+    ...new Set(
+      labels
+        .filter((label): label is string => typeof label === "string")
+        .map(formFromGenreLabel)
+        .filter((form): form is string => form !== null),
+    ),
+  ];
+  return forms.length > 0 ? forms : null;
+}
+
+/** Reasons that raised a score, fit first, for the short "why" list. */
+function positiveReasons(decision: MagazineDecision): string[] {
+  return (["fit", "payoff", "odds", "cost"] as const).flatMap((dimension) =>
+    decision.scores[dimension].reasons
+      .filter((reason) => reason.points > 0)
+      .map((reason) => reason.text),
+  );
 }

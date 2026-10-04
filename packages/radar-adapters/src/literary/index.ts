@@ -4,6 +4,14 @@ import type { LiteraryPrize, PrizeRegion } from "./types.js";
 
 export { LITERARY_PRIZES } from "./prizes.data.js";
 export { PRIZE_COLLECTIONS } from "./selections.data.js";
+export {
+  COMPARABLE_WRITERS,
+  WRITER_REGIONS,
+  type ComparableWriter,
+  type WriterForm,
+} from "./writers.data.js";
+export * from "./eligibility.js";
+export * from "./kinship.js";
 export type {
   LiteraryGenre,
   LiteraryPrize,

@@ -738,7 +738,11 @@ export {
   type ManuscriptMatchStatus,
   emptyManuscriptMatchResponse,
   type MatchCategory,
+  type ExcludedMagazine,
+  type DecisionModelInfo,
+  type ManuscriptRecognitionPiece,
 } from "./ranking/manuscriptMatchEngine.js";
+export * from "./ranking/submissionDecision.js";
 export {
   WEB_VITAL_THRESHOLDS,
   buildFunnelQuery,
