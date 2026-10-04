@@ -15,8 +15,11 @@ import {
   ComboboxChips,
   ComboboxChipsInput,
   ComboboxContent,
+  ComboboxCollection,
   ComboboxEmpty,
+  ComboboxGroup,
   ComboboxItem,
+  ComboboxLabel,
   ComboboxList,
   ComboboxValue,
   useComboboxAnchor,
@@ -45,9 +48,14 @@ import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  WRITER_NAMES,
+  FORM_LABELS,
+  WRITER_COUNT,
+  groupedWriters,
   suggestedWriters,
-  writerFormsLabel,
+  writerCountries,
+  writerDetail,
+  type WriterFilter,
+  type WriterForm,
 } from "./comparable-writers";
 import {
   FORMS,
@@ -370,8 +378,9 @@ function WordCounter({ onUse }: { onUse: (count: number) => void }) {
 }
 
 /**
- * Search the writer catalogue, or type any name and add it. Suggestions for
- * the chosen form sit underneath for one-tap adding.
+ * Search or browse the writer catalogue, filtered by genre and country and
+ * grouped by region; any other name can be typed and added. Suggestions for
+ * the chosen form (and country, when one is picked) sit underneath.
  */
 function WriterPicker({
   genre,
@@ -385,21 +394,34 @@ function WriterPicker({
   const id = useId();
   const anchor = useComboboxAnchor();
   const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<WriterFilter>({
+    form: "all",
+    country: "all",
+  });
   const trimmed = query.trim();
-  // Offer the typed name as a custom entry only when nothing listed matches.
-  const items = useMemo(() => {
+  const countries = useMemo(() => writerCountries(filter.form), [filter.form]);
+  // Offer the typed name as a custom entry only when no writer shown matches.
+  const groups = useMemo(() => {
+    const grouped = groupedWriters(filter);
     const needle = trimmed.toLocaleLowerCase();
-    const listed = WRITER_NAMES.some((name) =>
-      name.toLocaleLowerCase().includes(needle),
+    const listed = grouped.some((group) =>
+      group.items.some((name) => name.toLocaleLowerCase().includes(needle)),
     );
     return trimmed.length > 1 && !listed
-      ? [...WRITER_NAMES, trimmed]
-      : WRITER_NAMES;
-  }, [trimmed]);
-  const suggestions = suggestedWriters(genre).filter(
+      ? [...grouped, { value: "Not listed", items: [trimmed] }]
+      : grouped;
+  }, [filter, trimmed]);
+  const shown = groups.reduce((total, group) => total + group.items.length, 0);
+  const suggestions = suggestedWriters(genre, filter.country).filter(
     (name) => !value.includes(name),
   );
   const full = value.length >= MAX_WRITERS;
+  const formLabel =
+    genre === "poetry"
+      ? "poetry"
+      : genre === "nonfiction"
+        ? "nonfiction"
+        : "fiction";
 
   return (
     <FieldSet className={styles.group}>
@@ -407,14 +429,63 @@ function WriterPicker({
         Comparable writers
       </FieldLegend>
       <FieldDescription className={styles.helper} id={`${id}-help`}>
-        Magazines that publish similar work rank higher. Search{" "}
-        {WRITER_NAMES.length} writers or type any name.
+        Magazines that publish similar work rank higher. Search or browse{" "}
+        {WRITER_COUNT} writers, or type any name.
       </FieldDescription>
+      <div className={styles.writerFilters}>
+        <Field className={styles.writerFilter}>
+          <FieldLabel htmlFor={`${id}-genre`} className={styles.filterLabel}>
+            Genre
+          </FieldLabel>
+          <NativeSelect
+            id={`${id}-genre`}
+            size="sm"
+            className={styles.filterSelect}
+            value={filter.form}
+            onChange={(event) =>
+              setFilter((current) => ({
+                ...current,
+                form: event.target.value as WriterFilter["form"],
+              }))
+            }
+          >
+            <NativeSelectOption value="all">All genres</NativeSelectOption>
+            {(Object.keys(FORM_LABELS) as WriterForm[]).map((form) => (
+              <NativeSelectOption key={form} value={form}>
+                {FORM_LABELS[form]}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </Field>
+        <Field className={styles.writerFilter}>
+          <FieldLabel htmlFor={`${id}-country`} className={styles.filterLabel}>
+            Country
+          </FieldLabel>
+          <NativeSelect
+            id={`${id}-country`}
+            size="sm"
+            className={styles.filterSelect}
+            value={filter.country}
+            onChange={(event) =>
+              setFilter((current) => ({
+                ...current,
+                country: event.target.value,
+              }))
+            }
+          >
+            <NativeSelectOption value="all">All countries</NativeSelectOption>
+            {countries.map(({ country, count }) => (
+              <NativeSelectOption key={country} value={country}>
+                {country} ({count})
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </Field>
+      </div>
       <Combobox
         multiple
         autoHighlight
-        items={items}
-        limit={40}
+        items={groups}
         value={value}
         onValueChange={(next) => {
           onChange((next as string[]).slice(0, MAX_WRITERS));
@@ -445,7 +516,7 @@ function WriterPicker({
                       ? `Up to ${MAX_WRITERS} writers`
                       : selected.length
                         ? "Add another"
-                        : "Search writers"
+                        : `Search ${shown} writers`
                   }
                   disabled={full}
                 />
@@ -455,36 +526,41 @@ function WriterPicker({
         </ComboboxChips>
         <ComboboxContent anchor={anchor}>
           <ComboboxEmpty>
-            Type at least two letters to add a name.
+            No writer matches. Type at least two letters to add a name.
           </ComboboxEmpty>
-          <ComboboxList>
-            {(name: string) => {
-              const forms = writerFormsLabel(name);
-              return (
-                <ComboboxItem
-                  key={name}
-                  value={name}
-                  className={styles.writerOption}
-                >
-                  <span>{forms ? name : `Add “${name}”`}</span>
-                  {forms ? (
-                    <span className={styles.writerForms}>{forms}</span>
-                  ) : null}
-                </ComboboxItem>
-              );
-            }}
+          <ComboboxList className={styles.writerList}>
+            {(group: { value: string; items: string[] }) => (
+              <ComboboxGroup key={group.value} items={group.items}>
+                <ComboboxLabel className={styles.writerGroup}>
+                  {group.value}
+                </ComboboxLabel>
+                <ComboboxCollection>
+                  {(name: string) => {
+                    const detail = writerDetail(name);
+                    return (
+                      <ComboboxItem
+                        key={name}
+                        value={name}
+                        className={styles.writerOption}
+                      >
+                        <span>{detail ? name : `Add “${name}”`}</span>
+                        {detail ? (
+                          <span className={styles.writerForms}>{detail}</span>
+                        ) : null}
+                      </ComboboxItem>
+                    );
+                  }}
+                </ComboboxCollection>
+              </ComboboxGroup>
+            )}
           </ComboboxList>
         </ComboboxContent>
       </Combobox>
       {suggestions.length && !full ? (
         <div className={styles.suggestions}>
           <p className={styles.suggestionsLabel}>
-            Often named for{" "}
-            {genre === "poetry"
-              ? "poetry"
-              : genre === "nonfiction"
-                ? "nonfiction"
-                : "fiction"}
+            Often named for {formLabel}
+            {filter.country !== "all" ? ` · ${filter.country}` : ""}
           </p>
           <div className={styles.chips}>
             {suggestions.slice(0, 6).map((name) => (

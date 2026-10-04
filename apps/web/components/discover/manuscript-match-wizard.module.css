@@ -295,6 +295,51 @@
 
 /* Comparable writers */
 
+.writerFilters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 8px;
+}
+
+.writerFilter {
+  gap: 4px;
+}
+
+.filterLabel {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.filterSelect {
+  width: 100%;
+}
+
+.filterSelect select[data-size] {
+  height: 36px;
+  font-size: 13px;
+}
+
+@media (pointer: coarse) {
+  .filterSelect select[data-size] {
+    height: var(--touch-target-min);
+  }
+}
+
+.writerList {
+  max-height: min(360px, calc(var(--available-height) - 16px));
+}
+
+.writerGroup {
+  position: sticky;
+  top: -4px;
+  z-index: 1;
+  background: var(--popover);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .writerChips {
   min-height: var(--touch-target-min);
   padding: 6px 8px;
@@ -311,15 +356,16 @@
 
 .writerOption {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding-block: 6px;
 }
 
 .writerForms {
-  flex-shrink: 0;
   color: var(--muted-foreground);
   font-size: 12px;
+  line-height: 1.35;
 }
 
 .suggestions {
