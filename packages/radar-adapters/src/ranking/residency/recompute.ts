@@ -123,10 +123,12 @@ const DIRECTORY_PREFIXES: Array<[RegExp, string]> = [
 
 /** "https://www.macdowell.org/apply" → "macdowell.org"; shared hosts keep their first path segment. */
 export function siteKey(url: string | null | undefined): string | null {
-  if (!url?.trim()) return null;
+  // Directory listings sometimes carry stray spaces inside the address.
+  const compact = url?.replace(/\s+/g, "") ?? "";
+  if (!compact) return null;
   let parsed: URL;
   try {
-    parsed = new URL(/^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`);
+    parsed = new URL(/^https?:\/\//i.test(compact) ? compact : `https://${compact}`);
   } catch {
     return null;
   }
@@ -157,6 +159,11 @@ function preferred(profiles: ResidencyProfile[]): ResidencyProfile {
   )[0];
 }
 
+/** A directory listing, tagged with the directory it came from. */
+export type UnmatchedListing =
+  | { source: "aca"; record: AcaProgramRecord }
+  | { source: "rmar"; record: RmarRecord };
+
 export interface ResidencyMatch {
   profile: ResidencyProfile;
   /** Every profile sharing the program's website, including the chosen one. */
@@ -173,31 +180,48 @@ export interface ResidencyMatch {
 export function matchResidencyListings(
   profiles: ResidencyProfile[],
   sources: Pick<ResidencySources, "rmar" | "acaPrograms">,
-): { matches: Map<string, ResidencyMatch>; unmatched: string[] } {
+): {
+  matches: Map<string, ResidencyMatch>;
+  unmatched: string[];
+  unmatchedListings: UnmatchedListing[];
+} {
   const bySite = new Map<string, ResidencyProfile[]>();
   const byName = new Map<string, ResidencyProfile[]>();
+  const byAnyName = new Map<string, ResidencyProfile[]>();
   for (const profile of profiles) {
     const key = siteKey(profile.website);
     if (key) bySite.set(key, [...(bySite.get(key) ?? []), profile]);
-    if (profile.kind === "residency_center") {
-      const name = nameKey(profile.name);
-      byName.set(name, [...(byName.get(name) ?? []), profile]);
-    }
+    const name = nameKey(profile.name);
+    if (profile.kind === "residency_center") byName.set(name, [...(byName.get(name) ?? []), profile]);
+    byAnyName.set(name, [...(byAnyName.get(name) ?? []), profile]);
   }
+  /** A unique exact name: residency profiles first, then any residency kind. */
+  const byUniqueName = (name: string | null | undefined) => {
+    if (!name?.trim()) return undefined;
+    const key = nameKey(name);
+    const named = byName.get(key);
+    if (named?.length === 1) return named;
+    if (named?.length) return undefined;
+    const any = byAnyName.get(key);
+    return any?.length === 1 ? any : undefined;
+  };
   const matches = new Map<string, ResidencyMatch>();
   const unmatched: string[] = [];
+  const unmatchedListings: UnmatchedListing[] = [];
   const attach = (
-    listing: { name: string; website?: string | null; url: string },
+    listing: UnmatchedListing,
     add: (match: ResidencyMatch) => void,
   ) => {
-    const key = siteKey(listing.website);
+    const { record } = listing;
+    const key = siteKey(record.website);
     let siblings = key ? bySite.get(key) : undefined;
     if (!siblings?.length) {
-      const named = byName.get(nameKey(listing.name));
-      siblings = named?.length === 1 ? named : undefined;
+      const organization = listing.source === "aca" ? listing.record.organizationName : null;
+      siblings = byUniqueName(organization) ?? byUniqueName(record.name);
     }
     if (!siblings?.length) {
-      unmatched.push(`${listing.name} (${listing.url})`);
+      unmatched.push(`${record.name} (${record.url})`);
+      unmatchedListings.push(listing);
       return;
     }
     const profile = preferred(siblings);
@@ -206,8 +230,10 @@ export function matchResidencyListings(
     add(match);
     matches.set(profile.id, match);
   };
-  for (const program of sources.acaPrograms) attach(program, (m) => m.aca.push(program));
-  for (const record of sources.rmar) attach(record, (m) => m.rmar.push(record));
+  for (const program of sources.acaPrograms)
+    attach({ source: "aca", record: program }, (m) => m.aca.push(program));
+  for (const record of sources.rmar)
+    attach({ source: "rmar", record }, (m) => m.rmar.push(record));
 
   // One program can sit under two domains; profiles with the same name merge.
   const byProfileName = new Map<string, ResidencyMatch>();
@@ -226,7 +252,7 @@ export function matchResidencyListings(
     matches.delete(drop.profile.id);
     byProfileName.set(key, keep);
   }
-  return { matches, unmatched };
+  return { matches, unmatched, unmatchedListings };
 }
 
 const day = (value: string) => value.slice(0, 10);
@@ -485,6 +511,26 @@ function rankingRowValues(ranked: RankedResidency, facts: ResidencyFacts, today:
   ];
 }
 
+/** Every profile that could be a residency program. */
+export async function loadResidencyProfiles(db: RankingDb): Promise<ResidencyProfile[]> {
+  const profileRows = await db.query(
+    `SELECT p.id, p.name, p.profile_kind,
+            COALESCE(NULLIF(BTRIM(p.website_url), ''), p.normalized_website_url) AS website,
+            to_jsonb(p)->>'city' AS city, to_jsonb(p)->>'country' AS country
+     FROM gary_profiles p
+     WHERE p.profile_kind = ANY($1::text[])`,
+    [RESIDENCY_PROFILE_KINDS],
+  );
+  return profileRows.rows.map((row) => ({
+    id: String(row.id),
+    name: String(row.name),
+    kind: String(row.profile_kind),
+    website: row.website ? String(row.website) : null,
+    city: row.city ? String(row.city) : null,
+    country: row.country ? String(row.country) : null,
+  }));
+}
+
 /**
  * Matches, scores and ranks every described program. Writes the index in one
  * transaction when `write` is set; otherwise only returns the summary.
@@ -497,22 +543,7 @@ export async function recomputeResidencyRankings(
   const today = (options.today ?? new Date()).toISOString().slice(0, 10);
   const year = Number(today.slice(0, 4));
 
-  const profileRows = await db.query(
-    `SELECT p.id, p.name, p.profile_kind,
-            COALESCE(NULLIF(BTRIM(p.website_url), ''), p.normalized_website_url) AS website,
-            to_jsonb(p)->>'city' AS city, to_jsonb(p)->>'country' AS country
-     FROM gary_profiles p
-     WHERE p.profile_kind = ANY($1::text[])`,
-    [RESIDENCY_PROFILE_KINDS],
-  );
-  const profiles: ResidencyProfile[] = profileRows.rows.map((row) => ({
-    id: String(row.id),
-    name: String(row.name),
-    kind: String(row.profile_kind),
-    website: row.website ? String(row.website) : null,
-    city: row.city ? String(row.city) : null,
-    country: row.country ? String(row.country) : null,
-  }));
+  const profiles = await loadResidencyProfiles(db);
   const { matches, unmatched } = matchResidencyListings(profiles, sources);
 
   const siblingIds = [...new Set([...matches.values()].flatMap((m) => m.siblings.map((s) => s.id)))];

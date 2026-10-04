@@ -4,6 +4,7 @@
  *
  *   DATABASE_URL=... npm run residency:rankings               # dry run: prints the summary
  *   DATABASE_URL=... npm run residency:rankings -- --write    # replaces the index
+ *   ... --provision              first create profiles for directory programs Missa has none for
  *   ... --report=/path.json      write the full summary
  *   ... --neon-http              use Neon's HTTPS SQL API where raw Postgres is blocked
  *
@@ -16,6 +17,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import pg from "pg";
 import {
   pgRankingDb,
+  provisionResidencyProfiles,
   recomputeResidencyRankings,
 } from "../packages/radar-adapters/dist/src/index.js";
 
@@ -68,16 +70,20 @@ const db =
     ? neonHttpDb(process.env.DATABASE_URL)
     : pgRankingDb((pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })));
 
+const sources = {
+  rmar: data("rmar-residencies.json"),
+  acaPrograms: data("aca-programs.json"),
+  acaCalls: data("aca-open-calls.json"),
+};
+
 try {
-  const { summary } = await recomputeResidencyRankings(
-    db,
-    {
-      rmar: data("rmar-residencies.json"),
-      acaPrograms: data("aca-programs.json"),
-      acaCalls: data("aca-open-calls.json"),
-    },
-    { write },
-  );
+  if (args.get("provision") === "true") {
+    const { planned, unmatchedListings } = await provisionResidencyProfiles(db, sources, { write });
+    console.log(`Profiles to create: ${planned.length} (from ${unmatchedListings} unmatched listings)`);
+    console.table(planned.slice(0, 20).map((p) => ({ name: p.name, slug: p.nameKey, website: p.website, city: p.city })));
+    if (reportPath) writeFileSync(reportPath.replace(/\.json$/, "-profiles.json"), JSON.stringify(planned, null, 2));
+  }
+  const { summary } = await recomputeResidencyRankings(db, sources, { write });
   console.log(`Ranked programs: ${summary.ranked} (listings without a matching profile: ${summary.unmatchedListings})`);
   console.log("Tiers:", summary.tiers);
   console.log("Programs with each fact:", summary.facts);

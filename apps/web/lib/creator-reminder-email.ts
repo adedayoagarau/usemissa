@@ -1,5 +1,5 @@
 import { creatorPoolFor, pendingCreatorReminderEmails } from '@missa/radar-adapters';
-import { DEADLINE_MOMENT_TEMPLATE_VERSION, renderDeadlineMomentEmail } from '../emails/deadline-moments';
+import { DEADLINE_MOMENT_TEMPLATE_VERSION, noticeUnsubscribeCategory, renderDeadlineMomentEmail } from '../emails/deadline-moments';
 import { sendMail } from './mail-service';
 
 export type CreatorReminderEmailReport = {
@@ -10,9 +10,11 @@ export type CreatorReminderEmailReport = {
 };
 
 /**
- * Email the Tracker notices that also go out by email: deadline reminders and
- * response check-ins from the reminder tick, moved deadlines and early
- * closures from deadline reconciliation. One email per notice, keyed by the
+ * Email the Tracker notices that also go out by email: deadline reminders,
+ * the deadline-day alarm, fee-tier endings, plan milestones, gone-quiet and
+ * follow-up notices from the reminder tick; moved deadlines and early
+ * closures from deadline reconciliation; plan changes and suggestions from the
+ * planning engine; and opening alerts from the cycle tick. One email per notice, keyed by the
  * notice so the durable mail ledger never sends it twice; a failed send
  * retries on the next tick.
  */
@@ -36,7 +38,7 @@ export async function deliverCreatorReminderEmails(now = new Date()): Promise<Cr
       recipientAccountId: reminder.accountId,
       kind: reminder.kind,
       category: 'notification_digest',
-      unsubscribeCategory: 'deadline_reminder',
+      unsubscribeCategory: noticeUnsubscribeCategory(reminder.kind),
       idempotencyKey: reminder.idempotencyKey,
       subject,
       html,

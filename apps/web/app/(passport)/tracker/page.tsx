@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   creatorEntitlements,
+  creatorFeatures,
   creatorPoolFor,
   creatorRelationalAuthorityEnabled,
   listCanonicalTrackedOpportunities,
@@ -139,6 +140,7 @@ export default async function TrackerPage({
   const entitlements = postgresTracker && process.env.DATABASE_URL
     ? await creatorEntitlements(creatorPoolFor(process.env.DATABASE_URL), session.account.id).catch(() => undefined)
     : undefined;
+  const features = creatorFeatures(entitlements?.plan ?? "free");
   const allowance = entitlements?.activeTrackedLimit != null
     ? { active: entitlements.activeTracked, limit: entitlements.activeTrackedLimit }
     : undefined;
@@ -153,6 +155,9 @@ export default async function TrackerPage({
       userId={userId}
       initialView={parseTrackerView(first(raw.view))}
       initialApplicationId={parseApplicationId(first(raw.application))}
+      initialItemId={parseApplicationId(first(raw.item))}
+      initialNow={new Date().toISOString()}
+      features={features}
       initialLayout={safeLayout(first(raw.layout))}
       initialQuery={first(raw.q).slice(0, 200)}
       initialImportId={first(raw.import).slice(0, 240)}

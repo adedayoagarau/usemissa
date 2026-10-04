@@ -1,5 +1,6 @@
 import { createSnapshotId, IngestionFailure, sanitizeSourceText, sha256, type AdapterContext, type ExtractionResult, type PageSnapshot, type SourceAdapter } from "../contracts.js";
 import { classifyDestination, destinationConfig, type DestinationCandidate } from "../destinations.js";
+import { deadlineClocksFromText, deadlineTiersFromText } from "../deadlineDetails.js";
 
 const TITLE = /<title[^>]*>([\s\S]*?)<\/title>/i;
 const H1 = /<h1[^>]*>([\s\S]*?)<\/h1>/i;
@@ -62,7 +63,7 @@ function deadlineValuesFromHtml(html: string): string[] {
   const visible = text(html);
   const month = "(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|sept(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)";
   const date = `${month}\\s+\\d{1,2}(?:,?\\s+\\d{4})?|\\d{1,2}\\s+${month}\\s+\\d{4}|\\d{4}-\\d{2}-\\d{2}`;
-  const phase = "(?:early(?: bird)?|regular|standard|final|submission|submissions|application)?";
+  const phase = "(?:early(?:[ -]?bird)?|regular|standard|general|late|extended|final|submission|submissions|application)?";
   const values = [deadlineFromHtml(html)].filter((value): value is string => Boolean(value));
   for (const pattern of [
     new RegExp(`${phase}\\s*deadline\\s*:?\\s*(${date})`, "gi"),
@@ -309,6 +310,11 @@ export class GenericHtmlAdapter implements SourceAdapter {
       const fullDescription = bodyDescription(snapshot.html) ?? description;
       if (fullDescription) fields.push({ fieldName: "description", rawValue: fullDescription, normalizedValue: fullDescription, confidence: bodyDescription(snapshot.html) ? 0.86 : 0.68, provenance: { adapterId: this.id, method: bodyDescription(snapshot.html) ? "html-body-field" : "html-meta-description", sourceUrl: snapshot.finalUrl, snapshotId: snapshot.id } });
       for (const deadline of deadlineValuesFromHtml(snapshot.html)) fields.push({ fieldName: "deadline", rawValue: deadline, normalizedValue: deadline, confidence: 0.58, provenance: { adapterId: this.id, method: "html-deadline-label", sourceUrl: snapshot.finalUrl, snapshotId: snapshot.id } });
+      const visibleText = text(snapshot.html);
+      // Phase labels (early bird, regular, final) keep their adjacent fee and
+      // close time so the canonical writer can record fee tiers.
+      for (const tier of deadlineTiersFromText(visibleText)) fields.push({ fieldName: "deadlineTier", rawValue: `${tier.label}: ${tier.date}`, normalizedValue: tier, confidence: 0.7, provenance: { adapterId: this.id, method: "html-deadline-tier", sourceUrl: snapshot.finalUrl, snapshotId: snapshot.id } });
+      for (const clock of deadlineClocksFromText(visibleText)) fields.push({ fieldName: "deadlineClock", rawValue: `${clock.date} ${clock.time} ${clock.timezone}`, normalizedValue: clock, confidence: 0.8, provenance: { adapterId: this.id, method: "html-deadline-clock", sourceUrl: snapshot.finalUrl, snapshotId: snapshot.id } });
       const deadlineKind = deadlineKindFromHtml(snapshot.html);
       if (deadlineKind) fields.push({ fieldName: "deadlineKind", rawValue: deadlineKind, normalizedValue: deadlineKind, confidence: 0.9, provenance: { adapterId: this.id, method: "html-deadline-kind", sourceUrl: snapshot.finalUrl, snapshotId: snapshot.id } });
       const entryFee = labeledValue(snapshot.html, /entry\s+fee/i);
