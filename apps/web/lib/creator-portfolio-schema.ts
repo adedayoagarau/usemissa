@@ -291,6 +291,10 @@ const portfolioObject = z.object({
     })
     .default({ email: "", website: "", instagram: "", newsletter: "" }),
   modules: z.array(moduleSchema).max(PORTFOLIO_MODULES.length).default([]),
+  /** Visitors may send a message through Missa without seeing any email. */
+  inquiries: z.boolean().default(true),
+  /** Organization members may invite this creator to apply to an open call. */
+  invitations: z.boolean().default(true),
   theme: z.enum(PORTFOLIO_THEMES).default("sage"),
 });
 
