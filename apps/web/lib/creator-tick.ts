@@ -7,6 +7,7 @@ import { tickGoals } from './goal-engine';
 import { deliverGoalCheckInEmails } from './goal-checkin-email';
 import { tickCreatorFollowing } from './creator-following';
 import { calendarSyncTickLimits, drainCalendarSyncJobs } from './calendar-sync';
+import { mirrorCalendarProviderTick } from './calendar-provider-mirror';
 import { recalculateObligationChains } from './deadline-planning';
 import { refreshCycleForecasts, tickOpeningAlerts } from './deadline-cycles';
 import { tickDeadlineReminders } from './deadline-reminders';
@@ -43,10 +44,13 @@ export async function runCreatorTick(accountId?: string) {
     const goals = await tickGoals(accountId);
     const goalEmails = await deliverGoalCheckInEmails();
     const following = await tickCreatorFollowing(accountId);
+    // Plan steps, stages, tier closes and forecasts are mirrored into calendar
+    // events for connected accounts just before the drain delivers them.
+    const calendarMirror = await mirrorCalendarProviderTick(pool, accountId);
     const calendarSync = calendar
       ? await drainCalendarSyncJobs(calendar, { accountId, ...calendarSyncTickLimits() })
       : undefined;
-    const result = { deadlines, chains, forecasts, openings, deadlineReminders, reminders, reminderEmails, reminderTexts, weeklyDigests, goals, goalEmails, following, calendarSync };
+    const result = { deadlines, chains, forecasts, openings, deadlineReminders, reminders, reminderEmails, reminderTexts, weeklyDigests, goals, goalEmails, following, calendarMirror, calendarSync };
     if (pool)
       await recordWorkerTick(pool, 'creator-worker', {
         status: 'completed',

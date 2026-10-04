@@ -722,4 +722,8 @@ test("deadline management migration is registered and keeps reminders unique per
   }
   assert.match(migration, /creator_application_reminders_owner_subject_idx/);
   assert.match(migration, /response_time_days = 45/);
+  assert.match(
+    migration,
+    /creator_calendar_events_purpose_check\s+CHECK \(purpose IN \([^)]*'plan-step', 'stage', 'tier-close', 'forecast'\)\)/,
+  );
 });

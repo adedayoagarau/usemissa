@@ -202,6 +202,8 @@ export {
   CALENDAR_SYNC_MAX_ATTEMPTS,
   CreatorCalendarError,
   PostgresCreatorCalendarRepository,
+  PROVIDER_MIRROR_PURPOSES,
+  type ProviderMirrorPurpose,
   type CreatorCalendarItem,
   type CreatorCalendarEvent,
   type CreatorCalendarTokenResult,
@@ -210,6 +212,13 @@ export {
   type CalendarProvider,
   type CalendarSyncLease,
 } from "./creatorCalendarRepository.js";
+export {
+  calendarProviderMirrorReady,
+  mirrorCalendarProviderAccount,
+  mirrorCalendarProviderEvents,
+  type CalendarMirrorAccountResult,
+  type CalendarMirrorTickResult,
+} from "./calendarProviderMirror.js";
 export {
   encryptCalendarCredential,
   decryptCalendarCredential,

@@ -1,7 +1,8 @@
 -- Deadline management: fee tiers, stages, cycles and forecasts on
 -- opportunities; the creator obligation ledger and planning preferences;
--- reminder subjects; and the two tables schema.ts declared without a
--- migration (opportunity_recurring_rules, creator_opportunity_alerts).
+-- reminder subjects; calendar purposes for the provider export mirror; and
+-- the two tables schema.ts declared without a migration
+-- (opportunity_recurring_rules, creator_opportunity_alerts).
 
 -- Fee tiers. A call with early-bird, regular, late and extended deadlines has
 -- one row per tier. The opportunity's own deadline_date stays the final close.
@@ -231,6 +232,17 @@ END $$;
 DROP INDEX IF EXISTS creator_application_reminders_owner_kind_idx;
 CREATE UNIQUE INDEX IF NOT EXISTS creator_application_reminders_owner_subject_idx
   ON creator_application_reminders (account_id, opportunity_id, kind, coalesce(subject_kind, ''), coalesce(subject_id, ''));
+
+-- Plan steps, stages, fee-tier closes and forecasts are mirrored into
+-- creator_calendar_events for creators with a Google or Microsoft calendar
+-- connection, so the provider export can carry them. The in-app Calendar and
+-- the calendar feed read these from their own tables and leave the mirrored
+-- rows out.
+ALTER TABLE creator_calendar_events
+  DROP CONSTRAINT IF EXISTS creator_calendar_events_purpose_check;
+ALTER TABLE creator_calendar_events
+  ADD CONSTRAINT creator_calendar_events_purpose_check
+  CHECK (purpose IN ('personal', 'preparation', 'attendance', 'unavailable', 'official-deadline', 'personal-target', 'goal-date', 'plan-step', 'stage', 'tier-close', 'forecast'));
 
 -- Declared in schema.ts without a migration until now.
 CREATE TABLE IF NOT EXISTS opportunity_recurring_rules (

@@ -300,7 +300,7 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
         `select j.id job_id,c.account_id,c.id connection_id,c.provider,j.operation,j.event_id,j.attempt_count,c.refresh_token_ciphertext,c.calendar_id_ciphertext,p.provider_event_id_ciphertext
            from calendar_sync_jobs j
            join calendar_provider_connections c on c.id=j.connection_id
-           left join calendar_event_projections p on p.connection_id=c.id and p.event_id=j.event_id
+           left join calendar_event_projections p on p.connection_id=c.id and p.event_id=j.event_id and p.status<>'deleted'
           where ($1::text is null or c.account_id=$1) and c.status='active' and j.attempt_count<$2
             and ((j.status in ('queued','failed') and (j.next_attempt_at is null or j.next_attempt_at<=now()))
               or (j.status='running' and (j.lease_until is null or j.lease_until<now())))
@@ -474,10 +474,17 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
     return { queued: result.rowCount === 1 };
   }
 
+  /**
+   * Events overlapping the range. `excludePurposes` leaves out rows the
+   * caller shows from their own source, such as the provider export mirror
+   * (PROVIDER_MIRROR_PURPOSES), which the in-app Calendar reads from the
+   * obligation, stage, tier and forecast tables instead.
+   */
   async events(
     accountId: string,
     from: Date,
     to: Date,
+    options: { excludePurposes?: readonly string[] } = {},
   ): Promise<CreatorCalendarEvent[]> {
     const result = await this.query<{
       id: string;
@@ -504,8 +511,8 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
          sync.status as sync_status,sync.last_error_code as sync_error,sync.next_attempt_at as sync_next_attempt_at
        from creator_calendar_events e
        left join lateral (select j.status,j.last_error_code,j.next_attempt_at from calendar_sync_jobs j join calendar_provider_connections c on c.id=j.connection_id and c.account_id=e.account_id where j.event_id=e.id order by j.updated_at desc limit 1) sync on true
-       where e.account_id=$1 and e.start_at<$3 and e.end_at>$2 order by e.start_at,e.id`,
-      [accountId, from, to],
+       where e.account_id=$1 and e.start_at<$3 and e.end_at>$2 and not (e.purpose=any($4::text[])) order by e.start_at,e.id`,
+      [accountId, from, to, [...(options.excludePurposes ?? [])]],
     );
     return result.rows.map((row) => ({
       id: row.id,
@@ -868,12 +875,13 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
   ) {
     const value = calendarInput(input);
     return this.executeOwnerCommand(envelope, async (client) => {
-      const current = await client.query<{ revision: number }>(
-        `select revision from creator_calendar_events where id=$1 and account_id=$2 for update`,
+      const current = await client.query<{ revision: number; purpose: string }>(
+        `select revision,purpose from creator_calendar_events where id=$1 and account_id=$2 for update`,
         [id, envelope.accountId],
       );
       const row = current.rows[0];
       if (!row) throw new CreatorCalendarError("Calendar event not found.");
+      assertPersonalEvent(row.purpose);
       if (row.revision !== envelope.expectedRevision)
         throw new CreatorCalendarError(
           "This event changed in another session. Refresh and try again.",
@@ -918,12 +926,13 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
 
   async deleteEvent(envelope: CreatorCommandEnvelope, id: string) {
     return this.executeOwnerCommand(envelope, async (client) => {
-      const current = await client.query<{ revision: number }>(
-        `select revision from creator_calendar_events where id=$1 and account_id=$2 for update`,
+      const current = await client.query<{ revision: number; purpose: string }>(
+        `select revision,purpose from creator_calendar_events where id=$1 and account_id=$2 for update`,
         [id, envelope.accountId],
       );
       const row = current.rows[0];
       if (!row) throw new CreatorCalendarError("Calendar event not found.");
+      assertPersonalEvent(row.purpose);
       if (row.revision !== envelope.expectedRevision)
         throw new CreatorCalendarError(
           "This event changed in another session. Refresh and try again.",
@@ -1209,7 +1218,22 @@ async function insertDeadlineNotice(
   return inserted.rowCount ?? 0;
 }
 
-async function queueCalendarSync(
+/**
+ * Purposes of the rows mirrored for the Google and Microsoft export from plan
+ * steps, stages, fee-tier closes and forecasts (calendarProviderMirror.ts).
+ * They are owned by their source, never edited as personal events, and left
+ * out of the in-app Calendar, which shows the sources themselves.
+ */
+export const PROVIDER_MIRROR_PURPOSES = ["plan-step", "stage", "tier-close", "forecast"] as const;
+export type ProviderMirrorPurpose = (typeof PROVIDER_MIRROR_PURPOSES)[number];
+
+function assertPersonalEvent(purpose: string) {
+  if ((PROVIDER_MIRROR_PURPOSES as readonly string[]).includes(purpose))
+    throw new CreatorCalendarError("This date comes from your plan or the call. Change it in the Tracker.");
+}
+
+/** Queues provider sync for one event on each of the account's active connections. */
+export async function queueCalendarSync(
   client: PoolClient,
   accountId: string,
   eventId: string,

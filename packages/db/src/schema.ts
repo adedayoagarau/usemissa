@@ -3065,7 +3065,7 @@ export const creatorCalendarEvents = pgTable(
     ),
     check(
       "creator_calendar_events_purpose_check",
-      sql`${table.purpose} in ('personal', 'preparation', 'attendance', 'unavailable', 'official-deadline', 'personal-target', 'goal-date')`,
+      sql`${table.purpose} in ('personal', 'preparation', 'attendance', 'unavailable', 'official-deadline', 'personal-target', 'goal-date', 'plan-step', 'stage', 'tier-close', 'forecast')`,
     ),
     check(
       "creator_calendar_events_deadline_reconciliation_status_check",

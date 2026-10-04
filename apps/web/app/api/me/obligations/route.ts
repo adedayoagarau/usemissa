@@ -16,6 +16,7 @@ import {
   planningPoolOrNull,
 } from "@/lib/obligation-routes";
 import { templateInputs } from "@/lib/planning-engine";
+import { mirrorCalendarProviderAfterEdit } from "@/lib/calendar-provider-mirror";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const STATES = new Set<CreatorObligationState>(["open", "done", "skipped"]);
@@ -76,12 +77,14 @@ export async function POST(request: Request) {
       );
       if (result.skipped === "no-deadline")
         return planningJson({ error: "This call has no confirmed deadline yet. Add steps with your own dates instead." }, 400);
+      if (result.created.length) await mirrorCalendarProviderAfterEdit(accountId);
       return planningJson(result, result.created.length ? 201 : 200);
     }
     const key = idempotencyKeyFrom(request);
     if ("error" in key) return planningJson({ error: key.error }, 400);
     const { trackedId, ...input } = body;
     const result = await createObligation(pool, accountId, { ...input, trackedOpportunityId: trackedId }, { idempotencyKey: key.key });
+    if (!result.replayed) await mirrorCalendarProviderAfterEdit(accountId);
     return planningJson(result, result.replayed ? 200 : 201);
   } catch (error) {
     return obligationError(error, "The step could not be saved. Try again.");

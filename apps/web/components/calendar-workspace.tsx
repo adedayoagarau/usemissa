@@ -40,6 +40,7 @@ import {
   dateConfidenceDescription,
 } from "@/components/missa/deadline-badges";
 import { firstViableDeadlineSchedule } from "@/lib/reminder-schedule";
+import { isCalendarMirrorPurpose } from "@/lib/calendar-mirror-purposes";
 import { toast } from "sonner";
 import { CalendarFeedCard } from "@/components/calendar-feed-button";
 import {
@@ -211,7 +212,11 @@ export function CalendarWorkspace({
       if (!res.ok) throw new Error(data.error);
       setApplications(data.tracker);
       const personal: EventItem[] = data.events
-        .filter((e: EventItem) => e.purpose !== "goal-date")
+        // Mirrored export rows are shown from their own sources below.
+        .filter(
+          (e: EventItem) =>
+            e.purpose !== "goal-date" && !isCalendarMirrorPurpose(e.purpose),
+        )
         .map((e: EventItem) => ({
           ...e,
           // A personal target mirrors the date set on the Tracker item, so it

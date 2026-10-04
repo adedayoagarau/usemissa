@@ -4,6 +4,7 @@ import {
   creatorCommandEnvelope,
   creatorPoolFor,
   CreatorCalendarError,
+  PROVIDER_MIRROR_PURPOSES,
 } from "@missa/radar-adapters";
 import { getSessionAccount } from "@/lib/auth";
 import { EMPTY_CALENDAR_FACTS, loadCalendarFacts } from "@/lib/calendar-facts";
@@ -33,7 +34,11 @@ export async function GET(request: Request) {
     return json({ error: "Choose a valid calendar range." }, 400);
   try {
     const [events, tracker, reminders, goals] = await Promise.all([
-      repository.events(session.account.id, from, to),
+      // Rows mirrored for the Google and Microsoft export are shown from their
+      // sources (the facts below), so they are left out here.
+      repository.events(session.account.id, from, to, {
+        excludePurposes: PROVIDER_MIRROR_PURPOSES,
+      }),
       repository.trackerItems(session.account.id),
       new CreatorReminderRepository().list(session.account.id),
       listGoals(session.account.id),

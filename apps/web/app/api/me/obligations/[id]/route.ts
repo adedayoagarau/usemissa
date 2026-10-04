@@ -8,6 +8,7 @@ import {
   planningJson,
   planningPoolOrNull,
 } from "@/lib/obligation-routes";
+import { mirrorCalendarProviderAfterEdit } from "@/lib/calendar-provider-mirror";
 
 async function currentStep(accountId: string, id: string, error: unknown) {
   const pool = planningPoolOrNull();
@@ -29,9 +30,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!parsed.success) return planningJson({ error: parsed.error.issues[0]?.message ?? "Check the step details." }, 400);
   const { id } = await params;
   try {
-    return planningJson(
-      await updateObligation(pool, session.account.id, id, parsed.data, { expectedRevision: revision, idempotencyKey: key.key }),
-    );
+    const result = await updateObligation(pool, session.account.id, id, parsed.data, { expectedRevision: revision, idempotencyKey: key.key });
+    if (!result.replayed) await mirrorCalendarProviderAfterEdit(session.account.id);
+    return planningJson(result);
   } catch (error) {
     return obligationError(error, "The step could not be changed. Try again.", await currentStep(session.account.id, id, error));
   }
@@ -49,7 +50,9 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   if ("error" in key) return planningJson({ error: key.error }, 400);
   const { id } = await params;
   try {
-    return planningJson(await deleteObligation(pool, session.account.id, id, { expectedRevision: revision, idempotencyKey: key.key }));
+    const result = await deleteObligation(pool, session.account.id, id, { expectedRevision: revision, idempotencyKey: key.key });
+    if (!result.replayed) await mirrorCalendarProviderAfterEdit(session.account.id);
+    return planningJson(result);
   } catch (error) {
     return obligationError(error, "The step could not be removed. Try again.", await currentStep(session.account.id, id, error));
   }

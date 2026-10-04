@@ -75,6 +75,22 @@ The creator worker runs these in order: `lib/creator-tick.ts`:
 7. Email and text.
 8. Digest.
 9. The rest of the existing steps.
+10. Calendar provider mirror (`lib/calendar-provider-mirror.ts`, `calendarProviderMirror.ts`), then the provider drain.
+
+## Google and Microsoft export
+
+The provider export (built in #148, drained by the creator worker) delivers `creator_calendar_events` rows: official deadlines, preparation blocks, personal events and personal targets. For creators with an active Google or Microsoft connection, the mirror step also keeps one row per dated source, so the export carries the plan too:
+
+| Purpose | Event id | Kept while |
+| --- | --- | --- |
+| `plan-step` | `plan-step:<obligationId>` | The step is open. Personal targets keep their own `personal-target` row. |
+| `stage` | `stage:<trackedId>:<stageId>` | The application is in preparation. After submission, only shortlist, interview, notification, decision and event stages stay. |
+| `tier-close` | `tier:<trackedId>:<tierId>` | The application is in preparation and the tier closes before the final deadline. |
+| `forecast` | `forecast:<trackedId>` | The tracked call is closed and the forecast is unconfirmed. One all-day range titled "Predicted: …". |
+
+A changed date or title bumps the revision and queues an upsert; a source that disappears, completes, is skipped or stops applying is deleted and queues a delete. Existing rows stay after their date passes; new rows are only created for recent and upcoming dates. Plan step edits mirror straight away; everything else follows on the next pass. Each pass covers up to `MISSA_CALENDAR_MIRROR_ACCOUNTS` accounts (default 200) within `MISSA_CALENDAR_MIRROR_TIME_BUDGET_MS` (default 15 seconds). Rows of accounts whose connections are all revoked are removed.
+
+Mirrored rows are owned by their source: the in-app Calendar and the calendar feed read the sources directly and leave these purposes out, and they cannot be edited or deleted as personal events. The mirror does nothing until the purpose check from 0088 is in place.
 
 Saving a call to the Tracker adds default reminders and, on plans with start-by planning, the default plan (`lib/tracker-save-hooks.ts`).
 
@@ -88,5 +104,4 @@ Saving a call to the Tracker adds default reminders and, on plans with start-by 
 
 - Ingestion reads fee tiers, entry fees and stated close times with deterministic rules only. The LLM extraction prompt is unchanged.
 - Crunch weeks count tracked calls only, not matching open calls.
-- Google and Microsoft export (built in #148, drained by the creator worker) carries official deadlines, preparation blocks and personal targets, because those are `creator_calendar_events`. Plan steps, stages, fee-tier closes and forecasts reach the in-app Calendar and the calendar feed, not the provider export.
 - The calendar feed uses `TZID=<IANA zone>` for exact closes without a matching time zone definition block. Google and Apple accept this; some Outlook versions may not.
