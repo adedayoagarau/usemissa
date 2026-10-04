@@ -84,6 +84,9 @@ export function ProfileConnect({
   sample?: boolean;
 }) {
   const [viewer, setViewer] = useState<Viewer | null>(null);
+  // On the live page, wait for the viewer before acting on Follow, so a
+  // signed-in member is never sent to sign in by a fast click.
+  const [viewerSettled, setViewerSettled] = useState(!live || !handle);
   const [following, setFollowing] = useState(false);
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState("");
@@ -96,11 +99,16 @@ export function ProfileConnect({
     fetch(`/api/profiles/${encodeURIComponent(handle)}/viewer`)
       .then((response) => (response.ok ? response.json() : null))
       .then((data: Viewer | null) => {
-        if (!active || !data) return;
-        setViewer(data);
-        setFollowing(data.following);
+        if (!active) return;
+        if (data) {
+          setViewer(data);
+          setFollowing(data.following);
+        }
+        setViewerSettled(true);
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (active) setViewerSettled(true);
+      });
     return () => {
       active = false;
     };
@@ -171,7 +179,7 @@ export function ProfileConnect({
         <Button
           variant="outline"
           aria-pressed={following}
-          disabled={pending}
+          disabled={pending || !viewerSettled}
           onClick={toggleFollow}
         >
           {following ? (
