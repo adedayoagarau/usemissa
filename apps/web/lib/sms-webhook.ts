@@ -116,20 +116,20 @@ export function parseInboundReply(body: unknown): InboundReply | null {
 
 /**
  * Asks Jev what a non-keyword reply wants (scope sms_intent). Opt-outs stay
- * rule-based and over-inclusive: this only ever adds a check, by asking a
- * reply that reads as an opt-out in other words to confirm with STOP. It never
- * opts anyone out or back in, and never undoes a keyword.
+ * rule-based and over-inclusive: this can only add an opt-out, for a reply
+ * that confidently reads as one in other words, and sends nothing back. It
+ * never opts anyone back in and never undoes a keyword.
  */
 export async function handleInboundReply(
   reply: InboundReply,
   handlers: Readonly<{
-    decide(reply: InboundReply): Promise<{ askToConfirmOptOut: boolean }>;
-    askToConfirmOptOut(reply: InboundReply): Promise<unknown>;
+    decide(reply: InboundReply): Promise<{ treatAsOptOut: boolean }>;
+    optOut(phone: string): Promise<unknown>;
   }>,
 ): Promise<boolean> {
-  const { askToConfirmOptOut } = await handlers.decide(reply);
-  if (askToConfirmOptOut) await handlers.askToConfirmOptOut(reply);
-  return askToConfirmOptOut;
+  const { treatAsOptOut } = await handlers.decide(reply);
+  if (treatAsOptOut) await handlers.optOut(reply.phone);
+  return treatAsOptOut;
 }
 
 export type TelnyxEventHandlers = Readonly<{

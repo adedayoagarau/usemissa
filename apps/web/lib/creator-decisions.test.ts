@@ -194,26 +194,26 @@ test("text replies: keywords stay with the rules; Jev can only add an opt-out ch
   const live = context("live", () => choice("stop", 0.92));
   const reply = parseInboundReply(received("please stop texting me"))!;
   assert.deepEqual(await decideSmsReply(live.ctx, reply), {
-    askToConfirmOptOut: true,
+    treatAsOptOut: true,
   });
   const shadow = context("shadow", () => choice("stop", 0.92));
   assert.deepEqual(await decideSmsReply(shadow.ctx, reply), {
-    askToConfirmOptOut: false,
+    treatAsOptOut: false,
   });
   const unsure = context("live", () => choice("stop", 0.6));
   assert.deepEqual(await decideSmsReply(unsure.ctx, reply), {
-    askToConfirmOptOut: false,
+    treatAsOptOut: false,
   });
 
-  const asked: string[] = [];
+  const optedOut: string[] = [];
   assert.equal(
     await handleInboundReply(reply, {
       decide: (item) => decideSmsReply(live.ctx, item),
-      askToConfirmOptOut: async (item) => asked.push(item.phone),
+      optOut: async (phone) => optedOut.push(phone),
     }),
     true,
   );
-  assert.deepEqual(asked, ["+15555550123"]);
+  assert.deepEqual(optedOut, ["+15555550123"]);
 });
 
 test("tracker candidates are only reordered, never added or removed", () => {

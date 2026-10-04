@@ -227,12 +227,14 @@ export function emailDeciderFromEnv(
 /**
  * Classifies a reply that the keyword rules did not treat as STOP or START.
  * The rules always run first and are never overridden; the only live effect
- * is adding a check when the reply reads as an opt-out in other words.
+ * is treating a reply that confidently reads as an opt-out in other words
+ * ("please stop texting me") as a STOP, so opt-outs stay over-inclusive and
+ * nobody asking us to stop gets another text.
  */
 export async function decideSmsReply(
   context: CreatorDecisionContext,
   reply: { messageId: string; text: string },
-): Promise<{ askToConfirmOptOut: boolean }> {
+): Promise<{ treatAsOptOut: boolean }> {
   const result = await decide({
     ...context,
     subjectId: reply.messageId,
@@ -242,7 +244,7 @@ export async function decideSmsReply(
   if (result.error) logFailure("sms_intent", result.error);
   const outcome = result.outcomes[smsReplyIntent.key];
   return {
-    askToConfirmOptOut: acts(outcome, "apply") && outcome!.answer === "stop",
+    treatAsOptOut: acts(outcome, "apply") && outcome!.answer === "stop",
   };
 }
 
