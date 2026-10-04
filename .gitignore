@@ -19,3 +19,7 @@ test-results/
 .impeccable/
 *.impeccable/
 .claude/settings.local.json
+
+# Written by next dev (Next 16.3+) on every start
+apps/web/AGENTS.md
+apps/web/CLAUDE.md
