@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { readUserHandle } from "@missa/radar-adapters";
 import { getSessionAccount } from "@/lib/auth";
 import { getCreatorProfileRepository } from "@/lib/creatorRepositories";
+import { verifiedOutcomes } from "@/lib/accepted-outcomes";
 import {
   portfolioSchema,
   portfolioMediaIds,
   publicationIssue,
   publicPortfolioProjection,
+  withServerProvenance,
 } from "@/lib/creator-portfolio-schema";
 export async function POST(request: Request) {
   const session = await getSessionAccount(request.headers.get("cookie"));
@@ -36,7 +38,12 @@ export async function POST(request: Request) {
         { error: "Add your display name before publishing." },
         { status: 400 },
       );
-    const projection = publicPortfolioProjection(parsed.data);
+    const projection = publicPortfolioProjection(
+      withServerProvenance(
+        parsed.data,
+        await verifiedOutcomes(session.account.id),
+      ),
+    );
     const issue = publicationIssue(projection);
     if (issue) return NextResponse.json({ error: issue }, { status: 400 });
     if (body.revision !== state.revision)

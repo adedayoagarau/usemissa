@@ -25,20 +25,23 @@ Updated September 4, 2026. Backend-worker handoff reconciled with the current ch
 | Check availability | `GET /api/me/handles/availability?handle=...` |
 | Claim/reserve handle | `POST /api/me/handles` |
 | Rename handle | `PATCH /api/me/handles` |
+| List the account's accepted Missa outcomes (for Confirmed track record entries) | `GET /api/creator/portfolio-outcomes` |
 
 **Correction to the supplied handoff:** `POST /api/me/handles/publish` is retired and returns 409 directing the owner to Public profile settings. It does not reserve a handle or publish a portfolio. Existing handle reservation, invite and rename rules remain authoritative.
 
 ## Frontend journey and persistence boundaries
 
 - Account → Public profile (`/profile/portfolio`) is the authenticated editor. Handle selection sits below display name; it is optional while drafting and required for first publication.
-- The public portfolio lives at `/@<handle>` and reads a published snapshot, never the mutable private draft. Editing does not change publication until Publish changes. Unpublishing removes public snapshot/media access.
+- The public portfolio lives at `/@<handle>` and reads a published snapshot, never the mutable private draft. `/@<handle>/cv` is a printable, unindexed CV from the same snapshot, and `/@<handle>/share.png` is its 1200×630 social image. Editing does not change publication until Publish changes. Unpublishing removes public snapshot/media access.
 - Private account saves await server confirmation and use revisions; stale writes surface a conflict rather than overwrite another revision. IndexedDB holds a local recovery copy. It is **not automatic offline synchronization or conflict merging**; failed server writes must not show account-save success.
 - `/design-system/creator-profile-settings` and `/design-system/creator-profile-v2` remain device-local previews. Importing a preview into an account is explicit and browser-local.
-- Avatar, book-cover, work-image and audio uploads use the media endpoint. Current storage is owned PostgreSQL media, with 20 MB/file and 100 MB/account limits, not a CDN pipeline. Serving requires ownership or inclusion in a published snapshot.
+- Track record provenance is server-derived on every draft save and publish. An entry is **Confirmed** only when its `outcomeId` matches an accepted decision on a submission by the same account; the server then writes the title and organization from that decision. **Linked** means the creator matched a directory organization. Everything else is **Added by** the creator. A Confirmed entry in a published snapshot is only re-verified when the creator publishes again.
+- Portrait, shelf-cover, work-image and audio uploads use the media endpoint. Current storage is owned PostgreSQL media, with 20 MB/file and 100 MB/account limits, not a CDN pipeline. Serving requires ownership or inclusion in a published snapshot.
 
 ## Source map and verification
 
-- UI: `apps/web/components/creator-portfolio-studio.tsx`, `apps/web/components/portfolio-handle-field.tsx`.
+- UI: `apps/web/components/creator-profile/public-profile.tsx` (visitor page, studio preview and homepage embed), `apps/web/components/creator-profile/studio/` (editor), `apps/web/components/creator-profile/creator-cv.tsx`, `apps/web/components/portfolio-handle-field.tsx`.
+- Accepted outcomes: `apps/web/lib/accepted-outcomes.ts` and `PostgresCreatorProfileRepository.acceptedOutcomes`.
 - Client persistence: `apps/web/lib/creator-portfolio-draft.ts`.
 - Public schema/projection: `apps/web/lib/creator-portfolio-schema.ts`.
 - Storage: `packages/radar-adapters/src/creatorProfileRepository.ts`.

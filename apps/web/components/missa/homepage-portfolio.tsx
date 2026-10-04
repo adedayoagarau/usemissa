@@ -3,9 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { CreatorPortfolioStudio } from "@/components/creator-portfolio-studio";
+import { PublicCreatorProfile } from "@/components/creator-profile/public-profile";
+import { sampleCreatorPortfolio } from "@/lib/creator-profile-sample";
 import { Button } from "@/components/ui/button";
 import styles from "./homepage-portfolio.module.css";
+
+const SAMPLE = sampleCreatorPortfolio();
 
 const THEMES = [
   { id: "white", label: "White" },
@@ -53,11 +56,13 @@ export function HomepagePortfolio() {
           ))}
         </div>
         <div className={styles.portfolio}>
-          <CreatorPortfolioStudio
+          <PublicCreatorProfile
             key={theme}
-            embedded
-            sampleTheme={theme}
-            presentation="showcase"
+            portfolio={SAMPLE}
+            mode="embedded"
+            sample
+            theme={theme}
+            workLimit={3}
           />
         </div>
       </div>

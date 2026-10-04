@@ -1,6 +1,6 @@
 ---
 title: Public creator profile — redesign concepts
-status: ideation
+status: implemented in part (see "What was built")
 date: "2026-10-03"
 related:
   - ./missa-public-creator-portfolio-contract-2026-09-01.md
@@ -13,8 +13,8 @@ related:
 Concept canvas (13 boards, private until shared):
 https://claude.ai/artifact/VwETHP1gkDMQNbuEUvFfJV
 
-This is ideation, not an implementation contract. Nothing here changes
-`apps/web`. Sample creators (Riley Chen, Nadia Okafor, Juno Adeyemi, Wren Ito)
+This started as ideation. The section "What was built" at the end records
+which parts are now in `apps/web`. Sample creators (Riley Chen, Nadia Okafor, Juno Adeyemi, Wren Ito)
 and every organization named on the canvas are fictional.
 
 ## Why the current profile fails
@@ -159,3 +159,20 @@ Taken from, with what we kept:
 - [Cosmos](https://mobbin.com/screens/f43e3040-8813-42e7-af8a-766eed60df5d),
   [Savee](https://mobbin.com/screens/087ce5cf-e2cd-4fa8-84be-c9ecc57e2073)
   — quiet identity header; rejected: follower counts.
+
+## What was built (2026-10-04)
+
+The profile and the creator-side studio were implemented together. Design and
+validation notes are in [Public creator profile](public-creator-profile-design.md#profile-v2-and-studio-october-2026).
+
+Built: craft lenses (mixed, writing, visual, sound, stage, film, design) that
+order sections; Portrait, Plate and Type heroes; Now line; Open-to
+availability chips; Selected work with format filter, reading view and a shared
+audio player; Upcoming with calendar files; Shelf; Track record with
+Confirmed / Linked / Added provenance; Press; About and contact; printable CV;
+social share image; the studio with live desktop/phone preview, section
+ordering and visibility, suggestions and publishing.
+
+Not built yet: inquiry inbox, Follow, Invite to apply, Editions and Booking
+kit add-ons, Collaborators, and view analytics. Retiring the Paper theme is
+still an open question.

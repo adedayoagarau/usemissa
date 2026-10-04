@@ -35,6 +35,15 @@ export type CreatorProfileView = Readonly<{
 
 export type CreatorPrivacyInput = CreatorProfileView["privacy"];
 
+/** An organization's recorded acceptance of one of the creator's submitted works. */
+export type AcceptedOutcome = Readonly<{
+  outcomeId: string;
+  workTitle: string;
+  callTitle: string;
+  organizationName: string;
+  decidedAt: string;
+}>;
+
 type ProfileRow = {
   account_id: string;
   user_id: string;
@@ -286,6 +295,42 @@ export class PostgresCreatorProfileRepository extends CreatorRepositoryBase {
       [id, accountId],
     );
     return live.rows[0]?.live ? "published" : "missing";
+  }
+
+  /**
+   * Acceptances an organization recorded for this account's Missa submissions.
+   * These are the only facts that can mark a Track record entry Confirmed.
+   */
+  async acceptedOutcomes(accountId: string): Promise<AcceptedOutcome[]> {
+    const result = await this.query<{
+      outcome_id: string;
+      work_title: string;
+      call_title: string;
+      organization_name: string;
+      decided_at: Date;
+    }>(
+      `select d.id as outcome_id, w.title as work_title, oc.title as call_title,
+              coalesce(org.data->>'name', e.name) as organization_name, d.decided_at
+         from decisions d
+         join works w on w.id = d.work_id
+         join submissions s on s.id = w.submission_id
+         join submission_paths sp on sp.id = s.submission_path_id
+         join open_calls oc on oc.id = sp.open_call_id
+         join programs p on p.id = oc.program_id
+         join entities e on e.id = p.entity_id
+         left join radar_organizations org on org.id = e.organization_id
+        where s.submitter_account_id = $1 and d.outcome = 'accepted'
+        order by d.decided_at desc
+        limit 100`,
+      [accountId],
+    );
+    return result.rows.map((row) => ({
+      outcomeId: row.outcome_id,
+      workTitle: row.work_title,
+      callTitle: row.call_title,
+      organizationName: row.organization_name,
+      decidedAt: new Date(row.decided_at).toISOString(),
+    }));
   }
 
   private async throwProfileConflict(client: PoolClient, envelope: CreatorCommandEnvelope): Promise<never> {

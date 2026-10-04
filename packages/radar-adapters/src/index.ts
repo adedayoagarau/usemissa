@@ -71,6 +71,7 @@ export {
   type CreatorProfileInput,
   type CreatorProfileView,
   type CreatorPrivacyInput,
+  type AcceptedOutcome,
 } from "./creatorProfileRepository.js";
 export {
   CreatorAccountProvisionError,

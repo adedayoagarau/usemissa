@@ -97,3 +97,86 @@ Validation: focused PostgreSQL test covers legacy migration, stale revisions, ow
 Next product page after reviewing this slice: For organizations. Account feature follow-ons include multiple books/publication entries, media storage management and a CDN pipeline; none are prerequisites for the existing single-book/single-credit editor.
 
 Final focused validation for this slice: seven Playwright tests passed (including the real account client component with mocked transport), the isolated PostgreSQL snapshot/ownership test passed, TypeScript and scoped ESLint passed, and the design-system policy passed. The temporary phone URL returned login successfully, redirected protected settings to login, and returned 401 for anonymous account data. A fresh isolated Chromium session at 390 px rendered the handle field without horizontal overflow; the user's phone draft was not modified by QA.
+
+## Profile v2 and studio (October 2026)
+
+This section supersedes the editor and visitor-page descriptions above. The
+account, handle, revision, media and snapshot rules from the September slice
+still apply.
+
+### Visitor page
+
+- **Routes:** `/@<handle>` (profile), `/@<handle>/cv` (printable CV, not
+  indexed), `/@<handle>/share.png` (1200×630 social image). Aliases redirect to
+  the canonical handle.
+- **Component:** `PublicCreatorProfile` in
+  `apps/web/components/creator-profile/public-profile.tsx`, policy intent
+  `composition.creator-portfolio`. One component renders the page, the studio
+  preview (`mode="preview"`, headings start at h2) and the homepage embed
+  (`mode="embedded"`, work only).
+- **Structure:** identity hero (Portrait, Plate or Type), Now line, Open-to
+  chips, then the creator's sections in their chosen order: Selected work,
+  Upcoming, Shelf, Track record, Press, About and contact. Empty or hidden
+  sections are left out, and so are their links in the section nav.
+- **Craft lens** sets the default section order and work-card emphasis
+  (reading excerpts for writing, captions for visual work, play buttons for
+  sound). It never changes what data is public.
+- **Provenance:** `ProvenanceBadge` (semantic component) explains Confirmed,
+  Linked and Added entries in a popover. Only the server can mark an entry
+  Confirmed (see the integration handoff).
+- **Availability:** `AvailabilityChip` (semantic component). An "from" date in
+  the past is shown as open.
+- **Layout:** container queries at 960 and 640 px so the studio's phone
+  preview shows the real mobile layout. Reduced motion removes transitions.
+  Muted text is mixed toward the foreground so it meets AA on every theme's
+  tinted surfaces.
+
+### Studio
+
+- **Route:** `/profile/portfolio` (account), and
+  `/design-system/creator-profile-settings` (device-only preview; `?sample=1`
+  seeds the fictional sample).
+- **Component:** `ProfileStudio` in
+  `apps/web/components/creator-profile/studio/`, policy intent
+  `composition.creator-profile-editor`.
+- **Layout:** section rail, editor and live preview at desktop widths (desktop
+  or phone preview, scaled to fit). Below 1180 px the preview moves to a
+  dialog. Below 760 px the rail and the editor are separate views with an
+  "All sections" back button.
+- **Rail:** Basics, Appearance, the content sections with move up/down and
+  a Show switch each, Address and publishing, and up to four suggestions.
+  Blocking suggestions (missing name, invalid link) disable publishing.
+- **Lists:** every list uses one pattern: compact rows, one open at a time,
+  move up/down, remove with Undo.
+- **Track record:** signed-in creators see their accepted Missa outcomes and
+  can add each as Confirmed. Its wording then comes from the decision and is
+  locked.
+- **States:** loading (editor inert), load failed with retry, pending,
+  saving, saved, failed, revision conflict, uploading, publishing,
+  published with unpublished changes.
+
+### Data
+
+`portfolioSchema` is v2: `lens`, `hero`, `statement`, `location`, `now`,
+`openTo`, `works` (with `kind`, `year`, `summary`, `caption`, `featured`),
+`shelf`, `record`, `events`, `press`, `contact` and `modules` (order and
+visibility). v1 drafts and snapshots (`book`, `credit`, `sections`) migrate on
+read, so no database migration is needed.
+
+### Validation
+
+- Unit tests: schema migration, provenance, projection, suggestions,
+  availability and calendar helpers. PGlite test for `acceptedOutcomes`.
+- Playwright: `creator-portfolio-journey.spec.ts` (sample profile across
+  lenses, themes and heroes at 1280/640/390/320 px with axe; studio flow at
+  390 px; desktop live preview; link preview recovery; media removal;
+  anonymous API rejection) and `creator-portfolio-account-ui.spec.ts` (real
+  `ProfileStudio` with mocked transport: confirmed outcome, publish, rename,
+  unpublish, conflict).
+- Not covered without a database: the live `/@handle`, CV and share image
+  routes. Their components are covered through the design-system routes.
+
+### Known gaps
+
+No inquiry inbox, Follow, or Invite to apply yet. A Confirmed entry in a
+published snapshot is re-verified only when the creator publishes again.
