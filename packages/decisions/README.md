@@ -26,6 +26,13 @@ it returns a calibrated probability for each:
 4. **Every routed answer is recorded** in `data_decisions` with the question
    version, input hash, model version, probability and full distribution.
 
+## Re-checks are free
+
+When a record is checked again with exactly the same input, `decide` reuses
+the recorded answer for each question version instead of calling Jev, and
+routes it under the current mode. A changed input or a new question version
+is asked again.
+
 ## Modes
 
 Everything starts in **shadow**: decisions are recorded but `actionable` is
