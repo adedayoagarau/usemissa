@@ -7,6 +7,7 @@ import {
   type CreatorCommandEnvelope,
   type CreatorReceipt,
 } from "./creatorRepository.js";
+import { touchChecklistActivity } from "./creatorObligationMutations.js";
 
 export type CreatorTrackerList = Readonly<{
   id: string;
@@ -166,6 +167,7 @@ export class PostgresCreatorTrackerRepository extends CreatorRepositoryBase {
            revision=revision+1,updated_at=now()
          where id=$2 and account_id=$3 and revision=$4 returning revision`,[opportunityId,checklist.id,envelope.accountId,checklist.revision],
       );
+      await touchChecklistActivity(client,envelope.accountId,checklist.id);
       return { resourceType:"tracker-checklist",resourceId:checklist.id,revision:updated.rows[0]!.revision };
     });
   }
@@ -191,6 +193,7 @@ export class PostgresCreatorTrackerRepository extends CreatorRepositoryBase {
         throw new CreatorConflictError("tracker-checklist-item",itemId,envelope.expectedRevision,current.rows[0]?.revision ?? 0);
       }
       await client.query("update tracker_checklists set revision=revision+1,updated_at=now() where id=$1 and account_id=$2",[row.checklist_id,envelope.accountId]);
+      await touchChecklistActivity(client,envelope.accountId,row.checklist_id);
       return { resourceType: "tracker-checklist-item", resourceId: itemId, revision: row.revision };
     });
   }
@@ -205,6 +208,7 @@ export class PostgresCreatorTrackerRepository extends CreatorRepositoryBase {
       if (row.source === "user-added") await client.query("delete from tracker_checklist_items where id=$1 and account_id=$2",[itemId,envelope.accountId]);
       else await client.query("update tracker_checklist_items set state='not-applicable',revision=revision+1,updated_at=now() where id=$1 and account_id=$2",[itemId,envelope.accountId]);
       await client.query("update tracker_checklists set revision=revision+1,updated_at=now() where id=$1 and account_id=$2",[row.checklist_id,envelope.accountId]);
+      await touchChecklistActivity(client,envelope.accountId,row.checklist_id);
       return { resourceType: "tracker-checklist-item", resourceId: itemId, revision: row.revision + 1 };
     });
   }
@@ -322,6 +326,7 @@ export class PostgresCreatorTrackerRepository extends CreatorRepositoryBase {
 
   private async bumpChecklist(client: PoolClient, accountId: string, checklistId: string, revision: number): Promise<number> {
     const result=await client.query<{revision:number}>("update tracker_checklists set revision=revision+1,updated_at=now() where id=$1 and account_id=$2 and revision=$3 returning revision",[checklistId,accountId,revision]);
+    await touchChecklistActivity(client,accountId,checklistId);
     return result.rows[0]!.revision;
   }
 

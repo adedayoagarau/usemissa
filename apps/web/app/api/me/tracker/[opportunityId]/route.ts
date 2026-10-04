@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import {
+  CanonicalTrackerValidationError,
   CreatorConflictError,
   CreatorIdempotencyConflictError,
   creatorRelationalAuthorityEnabled,
   removeCanonicalTrackedOpportunity,
+  updateCanonicalTrackerPersonalTarget,
   updateCanonicalTrackerReminder,
 } from "@missa/radar-adapters";
 import { getSessionAccount } from "@/lib/auth";
@@ -46,6 +48,9 @@ function commandError(error: unknown) {
   if (error instanceof CreatorIdempotencyConflictError) {
     return NextResponse.json({ error: error.message }, { status: 409, headers });
   }
+  if (error instanceof CanonicalTrackerValidationError) {
+    return NextResponse.json({ error: error.message }, { status: 400, headers });
+  }
   throw error;
 }
 
@@ -57,17 +62,41 @@ export async function PATCH(
   if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401, headers });
   if (!creatorRelationalAuthorityEnabled(process.env) || !process.env.DATABASE_URL) return relationalUnavailable();
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
-  if (!body || typeof body.notify !== "boolean") {
-    return NextResponse.json({ error: "notify must be true or false" }, { status: 400, headers });
+  const changesTarget = Boolean(body && "personalTargetOn" in body);
+  if (!body || (changesTarget ? "notify" in body : typeof body.notify !== "boolean")) {
+    return NextResponse.json(
+      { error: changesTarget ? "Change reminders and the target date separately" : "notify must be true or false" },
+      { status: 400, headers },
+    );
   }
   const input = commandInput(request, body);
   if ("error" in input) return NextResponse.json({ error: input.error }, { status: 400, headers });
+  if (changesTarget) {
+    // A personal target is the creator's own finish date: a calendar date, or
+    // null to clear it. Start-by planning finishes against it.
+    const target = body.personalTargetOn;
+    if (target !== null && (typeof target !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(target))) {
+      return NextResponse.json({ error: "Choose a valid target date." }, { status: 400, headers });
+    }
+    try {
+      const result = await updateCanonicalTrackerPersonalTarget(
+        process.env.DATABASE_URL,
+        session.account.id,
+        (await params).opportunityId,
+        target,
+        input,
+      );
+      return result
+        ? NextResponse.json(result, { headers })
+        : NextResponse.json({ error: "Tracker item not found" }, { status: 404, headers });
+    } catch (error) { return commandError(error); }
+  }
   try {
     const result = await updateCanonicalTrackerReminder(
       process.env.DATABASE_URL,
       session.account.id,
       (await params).opportunityId,
-      body.notify,
+      body.notify as boolean,
       input,
     );
     return result
