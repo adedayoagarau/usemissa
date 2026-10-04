@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { ManuscriptMatchWizard } from "@/components/discover/manuscript-match-wizard";
@@ -36,7 +37,12 @@ export default async function ManuscriptMatchPage() {
           </h1>
           <p className={styles.lede}>
             Describe your story, essay, or poems. Missa compares it with the
-            guidelines, pay, and reply times recorded for each magazine.
+            guidelines, pay, reply times, and prize records for each magazine.
+          </p>
+          <p className={styles.headerLink}>
+            <Link href="/discover/prizes">
+              See major prizes and where their winners were published
+            </Link>
           </p>
         </header>
 

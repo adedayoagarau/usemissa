@@ -46,6 +46,18 @@
   line-height: 1.55;
 }
 
+.headerLink {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.headerLink a {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 /* Two-column layout: brief beside results from 1024px */
 
 .layout {

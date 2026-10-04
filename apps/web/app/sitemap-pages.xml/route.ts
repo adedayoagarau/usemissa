@@ -19,6 +19,7 @@ const STATIC_PATHS = [
   "/rankings/methodology",
   "/rankings/compare",
   "/discover/match",
+  "/discover/prizes",
   "/about",
   "/methodology",
   "/for-organizations",
