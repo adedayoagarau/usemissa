@@ -51,11 +51,9 @@ async function run() {
   }
 
   console.log("\n=== 2. FIXING PLACEHOLDER ORGANIZATION NAMES ===");
-  await pool.query(`
-    update radar_organizations
-    set data = jsonb_set(data, '{name}', '"ArtConnect"')
-    where id = 'org_artconn_3e4e244173eda2fe';
-  `);
+  // org_artconn_3e4e244173eda2fe is ArtConnect's profile of the artist "b",
+  // not ArtConnect. Renaming it presented a directory as the host of every
+  // listing wrongly bound to it (migration 0092), so it keeps its own name.
   await pool.query(`
     update radar_organizations
     set data = jsonb_set(data, '{name}', '"Curatorspace"')
@@ -82,7 +80,7 @@ async function run() {
     where id = 'org_cs_33e75ff09dd601bb';
   `);
 
-  console.log("Updated core placeholder organizations ('b' -> 'ArtConnect', ' ' -> 'Curatorspace', etc.).");
+  console.log("Updated core placeholder organizations (' ' -> 'Curatorspace', etc.).");
 
   console.log("\n=== 3. CONTEXTUALIZING GENERIC TITLES ===");
   const genericUpdates = [

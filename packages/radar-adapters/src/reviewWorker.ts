@@ -35,7 +35,7 @@ export type ReviewHoldReason = "held-for-editorial-review" | "missing-organizati
 export const REVIEW_HOLD_REASON_TEXT: Record<ReviewHoldReason, string> = {
   "held-for-editorial-review": "Passed every automated gate; held for editorial approval because RADAR_REVIEW_PUBLISH_MODE is queue.",
   "missing-organization": "The title is a generic or bare label and no organization is known, so it cannot identify the opportunity. It stays unpublished until an organization is linked.",
-  "possible-non-opportunity": "The title looks like a blog post, newsletter, site page, or non-creative program rather than an opportunity, so it was suppressed.",
+  "possible-non-opportunity": "The title looks like a blog post, newsletter, site page, promotional artist interview, or non-creative program rather than an opportunity, so it was suppressed.",
 };
 
 export function reviewPublishMode(value: string | undefined = process.env.RADAR_REVIEW_PUBLISH_MODE): ReviewPublishMode {

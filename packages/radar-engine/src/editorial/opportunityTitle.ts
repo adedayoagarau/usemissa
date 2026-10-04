@@ -463,13 +463,17 @@ const NON_OPPORTUNITY_PATTERNS: Array<{ signal: string; pattern: RegExp; require
   { signal: 'procurement', pattern: /\b(?:tenders?|procurement|rfps?|request\s+for\s+(?:proposals?|quotations?)|bids?)\b/i, requiresNoStrongCreativeSignal: true },
   { signal: 'non-creative-institution', pattern: /\b(?:admissions?|asylum|immigration|nurse|nursing|p(?:a)?ediatric\w*|medical|clinical|surg(?:ery|ical)|(?:school|college|faculty|department)\s+of\s+medicine|(?:family|community|internal|molecular|emergency)\s+medicine)\b/i, requiresNoStrongCreativeSignal: true },
   { signal: 'non-creative-assistance', pattern: /\b(?:housing|rent(?:al)?\s+assistance|mortgage|homebuyers?|home\s+repair|tenants?|utility|utilities|childcare|food\s+(?:assistance|shelf|bank)|small\s+business(?:es)?|workforce)\b/i, requiresNoCreativeSignal: true },
+  // A platform interviewing artists for its own web feature ("Open Call —
+  // Artist's Interview With Al-Tiba9") is promotion, not an opening, even when
+  // the title calls itself an open call.
+  { signal: 'promotional-interview', pattern: /\bartists?(?:['’]s?)?\s+interviews?\b/i },
 ];
 
 /**
  * Conservative denylist for records that are probably not creative
- * opportunities (blog posts, newsletter sign-ups, site pages, or assistance
- * programs with no creative purpose). The review agent suppresses a match and
- * records the signals; nothing is deleted.
+ * opportunities (blog posts, newsletter sign-ups, site pages, promotional
+ * artist interviews, or assistance programs with no creative purpose). The
+ * review agent suppresses a match and records the signals; nothing is deleted.
  */
 export function assessOpportunityRelevance(title: string): OpportunityRelevanceResult {
   const value = collapse(stripDecorations(title ?? ''));

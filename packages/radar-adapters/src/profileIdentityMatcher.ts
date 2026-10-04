@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 
-export const PROFILE_IDENTITY_MATCHER_VERSION = "profile-host-name-v5";
+export const PROFILE_IDENTITY_MATCHER_VERSION = "profile-host-name-v6";
 
 /**
  * How recently a profile must have been crawled to confirm an identity. The
@@ -127,6 +127,21 @@ function normalizedIdentityUrl(value: string): string | null {
   }
 }
 
+/** True when the page is the profile's own URL or sits beneath its path. */
+function isAtOrUnderProfileUrl(pageUrl: string, profileUrl: string): boolean {
+  try {
+    const page = new URL(pageUrl.includes("://") ? pageUrl : `https://${pageUrl}`);
+    const profile = new URL(profileUrl.includes("://") ? profileUrl : `https://${profileUrl}`);
+    const profilePath = profile.pathname.replace(/\/+$/, "").toLowerCase();
+    // A bare host is the shared platform itself, not one of its profiles.
+    if (!profilePath) return false;
+    const pagePath = page.pathname.replace(/\/+$/, "").toLowerCase();
+    return pagePath === profilePath || pagePath.startsWith(`${profilePath}/`);
+  } catch {
+    return false;
+  }
+}
+
 function isStrongCallNameEvidence(evidence: NameEvidence): boolean {
   return evidence.score >= 0.35 && (
     evidence.matchedTokens.length >= 2 ||
@@ -209,12 +224,19 @@ export function matchOpportunityToProfiles(
   for (const candidateUrl of opportunityUrls(opportunity)) {
     const host = normalizeHost(candidateUrl.url);
     if (!host) continue;
-    const scored = (byHost.get(host) ?? []).map((profile) => {
+    const hostProfiles = byHost.get(host) ?? [];
+    // Many profiles share a directory or social host (every ArtConnect profile
+    // without its own website is stored as its artconnect.com page). There the
+    // host says nothing about who owns a page, so only a page at or under a
+    // profile's own URL can identify that profile.
+    const isMultiTenantHost = new Set(hostProfiles.map((profile) => profile.profileId)).size > 3;
+    const scored = hostProfiles.map((profile) => {
       const callName = profileNameEvidence(profile.profileName, context, host, false);
       const hostName = profileNameEvidence(profile.profileName, [], host, true);
       const exactUrl = normalizedIdentityUrl(candidateUrl.url) === normalizedIdentityUrl(profile.url);
       const strongCallName = isStrongCallNameEvidence(callName);
       const isNavigationRecord = isNavigationOrListingRecord(opportunity.title, candidateUrl.url);
+      const ownsPage = !isMultiTenantHost || isAtOrUnderProfileUrl(candidateUrl.url, profile.url);
       const identityBasis: ProfileIdentityDecision["identityBasis"] =
         strongCallName ? "call-name" : "exact-url";
       return {
@@ -222,18 +244,23 @@ export function matchOpportunityToProfiles(
         score: Math.max(callName.score, exactUrl ? hostName.score : 0),
         matchedTokens: strongCallName ? callName.matchedTokens : hostName.matchedTokens,
         identityBasis,
-        hasCompatibleIdentity: !isNavigationRecord && (strongCallName || (exactUrl && hostName.score >= 0.75)),
+        ownsPage,
+        hasCompatibleIdentity: !isNavigationRecord && ownsPage && (strongCallName || (exactUrl && hostName.score >= 0.75)),
       };
     });
     const bestByProfile = new Map<string, (typeof scored)[number]>();
     for (const candidate of scored) {
       const current = bestByProfile.get(candidate.profile.profileId);
-      if (!current || candidate.score > current.score) bestByProfile.set(candidate.profile.profileId, candidate);
+      if (!current || (candidate.ownsPage && !current.ownsPage) ||
+        (candidate.ownsPage === current.ownsPage && candidate.score > current.score)) {
+        bestByProfile.set(candidate.profile.profileId, candidate);
+      }
     }
     const unique = [...bestByProfile.values()].sort((left, right) => right.score - left.score);
-    const best = unique[0];
-    const runnerUp = unique[1];
-    const isMultiTenantHost = unique.length > 3;
+    // A profile that does not own the page is no rival for one that does.
+    const rivals = unique.filter((candidate) => candidate.ownsPage);
+    const best = rivals[0];
+    const runnerUp = rivals[1];
 
     for (const candidate of unique) {
       const isDirectOrgMatch = Boolean(opportunity.organizationId && opportunity.organizationId === candidate.profile.profileId);
