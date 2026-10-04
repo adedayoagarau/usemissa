@@ -23,7 +23,6 @@ export * from "./deadline.js";
 export * from "./coverageContract.js";
 export * from "./adapters/feed.js";
 export * from "./adapters/json.js";
-export * from "./adapters/chillSubs.js";
 export { GenericHtmlAdapter, createBenchmarkSources, robotsAllowsPath } from "./adapters/html.js";
 export { DeepSeekHtmlAdapter, type DeepSeekHtmlAdapterOptions } from "./adapters/deepseek.js";
 export { GaryObservationAdapter, createGaryNeonObservationLoader, type GaryObservation, type GaryObservationLoader } from "./adapters/gary.js";

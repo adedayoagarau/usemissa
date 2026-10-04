@@ -7168,9 +7168,9 @@ export const BULK_SOURCES: SourceRegistryEntry[] = [
       "contest"
     ],
     "checkIntervalHours": 48,
-    "active": true,
-    "followsOutboundLinks": true,
-    "notes": "Literary discovery — crawl outbound submission guideline pages."
+    "active": false,
+    "followsOutboundLinks": false,
+    "notes": "Not crawled: the site forbids automated access. Missa keeps its own magazine schedules."
   },
   {
     "id": "src_platform-chill-subs_submission_grinder_394",

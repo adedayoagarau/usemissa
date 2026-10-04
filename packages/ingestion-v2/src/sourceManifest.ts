@@ -824,54 +824,6 @@ export const FIRST_TRANCHE_SOURCE_MANIFEST: readonly SourceManifestEntry[] = [
       },
     },
   },
-  {
-    id: "chill-subs-contests",
-    registrySourceId: "src_platform-chill-subs_chill_subs_393",
-    name: "Chill Subs Contests",
-    desk: "writing",
-    role: "application-platform",
-    structure: "bounded-index",
-    access: "allowed",
-    runnable: true,
-    adapterId: "chill-subs-next-v2",
-    urlOverride: "https://www.chillsubs.com/browse/contests",
-    stableItemId: "Chill Subs call id",
-    artFormVerticalIds: [
-      "writing-contest",
-      "poetry",
-      "fiction-short-stories",
-      "nonfiction-essay",
-      "hybrid-cross-genre",
-    ],
-    coverageSegments: ["contests-and-awards"],
-    firstPartyDestinationRequired: true,
-    publicationAuthority: "none",
-    maxIndexPages: 1,
-    maxChangedChildrenPerRun: 5,
-    refresh: DAILY,
-    configOverride: {
-      transport: "chill-subs-next",
-      destination: {
-        pageRole: "landing",
-        detailLimit: 5,
-        scanLimit: 15,
-        requireCurrentDeadlineBeforeReview: true,
-        destinationAdapterId: "chill-subs-next-v2",
-        allowedHosts: ["www.chillsubs.com", "chillsubs.com"],
-        rules: [
-          {
-            role: "detail",
-            patterns: ["/magazine/", "/press/", "/organization/"],
-            authority: "destination",
-          },
-        ],
-        firstPartyHop: {
-          articleOnly: true,
-          limit: 1,
-        },
-      },
-    },
-  },
 ] as const;
 
 export function validateSourceManifest(
