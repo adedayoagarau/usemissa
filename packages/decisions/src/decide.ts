@@ -1,10 +1,15 @@
 import { inputHash } from "./hash.js";
 import type { JevClient } from "./jevClient.js";
-import { decisionRecordFromOutcome, type DecisionLedger } from "./ledger.js";
+import {
+  decisionRecordFromOutcome,
+  type DecisionLedger,
+  type DecisionRecord,
+} from "./ledger.js";
 import { routeAnswer, unavailableOutcome } from "./routing.js";
 import type {
   DecisionMode,
   DecisionOutcome,
+  JevAnswer,
   JevQuestion,
   JevState,
   QuestionDefinition,
@@ -59,6 +64,43 @@ export async function decide(input: DecideInput): Promise<DecideResult> {
     }
   }
   if (sendable.length === 0) return { outcomes, model: null, inputHash: hash };
+
+  // The same question version about the same input was already answered:
+  // reuse the recorded answer (routed again under today's mode) instead of
+  // paying for another call. Re-checks of unchanged records cost nothing.
+  let reusedModel: string | null = null;
+  if (input.ledger?.findPrevious) {
+    try {
+      const previous = await input.ledger.findPrevious({
+        subjectId: input.subjectId,
+        inputHash: hash,
+        questions: sendable.map((definition) => ({
+          subjectType: definition.subjectType,
+          key: definition.key,
+          version: definition.version,
+        })),
+      });
+      for (let index = sendable.length - 1; index >= 0; index -= 1) {
+        const definition = sendable[index]!;
+        const record = previous.find(
+          (candidate) =>
+            candidate.subjectType === definition.subjectType &&
+            candidate.questionKey === definition.key &&
+            candidate.questionVersion === definition.version,
+        );
+        const answer = record ? answerFromRecord(definition, record) : null;
+        if (!record || !answer) continue;
+        outcomes[definition.key] = routeAnswer(definition, answer, input.mode);
+        reusedModel = record.deciderVersion ?? reusedModel;
+        sendable.splice(index, 1);
+      }
+    } catch {
+      // A failed lookup only costs a fresh call.
+    }
+    if (sendable.length === 0) {
+      return { outcomes, model: reusedModel, inputHash: hash };
+    }
+  }
 
   const questions: Record<string, JevQuestion> = {};
   const idFor = new Map<string, string>();
@@ -119,6 +161,45 @@ export async function decide(input: DecideInput): Promise<DecideResult> {
   }
 
   return { outcomes, model: response.model, inputHash: hash };
+}
+
+/** Rebuilds the Jev answer a ledger row recorded, or null when it cannot. */
+export function answerFromRecord(
+  definition: QuestionDefinition,
+  record: DecisionRecord,
+): JevAnswer | null {
+  const { question } = definition;
+  if (record.questionKind !== question.type) return null;
+  if (question.type === "noul") {
+    const probability = record.distribution?.true ?? record.probability;
+    return typeof probability === "number"
+      ? { type: "noul", noul: probability }
+      : null;
+  }
+  if (question.type === "choice") {
+    if (!record.answer) return null;
+    return {
+      type: "choice",
+      choice: record.answer,
+      probabilities: { ...record.distribution },
+      confidence: record.confidence ?? 0,
+    };
+  }
+  const probabilities: Record<string, number> = {};
+  const legend: Record<string, string> = {};
+  question.criteria.forEach((label, index) => {
+    legend[String(index)] = label;
+    const value = record.distribution?.[label];
+    if (typeof value === "number") probabilities[String(index)] = value;
+  });
+  if (Object.keys(probabilities).length === 0) return null;
+  return {
+    type: "score",
+    score: 0,
+    legend,
+    probabilities,
+    confidence: record.confidence ?? 0,
+  };
 }
 
 /** Reads DECISIONS_MODE_<KEY> or DECISIONS_MODE; anything but "live" is shadow. */

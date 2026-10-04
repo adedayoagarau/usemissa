@@ -40,6 +40,20 @@ export interface DecisionRecord {
 export interface DecisionLedger {
   /** Returns the ids written; a decision already recorded for the same input is skipped. */
   record(records: DecisionRecord[]): Promise<string[]>;
+  /** Jev decisions already recorded for these question versions and this exact input. */
+  findPrevious?(query: PreviousDecisionQuery): Promise<DecisionRecord[]>;
+}
+
+export interface PreviousDecisionQuery {
+  subjectId: string;
+  inputHash: string;
+  questions: Array<{ subjectType: string; key: string; version: number }>;
+}
+
+function numberOrNull(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 export function questionOptions(
@@ -116,7 +130,7 @@ function round(value: number | null): number | null {
   return value === null ? null : Math.round(value * 10_000) / 10_000;
 }
 
-/** Writes to data_decisions (migration 0088). */
+/** Writes to data_decisions (migration 0090). */
 export function createPostgresDecisionLedger(db: Queryable): DecisionLedger {
   return {
     async record(records) {
@@ -165,6 +179,53 @@ export function createPostgresDecisionLedger(db: Queryable): DecisionLedger {
       );
       return result.rows.map((row) => String((row as { id: unknown }).id));
     },
+    async findPrevious(query) {
+      if (query.questions.length === 0) return [];
+      const result = await db.query(
+        `SELECT subject_type, subject_id, field_name, question_key, question_version,
+                question_kind, options, input_hash, evidence_url, answer, probability,
+                confidence, distribution, route, mode, decider_kind, decider,
+                decider_version, policy_version
+           FROM data_decisions
+          WHERE subject_id = $1
+            AND input_hash = $2
+            AND decider_kind = 'jev'
+            AND (subject_type, question_key, question_version) IN (
+              SELECT * FROM unnest($3::text[], $4::text[], $5::int[])
+            )`,
+        [
+          query.subjectId,
+          query.inputHash,
+          query.questions.map((question) => question.subjectType),
+          query.questions.map((question) => question.key),
+          query.questions.map((question) => question.version),
+        ],
+      );
+      return result.rows.map((raw) => {
+        const row = raw as Record<string, unknown>;
+        return {
+          subjectType: String(row.subject_type),
+          subjectId: String(row.subject_id),
+          fieldName: (row.field_name as string | null) ?? null,
+          questionKey: String(row.question_key),
+          questionVersion: Number(row.question_version),
+          questionKind: String(row.question_kind),
+          options: (row.options as string[] | null) ?? null,
+          inputHash: String(row.input_hash),
+          evidenceUrl: (row.evidence_url as string | null) ?? null,
+          answer: (row.answer as string | null) ?? null,
+          probability: numberOrNull(row.probability),
+          confidence: numberOrNull(row.confidence),
+          distribution: (row.distribution as Record<string, number>) ?? {},
+          route: String(row.route),
+          mode: row.mode === "live" ? "live" : "shadow",
+          deciderKind: "jev",
+          decider: String(row.decider),
+          deciderVersion: (row.decider_version as string | null) ?? null,
+          policyVersion: (row.policy_version as string | null) ?? null,
+        } satisfies DecisionRecord;
+      });
+    },
   };
 }
 
@@ -193,6 +254,20 @@ export function createMemoryDecisionLedger(): DecisionLedger & {
         ids.push(`mem_${records.length}`);
       }
       return ids;
+    },
+    async findPrevious(query) {
+      return records.filter(
+        (record) =>
+          record.deciderKind === "jev" &&
+          record.subjectId === query.subjectId &&
+          record.inputHash === query.inputHash &&
+          query.questions.some(
+            (question) =>
+              question.subjectType === record.subjectType &&
+              question.key === record.questionKey &&
+              question.version === record.questionVersion,
+          ),
+      );
     },
   };
 }

@@ -3,9 +3,12 @@ import { SMS_REMINDER_PLANS } from "./creatorEntitlements.js";
 import type { CreatorNoticeEmailKind } from "./creatorReminderEmail.js";
 import { SMS_MAX_ATTEMPTS, smsLedgerReady } from "./smsMessages.js";
 
+/** Notices that go out by text: the email notices plus the deadline-day alarm. */
+export type CreatorReminderTextKind = CreatorNoticeEmailKind | "deadline-day";
+
 export type PendingCreatorReminderText = {
   alertId: string;
-  kind: CreatorNoticeEmailKind;
+  kind: CreatorReminderTextKind;
   accountId: string;
   /** Verified E.164 number. */
   phone: string;
@@ -25,7 +28,8 @@ export const creatorReminderTextKey = (alertId: string) => `creator-reminder-sms
  * Tracker notices that still need a text: the same notices that go out by
  * email, for accounts with a verified phone, texts and reminders switched on,
  * and a plan that includes text reminders. When a plan lapses the account
- * simply stops matching. Deadline reminders and response check-ins were
+ * simply stops matching. The deadline-day alarm (Plus) goes out by text too.
+ * Deadline reminders, deadline-day alarms and response check-ins were
  * already held through quiet hours by the reminder tick; moved deadlines and
  * early closures are held here until the account's quiet hours end. A notice
  * with any ledger row is skipped unless Telnyx never accepted it and it has
@@ -52,6 +56,12 @@ export async function pendingCreatorReminderTexts(pool: Pool, limit = 100): Prom
           )
         )`
     : "";
+  // The deadline-day alarm is only true while the application is still unsent
+  // and the call has not closed: at the provider's stated time, else at the end
+  // of the deadline day in the deadline's zone (or the creator's).
+  const closeZone = ready.rows[0].timing
+    ? `coalesce(o.deadline_timezone, case when exists (select 1 from pg_timezone_names z where z.name = p.timezone) then p.timezone end, 'UTC')`
+    : `coalesce(o.deadline_timezone, 'UTC')`;
   const quietMinute = ready.rows[0].timing
     ? `left join lateral (
          select (extract(hour from now() at time zone p.timezone) * 60 + extract(minute from now() at time zone p.timezone))::int as minute
@@ -60,7 +70,7 @@ export async function pendingCreatorReminderTexts(pool: Pool, limit = 100): Prom
     : "";
   const result = await pool.query<{
     alert_id: string;
-    kind: CreatorNoticeEmailKind;
+    kind: CreatorReminderTextKind;
     account_id: string;
     sms_phone: string;
     opportunity_id: string;
@@ -92,6 +102,10 @@ export async function pendingCreatorReminderTexts(pool: Pool, limit = 100): Prom
             and o.deadline_date is not null and o.deadline_date >= current_date)
           or a.kind='call-closed'
           or (a.kind='response-overdue' and a.reminder_id is not null)
+          or (a.kind='deadline-day' and a.reminder_id is not null
+            and t.status in ('interested','saved','preparing','draft-started','ready-to-submit')
+            and o.deadline_date is not null
+            and coalesce(o.deadline_time, ((o.deadline_date + 1)::timestamp at time zone ${closeZone})) > now())
         )
         ${quietHold}
         and not exists (

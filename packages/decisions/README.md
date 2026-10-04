@@ -1,7 +1,7 @@
 # @missa/decisions
 
 Typed, recorded decisions about Missa's own data, made by Jev (TypeSafe AI's
-System One model) and written to the `data_decisions` ledger (migration 0088).
+System One model) and written to the `data_decisions` ledger (migration 0090).
 
 Jev never writes text. You send it a record and a set of typed questions, and
 it returns a calibrated probability for each:
@@ -25,6 +25,13 @@ it returns a calibrated probability for each:
      so keep the current behaviour.
 4. **Every routed answer is recorded** in `data_decisions` with the question
    version, input hash, model version, probability and full distribution.
+
+## Re-checks are free
+
+When a record is checked again with exactly the same input, `decide` reuses
+the recorded answer for each question version instead of calling Jev, and
+routes it under the current mode. A changed input or a new question version
+is asked again.
 
 ## Modes
 

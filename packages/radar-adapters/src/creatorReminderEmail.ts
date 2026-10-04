@@ -1,7 +1,45 @@
 import type { Pool } from "pg";
 
+/** Notices about a saved application's own deadlines, sent when reminders are on. */
+export const CREATOR_REMINDER_NOTICE_KINDS = [
+  "deadline-reminder",
+  "deadline-changed",
+  "call-closed",
+  "response-overdue",
+  "deadline-day",
+  "tier-ending",
+  "milestone-due",
+  "gone-quiet",
+  "time-to-query",
+  "obligations-suggested",
+  "obligations-moved",
+  "cycle-carry-suggested",
+] as const;
+
+/** Notices about a call opening, sent when "Organizations you follow" is on. */
+export const CREATOR_OPENING_NOTICE_KINDS = ["opens-soon", "forecast-changed"] as const;
+
 /** The Tracker notices that are also sent as email. */
-export type CreatorNoticeEmailKind = "deadline-reminder" | "deadline-changed" | "call-closed" | "response-overdue";
+export type CreatorNoticeEmailKind =
+  | (typeof CREATOR_REMINDER_NOTICE_KINDS)[number]
+  | (typeof CREATOR_OPENING_NOTICE_KINDS)[number];
+
+/** Kinds written with the was/now values already in the notice title and body. */
+const NOTICE_TEXT_KINDS = [
+  "deadline-day",
+  "tier-ending",
+  "milestone-due",
+  "gone-quiet",
+  "time-to-query",
+  "obligations-suggested",
+  "obligations-moved",
+  "cycle-carry-suggested",
+  "opens-soon",
+  "forecast-changed",
+] as const;
+
+/** Kinds that only make sense while the application has not been sent yet. */
+const PRE_SUBMISSION_ONLY_KINDS = ["deadline-day", "tier-ending", "gone-quiet"] as const;
 
 export type PendingCreatorReminderEmail = {
   alertId: string;
@@ -35,20 +73,33 @@ export type PendingCreatorReminderEmail = {
   /** response-overdue: when the creator submitted, and the organisation's stated reply time. */
   submittedAt: string | null;
   responseTimeDays: number | null;
+  /** The Inbox notice's own headline and body; carries the was/now values for change notices. */
+  noticeTitle: string;
+  noticeBody: string;
+  /** Where the Inbox notice points, e.g. the Tracker record or the call page. */
+  actionHref: string | null;
   idempotencyKey: string;
 };
 
 /** Ledger key for one reminder notice's email; also how a sent email is recognised. */
 export const creatorReminderEmailKey = (alertId: string) => `creator-reminder:${alertId}`;
 
+const sqlList = (values: readonly string[]) => values.map((value) => `'${value}'`).join(",");
+const PRE_SUBMISSION = "'interested','saved','preparing','draft-started','ready-to-submit'";
+
 /**
- * Tracker notices that still need an email: deadline reminders and response
- * check-ins from the reminder tick, and moved deadlines and early closures from
- * deadline reconciliation. The account must have email and reminders on, a
- * deadline notice needs a deadline still ahead, and no ledger effect may exist
- * for the notice other than a failed one (failed sends retry). Bounded to
- * recent notices so old backlog never floods an inbox when email is first
- * switched on. "Deadline needs checking" notices stay in the Inbox only.
+ * Tracker notices that still need an email: deadline reminders, the
+ * deadline-day alarm, fee-tier endings, plan milestones, gone-quiet nudges and
+ * follow-up notices from the reminder tick; moved deadlines and early closures
+ * from deadline reconciliation; plan changes and suggestions from the planning
+ * engine; and opening alerts from the cycle tick. The account must have email
+ * on, plus reminders on for reminder kinds or "Organizations you follow" on for
+ * opening kinds. A deadline notice needs a deadline still ahead; the
+ * deadline-day alarm, tier endings and gone-quiet nudges need the application
+ * still unsent. No ledger effect may exist for the notice other than a failed
+ * one (failed sends retry). Bounded to recent notices so old backlog never
+ * floods an inbox when email is first switched on. "Deadline needs checking"
+ * notices stay in the Inbox only.
  */
 export async function pendingCreatorReminderEmails(pool: Pool, limit = 100): Promise<PendingCreatorReminderEmail[]> {
   const result = await pool.query<{
@@ -75,6 +126,9 @@ export async function pendingCreatorReminderEmails(pool: Pool, limit = 100): Pro
     listed_deadline: string | null;
     submitted_at: Date | null;
     response_time_days: number | null;
+    notice_title: string;
+    notice_body: string;
+    action_href: string | null;
   }>(
     `select a.id alert_id,a.kind,a.created_at noticed_at,a.account_id,acc.email,a.opportunity_id,o.title,
             coalesce(org.data->>'name',o.organization_id) organization_name,o.deadline_date::text deadline,
@@ -82,7 +136,8 @@ export async function pendingCreatorReminderEmails(pool: Pool, limit = 100): Pro
             nullif(trim(cp.given_name),'') given_name,t.status tracked_status,
             o.type,o.fee_status,o.fee_cents,o.fee_currency,o.prize,
             e.previous_source_deadline_date::text previous_deadline,e.source_deadline_date::text listed_deadline,
-            t.submitted_at,cprof.response_time_days
+            t.submitted_at,cprof.response_time_days,
+            a.title notice_title,a.body notice_body,a.action_href
        from creator_inbox_alerts a
        join radar_accounts acc on acc.id=a.account_id
        join notification_preferences p on p.account_id=a.account_id
@@ -97,7 +152,8 @@ export async function pendingCreatorReminderEmails(pool: Pool, limit = 100): Pro
           order by ev.updated_at desc limit 1
        ) e on true
       where a.created_at > now()-interval '3 days'
-        and p.email_enabled and p.reminder_enabled
+        and p.email_enabled
+        and (case when a.kind in (${sqlList(CREATOR_OPENING_NOTICE_KINDS)}) then p.follow_enabled else p.reminder_enabled end)
         and coalesce(acc.email,'')<>'' and coalesce((acc.data->>'active')::boolean,true)
         and (
           (a.kind='deadline-reminder' and a.reminder_id is not null
@@ -106,6 +162,9 @@ export async function pendingCreatorReminderEmails(pool: Pool, limit = 100): Pro
             and o.deadline_date is not null and o.deadline_date >= current_date)
           or a.kind='call-closed'
           or (a.kind='response-overdue' and a.reminder_id is not null)
+          or (a.kind in (${sqlList(NOTICE_TEXT_KINDS)})
+            and (a.kind not in (${sqlList(PRE_SUBMISSION_ONLY_KINDS)}) or t.status in (${PRE_SUBMISSION}))
+            and (a.kind not in ('deadline-day','tier-ending') or (o.deadline_date is not null and o.deadline_date >= current_date)))
         )
         and not exists (
           select 1 from platform_message_effects e
@@ -139,6 +198,9 @@ export async function pendingCreatorReminderEmails(pool: Pool, limit = 100): Pro
     listedDeadline: row.listed_deadline,
     submittedAt: row.submitted_at ? new Date(row.submitted_at).toISOString() : null,
     responseTimeDays: row.response_time_days,
+    noticeTitle: row.notice_title,
+    noticeBody: row.notice_body,
+    actionHref: row.action_href,
     idempotencyKey: creatorReminderEmailKey(row.alert_id),
   }));
 }

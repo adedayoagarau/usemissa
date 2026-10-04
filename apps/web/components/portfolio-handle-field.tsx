@@ -2,7 +2,7 @@
 import { useEffect, useState, useId } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import styles from "./creator-portfolio-studio.module.css";
+import styles from "./portfolio-handle-field.module.css";
 export function PortfolioHandleField({
   value,
   onChange,

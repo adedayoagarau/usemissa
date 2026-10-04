@@ -14,6 +14,8 @@ import {
   type ScoredGenre,
   type SimultaneousPolicy,
 } from "@missa/radar-engine";
+import { MAGAZINE_GUIDELINES } from "../data/magazines/guidelines.js";
+import { guidelineFacts, type GuidelineFacts, type MagazineGuidelineRecord } from "./guidelineFacts.js";
 import {
   BEST_SMALL_FICTIONS_INDEX_URL,
   SOURCE_NAMES,
@@ -104,7 +106,7 @@ export function exactKey(name: unknown): string {
   if (typeof name !== "string" || !name) return "";
   return name
     .toLowerCase()
-    .replace(/©|®|™/g, "")
+    .replace(/©|®|™|\*/g, "")
     .replace(/\s*[([].*?[)\]]/g, "")
     .replace(/&amp;/g, "and")
     .replace(/&/g, "and")
@@ -444,6 +446,8 @@ type FactSource = { url: string; recordedOn: string };
 
 interface MagazineFacts {
   listing: ListingFacts | null;
+  /** The magazine's own guidelines; used only for facts nothing else records. */
+  site: GuidelineFacts | null;
   fees: Partial<Record<ScoredGenre, GenreFeeFact>>;
   overallFee: GenreFeeFact | null;
   reportCount: number;
@@ -463,7 +467,7 @@ export interface RecomputeSummary {
 
 export async function recomputeMagazineRankings(
   db: RankingDb,
-  options: { years?: number[]; write: boolean },
+  options: { years?: number[]; write: boolean; guidelines?: MagazineGuidelineRecord[] },
 ): Promise<{ summary: RecomputeSummary; ranked: Map<number, ComputedMagazineRankings[]> }> {
   const editions = await acceptedEditions(db);
   const available = completeRankingYears(editions);
@@ -533,7 +537,7 @@ export async function recomputeMagazineRankings(
   }
   const pushcartRows = [...pushcart.values()] as Array<PushcartRow & { profileId: string }>;
 
-  const [listingRes, categoryRes, reportRes] = await Promise.all([
+  const [listingRes, categoryRes, reportRes, redirectRes] = await Promise.all([
     db.query(`
       SELECT DISTINCT ON (profile_id) profile_id, response_time, reading_fee, payment,
              simultaneous_submissions, source_detail_url, last_updated, observed_at
@@ -565,6 +569,7 @@ export async function recomputeMagazineRankings(
       FROM missa_submission_telemetry
       WHERE response_days > 0 AND outcome IN ('accepted', 'rejected', 'withdrawn')
       GROUP BY profile_id`),
+    db.query(`SELECT source_id_or_slug, target_profile_id FROM gary_profile_redirects`),
   ]);
 
   const listings = new Map<string, ListingFacts>();
@@ -584,6 +589,12 @@ export async function recomputeMagazineRankings(
     categoriesByProfile.set(String(row.profile_id), list);
   }
   const reports = new Map(reportRes.rows.map((row) => [String(row.profile_id), row]));
+  // Guideline facts follow a profile when it is merged into another.
+  const redirects = new Map(redirectRes.rows.map((row) => [String(row.source_id_or_slug), String(row.target_profile_id)]));
+  const siteFacts = new Map<string, GuidelineFacts>();
+  for (const record of options.guidelines ?? MAGAZINE_GUIDELINES) {
+    siteFacts.set(redirects.get(record.profileId) ?? record.profileId, guidelineFacts(record));
+  }
 
   const factsFor = (profileId: string, year: number): MagazineFacts => {
     const listing = listings.get(profileId);
@@ -593,10 +604,23 @@ export async function recomputeMagazineRankings(
     const fees = deriveFeeFacts(categories, names.get(profileId));
     const report = reports.get(profileId);
     const reportCount = report ? Number(report.reports) : 0;
+    const datedListing = listing && listing.year <= year ? listing : null;
+    const site = siteFacts.get(profileId);
+    const datedSite = site && site.year <= year ? site : null;
+    let overallFee = overallFeeFact(fees);
+    if (!overallFee && datedListing?.chargesFee == null && datedSite?.fee?.regularFeeCents != null) {
+      overallFee = {
+        regularFeeCents: datedSite.fee.regularFeeCents,
+        hasSubsidizedFeeCategory: false,
+        sourceUrl: datedSite.fee.url,
+        recordedOn: datedSite.recordedOn,
+      };
+    }
     return {
-      listing: listing && listing.year <= year ? listing : null,
+      listing: datedListing,
+      site: datedSite,
       fees,
-      overallFee: overallFeeFact(fees),
+      overallFee,
       reportCount,
       median: reportCount >= MIN_REPORTS_FOR_MEDIAN ? Math.round(Number(report!.median_days)) : null,
     };
@@ -632,7 +656,7 @@ export async function recomputeMagazineRankings(
       const genres = new Set<ScoredGenre>(pushcartForYear.map((r) => r.genre));
       for (const c of own) if (c.genre !== "hybrid" && year - c.year >= 0 && year - c.year <= 9) genres.add(c.genre);
 
-      const magazineFee = feeFactsFromRecord(facts.overallFee, facts.listing);
+      const magazineFee = feeFactsFromRecord(facts.overallFee, facts.listing, facts.site);
       const feesByGenre: Partial<Record<ScoredGenre, FeeFacts>> = {};
       for (const [genre, fee] of Object.entries(facts.fees) as Array<[ScoredGenre, GenreFeeFact]>) {
         feesByGenre[genre] = feeFactsFromRecord(fee, null);
@@ -645,12 +669,12 @@ export async function recomputeMagazineRankings(
         pushcart: pushcartForYear.map(({ genre, editionYear, score, rank, sourceUrl }) => ({ genre, editionYear, score, rank, sourceUrl })),
         anthologyCitations: own.map(({ genre, anthology, year: y, sourceUrl }) => ({ genre, anthology, year: y, sourceUrl })),
         medianResponseDays: facts.median,
-        responseTimeBand: facts.listing?.responseTimeBand ?? null,
+        responseTimeBand: responseBandOf(facts),
         simultaneousSubmissions: facts.listing?.simultaneous ?? null,
         queryAllowedAfterDays: null,
         ...magazineFee,
         feesByGenre,
-        contributorPay: { kind: facts.listing?.payKind ?? null },
+        contributorPay: { kind: payKindOf(facts) },
         digitalArchive: null,
         blindReading: null,
         debutFriendly: null,
@@ -689,20 +713,24 @@ export async function recomputeMagazineRankings(
         if (!score) continue;
         counts[genre]! += 1;
         const fee = genre === "overall" ? facts.overallFee : facts.fees[genre as ScoredGenre] ?? facts.overallFee;
-        const feeFacts = feeFactsFromRecord(fee, facts.listing);
+        const feeFacts = feeFactsFromRecord(fee, facts.listing, facts.site);
         const sources: Record<string, FactSource> = {};
         const listingSource = facts.listing ? { url: facts.listing.url, recordedOn: facts.listing.recordedOn } : null;
+        const siteSource = (url: string) => ({ url, recordedOn: facts.site!.recordedOn });
         if (fee) sources.fee = { url: fee.sourceUrl, recordedOn: fee.recordedOn };
         else if (facts.listing?.chargesFee != null) sources.fee = listingSource!;
+        else if (facts.site?.fee) sources.fee = siteSource(facts.site.fee.url);
         if (facts.listing?.payKind) sources.pay = listingSource!;
+        else if (facts.site?.pay) sources.pay = siteSource(facts.site.pay.url);
         if (facts.listing?.responseTimeBand) sources.response = listingSource!;
+        else if (facts.site?.response) sources.response = siteSource(facts.site.response.url);
         if (facts.listing?.simultaneous) sources.simultaneous = listingSource!;
         rankingRows.push([
           item.profileId, year, genre, score.rankPosition, score.tier,
           score.totalScore, score.accoladesScore, score.payScore, score.turnaroundScore, score.feesScore,
           score.respectScore, score.formatAndEthicsScore, facts.median,
           feeFacts.regularSubmissionFeeCents, null, facts.listing?.simultaneous ?? null,
-          facts.listing?.responseTimeBand ?? null, feeFacts.chargesSubmissionFee, facts.listing?.payKind ?? null,
+          responseBandOf(facts), feeFacts.chargesSubmissionFee, payKindOf(facts),
           facts.reportCount, JSON.stringify(sources), JSON.stringify(score.pillarStatus), score.coverage,
         ]);
       }
@@ -750,7 +778,15 @@ export async function recomputeMagazineRankings(
 }
 
 /** Engine fee facts from a recorded category fee, else the listing's yes/no. */
-function feeFactsFromRecord(fee: GenreFeeFact | null, listing: ListingFacts | null): FeeFacts {
+const responseBandOf = (facts: MagazineFacts) =>
+  facts.listing?.responseTimeBand ?? facts.site?.response?.band ?? null;
+const payKindOf = (facts: MagazineFacts) => facts.listing?.payKind ?? facts.site?.pay?.kind ?? null;
+
+function feeFactsFromRecord(
+  fee: GenreFeeFact | null,
+  listing: ListingFacts | null,
+  site: GuidelineFacts | null = null,
+): FeeFacts {
   if (fee) {
     return {
       regularSubmissionFeeCents: fee.regularFeeCents,
@@ -758,9 +794,10 @@ function feeFactsFromRecord(fee: GenreFeeFact | null, listing: ListingFacts | nu
       hasSubsidizedFeeCategory: fee.regularFeeCents > 0 ? fee.hasSubsidizedFeeCategory : null,
     };
   }
+  const chargesFee = listing?.chargesFee ?? site?.fee?.chargesFee ?? null;
   return {
-    regularSubmissionFeeCents: listing?.chargesFee === false ? 0 : null,
-    chargesSubmissionFee: listing?.chargesFee ?? null,
+    regularSubmissionFeeCents: chargesFee === false ? 0 : null,
+    chargesSubmissionFee: chargesFee,
     hasSubsidizedFeeCategory: null,
   };
 }
