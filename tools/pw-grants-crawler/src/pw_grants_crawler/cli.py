@@ -4,6 +4,7 @@ from pathlib import Path
 
 from .crawler import crawl_calls
 from .fetcher import HttpFetcher
+from .identity import opportunity_identity_shadow_from_env
 from .neon import NeonStore
 from .output import write_result
 from .renderer import PlaywrightFetcher
@@ -126,7 +127,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise SystemExit("--neon requires DATABASE_URL")
             if args.freshness_hours < 1:
                 raise SystemExit("--freshness-hours must be at least 1")
-            neon_store = NeonStore(database_url)
+            neon_store = NeonStore(database_url, identity_shadow=opportunity_identity_shadow_from_env(database_url))
             neon_store.ensure_schema()
             neon_run_id = neon_store.ingest_manifest(
                 manifest_path,

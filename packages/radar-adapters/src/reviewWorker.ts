@@ -6,7 +6,7 @@ import { ensureAgentGraphSchema } from "./agentGraphSchema.js";
 import { ensureContentReviewSchema } from "./contentReviewSchema.js";
 import { ensurePublicationRubricSchema } from "./publicationRubricSchema.js";
 import { evaluatePublicationRubric, type PublicationRubricCandidate } from "./publicationRubric.js";
-import { syncProfileOpportunityLinks } from "./profileIdentityMatcher.js";
+import { profileIdentityJevFromEnv, syncProfileOpportunityLinks } from "./profileIdentityMatcher.js";
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from "./workerTelemetry.js";
 import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 import { ensureOpportunityVersionHead } from "./recommendation/versionHead.js";
@@ -352,7 +352,7 @@ async function processJob(pool: Pool, runId: string, job: ReviewJob): Promise<Re
 export async function runReviewTick(pool: Pool, limit = batchSize()): Promise<{ claimed: number; decisions: Record<ReviewDecision, number> }> {
   // Refresh durable profile identity evidence before review. This is bounded,
   // idempotent, and fails closed if matching cannot be completed.
-  await syncProfileOpportunityLinks(pool, Math.max(limit * 5, 100));
+  await syncProfileOpportunityLinks(pool, Math.max(limit * 5, 100), { jev: profileIdentityJevFromEnv(pool) });
   await seedReviewJobs(pool);
   const runId = await startRun(pool);
   const jobs = await claimJobs(pool, limit);

@@ -26,6 +26,7 @@ import {
 } from "./postgresStore.js";
 import { LlmExtractor } from "./llmExtractor.js";
 import { uuidIds } from "./uuidIds.js";
+import { dedupIdentityDeciderFromEnv } from "./dedupIdentityDecider.js";
 import {
   commitTrackerImportTransaction,
   consumeTrackerImportPreviewRateLimit,
@@ -216,7 +217,9 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
   // hydration below is a real state migration: new sources, corrected source
   // authority, and adapter changes must be durably written on the next tick.
   let persistedStore = cloneStore(store);
-  const engine = new RadarEngine({ store, fetcher, extractor, ids: uuidIds() });
+  // Shadow-only Jev same_opportunity decisions for dedup near misses; absent
+  // without JEV_API_KEY, so the tick is unchanged.
+  const engine = new RadarEngine({ store, fetcher, extractor, ids: uuidIds(), dedupIdentityDecider: dedupIdentityDeciderFromEnv(pool) });
   // Hydrate registry tier metadata for every persisted source in memory. The
   // persistence baseline remains the database snapshot, so only actual
   // additions and metadata changes are written on the next persist.

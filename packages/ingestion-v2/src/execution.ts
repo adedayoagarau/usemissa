@@ -8,6 +8,7 @@ import { assessEvidenceQuality, type EvidenceQuality } from "./quality.js";
 import { reviewForPublication, reviewOfficialSourceCard, type CandidatePublisherReview, type PublisherReview } from "./publisher.js";
 import { promoteApprovedArtifact } from "./canonicalWriter.js";
 import { hasCurrentDeadlineOrWindow } from "./deadline.js";
+import type { OpportunityIdentityShadow } from "./identity.js";
 import type { Pool } from "pg";
 
 export const UNCHANGED_ROOT_WARNING = "Source root unchanged; extraction and child destination fetches skipped";
@@ -70,6 +71,8 @@ export interface PipelineExecutionOptions {
   logger?: Pick<Console, "info" | "warn">;
   promotionPool?: Pool;
   forceReprocess?: boolean;
+  /** Records Jev same_opportunity decisions for ambiguous identities; shadow only. */
+  identityShadow?: OpportunityIdentityShadow;
 }
 
 function runFromJob(job: PipelineJobData, now: Date): IngestionRun {
@@ -187,7 +190,7 @@ export async function executeShadowPipeline(
             relatedFields: firstPartyExtraction.fields,
             candidate: firstPartyCandidate,
             candidateSnapshot: firstPartySnapshot,
-          });
+          }, { identityShadow: options.identityShadow });
           candidateReviews.push({
             candidate: firstPartyCandidate,
             snapshotId: firstPartySnapshot.id,
@@ -218,7 +221,7 @@ export async function executeShadowPipeline(
         };
         const review = destination.structuredRecordAuthority
           ? await reviewOfficialSourceCard(publisherInput)
-          : await reviewForPublication(publisherInput);
+          : await reviewForPublication(publisherInput, { identityShadow: options.identityShadow });
         candidateReviews.push({
           candidate,
           snapshotId: destinationSnapshot.id,
@@ -254,7 +257,7 @@ export async function executeShadowPipeline(
         }
       : candidateReviews.length === 1
         ? { ...candidateReviews[0]!.review, candidateReviews, candidateCoverage }
-        : { ...await reviewForPublication({ source, sourceSnapshot: snapshot, sourceExtraction, relatedSnapshots, relatedFields: extraction.fields }), candidateCoverage };
+        : { ...await reviewForPublication({ source, sourceSnapshot: snapshot, sourceExtraction, relatedSnapshots, relatedFields: extraction.fields }, { identityShadow: options.identityShadow }), candidateCoverage };
     const artifact: ShadowArtifact = { run: { ...run, status: "completed" }, snapshot, relatedSnapshots, extraction, quality: assessEvidenceQuality(snapshot, extraction), publisher, published: false };
     await store.save(artifact);
     return artifact;

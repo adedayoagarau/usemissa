@@ -19,6 +19,7 @@ import {
   type ScheduledSourceStore,
 } from "./postgresRunner.js";
 import { AdapterRegistry } from "./registry.js";
+import { opportunityIdentityShadowFromEnv } from "./identity.js";
 import { assertIngestionV2DatabaseRole } from "./safety.js";
 import { evaluateCandidateReplayGate } from "./candidateGate.js";
 import { backfillV2SourceTaxonomy, closeExpiredPublishedV2Opportunities, closeExpiredReviewableV2Opportunities, handoffApprovedCandidate } from "./canonicalWriter.js";
@@ -39,6 +40,7 @@ const registry = new AdapterRegistry()
   .register(new ChillSubsNextAdapter());
 const sources = createFirstTrancheSources(adapterId);
 const runStore = new PostgresShadowRunStore(pool);
+const identityShadow = opportunityIdentityShadowFromEnv(pool);
 
 const configuredReviewIds = new Set(
   (process.env.MISSA_INGESTION_V2_REVIEW_SOURCE_IDS ?? "")
@@ -91,6 +93,7 @@ async function runDueBatch(): Promise<void> {
       scheduleStore,
       limit: batchLimit,
       reviewSourceIds,
+      identityShadow,
       afterArtifact: async (source, artifact) => {
         if (!reviewSourceIds.has(source.id) || artifact.unchanged) return;
         const history = await readRecentCandidateArtifacts(pool, source.id, 2);
