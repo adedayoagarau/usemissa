@@ -5,8 +5,20 @@ import type { ManuscriptMatchInput } from "@missa/radar-adapters";
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as ManuscriptMatchInput;
+    const input: ManuscriptMatchInput = {
+      ...body,
+      // Bound free text: names and tags are short, and search is by name.
+      query:
+        typeof body.query === "string" ? body.query.slice(0, 80) : undefined,
+      compAuthors: Array.isArray(body.compAuthors)
+        ? body.compAuthors.slice(0, 20).map((name) => String(name).slice(0, 80))
+        : undefined,
+      aestheticTags: Array.isArray(body.aestheticTags)
+        ? body.aestheticTags.slice(0, 30).map((tag) => String(tag).slice(0, 40))
+        : undefined,
+    };
     const engine = getManuscriptMatchEngine();
-    const result = await engine.matchManuscript(body);
+    const result = await engine.matchManuscript(input);
     return NextResponse.json(result);
   } catch (error) {
     console.error("[POST /api/discover/match] Match error:", error);

@@ -110,6 +110,52 @@ describe("ManuscriptMatchEngine", () => {
   });
 });
 
+describe("ManuscriptMatchEngine name search", () => {
+  function recordingPool(rows: unknown[]) {
+    const calls: Array<{ sql: string; params: unknown[] }> = [];
+    const pool = {
+      query: async (sql: string, params: unknown[]) => {
+        calls.push({ sql, params });
+        return { rows };
+      },
+    } as unknown as Pool;
+    return { pool, calls };
+  }
+
+  it("filters the index by name with escaped wildcards and returns scored search results", async () => {
+    const { pool, calls } = recordingPool([
+      { profile_id: "p1", name: "100% Review", prestige_tier: "tier_2", max_word_count: 5000 },
+    ]);
+    const result = await new ManuscriptMatchEngine(pool).matchManuscript({
+      ...input,
+      query: " 100%_ ",
+    });
+
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].params[0], "%100\\%\\_%");
+    assert.equal(calls[0].params[1], 40);
+    assert.equal(result.status, "available");
+    assert.equal(result.searchResults?.length, 1);
+    assert.equal(result.searchResults?.[0].profileId, "p1");
+    assert.deepEqual(result.dreamReach, []);
+  });
+
+  it("does not query for a one-character search", async () => {
+    const { pool, calls } = recordingPool([]);
+    const result = await new ManuscriptMatchEngine(pool).matchManuscript({ ...input, query: "a" });
+    assert.equal(calls.length, 0);
+    assert.deepEqual(result.searchResults, []);
+  });
+
+  it("leaves the full index unfiltered without a query", async () => {
+    const { pool, calls } = recordingPool([]);
+    const result = await new ManuscriptMatchEngine(pool).matchManuscript(input);
+    assert.equal(calls[0].params[0], null);
+    assert.equal(calls[0].params[1], 500);
+    assert.equal(result.searchResults, undefined);
+  });
+});
+
 it("uses the same URL-safe publication slug as public profile routes", () => {
   assert.equal(manuscriptMatchProfileSlug("A Public Space", "a public space"), "a-public-space");
   assert.equal(manuscriptMatchProfileSlug("Adroit Journal", "adroit journal"), "adroit-journal");

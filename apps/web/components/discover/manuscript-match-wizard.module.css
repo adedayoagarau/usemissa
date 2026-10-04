@@ -238,6 +238,112 @@
   gap: 8px;
 }
 
+/* Word counter */
+
+.counter {
+  display: grid;
+  gap: 8px;
+}
+
+.counterTrigger {
+  justify-self: start;
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.counterTrigger svg {
+  transition: transform 120ms;
+}
+
+.counterTrigger[data-panel-open] svg {
+  transform: rotate(180deg);
+}
+
+.counterPanel {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+}
+
+.counterText {
+  min-height: 112px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--background);
+  font-size: 14px;
+}
+
+.counterResult {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.counterResult p {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Comparable writers */
+
+.writerChips {
+  min-height: var(--touch-target-min);
+  padding: 6px 8px;
+  font-size: 14px;
+}
+
+.writerChip {
+  height: 28px;
+  border: 1px solid var(--primary);
+  background: var(--accent-tint);
+  color: var(--accent-deep);
+  font-size: 13px;
+}
+
+.writerOption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.writerForms {
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.suggestions {
+  display: grid;
+  gap: 8px;
+  padding-block-start: 4px;
+}
+
+.suggestionsLabel {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.suggestion {
+  font-weight: 500;
+}
+
+@media (pointer: coarse) {
+  .suggestion {
+    min-height: var(--touch-target-min);
+  }
+}
+
 /* Preferences */
 
 .switchRow {
@@ -340,6 +446,96 @@
 }
 
 /* Leave room for the active underline inside the scroll container. */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.search {
+  flex: 1 1 240px;
+  height: var(--touch-target-min);
+}
+
+.search input {
+  height: 100%;
+  font-size: 14px;
+}
+
+/* The clear button replaces the browser's own search cancel control. */
+.search input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.toolbarActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.searchStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding-block: 16px;
+  color: var(--muted-foreground);
+  font-size: 14px;
+}
+
+.saveButton[data-saved] {
+  border-color: var(--primary);
+  background: var(--accent-tint);
+  color: var(--accent-deep);
+}
+
+/* Shortlist sheet */
+
+.shortlistHeader {
+  padding: 24px 24px 0;
+}
+
+.shortlistItems {
+  display: grid;
+  margin: 0;
+  padding: 0 24px;
+  list-style: none;
+}
+
+.shortlistItems li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 8px;
+  border-block-end: 1px solid var(--border);
+}
+
+.shortlistName {
+  color: var(--foreground);
+  font-size: 18px;
+  line-height: 1.3;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+
+.shortlistName:hover {
+  text-decoration: underline;
+}
+
+.shortlistActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 24px 24px;
+}
+
+.shortlistEmpty {
+  margin: 0 24px;
+}
+
 .lanes[data-slot][data-variant] {
   height: auto;
 }
@@ -609,7 +805,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .segment {
+  .segment,
+  .counterTrigger svg {
     transition: none;
   }
 }

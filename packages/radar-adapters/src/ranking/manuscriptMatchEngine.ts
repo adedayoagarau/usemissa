@@ -12,6 +12,11 @@ export interface ManuscriptMatchInput {
   minPayRate?: "pro_rates_only" | "any_paying" | "all";
   allowSimultaneous?: boolean;
   limit?: number;
+  /**
+   * Name search across the whole index. When set, the response carries the
+   * matching magazines in `searchResults`, scored against the same brief.
+   */
+  query?: string;
 }
 
 export type MatchCategory =
@@ -77,6 +82,17 @@ export interface ManuscriptMatchResponse {
   debutChampions: ManuscriptMatchCard[];
   rapidPro: ManuscriptMatchCard[];
   simultaneousPackets: ManuscriptMatchCard[];
+  /** Present only for a name search: every matching magazine, best fit first. */
+  searchResults?: ManuscriptMatchCard[];
+}
+
+/** Searches shorter than this return no rows rather than the whole index. */
+export const MANUSCRIPT_SEARCH_MIN_LENGTH = 2;
+const MANUSCRIPT_SEARCH_LIMIT = 40;
+
+/** Escape LIKE wildcards so a typed "%" or "_" matches literally. */
+function likePattern(query: string): string {
+  return `%${query.replace(/[\\%_]/g, (character) => `\\${character}`)}%`;
 }
 
 /**
@@ -131,13 +147,18 @@ export class ManuscriptMatchEngine {
     input: ManuscriptMatchInput,
   ): Promise<ManuscriptMatchResponse> {
     const limit = input.limit ?? 50;
+    const query = input.query?.trim() ?? "";
+    const searching = query.length > 0;
 
     if (!this.pool) {
       return emptyManuscriptMatchResponse("unavailable");
     }
+    if (searching && query.length < MANUSCRIPT_SEARCH_MIN_LENGTH) {
+      return { ...emptyManuscriptMatchResponse("available"), searchResults: [] };
+    }
 
     try {
-      const query = `
+      const sql = `
         SELECT
           gp.id as profile_id,
           gp.name,
@@ -183,18 +204,31 @@ export class ManuscriptMatchEngine {
         LEFT JOIN publication_compensation_details pcd ON pcd.profile_id = gp.id
         LEFT JOIN publication_telemetry_analytics pta ON pta.profile_id = gp.id
         LEFT JOIN publication_aesthetic_profiles pap ON pap.profile_id = gp.id
-        WHERE gp.profile_kind IN ('literary_magazine', 'small_press', 'organization', 'visual_arts_organization')
-           OR mr.profile_id IS NOT NULL
+        WHERE (gp.profile_kind IN ('literary_magazine', 'small_press', 'organization', 'visual_arts_organization')
+           OR mr.profile_id IS NOT NULL)
+          AND ($1::text IS NULL OR gp.name ILIKE $1)
         ORDER BY mr.total_score DESC NULLS LAST
-        LIMIT 500;
+        LIMIT $2;
       `;
 
-      const { rows } = await this.pool.query(query);
+      const { rows } = await this.pool.query(sql, [
+        searching ? likePattern(query) : null,
+        searching ? MANUSCRIPT_SEARCH_LIMIT : 500,
+      ]);
       if (!rows || rows.length === 0) {
-        return emptyManuscriptMatchResponse("available");
+        return searching
+          ? { ...emptyManuscriptMatchResponse("available"), searchResults: [] }
+          : emptyManuscriptMatchResponse("available");
       }
 
-      return this.scoreAndGroupRows(rows, input, limit);
+      if (!searching) return this.scoreAndGroupRows(rows, input, limit);
+      const searchResults = this.scoreRows(rows, input);
+      return {
+        ...emptyManuscriptMatchResponse("available"),
+        totalAnalyzed: rows.length,
+        matchedCount: searchResults.length,
+        searchResults,
+      };
     } catch (err) {
       console.warn("[ManuscriptMatchEngine] Postgres query failed:", err);
       return emptyManuscriptMatchResponse("unavailable");
@@ -205,8 +239,40 @@ export class ManuscriptMatchEngine {
   scoreAndGroupRows(
     rows: any[],
     input: ManuscriptMatchInput,
-    limit: number,
+    _limit: number,
   ): ManuscriptMatchResponse {
+    const scoredCards = this.scoreRows(rows, input);
+
+    const dreamReach = scoredCards
+      .filter((c) => c.prestigeTier === "tier_1")
+      .slice(0, 10);
+    const debutChampions = scoredCards
+      .filter((c) => c.aesthetic.isDebutChampion && c.prestigeTier !== "tier_1")
+      .slice(0, 10);
+    const rapidPro = scoredCards
+      .filter(
+        (c) =>
+          c.compensation.isProRate ||
+          (c.telemetry.medianResponseDays !== null && c.telemetry.medianResponseDays <= 30),
+      )
+      .slice(0, 10);
+    const simultaneousPackets = scoredCards
+      .filter((c) => c.specs.allowsSimultaneous)
+      .slice(0, 15);
+
+    return {
+      status: "available",
+      totalAnalyzed: rows.length,
+      matchedCount: scoredCards.length,
+      dreamReach,
+      debutChampions,
+      rapidPro,
+      simultaneousPackets,
+    };
+  }
+
+  /** Score every row against the brief, best fit first. */
+  scoreRows(rows: any[], input: ManuscriptMatchInput): ManuscriptMatchCard[] {
     const scoredCards: ManuscriptMatchCard[] = [];
 
     const normAestheticTags = (input.aestheticTags ?? []).map((t) =>
@@ -402,32 +468,6 @@ export class ManuscriptMatchEngine {
     }
 
     scoredCards.sort((a, b) => b.matchScore - a.matchScore);
-
-    const dreamReach = scoredCards
-      .filter((c) => c.prestigeTier === "tier_1")
-      .slice(0, 10);
-    const debutChampions = scoredCards
-      .filter((c) => c.aesthetic.isDebutChampion && c.prestigeTier !== "tier_1")
-      .slice(0, 10);
-    const rapidPro = scoredCards
-      .filter(
-        (c) =>
-          c.compensation.isProRate ||
-          (c.telemetry.medianResponseDays !== null && c.telemetry.medianResponseDays <= 30),
-      )
-      .slice(0, 10);
-    const simultaneousPackets = scoredCards
-      .filter((c) => c.specs.allowsSimultaneous)
-      .slice(0, 15);
-
-    return {
-      status: "available",
-      totalAnalyzed: rows.length,
-      matchedCount: scoredCards.length,
-      dreamReach,
-      debutChampions,
-      rapidPro,
-      simultaneousPackets,
-    };
+    return scoredCards;
   }
 }
