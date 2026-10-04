@@ -151,3 +151,77 @@ test(
     }
   },
 );
+
+test(
+  "applications missing their official deadline are found until it exists",
+  { skip: !databaseUrl },
+  async (t) => {
+    const pool = new Pool({ connectionString: databaseUrl, max: 2 });
+    const schema = await pool.query<{ ready: boolean }>(
+      "select to_regclass('public.creator_calendar_events') is not null as ready",
+    );
+    if (!schema.rows[0]!.ready) {
+      await pool.end();
+      t.skip("creator target schema is not applied to this database");
+      return;
+    }
+    const calendar = new PostgresCreatorCalendarRepository(pool);
+    const prefix = `missing-${randomBytes(4).toString("hex")}`;
+    const account = `${prefix}-account`;
+    const source = `${prefix}-source`;
+    const opp = (name: string) => `${prefix}-${name}`;
+    const day = (days: number) =>
+      new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+
+    try {
+      await pool.query(
+        "insert into radar_accounts(id,email,data) values($1,$2,'{}'::jsonb)",
+        [account, `${prefix}@example.invalid`],
+      );
+      await pool.query(
+        "insert into opportunity_sources(id,name,url,kind) values($1,'Missing fixture','https://example.invalid/missing','organization-website')",
+        [source],
+      );
+      const seed = async (
+        name: string,
+        status: string,
+        deadline: string | null,
+        options: { publication?: string; kind?: string } = {},
+      ) => {
+        await pool.query(
+          `insert into opportunities(id,slug,title,source_id,status,publication_state,type,deadline_kind,deadline_date)
+           values($1,$1,$2,$3,'open',$4,'grant',$5,$6::date)`,
+          [opp(name), `Fixture ${name}`, source, options.publication ?? "published", options.kind ?? "exact", deadline],
+        );
+        await pool.query(
+          "insert into tracked_opportunities(id,account_id,opportunity_id,status) values($1,$2,$3,$4)",
+          [`${opp(name)}-tracked`, account, opp(name), status],
+        );
+      };
+      await seed("missing", "saved", day(20));
+      await seed("today", "preparing", day(0));
+      await seed("passed", "saved", day(-1));
+      await seed("submitted", "submitted", day(20));
+      await seed("unpublished", "saved", day(20), { publication: "reviewable" });
+      await seed("rolling", "saved", null, { kind: "rolling" });
+      await seed("present", "saved", day(20));
+      await calendar.ensureOpportunityDeadline(account, opp("present"));
+
+      const found = await calendar.missingOfficialDeadlines(account);
+      assert.deepEqual(
+        found.map((row) => row.opportunityId).sort(),
+        [opp("missing"), opp("today")].sort(),
+      );
+      assert.ok(found.every((row) => row.accountId === account));
+
+      for (const row of found)
+        assert.equal((await calendar.ensureOpportunityDeadline(row.accountId, row.opportunityId)).status, "added");
+      assert.deepEqual(await calendar.missingOfficialDeadlines(account), []);
+    } finally {
+      await pool.query("delete from radar_accounts where id=$1", [account]);
+      await pool.query("delete from opportunities where source_id=$1", [source]);
+      await pool.query("delete from opportunity_sources where id=$1", [source]);
+      await pool.end();
+    }
+  },
+);
