@@ -22,12 +22,12 @@ export type ConfirmedFactField = keyof ConfirmedOpportunityFacts;
 export const DEFAULT_CONFIRMED_FACT_KEYS: Readonly<
   Record<ConfirmedFactField, string>
 > = {
-  hasStipend: "opportunity.has_stipend",
-  studioProvided: "opportunity.studio_provided",
-  housingProvided: "opportunity.housing_provided",
-  feeStatus: "opportunity.fee_status",
-  emergingOnly: "opportunity.emerging_only",
-  internationalOk: "opportunity.international_ok",
+  hasStipend: "opportunity.reading.stipend_paid_to_artist",
+  studioProvided: "opportunity.reading.studio_provided",
+  housingProvided: "opportunity.reading.housing_provided",
+  feeStatus: "opportunity.reading.fee_status",
+  emergingOnly: "opportunity.reading.emerging_only",
+  internationalOk: "opportunity.reading.international_applicants_accepted",
 };
 
 export interface LedgerConfirmedFactsOptions {
@@ -54,10 +54,16 @@ function factValue(
   answer: string | null,
 ): ConfirmedOpportunityFacts[ConfirmedFactField] {
   if (field === "feeStatus") {
-    // "unknown" or any other option is not a confirmed fee status.
+    // A fee with a waiver is still a fee; "unstated" is not a confirmed status.
+    if (answer === "waiver-available") return "paid";
     return answer === "no-fee" || answer === "paid" ? answer : undefined;
   }
   if (answer === "true") return true;
+  // The reading questions ask whether the page *states* a rule. A confident
+  // "does not state" corrects a keyword false positive for what Missa offers
+  // (stipend, studio, housing), but never means a creator is excluded: who may
+  // apply is only confirmed when the page states it.
+  if (field === "emergingOnly" || field === "internationalOk") return undefined;
   if (answer === "false") return false;
   return undefined;
 }

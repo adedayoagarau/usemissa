@@ -31,43 +31,43 @@ test("ledger facts map yes/no and fee answers, ignoring review and unknown", asy
   const db = fakeDb([
     {
       subject_id: "a",
-      question_key: "opportunity.has_stipend",
+      question_key: "opportunity.reading.stipend_paid_to_artist",
       answer: "false",
       route: "reject",
     },
     {
       subject_id: "a",
-      question_key: "opportunity.fee_status",
+      question_key: "opportunity.reading.fee_status",
       answer: "paid",
       route: "apply",
     },
     {
       subject_id: "a",
-      question_key: "opportunity.housing_provided",
+      question_key: "opportunity.reading.housing_provided",
       answer: "true",
       route: "review",
     },
     {
       subject_id: "b",
-      question_key: "opportunity.fee_status",
+      question_key: "opportunity.reading.fee_status",
       answer: "unknown",
       route: "apply",
     },
     {
       subject_id: "b",
-      question_key: "opportunity.studio_provided",
+      question_key: "opportunity.reading.studio_provided",
       answer: "true",
       route: "apply",
     },
     {
       subject_id: "b",
-      question_key: "opportunity.emerging_only",
+      question_key: "opportunity.reading.emerging_only",
       answer: "true",
       route: "apply",
     },
     {
       subject_id: "b",
-      question_key: "opportunity.international_ok",
+      question_key: "opportunity.reading.international_applicants_accepted",
       answer: "false",
       route: "reject",
     },
@@ -75,10 +75,11 @@ test("ledger facts map yes/no and fee answers, ignoring review and unknown", asy
   const provider = createLedgerConfirmedFactsProvider(db);
   const facts = await provider.factsFor(["a", "b", "c"]);
   assert.deepEqual(facts.get("a"), { hasStipend: false, feeStatus: "paid" });
+  // "Does not state it is open to international applicants" never becomes
+  // "not open": who may apply is only confirmed when the page states it.
   assert.deepEqual(facts.get("b"), {
     studioProvided: true,
     emergingOnly: true,
-    internationalOk: false,
   });
   assert.equal(facts.has("c"), false);
 });
@@ -88,7 +89,7 @@ test("ledger lookups are cached, including misses, until the TTL passes", async 
   const db = fakeDb([
     {
       subject_id: "a",
-      question_key: "opportunity.has_stipend",
+      question_key: "opportunity.reading.stipend_paid_to_artist",
       answer: "true",
       route: "apply",
     },
@@ -173,7 +174,7 @@ test(
       // Shadow decisions never count, however confident.
       await insert(
         `${p}-shadow`,
-        "opportunity.has_stipend",
+        "opportunity.reading.stipend_paid_to_artist",
         "false",
         "reject",
         "shadow",
@@ -183,7 +184,7 @@ test(
       // Live and confident: a reading fee that keyword reading took for a stipend.
       await insert(
         `${p}-live`,
-        "opportunity.has_stipend",
+        "opportunity.reading.stipend_paid_to_artist",
         "false",
         "reject",
         "live",
@@ -192,7 +193,7 @@ test(
       );
       await insert(
         `${p}-live`,
-        "opportunity.housing_provided",
+        "opportunity.reading.housing_provided",
         "true",
         "apply",
         "live",
@@ -202,7 +203,7 @@ test(
       // A newer review hides an older confident decision.
       await insert(
         `${p}-newer-review`,
-        "opportunity.has_stipend",
+        "opportunity.reading.stipend_paid_to_artist",
         "true",
         "apply",
         "live",
@@ -211,7 +212,7 @@ test(
       );
       await insert(
         `${p}-newer-review`,
-        "opportunity.has_stipend",
+        "opportunity.reading.stipend_paid_to_artist",
         "true",
         "review",
         "live",
@@ -221,7 +222,7 @@ test(
       // A superseded decision is ignored.
       await insert(
         `${p}-superseded`,
-        "opportunity.studio_provided",
+        "opportunity.reading.studio_provided",
         "true",
         "apply",
         "live",
