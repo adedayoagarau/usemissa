@@ -7,6 +7,7 @@ import { tickGoals } from './goal-engine';
 import { deliverGoalCheckInEmails } from './goal-checkin-email';
 import { tickCreatorFollowing } from './creator-following';
 import { calendarSyncTickLimits, drainCalendarSyncJobs } from './calendar-sync';
+import { recordDeadlineRiskFromEnv } from './creator-deadline-risk';
 
 /**
  * One creator scheduling pass, shared by the /api/cron/creator route and the
@@ -36,7 +37,9 @@ export async function runCreatorTick(accountId?: string) {
     const calendarSync = calendar
       ? await drainCalendarSyncJobs(calendar, { accountId, ...calendarSyncTickLimits() })
       : undefined;
-    const result = { deadlines, reminders, reminderEmails, reminderTexts, weeklyDigests, goals, goalEmails, following, calendarSync };
+    // Shadow decisions only (scope `nudges`); skipped unless Jev may see creator data.
+    const deadlineRisk = pool ? await recordDeadlineRiskFromEnv(pool, accountId) : undefined;
+    const result = { deadlines, reminders, reminderEmails, reminderTexts, weeklyDigests, goals, goalEmails, following, calendarSync, ...(deadlineRisk ? { deadlineRisk } : {}) };
     if (pool)
       await recordWorkerTick(pool, 'creator-worker', {
         status: 'completed',

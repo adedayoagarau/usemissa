@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import {
   detectTrackerImportMapping,
   parseTrackerCsv,
@@ -12,6 +12,10 @@ import { creatorPoolFor, creatorRelationalAuthorityEnabled, loadCanonicalTracker
 import { getSessionAccount } from '@/lib/auth';
 import { consumeTrackerImportPreview, getEngine } from '@/lib/engine';
 import { signTrackerImportPreviewToken, stableMappingHash } from '@/lib/tracker-import-token';
+import { creatorDecisionContext, decideTrackerCandidates, orderTrackerCandidates, withinBudget, type TrackerCandidateOrder } from '@/lib/creator-decisions';
+
+/** Live tracker_match decisions get this long before the rules' order stands. */
+const DECISION_BUDGET_MS = 4_000;
 
 const PREVIEW_WINDOW_SECONDS = 15 * 60;
 
@@ -37,7 +41,7 @@ function parseMapping(value: FormDataEntryValue | null, columns: string[]): Impo
   }
 }
 
-function previewResponse(plan: ReturnType<typeof planTrackerImport>, token: string, expiresAt: string) {
+function previewResponse(plan: ReturnType<typeof planTrackerImport>, token: string, expiresAt: string, order?: TrackerCandidateOrder) {
   return {
     previewToken: token,
     expiresAt,
@@ -55,7 +59,7 @@ function previewResponse(plan: ReturnType<typeof planTrackerImport>, token: stri
             : row.classification === 'duplicate-in-file'
               ? 'duplicate-row'
               : 'needs-correction',
-      candidates: row.candidates.map(({ opportunityId, title, organizationName, matchKind, reasons }) => ({ opportunityId, title, organizationName, matchKind, reasons })),
+      candidates: orderTrackerCandidates(row.candidates, order?.get(row.rowNumber)).map(({ opportunityId, title, organizationName, matchKind, reasons }) => ({ opportunityId, title, organizationName, matchKind, reasons })),
       defaultAction: row.defaultAction,
       warnings: row.warnings,
       errors: row.errors,
@@ -106,7 +110,16 @@ export async function POST(request: Request) {
     const sourceHashValue = sourceHash(bytes);
     const expiresAtSeconds = Math.floor(Date.now() / 1000) + PREVIEW_WINDOW_SECONDS;
     const token = signTrackerImportPreviewToken({ v: 1, userId: session.account.userId, sourceHash: sourceHashValue, mappingHash: stableMappingHash(mapping), candidateHash: trackerImportCandidateHash(plan.candidateSet), trackerHash: trackerImportStateHash(store, session.account.userId), exp: expiresAtSeconds });
-    return NextResponse.json(previewResponse(plan, token, new Date(expiresAtSeconds * 1000).toISOString()), { headers: { 'Cache-Control': 'private, no-store' } });
+    // Jev may only reorder possible matches (scope tracker_match); the plan,
+    // its defaults and the signed candidate set are unchanged.
+    const decisions = creatorDecisionContext('tracker_match');
+    let order: TrackerCandidateOrder | undefined;
+    if (decisions) {
+      const work = decideTrackerCandidates(decisions, { importKey: sourceHashValue.slice(0, 24), plan, store });
+      if (decisions.mode === 'live') order = await withinBudget(work, DECISION_BUDGET_MS).catch(() => undefined);
+      else after(() => work.then(() => undefined, (error: unknown) => console.warn('Tracker import decisions failed', error instanceof Error ? error.message : error)));
+    }
+    return NextResponse.json(previewResponse(plan, token, new Date(expiresAtSeconds * 1000).toISOString(), order), { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) {
     if (error instanceof TrackerImportError) return jsonError(error.message, error.code === 'limit' ? 413 : 400);
     console.error('Tracker import preview failed', error);

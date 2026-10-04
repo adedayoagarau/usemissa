@@ -5,7 +5,7 @@ import { siteUrl } from './siteUrl';
 
 /** One GSM-7 segment; every reminder text fits in it. */
 export const REMINDER_TEXT_LIMIT = 160;
-const SIGN_OFF = 'Reply STOP to end.';
+export const SIGN_OFF = 'Reply STOP to end.';
 
 export type ReminderTextNotice = Pick<PendingCreatorReminderText, 'kind' | 'opportunityId' | 'title' | 'organizationName' | 'deadline' | 'trackedStatus'>;
 

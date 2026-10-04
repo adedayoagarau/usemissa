@@ -1,7 +1,9 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { applySmsDeliveryReport, creatorPoolFor, optInSmsPhone, optOutSmsPhone, smsLedgerReady } from '@missa/radar-adapters';
-import { smsConfig } from '@/lib/sms';
-import { handleTelnyxEvent, parseTelnyxEvent, verifyTelnyxSignature } from '@/lib/sms-webhook';
+import { creatorDecisionContext, decideSmsReply } from '@/lib/creator-decisions';
+import { SIGN_OFF } from '@/lib/creator-reminder-text';
+import { sendSms, smsConfig } from '@/lib/sms';
+import { handleInboundReply, handleTelnyxEvent, parseInboundReply, parseTelnyxEvent, verifyTelnyxSignature } from '@/lib/sms-webhook';
 
 const headers = { 'Cache-Control': 'no-store' };
 
@@ -19,7 +21,19 @@ export async function POST(request: Request) {
   }
   const connectionString = process.env.DATABASE_URL;
   try {
-    const event = parseTelnyxEvent(JSON.parse(rawBody));
+    const body = JSON.parse(rawBody);
+    const event = parseTelnyxEvent(body);
+    const reply = event.type === 'ignored' ? parseInboundReply(body) : null;
+    const decisions = reply ? creatorDecisionContext('sms_intent') : null;
+    if (reply && decisions) {
+      // Recorded after the response. Live, a reply that reads as an opt-out
+      // in other words gets the reminders' own STOP line back; keywords are
+      // never routed here.
+      after(() => handleInboundReply(reply, {
+        decide: (item) => decideSmsReply(decisions, item),
+        askToConfirmOptOut: (item) => sendSms({ accountId: null, to: item.phone, text: SIGN_OFF, kind: 'opt_out_check', idempotencyKey: `opt-out-check:${item.messageId}` }),
+      }).then(() => undefined, (error: unknown) => console.error('Telnyx reply decision failed', error instanceof Error ? error.message : error)));
+    }
     if (event.type !== 'ignored' && connectionString) {
       const pool = creatorPoolFor(connectionString);
       if (await smsLedgerReady(pool)) {

@@ -137,6 +137,7 @@ import {
   type IngestResult,
   type ForwardingAddressView,
 } from "./email/emailForwarding.js";
+import { decideEmailCandidate, type EmailDecider } from "./email/emailDecisions.js";
 import type { EmailReviewCandidate } from "./domain/types.js";
 import type {
   GmailConnection,
@@ -1137,6 +1138,17 @@ export class RadarEngine {
     envelope: Parameters<typeof ingestInboundEmail>[1],
   ): IngestResult {
     return ingestInboundEmail(this.store, envelope, this.clock.now(), this.ids);
+  }
+  /**
+   * Lets an injected decider narrow what the rules proposed for one pending
+   * email (see email/emailDecisions.ts). Never throws and never widens a
+   * proposal, so callers may run it after every ingest.
+   */
+  decideEmailCandidate(
+    candidateId: string,
+    decider: EmailDecider,
+  ): Promise<{ changed: boolean }> {
+    return decideEmailCandidate(this.store, candidateId, decider);
   }
   emailCandidates(
     userId: string,
