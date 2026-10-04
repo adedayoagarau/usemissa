@@ -162,7 +162,7 @@ export function ProfileConnect({
   return (
     <>
       {canWrite ? (
-        <Button onClick={() => setWriting(true)}>
+        <Button data-tone="primary" onClick={() => setWriting(true)}>
           <Mail aria-hidden="true" />
           Get in touch
         </Button>

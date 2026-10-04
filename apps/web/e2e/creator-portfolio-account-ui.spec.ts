@@ -142,8 +142,8 @@ test("account studio saves privately, adds a confirmed acceptance, publishes, re
     editor.getByText("Available · reserved when you publish."),
   ).toBeVisible();
   await page
-    .getByRole("banner")
     .getByRole("button", { name: "Publish profile", exact: true })
+    .first()
     .click();
   await expect(page.getByRole("dialog")).toContainText(
     "usemissa.com/@mayabennett",
@@ -152,7 +152,7 @@ test("account studio saves privately, adds a confirmed acceptance, publishes, re
   await page.keyboard.press("Enter");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(
-    page.getByRole("banner").getByRole("button", { name: "Publish changes" }),
+    page.getByRole("button", { name: "Publish changes" }).first(),
   ).toBeVisible();
   expect(publishedAt).toBeTruthy();
   await editor.getByRole("button", { name: "Change profile address" }).click();

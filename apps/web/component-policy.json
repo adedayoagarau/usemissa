@@ -94,7 +94,7 @@
       "appearance": "asynchronous-directory-search-with-manual-name-fallback"
     },
     "choice.creator-theme": {
-      "semantic": "CreatorPortfolioStudio",
+      "semantic": "ProfileStudio",
       "base": "Button",
       "appearance": "single-pressed-curated-theme-card"
     },
@@ -124,7 +124,8 @@
         "Button",
         "Dialog",
         "ProvenanceBadge",
-        "AvailabilityChip"
+        "AvailabilityChip",
+        "ProfileConnect"
       ],
       "appearance": "craft-lens-composition-with-portrait-plate-or-type-hero",
       "variants": ["page", "preview", "embedded"],
@@ -138,6 +139,13 @@
         "design"
       ],
       "embeddedBoundary": "Embedded samples show identity and selected work only, keep the fictional sample label, and disable contact actions."
+    },
+    "composition.creator-profile-inbox": {
+      "semantic": "ProfileInbox",
+      "implementation": "components/creator-profile/profile-inbox.tsx",
+      "composition": ["Tabs", "Button", "Empty", "Link"],
+      "appearance": "tabbed-messages-invitations-followers-following-with-archive",
+      "boundary": "Senders never see the creator's address unless the creator replies by email; organizations are not told when an invitation is declined."
     },
     "composition.auth-shell": {
       "semantic": "AuthShell",
@@ -173,7 +181,7 @@
       "boundary": "Never infer an external application status or submission from a link open."
     },
     "filter.creator-work-format": {
-      "semantic": "CreatorPortfolioStudio",
+      "semantic": "PublicCreatorProfile",
       "base": "Button",
       "variant": "ghost",
       "appearance": "pressed-format-filter"
@@ -632,7 +640,7 @@
         "TableRow",
         "TableHead",
         "TableCell",
-        "CreatorPortfolioStudio",
+        "PublicCreatorProfile",
         "GoalSubmissionProgress",
         "Switch",
         "Button",
@@ -961,7 +969,9 @@
       "RowActions",
       "ResponsiveLabelledRows"
     ],
-    "CreatorCv": ["EditorialTypography", "PrintStyles", "ProvenanceMark"]
+    "CreatorCv": ["EditorialTypography", "PrintStyles", "ProvenanceMark"],
+    "ProfileConnect": ["Button", "Dialog", "Field", "Input", "NativeSelect", "Textarea"],
+    "ProfileInbox": ["Tabs", "Button", "Empty", "Link"]
   },
   "motion": {
     "requiresChangingState": true,

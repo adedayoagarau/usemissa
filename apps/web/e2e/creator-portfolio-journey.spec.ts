@@ -359,3 +359,113 @@ test("media removal persists in a private draft and creator APIs need a session"
     expect(res.status()).toBe(401);
   }
 });
+
+test("sample profile opens the message form but never sends, and Follow explains itself", async ({
+  page,
+}) => {
+  let sent = false;
+  await page.route("**/api/profiles/**", (route) => {
+    sent = true;
+    return route.abort();
+  });
+  await page.goto("/design-system/creator-profile-v2");
+  await page.getByRole("button", { name: "Get in touch" }).click();
+  const dialog = page.getByRole("dialog", { name: "Write to Riley" });
+  await expect(dialog).toContainText("email address stays private");
+  await dialog.getByLabel("Your name").fill("Ada Mensah");
+  await dialog.getByLabel("Your email").fill("ada@example.com");
+  await dialog.getByLabel("Message").fill("Could we talk about a commission?");
+  await expectAccessible(page, '[role="dialog"]');
+  await dialog.getByRole("button", { name: "Send message" }).click();
+  await expect(dialog.getByRole("status")).toHaveText(
+    "This is a sample profile, so nothing was sent.",
+  );
+  await dialog.getByRole("button", { name: "Done" }).click();
+  await page.getByRole("button", { name: "Follow" }).click();
+  await expect(
+    page.getByText("This is a sample profile, so following is off."),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Invite to apply" }),
+  ).toHaveCount(0);
+  expect(sent).toBe(false);
+});
+
+test("the profile inbox triages messages and invitations at phone width", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/design-system/creator-profile-inbox");
+  await expect(
+    page.getByRole("heading", { name: "Profile inbox", level: 1 }),
+  ).toBeVisible();
+  const panel = page.getByRole("tabpanel");
+  await expect(panel.getByRole("heading", { level: 2 })).toHaveText([
+    "Ada Mensah",
+    "Theo Park",
+  ]);
+  await expect(
+    panel.getByRole("link", { name: "Reply by email" }).first(),
+  ).toHaveAttribute("href", /^mailto:ada@example\.com/);
+  await panel
+    .getByRole("button", { name: "Archive", exact: true })
+    .first()
+    .click();
+  await expect(page.getByRole("status").first()).toHaveText(
+    "Archived Ada Mensah's message.",
+  );
+  await expect(panel.getByRole("heading", { level: 2 })).toHaveText([
+    "Theo Park",
+  ]);
+  await page.getByRole("button", { name: "Show archived" }).click();
+  await expect(panel.getByRole("heading", { level: 2 })).toHaveText([
+    "Ada Mensah",
+  ]);
+  await page.getByRole("button", { name: "Show current" }).click();
+  await page.getByRole("tab", { name: /Invitations/ }).click();
+  await expect(page.getByRole("tabpanel")).toContainText(
+    "Spring reading period",
+  );
+  await page
+    .getByRole("tabpanel")
+    .getByRole("button", { name: "Not for me" })
+    .click();
+  await expect(page.getByRole("tabpanel")).toContainText("No invitations yet");
+  await page.getByRole("tab", { name: /Following/ }).click();
+  await page
+    .getByRole("tabpanel")
+    .getByRole("button", { name: "Unfollow" })
+    .click();
+  await expect(page.getByRole("tabpanel")).toContainText(
+    "You're not following anyone",
+  );
+  await expectNoOverflow(page);
+  await expectAccessible(page);
+  await page.goto("/design-system/creator-profile-inbox?empty=1");
+  await expect(page.getByRole("tabpanel")).toContainText("No messages yet");
+});
+
+test("creators can turn messages and invitations off in the studio", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/design-system/creator-profile-settings?sample=1");
+  const rail = page.getByRole("navigation", { name: "Profile editor" });
+  const editor = page.getByRole("region", { name: "Edit section" });
+  const preview = page.getByRole("region", { name: "Live preview" });
+  await expect(
+    preview.getByRole("button", { name: "Get in touch" }),
+  ).toBeVisible();
+  await rail.getByRole("button", { name: /^About and contact/ }).click();
+  await editor
+    .getByRole("switch", { name: "Let visitors message you through Missa" })
+    .click();
+  await expect(
+    preview.getByRole("button", { name: "Get in touch" }),
+  ).toHaveCount(0);
+  await expect(
+    editor.getByRole("switch", {
+      name: "Let organizations invite you to apply",
+    }),
+  ).toBeChecked();
+});

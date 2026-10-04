@@ -64,7 +64,8 @@
   background-color: color-mix(in srgb, var(--surface) 14%, transparent);
   color: var(--surface);
 }
-.plateHero [data-slot="button"] {
+/* Outline actions sit on a light fill over the image; the primary keeps its own. */
+.plateHero [data-slot="button"]:not([data-tone="primary"]) {
   color: var(--foreground);
 }
 
