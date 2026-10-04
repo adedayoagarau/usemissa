@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { AvailabilityChip } from "@/components/missa/availability-chip";
 import { ProvenanceBadge } from "@/components/missa/provenance-badge";
+import { ProfileConnect } from "./profile-connect";
 import { cn } from "@/lib/utils";
 import {
   orderedModules,
@@ -488,22 +489,15 @@ function IdentityHeader({
         </div>
       )}
       <div className={styles.actions}>
-        {contactHref && !sample ? (
-          <a href={contactHref} className={buttonVariants()}>
-            <Mail aria-hidden="true" />
-            Get in touch
-          </a>
-        ) : (
-          (portfolio.contact.website || sample) && (
-            <a
-              href={mode === "page" ? "#profile-about" : undefined}
-              className={buttonVariants()}
-              aria-disabled={mode !== "page" || undefined}
-            >
-              <Mail aria-hidden="true" />
-              Get in touch
-            </a>
-          )
+        {mode !== "embedded" && (
+          <ProfileConnect
+            handle={address || undefined}
+            name={name}
+            inquiries={portfolio.inquiries}
+            contactHref={sample ? undefined : contactHref}
+            live={mode === "page" && !sample}
+            sample={sample}
+          />
         )}
         {hasRecord && address && !sample && (
           <a
