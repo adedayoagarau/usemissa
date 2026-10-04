@@ -22,6 +22,8 @@ export type OpportunityRepositoryDeadlineKind =
 
 export interface OpportunityRepositoryQuery {
   /** Internal shortlist lookup; public visibility and account exclusions still apply. */
+  /** Only calls whose deadline the organization's source confirms. */
+  confirmedDatesOnly?: boolean;
   ids?: string[];
   query?: string;
   category?: string;

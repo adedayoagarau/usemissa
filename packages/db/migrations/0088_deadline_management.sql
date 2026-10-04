@@ -177,6 +177,23 @@ ALTER TABLE tracked_opportunities
 UPDATE tracked_opportunities SET last_activity_at = updated_at WHERE last_activity_at IS NULL;
 ALTER TABLE tracked_opportunities ALTER COLUMN last_activity_at SET DEFAULT now();
 
+-- Any change to a call's status, notes or linked work counts as activity, so
+-- every write path keeps last_activity_at current without having to know it.
+CREATE OR REPLACE FUNCTION tracked_opportunities_touch_activity() RETURNS trigger AS $$
+BEGIN
+  IF NEW.status IS DISTINCT FROM OLD.status
+     OR NEW.notes IS DISTINCT FROM OLD.notes
+     OR NEW.work_id IS DISTINCT FROM OLD.work_id THEN
+    NEW.last_activity_at := now();
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS tracked_opportunities_touch_activity ON tracked_opportunities;
+CREATE TRIGGER tracked_opportunities_touch_activity
+  BEFORE UPDATE ON tracked_opportunities
+  FOR EACH ROW EXECUTE FUNCTION tracked_opportunities_touch_activity();
+
 -- Reminders gain a subject so one call can carry several: a milestone per
 -- obligation, one per fee tier, and the deadline-day alarm.
 ALTER TABLE creator_application_reminders

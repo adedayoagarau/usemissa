@@ -379,7 +379,7 @@ export async function updateCanonicalTrackerStatus(
     // Planning follows the status: submitting closes preparation steps, an
     // acceptance offers the usual next steps, and every change is activity.
     await onTrackedStatusChanged(client, { accountId, trackedOpportunityId: row.id, opportunityId, title: row.title, from: row.status, to: status });
-    await client.query("update creator_application_reminders set state='cancelled',due_at=null,snoozed_until=null,revision=revision+1,updated_at=now() where account_id=$1 and opportunity_id=$2 and state in ('scheduled','needs-review') and ((kind in ('preparation','deadline') and not $3::boolean) or (kind='response' and $4::boolean))", [accountId, opportunityId, ['interested','saved','preparing','draft-started','ready-to-submit'].includes(status), ['accepted','declined','withdrawn','delivered','archived'].includes(status)]);
+    await client.query("update creator_application_reminders set state='cancelled',due_at=null,snoozed_until=null,revision=revision+1,updated_at=now() where account_id=$1 and opportunity_id=$2 and state in ('scheduled','needs-review') and ((kind in ('preparation','deadline','deadline-day','tier') and not $3::boolean) or (kind='response' and $4::boolean))", [accountId, opportunityId, ['interested','saved','preparing','draft-started','ready-to-submit'].includes(status), ['accepted','declined','withdrawn','delivered','archived'].includes(status)]);
     const next = updated.rows[0];
     const result = next
       ? {

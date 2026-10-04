@@ -105,6 +105,7 @@ export const opportunityBrowseQuerySchema = z.object({
   maxFeeCents: z.number().int().min(0).max(10_000_000).optional(),
   deadlineWithinDays: z.number().int().min(0).max(366).optional(),
   deadlineKind: z.enum(["rolling"]).optional(),
+  confirmedDatesOnly: z.boolean().optional(),
   openNow: z.boolean().default(true),
   verifiedOnly: z.boolean().default(false),
   simultaneousRequired: z.boolean().optional(),
