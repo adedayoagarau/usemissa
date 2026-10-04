@@ -36,6 +36,7 @@ export function safeAuthRedirect(value: string | undefined): string {
       "/tracker",
       "/saved",
       "/calendar",
+      "/season",
       "/library",
       "/following",
       "/goals",

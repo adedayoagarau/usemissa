@@ -262,17 +262,21 @@ test("a published profile takes messages, follows and invitations, and re-checks
   await expect(
     creator.page.getByRole("heading", { name: "Profile inbox" }),
   ).toBeVisible();
-  await expect(creator.page.getByRole("tabpanel")).toContainText("Ada Mensah");
+  await expect(
+    creator.page.getByRole("tabpanel", { name: /Messages/ }),
+  ).toContainText("Ada Mensah");
   await creator.page
     .getByRole("button", { name: "Archive", exact: true })
     .click();
   await creator.page.getByRole("tab", { name: /Invitations/ }).click();
-  await expect(creator.page.getByRole("tabpanel")).toContainText(
-    "Spring reading period",
-  );
+  await expect(
+    creator.page.getByRole("tabpanel", { name: /Invitations/ }),
+  ).toContainText("Spring reading period");
   await creator.page.getByRole("button", { name: "Not for me" }).click();
   await creator.page.getByRole("tab", { name: /Followers/ }).click();
-  await expect(creator.page.getByRole("tabpanel")).toContainText("Sam");
+  await expect(
+    creator.page.getByRole("tabpanel", { name: /Followers/ }),
+  ).toContainText("Sam");
   await expect
     .poll(
       async () =>

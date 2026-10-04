@@ -34,7 +34,7 @@ async function setup() {
       ('other-call',null,'Somebody else''s call','other','open','published',null);
   `);
   await db.exec(
-    await readFile(new URL("../../../db/migrations/0088_creator_profile_connections.sql", import.meta.url), "utf8"),
+    await readFile(new URL("../../../db/migrations/0089_creator_profile_connections.sql", import.meta.url), "utf8"),
   );
   const client = { query: (sql: string, params?: unknown[]) => db.query(sql, params), release() {} };
   const repo = new PostgresCreatorConnectionsRepository({ ...client, connect: async () => client } as unknown as Pool);

@@ -399,7 +399,7 @@ test("the profile inbox triages messages and invitations at phone width", async 
   await expect(
     page.getByRole("heading", { name: "Profile inbox", level: 1 }),
   ).toBeVisible();
-  const panel = page.getByRole("tabpanel");
+  const panel = page.getByRole("tabpanel", { name: /Messages/ });
   await expect(panel.getByRole("heading", { level: 2 })).toHaveText([
     "Ada Mensah",
     "Theo Park",
@@ -423,26 +423,30 @@ test("the profile inbox triages messages and invitations at phone width", async 
   ]);
   await page.getByRole("button", { name: "Show current" }).click();
   await page.getByRole("tab", { name: /Invitations/ }).click();
-  await expect(page.getByRole("tabpanel")).toContainText(
-    "Spring reading period",
-  );
+  await expect(
+    page.getByRole("tabpanel", { name: /Invitations/ }),
+  ).toContainText("Spring reading period");
   await page
-    .getByRole("tabpanel")
+    .getByRole("tabpanel", { name: /Invitations/ })
     .getByRole("button", { name: "Not for me" })
     .click();
-  await expect(page.getByRole("tabpanel")).toContainText("No invitations yet");
+  await expect(
+    page.getByRole("tabpanel", { name: /Invitations/ }),
+  ).toContainText("No invitations yet");
   await page.getByRole("tab", { name: /Following/ }).click();
   await page
-    .getByRole("tabpanel")
+    .getByRole("tabpanel", { name: /Following/ })
     .getByRole("button", { name: "Unfollow" })
     .click();
-  await expect(page.getByRole("tabpanel")).toContainText(
+  await expect(page.getByRole("tabpanel", { name: /Following/ })).toContainText(
     "You're not following anyone",
   );
   await expectNoOverflow(page);
   await expectAccessible(page);
   await page.goto("/design-system/creator-profile-inbox?empty=1");
-  await expect(page.getByRole("tabpanel")).toContainText("No messages yet");
+  await expect(page.getByRole("tabpanel", { name: /Messages/ })).toContainText(
+    "No messages yet",
+  );
 });
 
 test("creators can turn messages and invitations off in the studio", async ({

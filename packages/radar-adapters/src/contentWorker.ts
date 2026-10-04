@@ -348,7 +348,9 @@ async function buildJob(pool: Pool, runId: string, job: ContentJob): Promise<boo
 async function reviewRow(pool: Pool, opportunityId: string): Promise<ReviewRow | null> {
   const result = await pool.query<ReviewRow>(
     `select c.content, s.url as source_url,
-       coalesce(evidence.processing_succeeded_at, o.processing_succeeded_at) as processing_succeeded_at,
+       -- A successful lifecycle fetch of the listing's own page counts as a processing pass.
+       coalesce(evidence.processing_succeeded_at, o.processing_succeeded_at, o.source_checked_at,
+         (select max(l.fetched_at) from opportunity_lifecycle_evidence l where l.opportunity_id = o.id)) as processing_succeeded_at,
        (coalesce(evidence.organization_confirmed, false)
          or exists (
            select 1 from opportunity_profile_links link

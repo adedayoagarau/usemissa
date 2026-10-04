@@ -60,7 +60,16 @@
     "composition.admin-publication-review": {
       "semantic": "PlatformAdminPublicationReview",
       "implementation": "apps/web/components/platform-admin-publication-review.tsx",
-      "composition": ["Button", "Field", "Input", "Textarea", "AlertDialog", "Alert", "Empty", "Sonner"],
+      "composition": [
+        "Button",
+        "Field",
+        "Input",
+        "Textarea",
+        "AlertDialog",
+        "Alert",
+        "Empty",
+        "Sonner"
+      ],
       "boundary": "Platform-admin decision queue for review-agent holds. Approve publishes through the database publication gates; block suppresses. Hold reasons are plain text, not badges."
     },
     "composition.application-tracker-preview": {
@@ -152,7 +161,11 @@
       "implementation": "apps/web/components/auth-shell.tsx",
       "composition": ["MissaWordmark", "Link", "Image"],
       "appearance": "white-form-column-with-inset-campaign-photograph-and-editorial-caption",
-      "usedBy": ["AuthForm (/login, /signup)", "/forgot-password", "/reset-password"],
+      "usedBy": [
+        "AuthForm (/login, /signup)",
+        "/forgot-password",
+        "/reset-password"
+      ],
       "boundary": "Frame only: owns the main landmark, wordmark, legal links, and decorative photograph (hidden below 1024px and from assistive technology). Authentication, verification, and first-save logic stay in AuthForm. Form controls use Field, Input, InputOTP, Alert, Spinner, and Button; the Google action uses SocialAuthButton."
     },
     "composition.creator-onboarding": {
@@ -791,12 +804,16 @@
     "UrgencyBadge": {
       "base": "Badge",
       "studioCandidates": ["badge-05", "badge-10"],
-      "motion": "never"
+      "motion": "never",
+      "implementation": "components/missa/deadline-badges.tsx",
+      "boundary": "Time pressure only: ochre within seven days of a close, a calm neutral otherwise. Text is customer language such as 'Closes in 6 days'. Never pulses."
     },
     "FeeBadge": {
       "base": "Badge",
       "studioCandidates": ["badge-02", "badge-04"],
-      "motion": "never"
+      "motion": "never",
+      "implementation": "components/missa/deadline-badges.tsx",
+      "boundary": "An entry fee or 'No fee'. Renders nothing when the fee is unknown."
     },
     "AuthorityBadge": {
       "base": "Badge",
@@ -816,7 +833,9 @@
     "ProcessBadge": {
       "base": "Badge",
       "studioCandidates": ["badge-16", "badge-17", "badge-20", "badge-21"],
-      "motion": "indicator-while-confirmed-active"
+      "motion": "indicator-while-confirmed-active",
+      "implementation": "components/missa/deadline-badges.tsx",
+      "boundary": "Background process state (syncing, synced, waiting, not synced). A failed state is always paired with a recovery action."
     },
     "CountBadge": {
       "base": "Badge",
@@ -902,6 +921,19 @@
       "states": ["open", "from", "booked"],
       "rule": "A 'from' entry whose date has passed reads as open; meaning never depends on colour alone.",
       "motion": "never"
+    },
+    "DateConfidenceBadge": {
+      "base": "Badge",
+      "studioCandidates": ["badge-05", "badge-10"],
+      "motion": "never",
+      "implementation": "components/missa/deadline-badges.tsx",
+      "boundary": "Whether a date is confirmed by the organization's source, predicted by Missa from past cycles (dotted underline, never presented as the organization's), changed since first recorded, or needs checking. The title carries the plain-language explanation."
+    },
+    "UpgradeHint": {
+      "base": "Button",
+      "implementation": "components/missa/upgrade-hint.tsx",
+      "motion": "never",
+      "boundary": "One calm line naming what a plan adds and a link to /plan. Says what the creator gets, never what they lose; no alarm colour, no modal."
     }
   },
   "productCompositions": {

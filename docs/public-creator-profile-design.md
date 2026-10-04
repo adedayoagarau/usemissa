@@ -195,7 +195,7 @@ read, so no database migration is needed.
   email, Not for me and Unfollow.
 - Creators can switch messages and invitations off in About and contact.
   With messages off, a public email (if any) is the Get in touch button.
-- Storage: migration `0088_creator_profile_connections.sql`
+- Storage: migration `0089_creator_profile_connections.sql`
   (`creator_profile_follows`, `creator_inquiries`, `creator_invitations`)
   and `PostgresCreatorConnectionsRepository`.
 
