@@ -9,6 +9,7 @@ COPY scripts ./scripts
 RUN npm ci \
   && npm run build --workspace=@missa/contracts \
   && npm run build --workspace=@missa/taxonomy \
+  && npm run build --workspace=@missa/decisions \
   && npm run build --workspace=@missa/db \
   && npm run build --workspace=@missa/radar-engine \
   && npm run build --workspace=@missa/ingestion-v2 \
