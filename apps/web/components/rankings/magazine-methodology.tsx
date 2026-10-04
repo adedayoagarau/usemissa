@@ -255,9 +255,11 @@ export function MagazineMethodology({
             <strong className="text-foreground">
               The magazines’ own submission pages
             </strong>{" "}
-            for what they charge. Prizes, paid fast-track reading and art calls
-            are set aside; the fee we use is the cheapest way any writer can
-            send work.
+            for what they charge, and for pay and reply time when no listing
+            records them. Each fact taken from a magazine’s guidelines was
+            checked word for word against its page. Prizes, paid fast-track
+            reading and art calls are set aside; the fee we use is the cheapest
+            way any writer can send work.
           </li>
           <li>
             <strong className="text-foreground">

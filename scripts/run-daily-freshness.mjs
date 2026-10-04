@@ -75,15 +75,66 @@ try {
   let verifiedCount = 0;
   let closedDeadCount = 0;
 
+  // Optional Jev check (scope `link_check`) for HEAD failures that the rules
+  // below leave open. Without JEV_API_KEY nothing here runs or is fetched;
+  // with it in shadow mode the decision is only recorded. In live mode a link
+  // closes only on a confident "gone" while its HEAD request is failing now.
+  let linkCheck = null;
+  if (process.env.JEV_API_KEY) {
+    try {
+      const decisions = await import("@missa/decisions");
+      const decider = decisions.operationsDeciderFromEnv({ ledger: decisions.createPostgresDecisionLedger(client) });
+      if (decider) linkCheck = { decisions, decider, usage: new decisions.OperationsUsage() };
+    } catch (err) {
+      console.warn("   ⚠️ Jev link check unavailable:", err.message);
+    }
+  }
+  async function jevSaysClose(opp, status, redirectTarget) {
+    if (!linkCheck) return false;
+    let snippet = "";
+    try {
+      const page = await fetch(opp.guidelines_url, {
+        headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" },
+        signal: AbortSignal.timeout(3000)
+      });
+      snippet = linkCheck.decisions.visibleText((await page.text()).slice(0, 20_000)).slice(0, 600);
+    } catch {
+      // No snippet; the status alone is the evidence.
+    }
+    return linkCheck.decisions.linkShouldCloseNow(linkCheck.decider, {
+      subjectId: opp.id,
+      url: opp.guidelines_url,
+      status,
+      redirectTarget,
+      snippet
+    }, linkCheck.usage);
+  }
+  async function closeDeadLink(opp) {
+    await client.query(`
+      UPDATE opportunities
+      SET status = 'closed',
+          source_checked_at = now(),
+          last_changed_at = now(),
+          updated_at = now()
+      WHERE id = $1;
+    `, [opp.id]);
+    closedDeadCount++;
+  }
+
   for (const opp of staleBatch.rows) {
+    let headSettled = false;
     try {
       const res = await fetch(opp.guidelines_url, {
         method: "HEAD",
         headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" },
         signal: AbortSignal.timeout(3000)
       });
+      headSettled = true;
 
-      if (res.ok || res.status === 403 || res.status === 405) {
+      if (linkCheck && !res.ok && res.status !== 404 && res.status !== 410 && await jevSaysClose(opp, res.status, res.url)) {
+        console.log(`   ⚠️ Destination gone per Jev link check (HTTP ${res.status}, auto-closing): ${opp.title} -> ${opp.guidelines_url}`);
+        await closeDeadLink(opp);
+      } else if (res.ok || res.status === 403 || res.status === 405) {
         // Source URL is alive
         await client.query(`
           UPDATE opportunities 
@@ -106,9 +157,20 @@ try {
       }
     } catch {
       // Network hiccup; ignore politely
+      if (linkCheck && !headSettled) {
+        try {
+          if (await jevSaysClose(opp, "network-error", null)) {
+            console.log(`   ⚠️ Destination unreachable and gone per Jev link check (auto-closing): ${opp.title} -> ${opp.guidelines_url}`);
+            await closeDeadLink(opp);
+          }
+        } catch {
+          // The Jev check never blocks the freshness run.
+        }
+      }
     }
     await new Promise(r => setTimeout(r, 40));
   }
+  if (linkCheck) for (const line of linkCheck.usage.summary()) console.log(`   ${line}`);
 
   console.log(`   ✔ Verified source freshness for ${verifiedCount} opportunities.`);
   if (closedDeadCount > 0) {

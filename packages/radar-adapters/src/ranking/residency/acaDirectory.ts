@@ -18,6 +18,8 @@ export interface AcaProgramRecord {
   crawledAt: string;
   name: string;
   organizationUrl: string | null;
+  /** The organisation that runs the program, as the directory names it. */
+  organizationName: string | null;
   website: string | null;
   locality: string | null;
   region: string | null;
@@ -132,7 +134,7 @@ function wheelchairFrom(values: string[]): string | null {
 export function parseAcaProgram(html: string, url: string, crawledAt: string): AcaProgramRecord {
   const blocks = fieldBlocks(html);
   const title = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/);
-  const organization = html.match(/pseudo-group_node:organization-link-list[\s\S]*?href="(\/directory\/organizations\/[^"]+)"/);
+  const organization = html.match(/pseudo-group_node:organization-link-list[\s\S]*?href="(\/directory\/organizations\/[^"]+)"[^>]*>([^<]*)</);
   const website = blocks.get("website")?.match(/href="([^"]+)"/);
   const length = html.match(/pseudo-residency-length"><div class="field__label">[^<]*<\/div><div class="field__item">([^<]*)</);
   const address = (cls: string) => {
@@ -149,6 +151,7 @@ export function parseAcaProgram(html: string, url: string, crawledAt: string): A
     crawledAt,
     name: title ? text(title[1]) : "",
     organizationUrl: organization ? absolute(organization[1]) : null,
+    organizationName: organization ? text(organization[2]) || null : null,
     website: website ? decodeEntities(website[1]) : null,
     locality: address("locality"),
     region: address("administrative-area"),

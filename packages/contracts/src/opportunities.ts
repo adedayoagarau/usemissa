@@ -36,6 +36,8 @@ export const deadlineKindSchema = z.enum([
   "inferred",
   "rolling",
   "until-filled",
+  "year-round",
+  "seasonal",
   "conflicting",
   "unknown",
 ]);
@@ -103,6 +105,7 @@ export const opportunityBrowseQuerySchema = z.object({
   maxFeeCents: z.number().int().min(0).max(10_000_000).optional(),
   deadlineWithinDays: z.number().int().min(0).max(366).optional(),
   deadlineKind: z.enum(["rolling"]).optional(),
+  confirmedDatesOnly: z.boolean().optional(),
   openNow: z.boolean().default(true),
   verifiedOnly: z.boolean().default(false),
   simultaneousRequired: z.boolean().optional(),
@@ -124,6 +127,65 @@ export const opportunityFeeSchema = z.object({
   amountCents: z.number().int().min(0).optional(),
   currency: z.string().trim().length(3).optional(),
   raw: z.string().trim().max(200).optional(),
+});
+
+export const opportunityDeadlineTierSchema = z.object({
+  id: z.string().trim().min(1).max(64),
+  tier: z.enum(["early", "regular", "late", "extended", "final", "other"]),
+  label: z.string().trim().min(1).max(120),
+  closesOn: z.iso.date(),
+  closesAt: z.iso.datetime().optional(),
+  timezone: z.string().trim().min(1).max(64).optional(),
+  feeCents: z.number().int().min(0).optional(),
+  feeCurrency: z.string().trim().length(3).optional(),
+  confidence: z.enum(["confirmed", "probable"]),
+});
+
+export const opportunityStageSchema = z.object({
+  id: z.string().trim().min(1).max(64),
+  kind: z.enum([
+    "letter-of-intent",
+    "full-application",
+    "shortlist",
+    "interview",
+    "notification",
+    "decision",
+    "event",
+    "other",
+  ]),
+  label: z.string().trim().min(1).max(120),
+  dueOn: z.iso.date(),
+  dueAt: z.iso.datetime().optional(),
+  timezone: z.string().trim().min(1).max(64).optional(),
+  confidence: z.enum(["confirmed", "probable"]),
+});
+
+/** Why Missa shows a deadline the way it does. `changed` means the source
+ * moved the date since Missa first recorded it; `needs-checking` means the
+ * latest check could not confirm it. Predicted dates come from past cycles
+ * and are never presented as the organization's own. */
+export const opportunityDeadlineProvenanceSchema = z.object({
+  state: z.enum(["confirmed", "predicted", "changed", "needs-checking"]),
+  lastCheckedAt: z.iso.datetime().optional(),
+  previousDate: z.iso.date().optional(),
+  changedAt: z.iso.datetime().optional(),
+});
+
+export const opportunityCycleForecastSchema = z.object({
+  expectedOpenStart: z.iso.date().optional(),
+  expectedOpenEnd: z.iso.date().optional(),
+  expectedClose: z.iso.date().optional(),
+  confidence: z.enum(["high", "medium", "low"]),
+  basedOnCycles: z.number().int().min(2),
+  confirmedAt: z.iso.datetime().optional(),
+  confirmedDeltaDays: z.number().int().optional(),
+});
+
+export const opportunityDeadlineFactsSchema = z.object({
+  tiers: z.array(opportunityDeadlineTierSchema).max(12),
+  stages: z.array(opportunityStageSchema).max(16),
+  provenance: opportunityDeadlineProvenanceSchema,
+  forecast: opportunityCycleForecastSchema.optional(),
 });
 
 /** Customer-safe source attribution.
@@ -311,6 +373,7 @@ export const opportunityBrowseItemSchema = opportunityIdentitySchema.extend({
   submissionAvailable: z.boolean(),
   source: opportunitySourceEvidenceSchema,
   personal: opportunityPersonalStateSchema.optional(),
+  deadlineFacts: opportunityDeadlineFactsSchema.optional(),
 });
 
 export const opportunityBrowseResponseSchema = z.object({
@@ -473,3 +536,8 @@ export type OpportunityCallProfile = z.infer<
   typeof opportunityCallProfileSchema
 >;
 export type OpportunityContent = z.infer<typeof opportunityContentSchema>;
+export type OpportunityDeadlineTier = z.infer<typeof opportunityDeadlineTierSchema>;
+export type OpportunityStage = z.infer<typeof opportunityStageSchema>;
+export type OpportunityDeadlineProvenance = z.infer<typeof opportunityDeadlineProvenanceSchema>;
+export type OpportunityCycleForecast = z.infer<typeof opportunityCycleForecastSchema>;
+export type OpportunityDeadlineFacts = z.infer<typeof opportunityDeadlineFactsSchema>;

@@ -2,9 +2,12 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import {
   creatorCommandEnvelope,
+  creatorPoolFor,
   CreatorCalendarError,
+  PROVIDER_MIRROR_PURPOSES,
 } from "@missa/radar-adapters";
 import { getSessionAccount } from "@/lib/auth";
+import { EMPTY_CALENDAR_FACTS, loadCalendarFacts } from "@/lib/calendar-facts";
 import { CreatorReminderRepository } from "@/lib/creator-reminders";
 import { listGoals } from "@/lib/goal-engine";
 import { getCreatorCalendarRepository } from "@/lib/creatorRepositories";
@@ -31,12 +34,27 @@ export async function GET(request: Request) {
     return json({ error: "Choose a valid calendar range." }, 400);
   try {
     const [events, tracker, reminders, goals] = await Promise.all([
-      repository.events(session.account.id, from, to),
+      // Rows mirrored for the Google and Microsoft export are shown from their
+      // sources (the facts below), so they are left out here.
+      repository.events(session.account.id, from, to, {
+        excludePurposes: PROVIDER_MIRROR_PURPOSES,
+      }),
       repository.trackerItems(session.account.id),
       new CreatorReminderRepository().list(session.account.id),
       listGoals(session.account.id),
     ]);
-    return json({ events, tracker, reminders, goals });
+    // Stages, tier closes, plan steps and predicted cycles are additions: when
+    // they cannot load, the calendar still shows everything else.
+    const facts = process.env.DATABASE_URL
+      ? await loadCalendarFacts(
+          creatorPoolFor(process.env.DATABASE_URL),
+          session.account.id,
+          tracker,
+          from,
+          to,
+        ).catch(() => EMPTY_CALENDAR_FACTS)
+      : EMPTY_CALENDAR_FACTS;
+    return json({ events, tracker, reminders, goals, ...facts });
   } catch {
     return json({ error: "Calendar could not load. Try again." }, 503);
   }
