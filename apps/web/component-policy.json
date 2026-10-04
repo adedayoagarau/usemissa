@@ -236,9 +236,9 @@
     "composition.manuscript-match": {
       "semantic": "ManuscriptMatchWizard",
       "implementation": "apps/web/components/discover/manuscript-match-wizard.tsx",
-      "composition": ["Button", "Card", "Field", "NativeSelect"],
-      "appearance": "editorial-submission-brief-with-index-style-filters-and-evidence-led-match-cards",
-      "boundary": "Fit is a deterministic comparison aid, not eligibility or a submission claim. Journal destinations remain source-linked and external."
+      "composition": ["FieldSet", "RadioGroup", "InputGroup", "Slider", "Collapsible", "Textarea", "Combobox", "FilterChip", "Switch", "NativeSelect", "Button", "Select", "Sheet", "Tabs", "Empty", "Skeleton", "Spinner", "CountBadge", "MatchExplanationTrigger", "RankingTierBadge", "PlanTierBadge"],
+      "appearance": "submission-brief-beside-a-deterministic-submission-plan-and-searchable-sortable-ranked-lists-of-evidence-led-matches-with-a-browser-saved-shortlist",
+      "boundary": "Fit, odds, payoff and cost are deterministic scores from recorded facts, versioned with the decision model; the plan is guidance, not eligibility or a submission claim. Journal destinations remain source-linked and external."
     },
     "action.primary": {
       "primitive": "Button",
@@ -823,7 +823,9 @@
     "MatchExplanationTrigger": {
       "base": "Button",
       "disclosure": "Popover",
-      "motion": "popover-transition-only"
+      "motion": "popover-transition-only",
+      "implementation": "components/missa/match-explanation-trigger.tsx",
+      "boundary": "Shows a percentage only when recorded evidence or watchouts exist; otherwise reads Limited data. The popover states its reasons, watchouts, and that fit is not eligibility."
     },
     "PublicationStateBadge": {
       "base": "Badge",
@@ -843,10 +845,18 @@
       "motion": "finite-entrance-when-becoming-nonzero",
       "implementation": "components/missa/count-badge.tsx"
     },
+    "PlanTierBadge": {
+      "base": "Badge",
+      "motion": "never",
+      "implementation": "components/missa/plan-tier-badge.tsx",
+      "boundary": "Labels a magazine's place in a submission plan from its recorded odds score: Long shot, Good fit or Likely. Guidance from recorded facts, never a prediction of acceptance."
+    },
     "FilterChip": {
       "base": "Button",
       "studioReferences": ["badge-12", "badge-13"],
-      "motion": "never"
+      "motion": "never",
+      "implementation": "components/missa/filter-chip.tsx",
+      "boundary": "Toggle choice announced with aria-pressed and shown with a check mark plus Forest outline; never a filled primary action."
     },
     "SaveAction": {
       "base": "Button",
