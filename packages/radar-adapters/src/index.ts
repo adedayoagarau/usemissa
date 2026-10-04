@@ -830,3 +830,7 @@ export {
 } from "./calendarFeedItems.js";
 export { trackerListItem, type CanonicalTrackerListItem } from "./canonicalTracker.js";
 export * from "./creatorSeason.js";
+export * from "./ranking/residency/provision.js";
+export * from "./ranking/live/honoursProfiles.js";
+export * from "./ranking/live/guidelineFacts.js";
+export { MAGAZINE_GUIDELINES } from "./ranking/data/magazines/guidelines.js";
