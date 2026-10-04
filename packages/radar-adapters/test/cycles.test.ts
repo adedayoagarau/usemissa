@@ -146,7 +146,30 @@ describe("carry rules (pure)", () => {
 
 const DATABASE_URL = process.env.DATABASE_URL;
 
-describe("cycles against Postgres", { skip: !DATABASE_URL && "DATABASE_URL is not set" }, () => {
+// CI's postgres-integration job runs against a compatibility database without
+// the target schema; these tests need the full schema including migration 0088.
+async function cycleSchemaReady(): Promise<boolean> {
+  if (!DATABASE_URL) return false;
+  const probe = new Pool({ connectionString: DATABASE_URL, max: 1 });
+  try {
+    const result = await probe.query<{ ready: boolean }>(
+      "select to_regclass('public.opportunity_sources') is not null and to_regclass('public.opportunity_cycle_forecasts') is not null and to_regclass('public.creator_plans') is not null as ready",
+    );
+    return Boolean(result.rows[0]?.ready);
+  } finally {
+    await probe.end();
+  }
+}
+const CYCLE_SCHEMA_READY = await cycleSchemaReady();
+
+describe(
+  "cycles against Postgres",
+  {
+    skip: !DATABASE_URL
+      ? "DATABASE_URL is not set"
+      : !CYCLE_SCHEMA_READY && "deadline management schema is not applied to this database",
+  },
+  () => {
   let pool: Pool;
   const run = randomUUID().slice(0, 8);
   const sourceId = `src_cycles_${run}`;
