@@ -54,6 +54,7 @@ import {
   PRIZE_NAMES,
   PRIZE_WINNER_COUNT,
   WRITER_COUNT,
+  WRITER_COUNTRY_OPTIONS,
   groupedWriters,
   prizeCounts,
   suggestedWriters,
@@ -252,7 +253,7 @@ export function BriefForm({
               Sending it to several magazines
             </FieldLabel>
             <FieldDescription className={styles.helper}>
-              Rank down magazines that refuse simultaneous submissions.
+              Leave out magazines that refuse simultaneous submissions.
             </FieldDescription>
           </FieldContent>
           <Switch
@@ -305,6 +306,30 @@ export function BriefForm({
               Professional rates (8¢ a word or more)
             </NativeSelectOption>
           </NativeSelect>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor={`${ids}-country`}>Where you’re from</FieldLabel>
+          <NativeSelect
+            id={`${ids}-country`}
+            className={styles.select}
+            value={brief.writerCountry}
+            aria-describedby={`${ids}-country-help`}
+            onChange={(event) => update({ writerCountry: event.target.value })}
+          >
+            <NativeSelectOption value="">Prefer not to say</NativeSelectOption>
+            {WRITER_COUNTRY_OPTIONS.map((country) => (
+              <NativeSelectOption key={country} value={country}>
+                {country}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+          <FieldDescription
+            id={`${ids}-country-help`}
+            className={styles.helper}
+          >
+            Some prizes only take writers from certain countries. Missa uses
+            this to show which prize routes are open to you.
+          </FieldDescription>
         </Field>
       </FieldSet>
 

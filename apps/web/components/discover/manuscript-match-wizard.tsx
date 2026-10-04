@@ -65,12 +65,14 @@ import {
   type ShortlistControls,
 } from "./manuscript-match-results";
 import { ShortlistSheet, useShortlist } from "./manuscript-shortlist";
+import { SubmissionPlanView } from "./submission-plan";
 import styles from "./manuscript-match-wizard.module.css";
 
 type LaneKey =
-  "all" | "prizeTrack" | "dreamReach" | "debutChampions" | "rapidPro";
+  "plan" | "all" | "prizeTrack" | "dreamReach" | "debutChampions" | "rapidPro";
 
 const LANES: Array<{ key: LaneKey; label: string; description?: string }> = [
+  { key: "plan", label: "Plan" },
   { key: "all", label: "All" },
   {
     key: "prizeTrack",
@@ -134,7 +136,7 @@ export function ManuscriptMatchWizard({
   const [results, setResults] = useState<ManuscriptMatchResponse | null>(
     initialData ?? null,
   );
-  const [lane, setLane] = useState<LaneKey>("all");
+  const [lane, setLane] = useState<LaneKey>("plan");
   const [sort, setSort] = useState<ResultSort>("fit");
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState<SearchState | null>(null);
@@ -154,18 +156,31 @@ export function ManuscriptMatchWizard({
 
   const lanes = useMemo(() => {
     if (!results || results.status !== "available") return null;
+    const planIds = (results.plan?.rounds ?? []).flatMap((round) =>
+      round.picks.map((pick) => pick.profileId),
+    );
+    const planCards = (results.planCards ?? []).filter((card) =>
+      planIds.includes(card.profileId),
+    );
     const cards: Record<LaneKey, ManuscriptMatchCard[]> = {
+      plan: planCards,
       all: mergedResults(results),
       dreamReach: results.dreamReach,
       debutChampions: results.debutChampions,
       rapidPro: results.rapidPro,
       prizeTrack: results.prizeTrack ?? [],
     };
-    return LANES.filter((entry) => cards[entry.key].length > 0).map(
-      (entry) => ({ ...entry, cards: cards[entry.key] }),
-    );
+    // The plan tab stays when it has nothing to send: it still explains why
+    // and lists magazines opening later or ruled out.
+    return LANES.filter((entry) =>
+      entry.key === "plan"
+        ? Boolean(results.plan)
+        : cards[entry.key].length > 0,
+    ).map((entry) => ({ ...entry, cards: cards[entry.key] }));
   }, [results]);
-  const activeLane = lanes?.some((entry) => entry.key === lane) ? lane : "all";
+  const activeLane = lanes?.some((entry) => entry.key === lane)
+    ? lane
+    : (lanes?.[0]?.key ?? "all");
 
   const runMatch = useCallback((sent: ManuscriptBrief, updateUrl: boolean) => {
     startTransition(async () => {
@@ -173,7 +188,7 @@ export function ManuscriptMatchWizard({
         const data = await requestMatch(sent);
         setResults(data);
         setSubmittedBrief(sent);
-        setLane("all");
+        setLane("plan");
         if (updateUrl) {
           window.history.replaceState(
             null,
@@ -456,19 +471,27 @@ export function ManuscriptMatchWizard({
                 {entry.description ? (
                   <p className={styles.laneDescription}>{entry.description}</p>
                 ) : null}
-                <ResultList
-                  cards={sortResults(entry.cards, sort)}
-                  brief={submittedBrief}
-                  shortlist={shortlist.controls}
-                />
+                {entry.key === "plan" ? (
+                  <SubmissionPlanView
+                    results={results!}
+                    brief={submittedBrief}
+                    shortlist={shortlist.controls}
+                  />
+                ) : (
+                  <ResultList
+                    cards={sortResults(entry.cards, sort)}
+                    brief={submittedBrief}
+                    shortlist={shortlist.controls}
+                  />
+                )}
               </TabsContent>
             ))}
           </Tabs>
         )}
 
         <p className={styles.footnote}>
-          Fit is a comparison aid, not an eligibility check. Read each
-          magazine&apos;s current guidelines before you submit.{" "}
+          Scores and plans come from what Missa has recorded, not an eligibility
+          check. Read each magazine&apos;s current guidelines before you submit.{" "}
           <Link href="/methodology">How Missa ranks magazines</Link>
         </p>
       </section>

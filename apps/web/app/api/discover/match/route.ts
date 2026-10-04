@@ -13,6 +13,11 @@ export async function POST(request: Request) {
       compAuthors: Array.isArray(body.compAuthors)
         ? body.compAuthors.slice(0, 20).map((name) => String(name).slice(0, 80))
         : undefined,
+      writerCountry:
+        typeof body.writerCountry === "string"
+          ? body.writerCountry.slice(0, 60)
+          : undefined,
+      asOf: typeof body.asOf === "string" ? body.asOf.slice(0, 10) : undefined,
       aestheticTags: Array.isArray(body.aestheticTags)
         ? body.aestheticTags.slice(0, 30).map((tag) => String(tag).slice(0, 40))
         : undefined,

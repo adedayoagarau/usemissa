@@ -24,6 +24,7 @@ export function MatchExplanationTrigger({
   reasons,
   watchouts = [],
   note,
+  emptyLabel = "Limited data",
 }: {
   score: number | null;
   /** Names what was scored, for the accessible label and popover title. */
@@ -31,6 +32,8 @@ export function MatchExplanationTrigger({
   reasons: string[];
   watchouts?: string[];
   note: string;
+  /** What the trigger reads when there is no score. */
+  emptyLabel?: string;
 }) {
   const scored = score !== null;
   return (
@@ -56,7 +59,7 @@ export function MatchExplanationTrigger({
             <span className={`${styles.score} font-mono`}>{score}%</span> fit
           </>
         ) : (
-          "Limited data"
+          emptyLabel
         )}
       </PopoverTrigger>
       <PopoverContent align="end" className={styles.popover}>

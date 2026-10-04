@@ -9,10 +9,12 @@ import {
   Info,
 } from "lucide-react";
 import type {
+  DecisionDimension,
   ManuscriptMatchCard,
   ManuscriptMatchResponse,
 } from "@missa/radar-adapters";
 import { MatchExplanationTrigger } from "@/components/missa/match-explanation-trigger";
+import { PlanTierBadge } from "@/components/missa/plan-tier-badge";
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
 import { EditorialIntelligenceDrawer } from "@/components/rankings/editorial-intelligence-drawer";
 import { Button } from "@/components/ui/button";
@@ -31,7 +33,53 @@ export const SORT_LABELS: Record<ResultSort, string> = {
 };
 
 const SCORED_NOTE =
-  "Fit compares your brief with what Missa has recorded for this magazine. It isn't an eligibility check.";
+  "Fit compares your brief with what Missa has recorded for this magazine. Odds, payoff and cost are scored the same way, and magazines are ranked by all four. Nothing here is an eligibility check.";
+
+export const DIMENSION_LABELS: Record<DecisionDimension, string> = {
+  fit: "Fit",
+  odds: "Odds",
+  payoff: "Payoff",
+  cost: "Low cost",
+};
+
+const DIMENSION_ORDER: DecisionDimension[] = ["fit", "odds", "payoff", "cost"];
+
+function codepointCompare(a: string, b: string) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * The decision model's fixed order: ranking score, fit, odds, then name and
+ * id, so equal scores never swap places between runs.
+ */
+export function compareCards(a: ManuscriptMatchCard, b: ManuscriptMatchCard) {
+  const fit = (card: ManuscriptMatchCard) =>
+    card.decision?.scores.fit.score ?? 0;
+  const odds = (card: ManuscriptMatchCard) =>
+    card.decision?.scores.odds.score ?? 0;
+  return (
+    b.matchScore - a.matchScore ||
+    fit(b) - fit(a) ||
+    odds(b) - odds(a) ||
+    codepointCompare(a.name.toLowerCase(), b.name.toLowerCase()) ||
+    codepointCompare(a.profileId, b.profileId)
+  );
+}
+
+/** "2026-10-31" as "31 October". */
+function dayMonth(iso: string) {
+  const [year, month, day] = iso.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  });
+}
+
+/** "The O. Henry Prize Stories (from 2021: …)" reads as "The O. Henry Prize Stories". */
+function shortSource(name: string) {
+  return name.replace(/\s*\([^)]*\)/g, "");
+}
 
 function money(cents: number) {
   return `$${(cents / 100).toFixed(cents % 100 ? 2 : 0)}`;
@@ -49,12 +97,15 @@ export function mergedResults(
     ...results.debutChampions,
     ...results.rapidPro,
     ...(results.prizeTrack ?? []),
+    ...(results.planCards ?? []).filter(
+      (card) => (card.decision?.exclusions.length ?? 0) === 0,
+    ),
   ]) {
     if (seen.has(card.profileId)) continue;
     seen.add(card.profileId);
     cards.push(card);
   }
-  return cards.sort((a, b) => b.matchScore - a.matchScore);
+  return cards.sort(compareCards);
 }
 
 const TIER_ORDER: Record<ManuscriptMatchCard["prestigeTier"], number> = {
@@ -96,6 +147,8 @@ export function prizeValue(card: ManuscriptMatchCard): number {
     : 0;
   return (
     record.publishedComps.length * 1000 +
+    (card.decision?.kinWriters.length ?? 0) * 100 +
+    (card.decision?.prizeRoutes.length ?? 0) * 50 +
     pushcart +
     record.prizeSelections * 6 +
     record.anthologySelections * 3
@@ -227,45 +280,83 @@ function recordedFacts(
   if (specs.allowsSimultaneous === false) {
     facts.push({ key: "simultaneous", label: "No simultaneous submissions" });
   }
+  const window = card.decision?.readingWindow;
+  if (window?.allYear) {
+    facts.push({ key: "window", label: "Reads all year" });
+  } else if (window?.openNow && window.closesOn) {
+    facts.push({
+      key: "window",
+      label: (
+        <>
+          Reads until{" "}
+          <time dateTime={window.closesOn}>{dayMonth(window.closesOn)}</time>
+        </>
+      ),
+    });
+  }
   return facts;
 }
 
-/** Conflicts between the brief and the magazine's recorded guidelines. */
-function watchouts(
-  card: ManuscriptMatchCard,
-  brief: ManuscriptBrief,
-): string[] {
-  const list: string[] = [];
-  const { specs, compensation: pay } = card;
-  if (brief.genre !== "poetry") {
-    if (specs.maxWordCount && brief.wordCount > specs.maxWordCount) {
-      list.push(`Over the ${specs.maxWordCount.toLocaleString()}-word limit`);
-    }
-    if (specs.minWordCount && brief.wordCount < specs.minWordCount) {
-      list.push(
-        `Under the ${specs.minWordCount.toLocaleString()}-word minimum`,
-      );
-    }
-  }
-  if (brief.allowSimultaneous && specs.allowsSimultaneous === false) {
-    list.push("Doesn't accept simultaneous submissions");
-  }
-  if (
-    brief.feeTolerance === "free_only" &&
-    pay.submissionFeeCents &&
-    !pay.hasFeeWaivers
-  ) {
-    list.push(`Charges a ${money(pay.submissionFeeCents)} fee with no waiver`);
-  }
-  if (brief.minPayRate === "pro_rates_only" && !pay.isProRate) {
-    list.push("Doesn't pay professional rates");
-  } else if (
-    brief.minPayRate === "any_paying" &&
-    pay.paysContributors === false
-  ) {
-    list.push("Doesn't pay contributors");
-  }
-  return list;
+/** Reasons that raised a score, labelled by score. */
+function decisionReasons(card: ManuscriptMatchCard): string[] {
+  if (!card.decision) return card.reasons;
+  return DIMENSION_ORDER.flatMap((dimension) =>
+    card
+      .decision!.scores[dimension].reasons.filter((reason) => reason.points > 0)
+      .map((reason) => `${DIMENSION_LABELS[dimension]}: ${reason.text}`),
+  );
+}
+
+/** Rules the brief breaks, then recorded facts that lowered a score. */
+function decisionWatchouts(card: ManuscriptMatchCard): string[] {
+  if (!card.decision) return [];
+  return [
+    ...card.decision.exclusions.map((exclusion) => exclusion.reason),
+    ...DIMENSION_ORDER.flatMap((dimension) =>
+      card
+        .decision!.scores[dimension].reasons.filter(
+          (reason) => reason.points < 0,
+        )
+        .map((reason) => `${DIMENSION_LABELS[dimension]}: ${reason.text}`),
+    ),
+  ];
+}
+
+function hasRecordedScores(card: ManuscriptMatchCard): boolean {
+  return DIMENSION_ORDER.some(
+    (dimension) => card.decision?.scores[dimension].known,
+  );
+}
+
+/** Odds, payoff and cost beside the fit score; unrecorded scores show a dash. */
+export function DecisionScores({ card }: { card: ManuscriptMatchCard }) {
+  const decision = card.decision;
+  if (!decision || !hasRecordedScores(card)) return null;
+  return (
+    <div className={styles.decision}>
+      <PlanTierBadge tier={decision.tier} />
+      <dl className={styles.scores}>
+        {(["odds", "payoff", "cost"] as const).map((dimension) => {
+          const score = decision.scores[dimension];
+          return (
+            <div key={dimension}>
+              <dt>{DIMENSION_LABELS[dimension]}</dt>
+              <dd className="font-mono">
+                {score.known ? (
+                  score.score
+                ) : (
+                  <>
+                    <span aria-hidden="true">–</span>
+                    <span className="sr-only">not recorded</span>
+                  </>
+                )}
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
+    </div>
+  );
 }
 
 export interface ShortlistControls {
@@ -297,9 +388,9 @@ export function ResultList({
   const limited: ManuscriptMatchCard[] = [];
   for (const card of cards) {
     const facts = recordedFacts(card, brief);
-    const warnings = watchouts(card, brief);
+    const warnings = decisionWatchouts(card);
     if (
-      card.reasons.length ||
+      hasRecordedScores(card) ||
       warnings.length ||
       facts.length ||
       prizeValue(card) > 0
@@ -389,13 +480,30 @@ function ScoredResult({
             ) : null}
           </div>
           <MatchExplanationTrigger
-            score={card.matchScore}
+            score={
+              card.decision
+                ? card.decision.scores.fit.known
+                  ? card.decision.scores.fit.score
+                  : null
+                : card.matchScore
+            }
             subject={card.name}
-            reasons={card.reasons}
+            reasons={decisionReasons(card)}
             watchouts={warnings}
             note={SCORED_NOTE}
+            emptyLabel={card.decision ? "Fit not recorded" : undefined}
           />
         </div>
+
+        {card.decision?.exclusions.length ? (
+          <p className={styles.ruledOut}>
+            Ruled out for this brief:{" "}
+            {card.decision.exclusions
+              .map((exclusion) => exclusion.reason)
+              .join("; ")}
+          </p>
+        ) : null}
+        <DecisionScores card={card} />
 
         {card.prestigeTier !== "unranked" || facts.length ? (
           <ul className={styles.facts} aria-label="Recorded details">
@@ -445,7 +553,37 @@ function PrizeRecord({ card }: { card: ManuscriptMatchCard }) {
           Published {record.publishedComps.join(", ")}, a writer you named
         </p>
       ) : null}
-      <p className={styles.prizeSummary}>{summary.join(" · ")}</p>
+      {card.decision?.kinWriters.length ? (
+        <p className={styles.prizeSummary}>
+          Published writers like{" "}
+          {[
+            ...new Set(card.decision.kinWriters.map((kin) => kin.likeComp)),
+          ].join(" and ")}
+          :{" "}
+          {card.decision.kinWriters
+            .slice(0, 3)
+            .map((kin) => `${kin.writer} (${kin.link})`)
+            .join(", ")}
+        </p>
+      ) : null}
+      {card.decision?.prizeRoutes.length ? (
+        <ul className={styles.prizePieces} aria-label="Prize routes">
+          {card.decision.prizeRoutes.map((route) => (
+            <li key={route.id}>
+              Route to {route.name}: first published {route.examples[0].writer}
+              &rsquo;s {route.examples[0].year} pick
+              <span className={styles.prizeSource}>
+                {" "}
+                · {route.eligible ? "Open to you: " : "Entry rules: "}
+                {route.rule}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {summary.length ? (
+        <p className={styles.prizeSummary}>{summary.join(" · ")}</p>
+      ) : null}
       {record.recent.length ? (
         <ul
           className={styles.prizePieces}
@@ -457,7 +595,7 @@ function PrizeRecord({ card }: { card: ManuscriptMatchCard }) {
               {piece.writer}
               <span className={styles.prizeSource}>
                 {" "}
-                · {piece.source}, {piece.year}
+                · {shortSource(piece.source)}, {piece.year}
               </span>
             </li>
           ))}
@@ -467,7 +605,7 @@ function PrizeRecord({ card }: { card: ManuscriptMatchCard }) {
   );
 }
 
-function ResultActions({
+export function ResultActions({
   card,
   shortlist,
 }: {

@@ -36,8 +36,9 @@ export default async function ManuscriptMatchPage() {
             Where should this piece go?
           </h1>
           <p className={styles.lede}>
-            Describe your story, essay, or poems. Missa compares it with the
-            guidelines, pay, reply times, and prize records for each magazine.
+            Describe your story, essay, or poems. Missa checks each
+            magazine&apos;s recorded rules, scores fit, odds, payoff and cost,
+            and builds a submission plan you can send today.
           </p>
           <p className={styles.headerLink}>
             <Link href="/discover/prizes">

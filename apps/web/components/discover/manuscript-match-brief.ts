@@ -11,6 +11,8 @@ export interface ManuscriptBrief {
   allowSimultaneous: boolean;
   feeTolerance: NonNullable<ManuscriptMatchInput["feeTolerance"]>;
   minPayRate: NonNullable<ManuscriptMatchInput["minPayRate"]>;
+  /** Where the writer is from, for prizes with nationality rules; "" when not given. */
+  writerCountry: string;
 }
 
 export const DEFAULT_MANUSCRIPT_BRIEF: ManuscriptBrief = {
@@ -23,6 +25,7 @@ export const DEFAULT_MANUSCRIPT_BRIEF: ManuscriptBrief = {
   allowSimultaneous: true,
   feeTolerance: "free_only",
   minPayRate: "all",
+  writerCountry: "",
 };
 
 export const FORMS: Array<{ value: ManuscriptBrief["genre"]; label: string }> =
@@ -142,6 +145,7 @@ export function manuscriptMatchPayload(
     allowSimultaneous: brief.allowSimultaneous,
     feeTolerance: brief.feeTolerance,
     minPayRate: brief.minPayRate,
+    ...(brief.writerCountry ? { writerCountry: brief.writerCountry } : {}),
     ...(query ? { query } : {}),
   };
 }
@@ -187,6 +191,7 @@ export function briefToSearchParams(brief: ManuscriptBrief): URLSearchParams {
   params.set("simultaneous", brief.allowSimultaneous ? "1" : "0");
   params.set("fees", brief.feeTolerance);
   params.set("pay", brief.minPayRate);
+  if (brief.writerCountry) params.set("country", brief.writerCountry);
   return params;
 }
 
@@ -229,5 +234,6 @@ export function briefFromSearchParams(
       ? fees
       : DEFAULT_MANUSCRIPT_BRIEF.feeTolerance,
     minPayRate: PAY.includes(pay) ? pay : DEFAULT_MANUSCRIPT_BRIEF.minPayRate,
+    writerCountry: (params.get("country") ?? "").trim().slice(0, 60),
   };
 }
