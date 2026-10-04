@@ -9,8 +9,8 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run build --workspace=@missa/contracts && npm run build --workspace=@missa/taxonomy && npm run build --workspace=@missa/db && npm run build --workspace=@missa/radar-engine && npm run build --workspace=@missa/radar-adapters && npm run build --workspace=@missa/ingestion-v2 && npm run build --workspace=@missa/workspace-engine && npm run build --workspace=@missa/web",
-    "test": "npm test --workspace=@missa/contracts && npm test --workspace=@missa/taxonomy && npm test --workspace=@missa/db && npm test --workspace=@missa/radar-engine && npm test --workspace=@missa/radar-adapters && npm test --workspace=@missa/ingestion-v2 && npm test --workspace=@missa/workspace-engine",
+    "build": "npm run build --workspace=@missa/contracts && npm run build --workspace=@missa/taxonomy && npm run build --workspace=@missa/decisions && npm run build --workspace=@missa/db && npm run build --workspace=@missa/radar-engine && npm run build --workspace=@missa/radar-adapters && npm run build --workspace=@missa/ingestion-v2 && npm run build --workspace=@missa/workspace-engine && npm run build --workspace=@missa/web",
+    "test": "npm test --workspace=@missa/contracts && npm test --workspace=@missa/taxonomy && npm test --workspace=@missa/decisions && npm test --workspace=@missa/db && npm test --workspace=@missa/radar-engine && npm test --workspace=@missa/radar-adapters && npm test --workspace=@missa/ingestion-v2 && npm test --workspace=@missa/workspace-engine",
     "lint": "npm run lint --workspace=@missa/web",
     "typecheck": "npm run typecheck --workspace=@missa/web",
     "format": "prettier --write .",
@@ -38,6 +38,8 @@
     "residency:rankings": "npm run build --workspace=@missa/radar-engine && npm run build --workspace=@missa/radar-adapters && node scripts/recompute-residency-rankings.mjs",
     "magazine:schedules": "npm run build --workspace=@missa/radar-engine && node scripts/backfill-magazine-schedules.mjs",
     "magazine:schedules:dry-run": "npm run build --workspace=@missa/radar-engine && node scripts/backfill-magazine-schedules.mjs --dry-run",
+    "jev:propose-backfills": "npm run build --workspace=@missa/contracts && npm run build --workspace=@missa/taxonomy && npm run build --workspace=@missa/decisions && node scripts/jev-propose-backfills.mjs",
+    "jev:apply-decisions": "npm run build --workspace=@missa/contracts && npm run build --workspace=@missa/decisions && node scripts/jev-apply-decisions.mjs",
     "postinstall": "node scripts/patch-next-themes.mjs"
   },
   "devDependencies": {

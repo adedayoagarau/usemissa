@@ -1,5 +1,5 @@
 import {
-  coercePortfolioTheme,
+  migratePortfolioInput,
   portfolioSchema,
 } from "./creator-portfolio-schema";
 /** Account writes are confirmed before reporting success. Samples stay device-local. */
@@ -105,9 +105,11 @@ export function publicWebUrl(value: string): string | undefined {
 }
 
 async function upgradePortfolio(value: unknown) {
-  const draft = structuredClone(value) as Record<string, unknown>;
-  if (!draft.works && draft.work) draft.works = [draft.work];
-  draft.theme = coercePortfolioTheme(draft.theme);
+  // Version 1 drafts move their book and credit into Shelf and Track record.
+  const draft = migratePortfolioInput(structuredClone(value)) as Record<
+    string,
+    unknown
+  >;
   const upload = async (value: unknown) => {
     if (typeof value !== "string" || !value.startsWith("data:")) return value;
     const response = await fetch(value);
@@ -127,10 +129,8 @@ async function upgradePortfolio(value: unknown) {
     return data.url;
   };
   draft.photo = await upload(draft.photo);
-  if (draft.book && typeof draft.book === "object") {
-    const book = draft.book as Record<string, unknown>;
-    book.cover = await upload(book.cover);
-  }
+  if (Array.isArray(draft.shelf))
+    for (const item of draft.shelf) item.cover = await upload(item.cover);
   if (Array.isArray(draft.works))
     for (const work of draft.works) {
       work.image = await upload(work.image);

@@ -663,7 +663,10 @@ test("missa literary magazine index schema defines awards, telemetry, and rankin
 test("publication editorial intelligence schema defines specs, compensation, and telemetry", () => {
   const specsConfig = getTableConfig(publicationEditorialSpecs);
   assert.equal(specsConfig.columns.find((c) => c.name === "profile_id")?.primary, true);
-  assert.equal(specsConfig.columns.find((c) => c.name === "allows_simultaneous")?.notNull, true);
+  // Not stated until a source says so; 0091 dropped the invented default.
+  const allowsSimultaneous = specsConfig.columns.find((c) => c.name === "allows_simultaneous");
+  assert.equal(allowsSimultaneous?.notNull, false);
+  assert.equal(allowsSimultaneous?.hasDefault, false);
   assert.ok(specsConfig.indexes.some((i) => i.config.name === "idx_pub_editorial_specs_blind"));
 
   const compConfig = getTableConfig(publicationCompensationDetails);
@@ -697,9 +700,37 @@ test("residency intelligence specs schema defines stipends, amenities, cohort, a
   const resIntelConfig = getTableConfig(residencyIntelligenceSpecs);
   assert.equal(resIntelConfig.columns.find((c) => c.name === "profile_id")?.primary, true);
   assert.equal(resIntelConfig.columns.find((c) => c.name === "stipend_amount_cents")?.notNull, true);
-  assert.equal(resIntelConfig.columns.find((c) => c.name === "cohort_size")?.notNull, true);
+  for (const name of ["cohort_size", "ada_accessible", "has_fee_waivers"]) {
+    const column = resIntelConfig.columns.find((c) => c.name === name);
+    assert.equal(column?.notNull, false, name);
+    assert.equal(column?.hasDefault, false, name);
+  }
   assert.equal(resIntelConfig.columns.find((c) => c.name === "acceptance_rate_percent")?.notNull, true);
   assert.ok(resIntelConfig.indexes.some((i) => i.config.name === "idx_res_intel_specs_profile"));
   assert.ok(resIntelConfig.indexes.some((i) => i.config.name === "idx_res_intel_stipend"));
   assert.ok(resIntelConfig.indexes.some((i) => i.config.name === "idx_res_intel_acceptance"));
+});
+
+test("deadline management migration is registered and keeps reminders unique per subject", () => {
+  const targetSchema = readFileSync("../../scripts/apply-target-schema.mjs", "utf8");
+  assert.match(targetSchema, /'0088_deadline_management\.sql'/);
+  const migration = readFileSync("migrations/0088_deadline_management.sql", "utf8");
+  for (const table of [
+    "opportunity_deadline_tiers",
+    "opportunity_stages",
+    "opportunity_cycle_history",
+    "opportunity_cycle_forecasts",
+    "creator_obligations",
+    "creator_planning_preferences",
+    "opportunity_recurring_rules",
+    "creator_opportunity_alerts",
+  ]) {
+    assert.match(migration, new RegExp(`CREATE TABLE IF NOT EXISTS ${table} \\(`), table);
+  }
+  assert.match(migration, /creator_application_reminders_owner_subject_idx/);
+  assert.match(migration, /response_time_days = 45/);
+  assert.match(
+    migration,
+    /creator_calendar_events_purpose_check\s+CHECK \(purpose IN \([^)]*'plan-step', 'stage', 'tier-close', 'forecast'\)\)/,
+  );
 });

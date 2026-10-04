@@ -71,7 +71,20 @@ export {
   type CreatorProfileInput,
   type CreatorProfileView,
   type CreatorPrivacyInput,
+  type AcceptedOutcome,
 } from "./creatorProfileRepository.js";
+export {
+  INQUIRY_TOPICS,
+  InquiryRateLimitError,
+  PostgresCreatorConnectionsRepository,
+  type CreatorInquiry,
+  type CreatorInvitation,
+  type InquiryStatus,
+  type InquiryTopic,
+  type InvitationStatus,
+  type InviteOption,
+  type ProfilePerson,
+} from "./creatorConnectionsRepository.js";
 export {
   CreatorAccountProvisionError,
   PostgresCreatorAccountRepository,
@@ -168,11 +181,19 @@ export {
   FREE_ACTIVE_TRACKED_LIMIT,
   lockTrackingAllowance,
   planIncludesSmsReminders,
+  planIncludes,
+  plansIncluding,
+  creatorFeatures,
   SMS_REMINDER_PLANS,
   TrackingLimitReachedError,
   type CreatorEntitlements,
+  type CreatorFeature,
   type CreatorPlan,
+  type CreatorPlanLimits,
 } from "./creatorEntitlements.js";
+export * from "./deadlineFacts.js";
+export * from "./creatorObligations.js";
+export * from "./creatorPlanningPreferences.js";
 export {
   CreatorEmailReviewError,
   PostgresCreatorEmailReviewRepository,
@@ -194,6 +215,8 @@ export {
   CALENDAR_SYNC_MAX_ATTEMPTS,
   CreatorCalendarError,
   PostgresCreatorCalendarRepository,
+  PROVIDER_MIRROR_PURPOSES,
+  type ProviderMirrorPurpose,
   type CreatorCalendarItem,
   type CreatorCalendarEvent,
   type CreatorCalendarTokenResult,
@@ -202,6 +225,13 @@ export {
   type CalendarProvider,
   type CalendarSyncLease,
 } from "./creatorCalendarRepository.js";
+export {
+  calendarProviderMirrorReady,
+  mirrorCalendarProviderAccount,
+  mirrorCalendarProviderEvents,
+  type CalendarMirrorAccountResult,
+  type CalendarMirrorTickResult,
+} from "./calendarProviderMirror.js";
 export {
   encryptCalendarCredential,
   decryptCalendarCredential,
@@ -794,3 +824,31 @@ export {
 } from "./siteObservability.js";
 export * from "./ranking/residency/acaDirectory.js";
 export * from "./ranking/residency/recompute.js";
+export { relationsReady as cycleRelationsReady, type CycleDb, type CycleNotice } from "./cycleNotices.js";
+export * from "./cycleForecasts.js";
+export * from "./openingAlerts.js";
+export * from "./carryToNextCycle.js";
+export * from "./opportunityDeadlineFactsWriter.js";
+export { CONFIRMED_DATES_PREDICATE, type OpportunityRepositoryQueryWithDeadlineFacts } from "./opportunityRepository.js";
+export * from "./creatorObligationMutations.js";
+export { updateCanonicalTrackerPersonalTarget, CanonicalTrackerValidationError } from "./canonicalTracker.js";
+export type { CreatorReminderTextKind } from "./creatorReminderText.js";
+export { CREATOR_OPENING_NOTICE_KINDS, CREATOR_REMINDER_NOTICE_KINDS } from "./creatorReminderEmail.js";
+export { weeklyDigestPlanning, type WeeklyDigestPlanItem, type WeeklyDigestPlanning } from "./weeklyDigest.js";
+export {
+  calendarFeedAccountForToken,
+  calendarFeedForToken,
+  calendarFeedItemsForAccount,
+  type CalendarFeedData,
+  type CalendarFeedForecast,
+  type CalendarFeedObligation,
+  type CalendarFeedStage,
+  type CalendarFeedTier,
+  type CalendarFeedTracked,
+} from "./calendarFeedItems.js";
+export { trackerListItem, type CanonicalTrackerListItem } from "./canonicalTracker.js";
+export * from "./creatorSeason.js";
+export * from "./ranking/residency/provision.js";
+export * from "./ranking/live/honoursProfiles.js";
+export * from "./ranking/live/guidelineFacts.js";
+export { MAGAZINE_GUIDELINES } from "./ranking/data/magazines/guidelines.js";

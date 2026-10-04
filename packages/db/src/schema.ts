@@ -1051,6 +1051,11 @@ export const opportunities = pgTable(
       table.processingSucceededAt,
     ),
     index("opportunities_recent_idx").on(table.lastChangedAt, table.createdAt),
+    // 0091: rows outside the contract enum became 'other' (see data_decisions).
+    check(
+      "opportunities_type_check",
+      sql`${table.type} in ('open-call', 'magazine', 'grant', 'award', 'fellowship', 'residency', 'festival', 'scholarship', 'conference', 'rfp', 'contest', 'pitch', 'exhibition', 'commission', 'job', 'other')`,
+    ),
     check(
       "opportunities_fee_check",
       sql`${table.feeCents} is null or ${table.feeCents} >= 0`,
@@ -1065,7 +1070,7 @@ export const opportunities = pgTable(
     ),
     check(
       "opportunities_status_check",
-      sql`${table.status} in ('opening-soon', 'open', 'closing-soon', 'deadline-extended', 'closed', 'archived')`,
+      sql`${table.status} in ('forecasted', 'opening-soon', 'open', 'closing-soon', 'deadline-extended', 'paused', 'closed', 'archived', 'uncertain')`,
     ),
   ],
 );
@@ -2145,6 +2150,11 @@ export const opportunityCallProfiles = pgTable(
       "opportunity_call_profiles_call_kind_check",
       sql`${table.callKind} in ('general-submission', 'themed-call', 'contest', 'prize', 'fellowship', 'grant', 'residency', 'open-call', 'unknown')`,
     ),
+    // 0091: unmappable legacy text is 'unknown', kept in metadata.payment_type_previous.
+    check(
+      "opportunity_call_profiles_payment_type_check",
+      sql`${table.paymentType} is null or ${table.paymentType} in ('none', 'contributor-copy', 'token', 'flat-fee', 'per-word', 'royalty', 'honorarium', 'stipend', 'grant', 'fellowship', 'prize', 'varies', 'unknown')`,
+    ),
     check(
       "opportunity_call_profiles_market_kind_check",
       sql`${table.marketKind} in ('magazine', 'journal', 'press', 'anthology', 'contest', 'award', 'organization', 'unknown')`,
@@ -2468,6 +2478,10 @@ export const trackedOpportunities = pgTable(
     notes: text("notes"),
     workId: text("work_id"),
     lastImportId: text("last_import_id"),
+    personalTargetOn: date("personal_target_on"),
+    carriedFromTrackedId: text("carried_from_tracked_id"),
+    cycleLabel: text("cycle_label"),
+    lastActivityAt: timestamp("last_activity_at", { withTimezone: true }).defaultNow(),
     revision: revision(),
     trackedAt: timestamp("tracked_at", { withTimezone: true })
       .notNull()
@@ -2797,6 +2811,100 @@ export const smsMessages = pgTable(
   ],
 );
 
+/**
+ * Ledger of every judgment Missa makes about its data — Jev, LLM, heuristic,
+ * human or cited source — with the question version, input hash, answer,
+ * probability and route. Shadow rows are never applied (migration 0090).
+ */
+export const dataDecisions = pgTable(
+  "data_decisions",
+  {
+    id: text("id").primaryKey(),
+    subjectType: text("subject_type").notNull(),
+    subjectId: text("subject_id").notNull(),
+    fieldName: text("field_name"),
+    questionKey: text("question_key").notNull(),
+    questionVersion: integer("question_version").notNull(),
+    questionKind: text("question_kind").notNull(),
+    options: text("options").array(),
+    inputHash: text("input_hash").notNull(),
+    evidenceUrl: text("evidence_url"),
+    answer: text("answer"),
+    probability: numeric("probability", { precision: 5, scale: 4 }),
+    confidence: numeric("confidence", { precision: 5, scale: 4 }),
+    distribution: jsonb("distribution")
+      .notNull()
+      .default(sql`'{}'::jsonb`)
+      .$type<Record<string, number>>(),
+    route: text("route").notNull(),
+    mode: text("mode").notNull().default("shadow"),
+    deciderKind: text("decider_kind").notNull(),
+    decider: text("decider").notNull(),
+    deciderVersion: text("decider_version"),
+    policyVersion: text("policy_version"),
+    reviewerAccountId: text("reviewer_account_id").references(() => accounts.id, {
+      onDelete: "set null",
+    }),
+    status: text("status").notNull().default("proposed"),
+    supersedesId: text("supersedes_id").references((): AnyPgColumn => dataDecisions.id, {
+      onDelete: "set null",
+    }),
+    usage: jsonb("usage").$type<Record<string, unknown>>(),
+    appliedAt: timestamp("applied_at", { withTimezone: true }),
+    /** The value the field held before this decision was applied (0091). */
+    appliedFrom: text("applied_from"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    check(
+      "data_decisions_question_kind_check",
+      sql`${table.questionKind} in ('noul', 'choice', 'score', 'value')`,
+    ),
+    check("data_decisions_route_check", sql`${table.route} in ('apply', 'review', 'reject')`),
+    check("data_decisions_mode_check", sql`${table.mode} in ('shadow', 'live')`),
+    check(
+      "data_decisions_decider_kind_check",
+      sql`${table.deciderKind} in ('jev', 'llm', 'heuristic', 'human', 'source')`,
+    ),
+    check(
+      "data_decisions_status_check",
+      sql`${table.status} in ('proposed', 'applied', 'rejected', 'superseded')`,
+    ),
+    check(
+      "data_decisions_probability_check",
+      sql`${table.probability} is null or (${table.probability} >= 0 and ${table.probability} <= 1)`,
+    ),
+    check(
+      "data_decisions_confidence_check",
+      sql`${table.confidence} is null or (${table.confidence} >= 0 and ${table.confidence} <= 1)`,
+    ),
+    check(
+      "data_decisions_shadow_not_applied_check",
+      sql`${table.mode} = 'live' or ${table.status} <> 'applied'`,
+    ),
+    uniqueIndex("data_decisions_machine_input_idx")
+      .on(
+        table.subjectType,
+        table.subjectId,
+        table.questionKey,
+        table.questionVersion,
+        table.decider,
+        table.inputHash,
+      )
+      .where(sql`${table.deciderKind} <> 'human'`),
+    index("data_decisions_subject_idx").on(table.subjectType, table.subjectId, table.createdAt),
+    index("data_decisions_question_status_idx").on(
+      table.questionKey,
+      table.status,
+      table.createdAt,
+    ),
+    index("data_decisions_review_queue_idx")
+      .on(table.questionKey, table.createdAt)
+      .where(sql`${table.route} = 'review' and ${table.status} = 'proposed'`),
+  ],
+);
+
 /** One verification code sent to a phone; only a keyed hash of the code is stored. */
 export const smsPhoneVerifications = pgTable(
   "sms_phone_verifications",
@@ -2926,14 +3034,23 @@ export const creatorApplicationReminders = pgTable(
     sourceDeadline: date("source_deadline"),
     state: text("state").notNull().default("scheduled"),
     lastDeliveredAt: timestamp("last_delivered_at", { withTimezone: true }),
+    subjectKind: text("subject_kind"),
+    subjectId: text("subject_id"),
     revision: revision(),
     createdAt,
     updatedAt,
   },
   (table) => [
-    uniqueIndex("creator_application_reminders_owner_kind_idx").on(table.accountId, table.opportunityId, table.kind),
+    uniqueIndex("creator_application_reminders_owner_subject_idx").on(
+      table.accountId,
+      table.opportunityId,
+      table.kind,
+      sql`coalesce(${table.subjectKind}, '')`,
+      sql`coalesce(${table.subjectId}, '')`,
+    ),
     index("creator_application_reminders_due_idx").on(table.dueAt),
-    check("creator_application_reminders_kind_check", sql`${table.kind} in ('preparation','deadline','response')`),
+    check("creator_application_reminders_kind_check", sql`${table.kind} in ('preparation','deadline','response','milestone','deadline-day','tier')`),
+    check("creator_application_reminders_subject_kind_check", sql`${table.subjectKind} is null or ${table.subjectKind} in ('obligation','tier','stage','escalation')`),
     check("creator_application_reminders_state_check", sql`${table.state} in ('scheduled','delivered','cancelled','needs-review','suppressed','expired')`),
     check("creator_application_reminders_revision_check", sql`${table.revision} >= 1`),
   ],
@@ -3049,6 +3166,14 @@ export const creatorCalendarEvents = pgTable(
     check(
       "creator_calendar_events_range_check",
       sql`${table.endAt} > ${table.startAt}`,
+    ),
+    check(
+      "creator_calendar_events_purpose_check",
+      sql`${table.purpose} in ('personal', 'preparation', 'attendance', 'unavailable', 'official-deadline', 'personal-target', 'goal-date', 'plan-step', 'stage', 'tier-close', 'forecast')`,
+    ),
+    check(
+      "creator_calendar_events_deadline_reconciliation_status_check",
+      sql`${table.deadlineReconciliationStatus} in ('current', 'needs-review', 'dismissed')`,
     ),
     check(
       "creator_calendar_events_revision_check",
@@ -5667,7 +5792,8 @@ export const publicationEditorialSpecs = pgTable(
     minWordCount: integer("min_word_count"),
     maxPoemsPerSubmission: integer("max_poems_per_submission"),
     maxPages: integer("max_pages"),
-    allowsSimultaneous: boolean("allows_simultaneous").notNull().default(true),
+    /** Null until a source states it (0091 removed an invented default). */
+    allowsSimultaneous: boolean("allows_simultaneous"),
     requiresBlindReview: boolean("requires_blind_review")
       .notNull()
       .default(false),
@@ -5701,7 +5827,7 @@ export const publicationCompensationDetails = pgTable(
     rateCentsPerWord: numeric("rate_cents_per_word", { precision: 6, scale: 2 }),
     flatRateCents: integer("flat_rate_cents"),
     isProRate: boolean("is_pro_rate").notNull().default(false),
-    rightsAcquired: text("rights_acquired").notNull().default("fnasr"),
+    rightsAcquired: text("rights_acquired"),
     rightsReversionMonths: integer("rights_reversion_months"),
     hasFeeWaivers: boolean("has_fee_waivers").notNull().default(false),
     feeWaiverPolicy: text("fee_waiver_policy"),
@@ -5883,12 +6009,12 @@ export const residencyIntelligenceSpecs = pgTable(
     livingArrangement: text("living_arrangement")
       .notNull()
       .default("private_bedroom_private_bath"),
-    cohortSize: integer("cohort_size").notNull().default(12),
+    cohortSize: integer("cohort_size"),
     typicalDurationWeeks: integer("typical_duration_weeks").notNull().default(4),
     familyPartnerFriendly: boolean("family_partner_friendly")
       .notNull()
       .default(false),
-    adaAccessible: boolean("ada_accessible").notNull().default(true),
+    adaAccessible: boolean("ada_accessible"),
     acceptanceRatePercent: numeric("acceptance_rate_percent", {
       precision: 4,
       scale: 2,
@@ -5909,7 +6035,7 @@ export const residencyIntelligenceSpecs = pgTable(
     applicationFeeCents: integer("application_fee_cents")
       .notNull()
       .default(3000),
-    hasFeeWaivers: boolean("has_fee_waivers").notNull().default(true),
+    hasFeeWaivers: boolean("has_fee_waivers"),
     feeWaiverPolicy: text("fee_waiver_policy"),
     sourceUrl: text("source_url").notNull(),
     recordedOn: date("recorded_on").notNull(),
@@ -5919,5 +6045,201 @@ export const residencyIntelligenceSpecs = pgTable(
     index("idx_res_intel_specs_profile").on(table.profileId),
     index("idx_res_intel_stipend").on(table.stipendAmountCents),
     index("idx_res_intel_acceptance").on(table.acceptanceRatePercent),
+  ],
+);
+
+// Deadline management (migration 0088).
+
+export const opportunityDeadlineTiers = pgTable(
+  "opportunity_deadline_tiers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    opportunityId: text("opportunity_id")
+      .notNull()
+      .references(() => opportunities.id, { onDelete: "cascade" }),
+    tier: text("tier").notNull(),
+    label: text("label").notNull(),
+    closesOn: date("closes_on").notNull(),
+    closesAt: timestamp("closes_at", { withTimezone: true }),
+    timezone: text("timezone"),
+    feeCents: integer("fee_cents"),
+    feeCurrency: text("fee_currency"),
+    position: smallint("position").notNull().default(0),
+    confidence: text("confidence").notNull().default("confirmed"),
+    source: text("source").notNull().default("admin"),
+    sourceUrl: text("source_url"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("opportunity_deadline_tiers_opp_idx").on(table.opportunityId, table.closesOn),
+    check(
+      "opportunity_deadline_tiers_tier_check",
+      sql`${table.tier} in ('early', 'regular', 'late', 'extended', 'final', 'other')`,
+    ),
+    check("opportunity_deadline_tiers_confidence_check", sql`${table.confidence} in ('confirmed', 'probable')`),
+    check("opportunity_deadline_tiers_source_check", sql`${table.source} in ('ingestion', 'admin', 'organization')`),
+    check("opportunity_deadline_tiers_fee_check", sql`${table.feeCents} is null or ${table.feeCents} >= 0`),
+  ],
+);
+
+export const opportunityStages = pgTable(
+  "opportunity_stages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    opportunityId: text("opportunity_id")
+      .notNull()
+      .references(() => opportunities.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    label: text("label").notNull(),
+    dueOn: date("due_on").notNull(),
+    dueAt: timestamp("due_at", { withTimezone: true }),
+    timezone: text("timezone"),
+    position: smallint("position").notNull().default(0),
+    confidence: text("confidence").notNull().default("confirmed"),
+    source: text("source").notNull().default("admin"),
+    sourceUrl: text("source_url"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("opportunity_stages_opp_idx").on(table.opportunityId, table.dueOn),
+    check(
+      "opportunity_stages_kind_check",
+      sql`${table.kind} in ('letter-of-intent', 'full-application', 'shortlist', 'interview', 'notification', 'decision', 'event', 'other')`,
+    ),
+    check("opportunity_stages_confidence_check", sql`${table.confidence} in ('confirmed', 'probable')`),
+    check("opportunity_stages_source_check", sql`${table.source} in ('ingestion', 'admin', 'organization')`),
+  ],
+);
+
+export const opportunityCycleHistory = pgTable(
+  "opportunity_cycle_history",
+  {
+    opportunityId: text("opportunity_id")
+      .notNull()
+      .references(() => opportunities.id, { onDelete: "cascade" }),
+    cycleYear: smallint("cycle_year").notNull(),
+    openedOn: date("opened_on"),
+    closedOn: date("closed_on"),
+    source: text("source").notNull().default("version-history"),
+    recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.opportunityId, table.cycleYear] }),
+    check(
+      "opportunity_cycle_history_source_check",
+      sql`${table.source} in ('version-history', 'call-window', 'admin', 'organization')`,
+    ),
+    check("opportunity_cycle_history_dates_check", sql`${table.openedOn} is not null or ${table.closedOn} is not null`),
+  ],
+);
+
+export const opportunityCycleForecasts = pgTable(
+  "opportunity_cycle_forecasts",
+  {
+    opportunityId: text("opportunity_id")
+      .primaryKey()
+      .references(() => opportunities.id, { onDelete: "cascade" }),
+    expectedOpenStart: date("expected_open_start"),
+    expectedOpenEnd: date("expected_open_end"),
+    expectedClose: date("expected_close"),
+    confidence: text("confidence").notNull(),
+    basedOnCycles: smallint("based_on_cycles").notNull(),
+    computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    confirmedDeltaDays: integer("confirmed_delta_days"),
+  },
+  (table) => [
+    check("opportunity_cycle_forecasts_confidence_check", sql`${table.confidence} in ('high', 'medium', 'low')`),
+    check("opportunity_cycle_forecasts_cycles_check", sql`${table.basedOnCycles} >= 2`),
+  ],
+);
+
+export const creatorObligations = pgTable(
+  "creator_obligations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: text("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    trackedOpportunityId: text("tracked_opportunity_id").references(() => trackedOpportunities.id, {
+      onDelete: "cascade",
+    }),
+    opportunityId: text("opportunity_id").references(() => opportunities.id, { onDelete: "set null" }),
+    kind: text("kind").notNull(),
+    label: text("label").notNull(),
+    templateKey: text("template_key"),
+    anchor: text("anchor").notNull().default("fixed"),
+    anchorStageId: uuid("anchor_stage_id").references(() => opportunityStages.id, { onDelete: "set null" }),
+    offsetDays: integer("offset_days"),
+    bufferPolicy: text("buffer_policy").notNull().default("keep"),
+    dueOn: date("due_on").notNull(),
+    dueAt: timestamp("due_at", { withTimezone: true }),
+    timezone: text("timezone"),
+    effortHours: numeric("effort_hours", { precision: 6, scale: 2 }),
+    checklistItemId: text("checklist_item_id").references(() => trackerChecklistItems.id, { onDelete: "set null" }),
+    state: text("state").notNull().default("open"),
+    source: text("source").notNull().default("user"),
+    position: smallint("position").notNull().default(0),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    revision: revision(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("creator_obligations_account_due_idx").on(table.accountId, table.state, table.dueOn),
+    index("creator_obligations_tracked_idx").on(table.trackedOpportunityId, table.position),
+    uniqueIndex("creator_obligations_template_idx")
+      .on(table.trackedOpportunityId, table.templateKey)
+      .where(sql`${table.templateKey} is not null and ${table.state} <> 'skipped'`),
+    check(
+      "creator_obligations_kind_check",
+      sql`${table.kind} in ('start-by', 'sub-deadline', 'personal-target', 'obligation')`,
+    ),
+    check("creator_obligations_anchor_check", sql`${table.anchor} in ('deadline', 'stage', 'accepted', 'fixed')`),
+    check("creator_obligations_anchor_offset_check", sql`${table.anchor} = 'fixed' or ${table.offsetDays} is not null`),
+    check("creator_obligations_buffer_policy_check", sql`${table.bufferPolicy} in ('keep', 'absorb', 'ignore')`),
+    check("creator_obligations_state_check", sql`${table.state} in ('open', 'done', 'skipped')`),
+    check("creator_obligations_source_check", sql`${table.source} in ('template', 'user', 'system')`),
+    check("creator_obligations_effort_check", sql`${table.effortHours} is null or ${table.effortHours} >= 0`),
+    check("creator_obligations_revision_check", sql`${table.revision} >= 1`),
+  ],
+);
+
+export const creatorPlanningPreferences = pgTable(
+  "creator_planning_preferences",
+  {
+    accountId: text("account_id")
+      .primaryKey()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    weeklyHoursAvailable: numeric("weekly_hours_available", { precision: 5, scale: 2 }),
+    defaultBufferDays: smallint("default_buffer_days").notNull().default(2),
+    materialEffort: jsonb("material_effort").notNull().default(sql`'{}'::jsonb`),
+    defaultDeadlineOffsets: smallint("default_deadline_offsets")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[7, 1]::smallint[]`),
+    goneQuietDays: smallint("gone_quiet_days").notNull().default(21),
+    deadlineDayAlarm: boolean("deadline_day_alarm").notNull().default(true),
+    openingAlerts: boolean("opening_alerts").notNull().default(true),
+    dailyNoticeCap: smallint("daily_notice_cap").notNull().default(3),
+    revision: revision(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    check(
+      "creator_planning_preferences_hours_check",
+      sql`${table.weeklyHoursAvailable} is null or ${table.weeklyHoursAvailable} between 0 and 168`,
+    ),
+    check("creator_planning_preferences_buffer_check", sql`${table.defaultBufferDays} between 0 and 30`),
+    check(
+      "creator_planning_preferences_offsets_check",
+      sql`${table.defaultDeadlineOffsets} <@ ARRAY[0, 1, 3, 7, 14]::smallint[]`,
+    ),
+    check("creator_planning_preferences_quiet_check", sql`${table.goneQuietDays} between 7 and 90`),
+    check("creator_planning_preferences_cap_check", sql`${table.dailyNoticeCap} between 1 and 20`),
+    check("creator_planning_preferences_revision_check", sql`${table.revision} >= 1`),
   ],
 );

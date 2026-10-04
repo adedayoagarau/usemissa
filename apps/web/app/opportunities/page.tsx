@@ -115,7 +115,8 @@ function activeFilterCount(
     query.locations.length +
     (query.feeStatus ? 1 : 0) +
     (query.deadlineWithinDays ? 1 : 0) +
-    (query.deadlineKind ? 1 : 0)
+    (query.deadlineKind ? 1 : 0) +
+    (query.confirmedDatesOnly ? 1 : 0)
   );
 }
 
