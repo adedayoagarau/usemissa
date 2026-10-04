@@ -797,3 +797,5 @@ export {
 } from "./siteObservability.js";
 export * from "./ranking/residency/acaDirectory.js";
 export * from "./ranking/residency/recompute.js";
+export * from "./opportunityDeadlineFactsWriter.js";
+export { CONFIRMED_DATES_PREDICATE, type OpportunityRepositoryQueryWithDeadlineFacts } from "./opportunityRepository.js";

@@ -659,7 +659,8 @@ test("detail projection strips nullable call profile fields before contract vali
   const result = await repository.getById("opp_0001");
 
   assert.ok(result);
-  assert.equal(detailQueries.length, 1);
+  // One detail query; the deadline-facts readiness probe is the only other read.
+  assert.equal(detailQueries.filter((text) => !text.includes("to_regclass('public.opportunity_deadline_tiers')")).length, 1);
   assert.match(detailQueries[0], /as detail_eligibility/);
   assert.match(detailQueries[0], /as detail_materials/);
   assert.match(detailQueries[0], /as detail_changes/);

@@ -5,6 +5,8 @@ import { TrackButton } from '@/components/track-button';
 import { FollowButton } from '@/components/follow-button';
 import { Button } from '@/components/ui/button';
 import styles from '@/app/(passport)/opportunities/opportunities.module.css';
+import { DateConfidenceBadge } from '@/components/missa/deadline-badges';
+import { describeDeadline } from '@/lib/deadline-moment';
 import { opportunityFreshness } from '@/lib/opportunityFreshness';
 import { cleanCrawledNarrative, cleanTitleOrLabel } from '@/lib/textUtils';
 
@@ -13,13 +15,13 @@ function typeLabel(type: OpportunityDetailProjection['type']): string {
 }
 
 function deadlineLabel(item: OpportunityDetailProjection['deadline']): string {
-  if (item.date)
-    return new Intl.DateTimeFormat('en', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    }).format(new Date(`${item.date}T12:00:00`));
-  return item.raw ? cleanTitleOrLabel(item.raw) : (item.kind === 'rolling' ? 'Rolling deadline' : 'Deadline needs confirmation');
+  const moment = describeDeadline({ kind: item.kind, date: item.date, time: item.time, timezone: item.timezone });
+  if (item.date) {
+    const date = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${item.date}T12:00:00Z`));
+    return moment.closesSource ? `${date} · closes ${moment.closesSource}` : date;
+  }
+  if (item.raw) return cleanTitleOrLabel(item.raw);
+  return moment.state === 'unlisted' ? 'Deadline needs confirmation' : moment.label;
 }
 
 function sourceInitials(name: string): string {
@@ -78,7 +80,12 @@ export function OpportunityDetailPanel({ opportunity, userId, closeHref, mobileO
       </div>
 
       <div className="flex flex-wrap gap-x-5 gap-y-2 px-6 pb-5 text-sm text-foreground">
-        <span>{deadlineLabel(opportunity.deadline)}</span>
+        <span className="inline-flex flex-wrap items-center gap-2">
+          <span className={opportunity.deadline.date ? 'font-mono tabular-nums' : undefined}>{deadlineLabel(opportunity.deadline)}</span>
+          {opportunity.deadlineFacts && (opportunity.deadline.date || opportunity.deadlineFacts.provenance.state !== 'confirmed') ? (
+            <DateConfidenceBadge state={opportunity.deadlineFacts.provenance.state} />
+          ) : null}
+        </span>
         <span>·</span>
         <span>{opportunity.fee.status === 'no-fee' ? 'No fee' : opportunity.fee.status === 'paid' ? 'Application fee' : 'Fee unclear'}</span>
       </div>
