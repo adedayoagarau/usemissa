@@ -797,3 +797,4 @@ export {
 } from "./siteObservability.js";
 export * from "./ranking/residency/acaDirectory.js";
 export * from "./ranking/residency/recompute.js";
+export { trackerListItem, type CanonicalTrackerListItem } from "./canonicalTracker.js";

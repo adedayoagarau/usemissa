@@ -177,6 +177,58 @@ function trackerItem(row: TrackerOpportunityRow): CanonicalTrackerItem {
 }
 
 /**
+ * The Tracker list item: the shared projection plus what the list surfaces
+ * need for deadline planning (closing time, planning dates, cycle). Columns
+ * from migration 0088 are read through to_jsonb so the list keeps working on
+ * a database that has not applied it yet.
+ */
+export type CanonicalTrackerListItem = CanonicalTrackerItem & {
+  /** tracked_opportunities.id, used by the obligation ledger. */
+  trackedId: string;
+  /** Provider-stated closing instant (ISO), when the source gives one. */
+  deadlineTime?: string;
+  /** IANA zone the provider states the deadline in. */
+  deadlineTimezone?: string;
+  /** Raw opportunity type as stored, before narrowing to the known set. */
+  opportunityType: string;
+  personalTargetOn?: string;
+  lastActivityAt?: string;
+  cycleLabel?: string;
+  carriedFromTrackedId?: string;
+};
+
+type TrackerListRow = TrackerOpportunityRow & {
+  list_deadline_time: Date | string | null;
+  list_deadline_timezone: string | null;
+  list_personal_target_on: string | null;
+  list_last_activity_at: string | null;
+  list_cycle_label: string | null;
+  list_carried_from_tracked_id: string | null;
+};
+
+function isoInstant(value: Date | string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
+export function trackerListItem(row: TrackerListRow): CanonicalTrackerListItem {
+  const deadlineTime = isoInstant(row.list_deadline_time);
+  const lastActivityAt = isoInstant(row.list_last_activity_at);
+  return {
+    ...trackerItem(row),
+    trackedId: row.id,
+    opportunityType: row.opportunity_type,
+    ...(deadlineTime ? { deadlineTime } : {}),
+    ...(row.list_deadline_timezone ? { deadlineTimezone: row.list_deadline_timezone } : {}),
+    ...(row.list_personal_target_on ? { personalTargetOn: row.list_personal_target_on.slice(0, 10) } : {}),
+    ...(lastActivityAt ? { lastActivityAt } : {}),
+    ...(row.list_cycle_label ? { cycleLabel: row.list_cycle_label } : {}),
+    ...(row.list_carried_from_tracked_id ? { carriedFromTrackedId: row.list_carried_from_tracked_id } : {}),
+  };
+}
+
+/**
  * Read the relational Tracker projection for the signed-in account. This is
  * intentionally separate from the legacy Radar snapshot while the two stores
  * are being migrated.
@@ -184,15 +236,22 @@ function trackerItem(row: TrackerOpportunityRow): CanonicalTrackerItem {
 export async function listCanonicalTrackedOpportunities(
   connectionString: string,
   accountId: string,
-): Promise<CanonicalTrackerItem[]> {
+): Promise<CanonicalTrackerListItem[]> {
   const pool = creatorPoolFor(connectionString);
-    const result = await pool.query<TrackerOpportunityRow>(
-      `${TRACKER_PROJECTION}
-       where t.account_id = $1 and ${canonicalPublicOpportunityPredicate("o")}
-       order by t.updated_at desc, t.id desc`,
-      [accountId],
-    );
-  return result.rows.map(trackerItem);
+  const result = await pool.query<TrackerListRow>(
+    `select p.*, lo.deadline_time as list_deadline_time, lo.deadline_timezone as list_deadline_timezone,
+            to_jsonb(lt)->>'personal_target_on' as list_personal_target_on,
+            to_jsonb(lt)->>'last_activity_at' as list_last_activity_at,
+            to_jsonb(lt)->>'cycle_label' as list_cycle_label,
+            to_jsonb(lt)->>'carried_from_tracked_id' as list_carried_from_tracked_id
+       from (${TRACKER_PROJECTION}
+             where t.account_id = $1 and ${canonicalPublicOpportunityPredicate("o")}) p
+       join tracked_opportunities lt on lt.id = p.id
+       join opportunities lo on lo.id = p.opportunity_id
+      order by p.updated_at desc, p.id desc`,
+    [accountId],
+  );
+  return result.rows.map(trackerListItem);
 }
 
 /** Preserve the complete creator lifecycle vocabulary in relational authority. */
