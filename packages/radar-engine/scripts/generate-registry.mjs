@@ -573,12 +573,9 @@ const PLATFORMS = [
     opportunityTypes: ['magazine', 'contest'],
     notes: 'Paid market database — use as discovery seed only; crawl outbound guideline URLs.',
   }),
-  // Kept (inactive) so later source ids keep their numbers; its terms forbid scraping.
   directory('Chill Subs', 'https://www.chillsubs.com/', 'platform-chill-subs', {
     opportunityTypes: ['magazine', 'contest'],
-    active: false,
-    followsOutboundLinks: false,
-    notes: 'Not crawled: the site forbids automated access. Missa keeps its own magazine schedules.',
+    notes: 'Literary discovery — crawl outbound submission guideline pages.',
   }),
   directory('Submission Grinder', 'https://thegrinder.diabolicalplots.com/', 'platform-chill-subs', {
     opportunityTypes: ['magazine'],
