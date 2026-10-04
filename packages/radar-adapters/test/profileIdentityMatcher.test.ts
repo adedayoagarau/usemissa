@@ -44,7 +44,7 @@ test("profile link retirement binds every SQL placeholder", () => {
   const statement = profileLinkRetirementStatement("opp_1");
   const placeholders = [...statement.text.matchAll(/\$(\d+)/g)].map((match) => Number(match[1]));
   assert.equal(Math.max(...placeholders), statement.values.length);
-  assert.deepEqual(statement.values, ["opp_1", "profile-host-name-v4"]);
+  assert.deepEqual(statement.values, ["opp_1", "profile-host-name-v5"]);
 });
 
 test("confirms a direct organization match by organizationId", () => {
@@ -172,4 +172,13 @@ test("stale profile evidence cannot confirm an otherwise compatible identity", (
     NOW,
   );
   assert.equal(decisions[0]?.status, "pending");
+});
+
+test("a profile crawled within the last month still confirms a compatible identity", () => {
+  const decisions = matchOpportunityToProfiles(
+    opportunity(),
+    [profile({ profileCheckedAt: "2026-07-08T00:00:00.000Z" })],
+    NOW,
+  );
+  assert.equal(decisions[0]?.status, "confirmed");
 });

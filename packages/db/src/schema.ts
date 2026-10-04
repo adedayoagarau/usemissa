@@ -995,7 +995,7 @@ export const opportunities = pgTable(
     // New ingestion is never public by default. Publication is an explicit,
     // gated transition performed by the review worker.
     publicationState: text("publication_state").notNull().default("reviewable"),
-    // Programme identity and edition (0090); read by goal scope, Follow,
+    // Programme identity and edition (0092); read by goal scope, Follow,
     // recommendations and similar-call matching. Not a foreign key.
     programId: text("program_id"),
     editionLabel: text("edition_label"),
@@ -1055,6 +1055,11 @@ export const opportunities = pgTable(
       table.processingSucceededAt,
     ),
     index("opportunities_recent_idx").on(table.lastChangedAt, table.createdAt),
+    // 0091: rows outside the contract enum became 'other' (see data_decisions).
+    check(
+      "opportunities_type_check",
+      sql`${table.type} in ('open-call', 'magazine', 'grant', 'award', 'fellowship', 'residency', 'festival', 'scholarship', 'conference', 'rfp', 'contest', 'pitch', 'exhibition', 'commission', 'job', 'other')`,
+    ),
     check(
       "opportunities_fee_check",
       sql`${table.feeCents} is null or ${table.feeCents} >= 0`,
@@ -2149,6 +2154,11 @@ export const opportunityCallProfiles = pgTable(
       "opportunity_call_profiles_call_kind_check",
       sql`${table.callKind} in ('general-submission', 'themed-call', 'contest', 'prize', 'fellowship', 'grant', 'residency', 'open-call', 'unknown')`,
     ),
+    // 0091: unmappable legacy text is 'unknown', kept in metadata.payment_type_previous.
+    check(
+      "opportunity_call_profiles_payment_type_check",
+      sql`${table.paymentType} is null or ${table.paymentType} in ('none', 'contributor-copy', 'token', 'flat-fee', 'per-word', 'royalty', 'honorarium', 'stipend', 'grant', 'fellowship', 'prize', 'varies', 'unknown')`,
+    ),
     check(
       "opportunity_call_profiles_market_kind_check",
       sql`${table.marketKind} in ('magazine', 'journal', 'press', 'anthology', 'contest', 'award', 'organization', 'unknown')`,
@@ -2802,6 +2812,100 @@ export const smsMessages = pgTable(
     index("sms_messages_account_created_idx").on(table.accountId, table.createdAt),
     index("sms_messages_created_idx").on(table.createdAt),
     index("sms_messages_status_created_idx").on(table.status, table.createdAt),
+  ],
+);
+
+/**
+ * Ledger of every judgment Missa makes about its data — Jev, LLM, heuristic,
+ * human or cited source — with the question version, input hash, answer,
+ * probability and route. Shadow rows are never applied (migration 0090).
+ */
+export const dataDecisions = pgTable(
+  "data_decisions",
+  {
+    id: text("id").primaryKey(),
+    subjectType: text("subject_type").notNull(),
+    subjectId: text("subject_id").notNull(),
+    fieldName: text("field_name"),
+    questionKey: text("question_key").notNull(),
+    questionVersion: integer("question_version").notNull(),
+    questionKind: text("question_kind").notNull(),
+    options: text("options").array(),
+    inputHash: text("input_hash").notNull(),
+    evidenceUrl: text("evidence_url"),
+    answer: text("answer"),
+    probability: numeric("probability", { precision: 5, scale: 4 }),
+    confidence: numeric("confidence", { precision: 5, scale: 4 }),
+    distribution: jsonb("distribution")
+      .notNull()
+      .default(sql`'{}'::jsonb`)
+      .$type<Record<string, number>>(),
+    route: text("route").notNull(),
+    mode: text("mode").notNull().default("shadow"),
+    deciderKind: text("decider_kind").notNull(),
+    decider: text("decider").notNull(),
+    deciderVersion: text("decider_version"),
+    policyVersion: text("policy_version"),
+    reviewerAccountId: text("reviewer_account_id").references(() => accounts.id, {
+      onDelete: "set null",
+    }),
+    status: text("status").notNull().default("proposed"),
+    supersedesId: text("supersedes_id").references((): AnyPgColumn => dataDecisions.id, {
+      onDelete: "set null",
+    }),
+    usage: jsonb("usage").$type<Record<string, unknown>>(),
+    appliedAt: timestamp("applied_at", { withTimezone: true }),
+    /** The value the field held before this decision was applied (0091). */
+    appliedFrom: text("applied_from"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    check(
+      "data_decisions_question_kind_check",
+      sql`${table.questionKind} in ('noul', 'choice', 'score', 'value')`,
+    ),
+    check("data_decisions_route_check", sql`${table.route} in ('apply', 'review', 'reject')`),
+    check("data_decisions_mode_check", sql`${table.mode} in ('shadow', 'live')`),
+    check(
+      "data_decisions_decider_kind_check",
+      sql`${table.deciderKind} in ('jev', 'llm', 'heuristic', 'human', 'source')`,
+    ),
+    check(
+      "data_decisions_status_check",
+      sql`${table.status} in ('proposed', 'applied', 'rejected', 'superseded')`,
+    ),
+    check(
+      "data_decisions_probability_check",
+      sql`${table.probability} is null or (${table.probability} >= 0 and ${table.probability} <= 1)`,
+    ),
+    check(
+      "data_decisions_confidence_check",
+      sql`${table.confidence} is null or (${table.confidence} >= 0 and ${table.confidence} <= 1)`,
+    ),
+    check(
+      "data_decisions_shadow_not_applied_check",
+      sql`${table.mode} = 'live' or ${table.status} <> 'applied'`,
+    ),
+    uniqueIndex("data_decisions_machine_input_idx")
+      .on(
+        table.subjectType,
+        table.subjectId,
+        table.questionKey,
+        table.questionVersion,
+        table.decider,
+        table.inputHash,
+      )
+      .where(sql`${table.deciderKind} <> 'human'`),
+    index("data_decisions_subject_idx").on(table.subjectType, table.subjectId, table.createdAt),
+    index("data_decisions_question_status_idx").on(
+      table.questionKey,
+      table.status,
+      table.createdAt,
+    ),
+    index("data_decisions_review_queue_idx")
+      .on(table.questionKey, table.createdAt)
+      .where(sql`${table.route} = 'review' and ${table.status} = 'proposed'`),
   ],
 );
 
@@ -5692,7 +5796,8 @@ export const publicationEditorialSpecs = pgTable(
     minWordCount: integer("min_word_count"),
     maxPoemsPerSubmission: integer("max_poems_per_submission"),
     maxPages: integer("max_pages"),
-    allowsSimultaneous: boolean("allows_simultaneous").notNull().default(true),
+    /** Null until a source states it (0091 removed an invented default). */
+    allowsSimultaneous: boolean("allows_simultaneous"),
     requiresBlindReview: boolean("requires_blind_review")
       .notNull()
       .default(false),
@@ -5726,7 +5831,7 @@ export const publicationCompensationDetails = pgTable(
     rateCentsPerWord: numeric("rate_cents_per_word", { precision: 6, scale: 2 }),
     flatRateCents: integer("flat_rate_cents"),
     isProRate: boolean("is_pro_rate").notNull().default(false),
-    rightsAcquired: text("rights_acquired").notNull().default("fnasr"),
+    rightsAcquired: text("rights_acquired"),
     rightsReversionMonths: integer("rights_reversion_months"),
     hasFeeWaivers: boolean("has_fee_waivers").notNull().default(false),
     feeWaiverPolicy: text("fee_waiver_policy"),
@@ -5908,12 +6013,12 @@ export const residencyIntelligenceSpecs = pgTable(
     livingArrangement: text("living_arrangement")
       .notNull()
       .default("private_bedroom_private_bath"),
-    cohortSize: integer("cohort_size").notNull().default(12),
+    cohortSize: integer("cohort_size"),
     typicalDurationWeeks: integer("typical_duration_weeks").notNull().default(4),
     familyPartnerFriendly: boolean("family_partner_friendly")
       .notNull()
       .default(false),
-    adaAccessible: boolean("ada_accessible").notNull().default(true),
+    adaAccessible: boolean("ada_accessible"),
     acceptanceRatePercent: numeric("acceptance_rate_percent", {
       precision: 4,
       scale: 2,
@@ -5934,7 +6039,7 @@ export const residencyIntelligenceSpecs = pgTable(
     applicationFeeCents: integer("application_fee_cents")
       .notNull()
       .default(3000),
-    hasFeeWaivers: boolean("has_fee_waivers").notNull().default(true),
+    hasFeeWaivers: boolean("has_fee_waivers"),
     feeWaiverPolicy: text("fee_waiver_policy"),
     sourceUrl: text("source_url").notNull(),
     recordedOn: date("recorded_on").notNull(),

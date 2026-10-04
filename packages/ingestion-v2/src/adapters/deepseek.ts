@@ -1,6 +1,7 @@
 import { GenericHtmlAdapter } from "./html.js";
 import { type AdapterContext, type ExtractionResult, type PageSnapshot, type SourceAdapter } from "../contracts.js";
 import { destinationConfig } from "../destinations.js";
+import type { ModelExtractionGate } from "../extractGate.js";
 import { normalizeModelDeadlineFacts } from "../modelDeadlineFacts.js";
 
 const OPPORTUNITY_TYPES = new Set(["open-call", "magazine", "grant", "award", "fellowship", "residency", "festival", "scholarship", "conference", "rfp", "contest", "pitch", "other"]);
@@ -32,6 +33,8 @@ export interface DeepSeekHtmlAdapterOptions {
   model?: string;
   base?: SourceAdapter;
   fetchImpl?: typeof fetch;
+  /** Optional Jev gate (scope `extract_gate`); without it every eligible page calls the model. */
+  extractionGate?: ModelExtractionGate;
 }
 
 /** DeepSeek proposes fields; v2 keeps the page snapshot and never publishes the model output directly. */
@@ -42,6 +45,7 @@ export class DeepSeekHtmlAdapter implements SourceAdapter {
   private readonly endpoint: string;
   private readonly model: string;
   private readonly fetchImpl: typeof fetch;
+  private readonly extractionGate?: ModelExtractionGate;
 
   constructor(options: DeepSeekHtmlAdapterOptions = {}) {
     this.base = options.base ?? new GenericHtmlAdapter();
@@ -49,6 +53,7 @@ export class DeepSeekHtmlAdapter implements SourceAdapter {
     this.endpoint = options.endpoint ?? `${process.env.DEEPSEEK_BASE_URL ?? "https://api.deepseek.com"}/chat/completions`;
     this.model = options.model ?? process.env.DEEPSEEK_MODEL ?? "deepseek-v4-flash";
     this.fetchImpl = options.fetchImpl ?? fetch;
+    this.extractionGate = options.extractionGate;
   }
 
   canHandle(source: AdapterContext["source"]): boolean {
@@ -63,20 +68,39 @@ export class DeepSeekHtmlAdapter implements SourceAdapter {
     const deterministic = await this.base.extract(context, snapshot);
     if (!this.apiKey) return { ...deterministic, warnings: [...deterministic.warnings, "DeepSeek API key is not configured; deterministic extraction used"] };
     if (destinationConfig(context.source).pageRole === "landing") return { ...deterministic, warnings: [...deterministic.warnings, "DeepSeek deferred: landing-page fields are not opportunity authority; detail destinations must be fetched"] };
-    let fields: DeepSeekFields;
-    try {
-      fields = await this.callModel(snapshot);
-    } catch (error) {
-      const message = error instanceof Error ? error.message.slice(0, 160) : "unknown DeepSeek error";
-      return { ...deterministic, warnings: [...deterministic.warnings, `DeepSeek extraction failed; deterministic extraction retained (${message})`] };
+    let modelFields = await this.reusableModelFields(context, snapshot);
+    const reused = Boolean(modelFields);
+    if (!modelFields) {
+      let fields: DeepSeekFields;
+      try {
+        fields = await this.callModel(snapshot);
+      } catch (error) {
+        const message = error instanceof Error ? error.message.slice(0, 160) : "unknown DeepSeek error";
+        return { ...deterministic, warnings: [...deterministic.warnings, `DeepSeek extraction failed; deterministic extraction retained (${message})`] };
+      }
+      modelFields = normalizeFields(fields, snapshot);
+      this.extractionGate?.afterModel(context, snapshot, modelFields);
     }
-    const modelFields = normalizeFields(fields, snapshot);
     const deterministicNames = new Set(deterministic.fields.map((field) => field.fieldName));
     return {
       fields: [...deterministic.fields, ...modelFields.filter((field) => MERGED_FIELD_NAMES.has(field.fieldName) || !deterministicNames.has(field.fieldName))],
       candidateLinks: deterministic.candidateLinks,
-      warnings: [...deterministic.warnings, "DeepSeek output is shadow evidence and requires deterministic validation/review"],
+      warnings: [
+        ...deterministic.warnings,
+        "DeepSeek output is shadow evidence and requires deterministic validation/review",
+        ...(reused ? ["DeepSeek fields reused from the previous extraction of this page; no new opportunity facts were found"] : []),
+      ],
     };
+  }
+
+  /** Jev failures never block extraction: the model is called as before. */
+  private async reusableModelFields(context: AdapterContext, snapshot: PageSnapshot): Promise<ExtractionResult["fields"] | undefined> {
+    if (!this.extractionGate) return undefined;
+    try {
+      return await this.extractionGate.beforeModel(context, snapshot);
+    } catch {
+      return undefined;
+    }
   }
 
   private async callModel(snapshot: PageSnapshot): Promise<DeepSeekFields> {

@@ -25,6 +25,8 @@ import {
   saveRadarStoreDeltaToPostgres,
 } from "./postgresStore.js";
 import { LlmExtractor } from "./llmExtractor.js";
+import { createJevRadarExtractionGate, radarOperationsDecider } from "./operationsDecisions.js";
+import type { OperationsUsage } from "@missa/decisions";
 import { uuidIds } from "./uuidIds.js";
 import {
   commitTrackerImportTransaction,
@@ -173,6 +175,8 @@ export interface ProductionEngine {
    * every tick in a short-lived (serverless) caller -- there's no long-running
    * process to rely on periodic autosave the way serve.ts's RadarServer has. */
   persist(): Promise<void>;
+  /** Jev extraction-gate counts for this engine; absent without JEV_API_KEY or an LLM extractor. */
+  decisionUsage?: OperationsUsage;
   /** Runs the CSV import under the shared Radar snapshot lock, a per-key
    * advisory lock, durable rate limiting, and one database transaction. */
   commitTrackerImport(input: Omit<DurableTrackerImportInput, 'baseStore'>): Promise<DurableTrackerImportResult>;
@@ -216,7 +220,11 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
   // hydration below is a real state migration: new sources, corrected source
   // authority, and adapter changes must be durably written on the next tick.
   let persistedStore = cloneStore(store);
-  const engine = new RadarEngine({ store, fetcher, extractor, ids: uuidIds() });
+  // The gate only guards paid model calls: without an LLM extractor or
+  // JEV_API_KEY every changed page is extracted exactly as before.
+  const decider = extractor ? radarOperationsDecider(pool) : undefined;
+  const extractionGate = decider ? createJevRadarExtractionGate(decider) : undefined;
+  const engine = new RadarEngine({ store, fetcher, extractor, ids: uuidIds(), ...(extractionGate ? { extractionGate } : {}) });
   // Hydrate registry tier metadata for every persisted source in memory. The
   // persistence baseline remains the database snapshot, so only actual
   // additions and metadata changes are written on the next persist.
@@ -226,6 +234,7 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
   return {
     engine,
     pool,
+    decisionUsage: extractionGate?.usage,
     persist: () => {
       const next = pendingPersist.then(async () => {
         for (let attempt = 0; attempt < 3; attempt++) {
