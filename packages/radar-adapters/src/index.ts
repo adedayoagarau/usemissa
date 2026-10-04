@@ -789,3 +789,7 @@ export {
 } from "./siteObservability.js";
 export * from "./ranking/residency/acaDirectory.js";
 export * from "./ranking/residency/recompute.js";
+export * from "./ranking/residency/provision.js";
+export * from "./ranking/live/honoursProfiles.js";
+export * from "./ranking/live/guidelineFacts.js";
+export { MAGAZINE_GUIDELINES } from "./ranking/data/magazines/guidelines.js";
