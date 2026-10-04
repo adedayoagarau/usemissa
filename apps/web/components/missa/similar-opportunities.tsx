@@ -6,6 +6,7 @@ import { ArrowUpRight, BookmarkPlus, Check, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { SimilarMatch, SimilarReason } from "@/lib/similar-opportunities";
+import { SheetSectionHeading } from "./sheet-section-heading";
 
 const HEADINGS: Record<SimilarReason, { title: string; description: string }> =
   {
@@ -131,13 +132,11 @@ export function SimilarOpportunities({
   }
 
   return (
-    <section aria-labelledby="record-similar-title" className="space-y-4">
-      <div className="space-y-1">
-        <h3 id="record-similar-title" className="text-lg font-semibold">
-          {heading.title}
-        </h3>
-        <p className="text-sm text-muted-foreground">{heading.description}</p>
-      </div>
+    <section aria-labelledby="sheet-similar-title" className="space-y-4">
+      <SheetSectionHeading id="sheet-similar-title" eyebrow="Similar open calls">
+        {heading.title}
+      </SheetSectionHeading>
+      <p className="text-sm text-muted-foreground">{heading.description}</p>
       <ul className="divide-y divide-border border-y border-border">
         {data.matches.map((match) => (
           <li key={match.id} className="space-y-3 py-4">

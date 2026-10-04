@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Mail } from 'lucide-react';
-import { readAdminUserProfile } from '@missa/radar-adapters';
+import { creatorPoolFor, readAdminUserProfile, readSmsAccountStatus } from '@missa/radar-adapters';
 import { AdminPageFrame } from '@/components/platform-admin';
 import { BarList, NotConnected, Panel, StatGroup, StatTile, formatCount } from '@/components/admin-observability-ui';
 import { platformAnalyticsDatabaseUrl } from '@/lib/platformAnalyticsDatabase';
+import { maskPhoneNumber } from '@/lib/sms-phone';
 
 const METHOD_LABELS: Record<string, string> = { password: 'Email and password', 'neon-auth': 'Google or email link' };
 
@@ -29,7 +30,11 @@ export default async function AdminUserProfilePage({ params }: { params: Promise
   if (!connectionString) {
     return <AdminPageFrame><NotConnected reason="User profiles need a connected database." /></AdminPageFrame>;
   }
-  const profile = await readAdminUserProfile(connectionString, decodeURIComponent(id)).catch(() => undefined);
+  const accountId = decodeURIComponent(id);
+  const [profile, sms] = await Promise.all([
+    readAdminUserProfile(connectionString, accountId).catch(() => undefined),
+    process.env.DATABASE_URL ? readSmsAccountStatus(creatorPoolFor(process.env.DATABASE_URL), accountId).catch(() => undefined) : Promise.resolve(undefined),
+  ]);
   if (!profile) notFound();
   const daysSinceSignup = daysSince(profile.createdAt);
 
@@ -75,6 +80,19 @@ export default async function AdminUserProfilePage({ params }: { params: Promise
           <div className="space-y-6">
             <Panel title="What they do most">
               <BarList rows={profile.topActions.map((action) => ({ label: humanEvent(action.eventName), value: action.count }))} valueLabel="Times" />
+            </Panel>
+            <Panel title="Text reminders" description="Texts are a Plus feature. The number is shown masked.">
+              {sms?.phone ? (
+                <dl className="grid grid-cols-2 gap-3 text-sm">
+                  <div><dt className="text-xs text-muted-foreground">Phone</dt><dd className="mt-0.5 font-mono text-foreground">{maskPhoneNumber(sms.phone)}</dd></div>
+                  <div><dt className="text-xs text-muted-foreground">Verified</dt><dd className="mt-0.5 text-foreground">{sms.verifiedAt ? when(sms.verifiedAt) : 'Not verified'}</dd></div>
+                  <div><dt className="text-xs text-muted-foreground">Texts</dt><dd className="mt-0.5 text-foreground">{sms.optedOutAt ? 'Replied STOP' : sms.enabled ? 'On' : 'Off'}</dd></div>
+                  <div><dt className="text-xs text-muted-foreground">Plan includes texts</dt><dd className="mt-0.5 text-foreground">{sms.planEligible ? 'Yes' : 'No'}</dd></div>
+                  <div className="col-span-2"><dt className="text-xs text-muted-foreground">Sent in the last 30 days</dt><dd className="mt-0.5 font-mono text-foreground">{formatCount(sms.sentLast30Days)}</dd></div>
+                </dl>
+              ) : (
+                <p className="text-sm text-muted-foreground">{sms ? 'No phone number added.' : 'Text reminder records are not available.'}</p>
+              )}
             </Panel>
             <Panel title="Organizations">
               {profile.organizations.length ? (

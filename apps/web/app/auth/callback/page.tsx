@@ -7,6 +7,7 @@ import { AlertTriangle, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { safeAuthRedirect } from "@/lib/authRedirect";
 import { neonAuthClient } from "@/lib/neon-auth/client";
+import { rememberSignedIn } from "@/lib/signedInHint";
 
 function CallbackContent() {
   const router = useRouter();
@@ -59,6 +60,7 @@ function CallbackContent() {
           ? "Let’s set up your Missa account."
           : "Opening your Missa account.",
       );
+      rememberSignedIn(true);
       window.location.assign(destination);
     }
     void finishSignIn();

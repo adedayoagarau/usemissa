@@ -1,47 +1,61 @@
 "use client";
 
-import posthog from "posthog-js";
 import { usePathname } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
+import type { PostHog } from "posthog-js";
 import {
   type ClientAnalyticsEventName,
   validateAnalyticsEventProperties,
 } from "@/lib/analytics-contract";
 import { hasAnalyticsConsent, subscribeConsent } from "@/lib/analyticsConsent";
 
+/**
+ * The PostHog SDK is the largest script on every page, and most visitors never
+ * consent to it, so it is fetched on first consented use instead of shipping
+ * with the page.
+ */
+let posthogModule: Promise<PostHog> | undefined;
 let initialized = false;
 
-function startPostHog(): boolean {
+function withPostHog(use: (posthog: PostHog) => void): void {
   const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-  if (!key) return false;
-  if (!initialized) {
-    posthog.init(key, {
-      api_host:
-        process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
-      capture_pageview: false,
-      capture_pageleave: true,
-      autocapture: false,
-      disable_session_recording: true,
-      persistence: "localStorage",
-      person_profiles: "identified_only",
-    });
-    initialized = true;
-  } else {
-    posthog.opt_in_capturing();
-  }
-  return true;
-}
-
-function ensurePostHog(): boolean {
-  if (!hasAnalyticsConsent()) return false;
-  return startPostHog();
+  if (!key || !hasAnalyticsConsent()) return;
+  posthogModule ??= import("posthog-js").then((module) => module.default);
+  posthogModule.then(
+    (posthog) => {
+      // Consent can be withdrawn while the SDK downloads.
+      if (!hasAnalyticsConsent()) return;
+      if (!initialized) {
+        posthog.init(key, {
+          api_host:
+            process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
+          capture_pageview: false,
+          capture_pageleave: true,
+          autocapture: false,
+          disable_session_recording: true,
+          persistence: "localStorage",
+          person_profiles: "identified_only",
+        });
+        initialized = true;
+      } else {
+        posthog.opt_in_capturing();
+      }
+      use(posthog);
+    },
+    () => {
+      // A failed download (offline, blocked) is retried on the next event.
+      posthogModule = undefined;
+    },
+  );
 }
 
 /** Stop and discard third-party analytics state when consent is withdrawn. */
 function stopPostHog(): void {
-  if (!initialized) return;
-  posthog.opt_out_capturing();
-  posthog.reset();
+  if (!initialized || !posthogModule) return;
+  void posthogModule.then((posthog) => {
+    posthog.opt_out_capturing();
+    posthog.reset();
+  });
 }
 
 function analyticsSessionId(): string | undefined {
@@ -84,7 +98,7 @@ export function captureProductEvent(
 ): void {
   if (typeof window === "undefined") return;
   if (validateAnalyticsEventProperties(eventName, properties)) return;
-  if (ensurePostHog()) posthog.capture(eventName, properties);
+  withPostHog((posthog) => posthog.capture(eventName, properties));
   recordFirstPartyEvent(eventName, window.location.pathname, properties);
 }
 
@@ -152,8 +166,9 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
       if (!hasAnalyticsConsent()) return;
       const attribution = browserAttributionProperties();
       recordFirstPartyEvent("page_view", pathname, attribution);
-      if (ensurePostHog())
-        posthog.capture("$pageview", { path: pathname, ...attribution });
+      withPostHog((posthog) =>
+        posthog.capture("$pageview", { path: pathname, ...attribution }),
+      );
     }
 
     measurePageView();

@@ -108,6 +108,37 @@ test("canonical taxonomy filters require every selected hierarchy root", () => {
   }
 });
 
+test("taxonomyMatch any matches opportunities with at least one selected hierarchy", () => {
+  const previous = process.env.MISSA_TAXONOMY_READS;
+  process.env.MISSA_TAXONOMY_READS = "1";
+  try {
+    const terms = [
+      "taxterm_pf-writing-and-literature",
+      "taxterm_pf-visual-arts",
+    ];
+    const withDescendants = buildOpportunityBrowseQuery({
+      ...baseQuery,
+      taxonomyTermIds: terms,
+      taxonomyIncludeDescendants: true,
+      taxonomyMatch: "any",
+    });
+    assert.match(withDescendants.text, /exists \(with recursive expanded\(term_id\)/);
+    assert.doesNotMatch(withDescendants.text, /requested root/);
+    assert.deepEqual(withDescendants.values[1], terms);
+
+    const exact = buildOpportunityBrowseQuery({
+      ...baseQuery,
+      taxonomyTermIds: terms,
+      taxonomyMatch: "any",
+    });
+    assert.match(exact.text, /taxonomy_filter\.term_id = any\(\$2::text\[\]\)/);
+    assert.deepEqual(exact.values[1], terms);
+  } finally {
+    if (previous === undefined) delete process.env.MISSA_TAXONOMY_READS;
+    else process.env.MISSA_TAXONOMY_READS = previous;
+  }
+});
+
 test("facet SQL applies every filter except the facet being counted", () => {
   const built = buildOpportunityFacetCountsQuery(
     {
@@ -628,7 +659,8 @@ test("detail projection strips nullable call profile fields before contract vali
   const result = await repository.getById("opp_0001");
 
   assert.ok(result);
-  assert.equal(detailQueries.length, 1);
+  // One detail query; the deadline-facts readiness probe is the only other read.
+  assert.equal(detailQueries.filter((text) => !text.includes("to_regclass('public.opportunity_deadline_tiers')")).length, 1);
   assert.match(detailQueries[0], /as detail_eligibility/);
   assert.match(detailQueries[0], /as detail_materials/);
   assert.match(detailQueries[0], /as detail_changes/);

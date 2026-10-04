@@ -27,8 +27,23 @@ function booleanParam(params: URLSearchParams, key: string, fallback: boolean): 
   return value === "1" || value === "true";
 }
 
+/**
+ * The browse contract plus "confirmed dates only". The flag lives beside the
+ * contract until `opportunityBrowseQuerySchema` carries it; repositories read
+ * it as `OpportunityRepositoryQueryWithDeadlineFacts`.
+ */
+export type OpportunityBrowseQueryWithDeadlineFacts = OpportunityBrowseQuery & {
+  confirmedDatesOnly?: boolean;
+};
+
+/** URL parameter for the "Confirmed dates only" deadline filter. */
+export const CONFIRMED_DATES_PARAM = "confirmedDates";
+
 /** Parses public URL state into the bounded contract used by every repository. */
-export function parseOpportunityBrowseQuery(params: URLSearchParams): OpportunityBrowseQuery {
+export function parseOpportunityBrowseQuery(params: URLSearchParams): OpportunityBrowseQueryWithDeadlineFacts {
+  const confirmedDatesOnly = booleanParam(params, CONFIRMED_DATES_PARAM, false);
+  const withDeadlineFacts = (query: OpportunityBrowseQuery): OpportunityBrowseQueryWithDeadlineFacts =>
+    confirmedDatesOnly ? { ...query, confirmedDatesOnly: true } : query;
   const taxonomySelection = canonicalTaxonomySelection(params.getAll("taxonomy").flatMap((value) => value.split(",")));
   const candidate = {
     query: params.get("q") ?? undefined,
@@ -42,6 +57,7 @@ export function parseOpportunityBrowseQuery(params: URLSearchParams): Opportunit
     taxonomyIncludeDescendants: params.has("taxonomyDescendants")
       ? booleanParam(params, "taxonomyDescendants", false)
       : listParam(params, "taxonomy").length > 0,
+    taxonomyMatch: params.get("taxonomyMatch") === "any" ? "any" : "all",
     locations: listParam(params, "location"),
     country: params.get("country") ?? undefined,
     countryCode: params.get("countryCode") ?? undefined,
@@ -60,9 +76,9 @@ export function parseOpportunityBrowseQuery(params: URLSearchParams): Opportunit
   };
 
   const parsed = opportunityBrowseQuerySchema.safeParse(candidate);
-  if (parsed.success) return parsed.data;
+  if (parsed.success) return withDeadlineFacts(parsed.data);
 
   // Invalid or stale URL state should degrade to a safe public query while
   // preserving no untrusted values. The UI can expose a cleaned URL later.
-  return opportunityBrowseQuerySchema.parse({});
+  return withDeadlineFacts(opportunityBrowseQuerySchema.parse({}));
 }

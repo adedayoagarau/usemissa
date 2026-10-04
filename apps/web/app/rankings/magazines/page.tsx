@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { listingMetadata } from "@/lib/seo";
 import { cookies } from "next/headers";
 import { PublicSiteShell } from "@/components/public-site-shell";
+import { headerSessionFor } from "@/lib/headerSession";
 import { MagazineRankingsInteractive } from "@/components/rankings/magazine-rankings-interactive";
 import {
   Empty,
@@ -38,7 +39,7 @@ const getCachedMagazineRankings = unstable_cache(
   async (genre: RankingGenre) =>
     getMagazineRankingRepository().listRankings({
       genre,
-      limit: 100,
+      limit: 1000,
     }),
   ["public-magazine-rankings-v1"],
   { revalidate: 300, tags: ["magazine-rankings"] },
@@ -67,7 +68,7 @@ export default async function MagazineRankingsPage({
   );
 
   return (
-    <PublicSiteShell current="Magazine rankings">
+    <PublicSiteShell current="Magazine rankings" session={headerSessionFor(session)}>
       <main
         id="main-content"
         className={catalogueStyles.main}
@@ -114,7 +115,6 @@ export default async function MagazineRankingsPage({
             preview={page.dataSource === "seed"}
             initialItems={page.items}
             currentGenre={genre}
-            total={page.total}
             signedIn={Boolean(session)}
           />
         )}

@@ -544,8 +544,7 @@ An AI-generated component that duplicates an approved item fails review.
 | Add to Tracker                 | `TrackerAction`               | `Button`, optional `DropdownMenu` for stage, `Sonner` or inline recovery                       |
 | Filter on mobile               | `OpportunityFilterSheet`      | same filter model as desktop, `Sheet`, `Field`, selection controls, result count               |
 | Track applications             | `TrackerBoard` / `TrackerRow` | `Kanban` or `Table` by view, `Badge` semantics, menus and dialogs                              |
-| Work on one application        | `ApplicationRecord`           | `Sheet`, same-route `Tabs`, lifecycle with dated provenance, `Dialog` for recorded events      |
-| Know when to start             | `StartByDate`                 | `Button` + `Popover` reasoning; estimate wording; Ochre only when today or passed              |
+| Work on one application        | `TrackerItemSheet`            | `Sheet`, eyebrow sections, lifecycle with dated provenance, `Dialog` for recorded events       |
 | See calendar delivery          | `ApplicationCalendarDelivery` | Feed, provider and session rows; `Spinner` only while syncing; Retry and Reconnect actions     |
 | Confirm email evidence         | `ApplicationEmailEvidence`    | Suggestion panel; creator confirms; never changes state on its own                             |
 | Recover after a decline        | `SimilarOpportunities`        | Explained matches with plain reasons, Save to Tracker, Not for me; never labelled AI           |
@@ -868,7 +867,7 @@ Discovery implementation and extension guide: [Discovery design system](docs/dis
 
 ## Creator portfolio appearance (2026-09-04)
 
-The full-page owner editor remains in the standard Missa interface. The portfolio preview may use a creator-selected palette from `apps/web/components/design-system/creator-palette.css`: Sage studio maps to accent-tint, Paper to ochre-tint with ochre-deep actions, Mineral to mineral-blue-tint with mineral-blue actions, and After hours to ink with surface text and pale forest actions. These are semantic mappings of the existing palette, not new raw colors. Typography and layout remain fixed across themes. User-uploaded backgrounds are not part of this approved variant.
+The full-page owner editor remains in the standard Missa interface. The portfolio preview may use a creator-selected palette from `apps/web/components/design-system/creator-palette.css`: Sage studio maps to accent-tint, Mineral to mineral-blue-tint with mineral-blue actions, and After hours to ink with surface text and pale forest actions. These are semantic mappings of the existing palette, not new raw colors. Typography and layout remain fixed across themes. User-uploaded backgrounds are not part of this approved variant. The Paper theme (ochre-tint canvas) was retired in October 2026 because a cream canvas conflicts with the PRODUCT.md anti-reference; stored Paper drafts and snapshots render as Sage.
 
 Theme selection uses explicit labelled pressed cards; it never relies on color alone. Themes are persisted with the private draft and applied only to the portfolio surface, preserving familiar editor controls. Test both text contrast and actual computed background colors, not just the selected theme attribute.
 

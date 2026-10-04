@@ -4,7 +4,8 @@ import { PublicSiteShell } from "@/components/public-site-shell";
 import { ManuscriptMatchWizard } from "@/components/discover/manuscript-match-wizard";
 import { getManuscriptMatchEngine } from "@/lib/manuscriptMatchEngine";
 
-export const dynamic = "force-dynamic";
+/** Served from the CDN and regenerated at most every five minutes. */
+export const revalidate = 300;
 
 export const metadata: Metadata = pageMetadata({
   title: "Manuscript Strategy & Submission Matcher | Missa",

@@ -3,8 +3,9 @@ import type { PoolClient } from "pg";
 /**
  * Hold due reminders that fall inside the account's quiet hours until the
  * window ends, in the account timezone (falling back to the reminder's own).
- * A deadline reminder is delivered anyway when its call would close before
- * quiet hours end, so a creator is never kept from a deadline. Runs inside the
+ * A deadline reminder, deadline-day alarm, fee-tier ending or milestone is
+ * delivered anyway when what it announces would close before quiet hours end,
+ * so a creator is never kept from a deadline. Runs inside the
  * reminder tick's transaction and returns how many reminders were deferred.
  */
 export async function deferRemindersInQuietHours(client: PoolClient, accountId?: string): Promise<number> {
@@ -16,15 +17,37 @@ export async function deferRemindersInQuietHours(client: PoolClient, accountId?:
         and column_name in ('timezone','quiet_hours_start_minute','quiet_hours_end_minute')`,
   );
   if (!schema.rows[0]?.ready) return 0;
+  const subjects = (
+    await client.query<{ tiers: boolean; obligations: boolean }>(
+      `select to_regclass('public.opportunity_deadline_tiers') is not null
+              and exists (select 1 from information_schema.columns where table_schema=current_schema()
+                and table_name='creator_application_reminders' and column_name='subject_id') as tiers,
+              to_regclass('public.creator_obligations') is not null
+              and exists (select 1 from information_schema.columns where table_schema=current_schema()
+                and table_name='creator_application_reminders' and column_name='subject_id') as obligations`,
+    )
+  ).rows[0];
+  const opportunityClose = `coalesce(o.deadline_time, ((o.deadline_date + 1)::timestamp at time zone coalesce(o.deadline_timezone, r.timezone)))`;
+  // Each kind is held only until its own close: the call for deadline
+  // reminders and the deadline-day alarm, the tier for a fee-tier ending, the
+  // obligation's due moment for a milestone.
+  const tierClose = subjects?.tiers
+    ? `when r.kind = 'tier' then (select coalesce(d.closes_at, ((d.closes_on + 1)::timestamp at time zone coalesce(d.timezone, o.deadline_timezone, r.timezone)))
+         from opportunity_deadline_tiers d where d.id::text = r.subject_id)`
+    : "";
+  const milestoneClose = subjects?.obligations
+    ? `when r.kind = 'milestone' then (select coalesce(ob.due_at, ((ob.due_on + 1)::timestamp at time zone coalesce(ob.timezone, r.timezone)))
+         from creator_obligations ob where ob.id::text = r.subject_id)`
+    : "";
   const deferred = await client.query(
     `with due as (
        select r.id,
               case when exists (select 1 from pg_timezone_names z where z.name = p.timezone) then p.timezone else r.timezone end as tz,
               p.quiet_hours_start_minute as qs, p.quiet_hours_end_minute as qe,
-              case when r.kind = 'deadline' then coalesce(
-                o.deadline_time,
-                ((o.deadline_date + 1)::timestamp at time zone coalesce(o.deadline_timezone, r.timezone))
-              ) end as closes_at
+              case when r.kind in ('deadline', 'deadline-day') then ${opportunityClose}
+                   ${tierClose}
+                   ${milestoneClose}
+              end as closes_at
          from creator_application_reminders r
          join notification_preferences p on p.account_id = r.account_id
          join opportunities o on o.id = r.opportunity_id

@@ -9,6 +9,7 @@ import { OpportunityBrowsePagination } from "@/components/opportunity-browse-pag
 
 import type { OpportunityBrowseProjection } from "@missa/radar-engine";
 import { PublicSiteShell } from "@/components/public-site-shell";
+import { headerSessionFor } from "@/lib/headerSession";
 import { OpportunityBrowseProjectCard } from "@/components/design-system/opportunity-browse-project-card";
 import { PublicDiscoveryEvent } from "@/components/public-discovery-event";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
@@ -86,6 +87,7 @@ export default async function DiscoveryCollectionPage({
   return (
     <PublicSiteShell
       current="Opportunities"
+      session={headerSessionFor(session)}
       collectionLinks={discoveryCollections.filter(
         (entry) => entry.slug !== slug,
       )}

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { editorialReview, isDurablePublicationGateError, reviewCandidate, reviewPublishMode, type ReviewCandidate } from "../src/reviewWorker.js";
+import { contentWaitHours, editorialReview, isDurablePublicationGateError, reviewCandidate, reviewPublishMode, type ReviewCandidate } from "../src/reviewWorker.js";
 import { holdReasonsFromChecks, mapPublicationHoldRow, planPublicationApproval } from "../src/publicationHoldAdmin.js";
 import { publicationRubricSchema } from "../src/publicationRubricSchema.js";
 import { evaluatePublicationRubric } from "../src/publicationRubric.js";
@@ -226,4 +226,24 @@ test("the admin queue reads hold reasons and proposes the editorial title", () =
   assert.deepEqual(row.holdReasons, ["held-for-editorial-review"]);
   assert.equal(row.gatesPassed, true);
   assert.equal(row.needsTitle, false);
+});
+
+test("review waits for an approved write-up, then publishes with facts only once the wait expires", () => {
+  const waiting = reviewCandidate(candidate({ contentApproved: false }));
+  assert.equal(waiting.decision, "needs-human");
+  assert.match(waiting.reasons.join(" "), /Content review is required/);
+
+  const expired = reviewCandidate(candidate({ contentApproved: false, contentWaitExpired: true }));
+  assert.equal(expired.decision, "publish");
+  assert.equal(expired.checks.contentWaitExpired, true);
+
+  const unconfirmed = reviewCandidate(candidate({ contentApproved: false, contentWaitExpired: true, organizationConfirmed: false }));
+  assert.equal(unconfirmed.decision, "needs-human");
+});
+
+test("content wait defaults to 24 hours and accepts an override", () => {
+  assert.equal(contentWaitHours(undefined), 24);
+  assert.equal(contentWaitHours("6"), 6);
+  assert.equal(contentWaitHours("nonsense"), 24);
+  assert.equal(contentWaitHours("-1"), 24);
 });

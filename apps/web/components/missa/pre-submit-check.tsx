@@ -5,6 +5,7 @@ import { CircleAlert, CircleCheck, Eye, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { PreSubmitCheck as Check } from "@/lib/pre-submit-check";
+import { SheetSectionHeading } from "./sheet-section-heading";
 
 const STATUS = {
   passed: { label: "Passed", icon: CircleCheck, tone: "text-success" },
@@ -55,14 +56,14 @@ export function PreSubmitCheck({
     checks?.filter((check) => check.status === "attention").length ?? 0;
   return (
     <section
-      aria-labelledby="record-presubmit-title"
-      className="space-y-4 rounded-xl border border-border p-6"
+      aria-labelledby="sheet-presubmit-title"
+      className="space-y-4"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h3 id="record-presubmit-title" className="text-lg font-semibold">
+        <div className="space-y-2">
+          <SheetSectionHeading id="sheet-presubmit-title" eyebrow="Check">
             Before you submit
-          </h3>
+          </SheetSectionHeading>
           <p className="text-sm text-muted-foreground">
             {checks
               ? attention

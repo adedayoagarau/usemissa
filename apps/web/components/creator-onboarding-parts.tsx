@@ -2,10 +2,16 @@
 
 import Image from "next/image";
 import { useId, type ReactNode } from "react";
+import Link from "next/link";
 import { Check, Lock } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
+import { cleanTitleOrLabel } from "@/lib/textUtils";
+import type {
+  OnboardingMatch,
+  OnboardingMatches,
+} from "@/lib/onboardingMatches";
 
 /**
  * Presentational parts of CreatorOnboarding. State, persistence, and step
@@ -167,29 +173,40 @@ export function ChoiceTile({
         className="relative aspect-[4/3] w-full overflow-hidden bg-muted"
       >
         {media}
-        {checked ? <span className="absolute inset-0 bg-primary/10" /> : null}
+        <span
+          className={cn(
+            "absolute top-3 right-3 flex size-7 items-center justify-center rounded-full border transition-[background-color,border-color,opacity] duration-150 motion-reduce:transition-none",
+            checked
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-background/80 bg-background/70 text-transparent opacity-0 group-hover:opacity-100",
+          )}
+        >
+          <Check className="size-4" />
+        </span>
       </div>
       <span className="flex flex-1 items-start justify-between gap-3 p-3 sm:p-4">
         <span className="min-w-0">
           <span
             id={`${id}-label`}
-            className="block leading-snug font-medium text-foreground"
+            className="block text-base leading-snug font-medium text-foreground"
           >
             {label}
           </span>
           <span
             id={`${id}-description`}
-            className="mt-1 block text-xs leading-relaxed text-muted-foreground"
+            className="mt-0.5 block truncate text-xs text-muted-foreground"
           >
             {description}
           </span>
         </span>
-        <Checkbox
-          aria-labelledby={`${id}-label`}
-          aria-describedby={`${id}-description`}
-          checked={checked}
-          onCheckedChange={(next) => onCheckedChange(next === true)}
-        />
+        <span className="mt-0.5">
+          <Checkbox
+            aria-labelledby={`${id}-label`}
+            aria-describedby={`${id}-description`}
+            checked={checked}
+            onCheckedChange={(next) => onCheckedChange(next === true)}
+          />
+        </span>
       </span>
     </label>
   );
@@ -289,23 +306,27 @@ export function RadioCard({
   label,
   description,
   checked,
+  compact = false,
 }: {
   value: string;
   label: string;
   description?: string;
   checked: boolean;
+  /** Inline chip without a description, for short single-choice lists. */
+  compact?: boolean;
 }) {
   const id = useId();
   return (
     <label
       className={cn(
-        "flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 text-sm transition-colors duration-150 has-focus-visible:ring-3 has-focus-visible:ring-ring/50 motion-reduce:transition-none",
+        "flex min-h-11 cursor-pointer gap-3 rounded-lg border text-sm transition-colors duration-150 has-focus-visible:ring-3 has-focus-visible:ring-ring/50 motion-reduce:transition-none",
+        compact ? "items-center px-3.5 py-2" : "items-start px-3 py-3",
         checked
           ? "border-primary bg-accent-tint"
           : "border-border bg-background hover:border-foreground/30",
       )}
     >
-      <span className="mt-0.5">
+      <span className={compact ? "flex" : "mt-0.5"}>
         <RadioGroupItem
           value={value}
           aria-labelledby={`${id}-label`}
@@ -326,48 +347,6 @@ export function RadioCard({
         ) : null}
       </span>
     </label>
-  );
-}
-
-/** Live, private summary of the choices made so far. */
-export function OnboardingSummaryCard({
-  rows,
-}: {
-  rows: { label: string; value: string | null }[];
-}) {
-  return (
-    <section
-      aria-label="Your choices so far"
-      className="rounded-xl border border-border bg-card p-5 shadow-sm"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-foreground">
-          What Missa will look for
-        </p>
-        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Lock aria-hidden="true" className="size-3.5" />
-          Private
-        </span>
-      </div>
-      <dl className="mt-4 grid gap-3">
-        {rows.map((row) => (
-          <div
-            key={row.label}
-            className="grid grid-cols-[7rem_minmax(0,1fr)] gap-3 border-t border-border pt-3 text-sm"
-          >
-            <dt className="text-muted-foreground">{row.label}</dt>
-            <dd
-              className={cn(
-                "min-w-0 break-words",
-                row.value ? "text-foreground" : "text-muted-foreground",
-              )}
-            >
-              {row.value ?? "Not chosen yet"}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </section>
   );
 }
 
@@ -429,5 +408,92 @@ export function ProfilePreviewCard({
         </p>
       ) : null}
     </section>
+  );
+}
+
+/** Live count of open calls matching the choices so far. */
+export function MatchCount({
+  matches,
+  hasChoices,
+}: {
+  matches: OnboardingMatches;
+  hasChoices: boolean;
+}) {
+  if (matches.state === "unavailable") return <span />;
+  const total = matches.total;
+  return (
+    <p
+      role="status"
+      aria-live="polite"
+      className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground"
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "size-2 shrink-0 rounded-full transition-colors duration-200 motion-reduce:transition-none",
+          matches.state === "loading" ? "bg-border" : "bg-primary",
+        )}
+      />
+      {total === undefined ? (
+        <span>Counting open calls…</span>
+      ) : (
+        <span className="truncate">
+          <strong
+            key={total}
+            className="animate-in font-semibold text-foreground tabular-nums duration-200 fade-in-0 motion-reduce:animate-none"
+          >
+            {total.toLocaleString("en-US")}
+          </strong>{" "}
+          <span className="hidden sm:inline">
+            {hasChoices
+              ? total === 1
+                ? "open call matches so far"
+                : "open calls match so far"
+              : "open calls on Missa"}
+          </span>
+          <span className="sm:hidden">
+            {hasChoices ? (total === 1 ? "match" : "matches") : "open calls"}
+          </span>
+        </span>
+      )}
+    </p>
+  );
+}
+
+function deadlineLabel(deadline: OnboardingMatch["deadline"]) {
+  if (!deadline.date) {
+    return deadline.kind === "rolling" ? "Rolling" : "Date to confirm";
+  }
+  const date = new Date(`${deadline.date}T12:00:00`);
+  return `Closes ${new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(date)}`;
+}
+
+/** The first few open calls that match, linking to their detail pages. */
+export function MatchList({ items }: { items: OnboardingMatch[] }) {
+  return (
+    <ul className="divide-y divide-border border-y border-border">
+      {items.map((item) => (
+        <li key={item.id}>
+          <Link
+            href={`/opportunities/${encodeURIComponent(item.slug)}`}
+            className="group flex items-start justify-between gap-4 py-4 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <span className="min-w-0">
+              <span className="line-clamp-2 font-heading text-lg leading-snug text-foreground group-hover:text-primary">
+                {cleanTitleOrLabel(item.title)}
+              </span>
+              {item.organizationName ? (
+                <span className="mt-1 block truncate text-sm text-muted-foreground">
+                  {cleanTitleOrLabel(item.organizationName)}
+                </span>
+              ) : null}
+            </span>
+            <span className="mt-1 shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
+              {deadlineLabel(item.deadline)}
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }
