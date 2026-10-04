@@ -188,11 +188,20 @@ test(
         deadline: string | null,
         options: { publication?: string; kind?: string } = {},
       ) => {
-        await pool.query(
-          `insert into opportunities(id,slug,title,source_id,status,publication_state,type,deadline_kind,deadline_date)
-           values($1,$1,$2,$3,'open',$4,'grant',$5,$6::date)`,
-          [opp(name), `Fixture ${name}`, source, options.publication ?? "published", options.kind ?? "exact", deadline],
-        );
+        // Published fixtures skip the publication gate, which needs source
+        // evidence this test does not exercise.
+        const client = await pool.connect();
+        try {
+          await client.query("set session_replication_role = replica");
+          await client.query(
+            `insert into opportunities(id,slug,title,source_id,status,publication_state,type,deadline_kind,deadline_date)
+             values($1,$1,$2,$3,'open',$4,'grant',$5,$6::date)`,
+            [opp(name), `Fixture ${name}`, source, options.publication ?? "published", options.kind ?? "exact", deadline],
+          );
+        } finally {
+          await client.query("set session_replication_role = origin");
+          client.release();
+        }
         await pool.query(
           "insert into tracked_opportunities(id,account_id,opportunity_id,status) values($1,$2,$3,$4)",
           [`${opp(name)}-tracked`, account, opp(name), status],
