@@ -2,11 +2,14 @@
 import { Pool } from "pg";
 import { runLifecycleReconcilerBatch } from "./lifecycleReconciler.js";
 import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
+import { radarOperationsDecider } from "./operationsDecisions.js";
 
 if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required");
 const pool = createMissaPostgresPool(process.env.DATABASE_URL, "worker", { max: 4 });
 const batchSize = Number(process.env.MISSA_LIFECYCLE_BATCH_SIZE ?? 25);
 const intervalMs = Math.max(60_000, Number(process.env.MISSA_LIFECYCLE_INTERVAL_MINUTES ?? 5) * 60_000);
+// Undefined without JEV_API_KEY: intervals and retries stay exactly as today.
+const decisions = radarOperationsDecider(pool);
 
 try {
   do {
@@ -27,7 +30,7 @@ try {
     }
 
     // 2. Run source classifier batch
-    await runLifecycleReconcilerBatch(pool, { batchSize, logger: console });
+    await runLifecycleReconcilerBatch(pool, { batchSize, logger: console, decisions });
     if (process.env.MISSA_LIFECYCLE_RUN_ONCE === "1") break;
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   } while (true);
