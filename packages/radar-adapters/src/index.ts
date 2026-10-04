@@ -797,3 +797,5 @@ export {
 } from "./siteObservability.js";
 export * from "./ranking/residency/acaDirectory.js";
 export * from "./ranking/residency/recompute.js";
+export * from "./creatorObligationMutations.js";
+export { updateCanonicalTrackerPersonalTarget, CanonicalTrackerValidationError } from "./canonicalTracker.js";

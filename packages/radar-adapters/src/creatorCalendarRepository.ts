@@ -11,6 +11,8 @@ import {
 } from "./calendarCredentialCrypto.js";
 import { canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
 import { expectedResponse } from "./trackerResponseDates.js";
+import { creatorPlan, planIncludes, type CreatorPlan } from "./creatorEntitlements.js";
+import { recalculateObligationChainsIn, shiftObligationsWithDeadline } from "./creatorObligationMutations.js";
 
 export type CreatorCalendarTokenState = {
   active: boolean;
@@ -620,9 +622,11 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
         opportunity_id: string | null;
         start_at: Date;
         previous_source_deadline_date: string | null;
+        source_deadline_date: string | null;
         deadline_reconciliation_status: string;
       }>(
-        `select opportunity_id,start_at,previous_source_deadline_date,deadline_reconciliation_status
+        `select opportunity_id,start_at,previous_source_deadline_date::text previous_source_deadline_date,
+                source_deadline_date::text source_deadline_date,deadline_reconciliation_status
            from creator_calendar_events
           where id=$1 and account_id=$2 and purpose='official-deadline' for update`,
         [eventId, accountId],
@@ -631,9 +635,10 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
       if (!row) throw new CreatorCalendarError("Calendar deadline not found.");
       if (row.deadline_reconciliation_status !== "needs-review" || !row.previous_source_deadline_date || !row.opportunity_id) {
         await client.query("commit");
-        return { status: "already-resolved" as const, moved: 0 };
+        return { status: "already-resolved" as const, moved: 0, obligationsMoved: 0 };
       }
       let moved = 0;
+      let obligationsMoved = 0;
       if (action === "move-preparation") {
         const shifted = await client.query<{ id: string; revision: number }>(
           `update creator_calendar_events preparation
@@ -650,6 +655,16 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
         );
         moved = shifted.rowCount ?? 0;
         for (const event of shifted.rows) await queueCalendarSync(client, accountId, event.id, "upsert", event.revision);
+        // One review covers both: planned steps that do not already follow
+        // the new deadline move by the same number of days.
+        if (row.source_deadline_date)
+          obligationsMoved = await shiftObligationsWithDeadline(
+            client,
+            accountId,
+            row.opportunity_id,
+            row.previous_source_deadline_date,
+            row.source_deadline_date,
+          );
       }
       await client.query(
         `update creator_calendar_events
@@ -658,7 +673,7 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
         [eventId, accountId],
       );
       await client.query("commit");
-      return { status: "resolved" as const, moved };
+      return { status: "resolved" as const, moved, obligationsMoved };
     } catch (error) {
       await client.query("rollback").catch(() => undefined);
       throw error;
@@ -683,12 +698,13 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
         id: string;
         account_id: string;
         opportunity_id: string;
+        tracked_id: string;
         title: string;
         previous: string | null;
         next: string;
         notify: boolean;
       }>(
-        `select e.id,e.account_id,e.opportunity_id,o.title,e.source_deadline_date::text previous,o.deadline_date::text next,
+        `select e.id,e.account_id,e.opportunity_id,t.id tracked_id,o.title,e.source_deadline_date::text previous,o.deadline_date::text next,
                 t.status in (${PRE_SUBMISSION}) notify
            from creator_calendar_events e
            join opportunities o on o.id=e.opportunity_id
@@ -699,6 +715,7 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
           order by e.id for update of e skip locked limit $2`,
         [accountId ?? null, limit],
       );
+      const plans = new Map<string, CreatorPlan>();
       for (const row of changed.rows) {
         const updated = await client.query<{ revision: number }>(
           `update creator_calendar_events
@@ -719,6 +736,12 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
               : `The official deadline is now ${row.next}. Your calendar and deadline reminders now use this date.`,
             dedupeKey: `deadline-changed:${row.id}:${row.next}`,
           });
+        // On plans with start-by planning the chain moves with the deadline
+        // now, by each step's buffer policy, with its own was/now notice.
+        // Other plans keep their steps until the creator reviews the change.
+        if (!plans.has(row.account_id)) plans.set(row.account_id, await creatorPlan(client, row.account_id));
+        if (planIncludes(plans.get(row.account_id)!, "startByPlanning"))
+          await recalculateObligationChainsIn(client, { accountId: row.account_id, trackedOpportunityId: row.tracked_id });
       }
 
       const unconfirmed = await client.query<{
@@ -1121,6 +1144,40 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
       expectedResponseBy: expectedResponse(row.status, row.submitted_at, row.response_time_days)?.expectedResponseBy,
     }));
   }
+}
+
+/**
+ * Keep one 'personal-target' calendar event per tracked call in step with
+ * tracked_opportunities.personal_target_on: create or move it when a date is
+ * set, remove it when the target is cleared. Runs in the caller's transaction
+ * and queues the provider sync like any other event write.
+ */
+export async function mirrorPersonalTarget(
+  client: PoolClient,
+  target: { accountId: string; trackedOpportunityId: string; opportunityId: string; title: string; personalTargetOn: string | null },
+): Promise<{ status: "saved" | "removed" | "unchanged"; eventId: string }> {
+  const eventId = `personal-target:${target.trackedOpportunityId}`;
+  if (target.personalTargetOn === null) {
+    const removed = await client.query<{ revision: number }>(
+      "delete from creator_calendar_events where id=$1 and account_id=$2 returning revision",
+      [eventId, target.accountId],
+    );
+    if (!removed.rows[0]) return { status: "unchanged", eventId };
+    await queueCalendarSync(client, target.accountId, eventId, "delete", removed.rows[0].revision + 1);
+    return { status: "removed", eventId };
+  }
+  const saved = await client.query<{ revision: number }>(
+    `insert into creator_calendar_events
+       (id,account_id,title,description,start_at,end_at,all_day,color,opportunity_id,purpose)
+     values ($1,$2,$3,'Your own target date, ahead of the official deadline',$4::date,$4::date+interval '1 day',true,'sage',$5,'personal-target')
+     on conflict (id) do update set title=excluded.title,start_at=excluded.start_at,end_at=excluded.end_at,
+       revision=case when creator_calendar_events.start_at<>excluded.start_at or creator_calendar_events.title<>excluded.title then creator_calendar_events.revision+1 else creator_calendar_events.revision end,
+       updated_at=case when creator_calendar_events.start_at<>excluded.start_at or creator_calendar_events.title<>excluded.title then now() else creator_calendar_events.updated_at end
+     returning revision`,
+    [eventId, target.accountId, `Target: ${target.title}`.slice(0, 200), target.personalTargetOn, target.opportunityId],
+  );
+  await queueCalendarSync(client, target.accountId, eventId, "upsert", saved.rows[0]!.revision);
+  return { status: "saved", eventId };
 }
 
 const PRE_SUBMISSION = "'interested','saved','preparing','draft-started','ready-to-submit'";

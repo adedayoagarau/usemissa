@@ -18,6 +18,8 @@ import {
 import { recommendationSignalId } from "./recommendation/evidenceStorage.js";
 import { DECISION_STATUS_SQL, expectedResponse, isoDate, type ExpectedResponse } from "./trackerResponseDates.js";
 import type { FirstSaveProvenance } from "./recommendation/provenance.js";
+import { onTrackedStatusChanged } from "./creatorObligationMutations.js";
+import { mirrorPersonalTarget } from "./creatorCalendarRepository.js";
 import {
   OpportunityRevalidationRequiredError,
   OpportunityVersionHeadMissingError,
@@ -58,6 +60,10 @@ export type CanonicalTrackerItem = {
   respondedAt?: string;
   expectedResponseBy?: string;
   expectedResponseBasis?: ExpectedResponse["expectedResponseBasis"];
+  /** The creator's own finish date, earlier than the deadline; absent when unset. */
+  personalTargetOn?: string;
+  /** Last time the creator worked on this call (status, checklist, notes, plan). */
+  lastActivityAt?: string;
 };
 
 type TrackerRow = {
@@ -71,6 +77,8 @@ type TrackerRow = {
   notify: boolean;
   work_id: string | null;
   submitted_at?: Date | string | null;
+  personal_target_on?: string | null;
+  last_activity_at?: string | null;
 };
 
 type TrackerOpportunityRow = TrackerRow & {
@@ -91,6 +99,7 @@ type TrackerOpportunityRow = TrackerRow & {
  * event; acknowledgements such as "received" are not responses.
  */
 const TRACKER_PROJECTION = `select t.id, t.account_id, t.opportunity_id, t.status, t.tracked_at, t.updated_at, t.revision, t.notify, t.work_id, t.submitted_at,
+              to_jsonb(t)->>'personal_target_on' as personal_target_on, to_jsonb(t)->>'last_activity_at' as last_activity_at,
               o.title, coalesce(org.data->>'name', o.organization_id) as organization_name, o.status as opportunity_status,
               o.type as opportunity_type, o.deadline_date::text as deadline_date, o.deadline_kind, cp.response_time_days,
               (select coalesce(e.occurred_on, (e.created_at at time zone 'UTC')::date)::text from tracked_status_events e
@@ -173,6 +182,8 @@ function trackerItem(row: TrackerOpportunityRow): CanonicalTrackerItem {
     ...(isoDate(row.submitted_at) ? { submittedAt: isoDate(row.submitted_at) } : {}),
     ...(row.responded_on && !PRE_SUBMISSION_STATUSES.has(status) ? { respondedAt: row.responded_on } : {}),
     ...expectedResponse(status, row.submitted_at, row.response_time_days),
+    ...(row.personal_target_on ? { personalTargetOn: row.personal_target_on.slice(0, 10) } : {}),
+    ...(row.last_activity_at ? { lastActivityAt: new Date(row.last_activity_at).toISOString() } : {}),
   };
 }
 
@@ -306,6 +317,9 @@ export async function updateCanonicalTrackerStatus(
     );
     if (status === "submitted" && !row.submitted_at)
       await snapshotCanonicalApplicationMaterials(client, accountId, row.id, row.work_id, eventId);
+    // Planning follows the status: submitting closes preparation steps, an
+    // acceptance offers the usual next steps, and every change is activity.
+    await onTrackedStatusChanged(client, { accountId, trackedOpportunityId: row.id, opportunityId, title: row.title, from: row.status, to: status });
     await client.query("update creator_application_reminders set state='cancelled',due_at=null,snoozed_until=null,revision=revision+1,updated_at=now() where account_id=$1 and opportunity_id=$2 and state in ('scheduled','needs-review') and ((kind in ('preparation','deadline') and not $3::boolean) or (kind='response' and $4::boolean))", [accountId, opportunityId, ['interested','saved','preparing','draft-started','ready-to-submit'].includes(status), ['accepted','declined','withdrawn','delivered','archived'].includes(status)]);
     const next = updated.rows[0];
     const result = next
@@ -314,6 +328,7 @@ export async function updateCanonicalTrackerStatus(
           tracked: trackerItem({
             ...row,
             ...next,
+            ...(row.last_activity_at ? { last_activity_at: new Date().toISOString() } : {}),
             responded_on:
               row.responded_on ??
               (RESPONSE_DECISION_STATUSES.includes(status) ? (options.occurredOn ?? new Date().toISOString().slice(0, 10)) : null),
@@ -485,6 +500,92 @@ export async function updateCanonicalTrackerReminder(
       `insert into outbox_events (topic,aggregate_type,aggregate_id,payload,event_key,correlation_id)
        values ($1,'tracked_opportunity',$2,$3::jsonb,$4,$5)`,
       [commandType, opportunityId, JSON.stringify({ opportunityId, notify, revision: tracked.revision }), receiptId, correlationId],
+    );
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally { client.release(); }
+}
+
+export class CanonicalTrackerValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CanonicalTrackerValidationError";
+  }
+}
+
+/**
+ * Set or clear the creator's personal target date for a tracked call. The
+ * date is mirrored to a 'personal-target' calendar event in the same
+ * transaction, and start-by planning finishes against it instead of the
+ * deadline.
+ */
+export async function updateCanonicalTrackerPersonalTarget(
+  connectionString: string,
+  accountId: string,
+  opportunityId: string,
+  personalTargetOn: string | null,
+  options: { expectedRevision: number; idempotencyKey: string },
+): Promise<CanonicalTrackerReminderUpdate | null> {
+  if (personalTargetOn !== null && !/^\d{4}-\d{2}-\d{2}$/.test(personalTargetOn))
+    throw new CanonicalTrackerValidationError("Choose a valid target date.");
+  const pool = creatorPoolFor(connectionString);
+  const client = await pool.connect();
+  const commandType = "tracker.personal-target.update";
+  const requestHash = canonicalCreatorRequestHash(commandType, { opportunityId, personalTargetOn }, options.expectedRevision);
+  try {
+    await client.query("BEGIN");
+    const ready = await client.query<{ ready: boolean }>("select to_regclass('public.creator_obligations') is not null as ready");
+    if (!ready.rows[0]?.ready) throw new CanonicalTrackerValidationError("Personal targets are not available yet. Try again later.");
+    const replay = await client.query<{ request_hash: string; result: CanonicalTrackerReminderUpdate }>(
+      `select request_hash, result from workspace_command_receipts
+       where scope_type='owner' and scope_id=$1 and actor_account_id=$1
+         and command_type=$2 and idempotency_key=$3 for update`,
+      [accountId, commandType, options.idempotencyKey],
+    );
+    if (replay.rows[0]) {
+      if (replay.rows[0].request_hash !== requestHash) throw new CreatorIdempotencyConflictError();
+      await client.query("COMMIT");
+      return { ...replay.rows[0].result, replayed: true };
+    }
+    const current = await client.query<TrackerOpportunityRow>(
+      `${TRACKER_PROJECTION}
+       where t.account_id=$1 and t.opportunity_id=$2 and ${canonicalPublicOpportunityPredicate("o")} for update of t`,
+      [accountId, opportunityId],
+    );
+    const row = current.rows[0];
+    if (!row) { await client.query("ROLLBACK"); return null; }
+    if (row.revision !== options.expectedRevision) {
+      throw new CreatorConflictError("tracked-opportunity", opportunityId, options.expectedRevision, row.revision);
+    }
+    let tracked = trackerItem(row);
+    let status: CanonicalTrackerReminderUpdate["status"] = "unchanged";
+    if ((row.personal_target_on?.slice(0, 10) ?? null) !== personalTargetOn) {
+      const changed = await client.query<TrackerRow>(
+        `update tracked_opportunities set personal_target_on=$3::date,last_activity_at=now(),revision=revision+1,updated_at=now()
+         where account_id=$1 and opportunity_id=$2 and revision=$4
+         returning id,account_id,opportunity_id,status,tracked_at,updated_at,revision,notify,work_id,
+                   personal_target_on::text personal_target_on,last_activity_at::text last_activity_at`,
+        [accountId, opportunityId, personalTargetOn, row.revision],
+      );
+      tracked = trackerItem({ ...row, ...changed.rows[0] });
+      status = "updated";
+      await mirrorPersonalTarget(client, { accountId, trackedOpportunityId: row.id, opportunityId, title: row.title, personalTargetOn });
+    }
+    const receiptId = randomUUID(), correlationId = randomUUID();
+    const result: CanonicalTrackerReminderUpdate = { status, tracked, receiptId, replayed: false };
+    await client.query(
+      `insert into workspace_command_receipts
+       (id,scope_type,scope_id,actor_account_id,command_type,idempotency_key,request_hash,result,correlation_id)
+       values ($1,'owner',$2,$2,$3,$4,$5,$6::jsonb,$7)`,
+      [receiptId, accountId, commandType, options.idempotencyKey, requestHash, JSON.stringify(result), correlationId],
+    );
+    await client.query(
+      `insert into audit_events (account_id,action,target_type,target_id,detail,correlation_id)
+       values ($1,$2,'tracked_opportunity',$3,$4::jsonb,$5)`,
+      [accountId, commandType, opportunityId, JSON.stringify({ receiptId, personalTargetOn, revision: tracked.revision }), correlationId],
     );
     await client.query("COMMIT");
     return result;
