@@ -805,3 +805,4 @@ export * from "./opportunityDeadlineFactsWriter.js";
 export { CONFIRMED_DATES_PREDICATE, type OpportunityRepositoryQueryWithDeadlineFacts } from "./opportunityRepository.js";
 export * from "./creatorObligationMutations.js";
 export { updateCanonicalTrackerPersonalTarget, CanonicalTrackerValidationError } from "./canonicalTracker.js";
+export type { CreatorReminderTextKind } from "./creatorReminderText.js";

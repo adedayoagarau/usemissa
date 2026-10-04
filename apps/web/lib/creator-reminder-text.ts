@@ -48,6 +48,8 @@ export function renderReminderText(notice: ReminderTextNotice, now = new Date())
     switch (notice.kind) {
       case 'deadline-reminder':
         return `Missa: ${name} closes ${day ?? 'soon'}.${hint && status ? ` In your Tracker: ${status}.` : ''} ${url} ${SIGN_OFF}`;
+      case 'deadline-day':
+        return `Missa: ${name} closes today.${hint && status ? ` In your Tracker: ${status}.` : ''} ${url} ${SIGN_OFF}`;
       case 'deadline-changed':
         return `Missa: ${name} has a new deadline${day ? `, ${day}` : ''}. ${url} ${SIGN_OFF}`;
       case 'call-closed':

@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
+import { DAILY_CAPPED_NOTICE_KINDS, defaultOffsetSubject, reminderInboxKind, reminderNoticeBody, reminderNoticeDedupeKey, reminderNoticeReason } from './deadline-reminder-copy';
+import { dailyNoticeBudget } from './deadline-reminders';
 import { CreatorRepositoryBase, CreatorConflictError, creatorPoolFor, deferRemindersInQuietHours, type CreatorCommandEnvelope } from '@missa/radar-adapters';
 
 const timezone = z.string().refine(v => { try { new Intl.DateTimeFormat('en', { timeZone: v }); return true; } catch { return false; } });
@@ -10,10 +12,19 @@ export const reminderInput = z.discriminatedUnion('kind', [
 ]);
 export type ReminderInput = z.infer<typeof reminderInput>;
 export type ApplicationReminder = {
-  id: string; opportunityId: string; applicationTitle: string; kind: 'preparation' | 'deadline' | 'response';
+  id: string; opportunityId: string; applicationTitle: string; kind: ReminderKind;
+  /** Set on rows Missa schedules itself: a default deadline offset, a fee tier, an obligation or the deadline-day alarm. */
+  subjectKind: 'obligation' | 'tier' | 'stage' | 'escalation' | null; subjectId: string | null;
   title: string; dueAt: string | null; timezone: string; repeatDays: number; state: 'scheduled' | 'delivered' | 'cancelled' | 'needs-review' | 'suppressed' | 'expired';
   sourceDeadline: string | null; offsetDays: number | null; revision: number; inAppEnabled: boolean;
 };
+/**
+ * preparation, deadline and response are the creator's own reminders. Missa
+ * adds default deadline offsets (kind deadline, subject_id 'offset:N'), the
+ * deadline-day alarm, fee-tier endings and obligation milestones; see
+ * deadline-reminders.ts.
+ */
+export type ReminderKind = 'preparation' | 'deadline' | 'response' | 'milestone' | 'deadline-day' | 'tier';
 export class ReminderValidationError extends Error {}
 const saved = "('interested','saved','preparing','draft-started','ready-to-submit')";
 const history = "('accepted','declined','withdrawn','delivered','archived')";
@@ -25,7 +36,7 @@ export class CreatorReminderRepository extends CreatorRepositoryBase {
   }
 
   async list(accountId: string, opportunityId?: string): Promise<ApplicationReminder[]> {
-    return (await this.query<ApplicationReminder>(`select r.id,r.opportunity_id as "opportunityId",o.title as "applicationTitle",r.kind,r.title,
+    return (await this.query<ApplicationReminder>(`select r.id,r.opportunity_id as "opportunityId",o.title as "applicationTitle",r.kind,r.subject_kind as "subjectKind",r.subject_id as "subjectId",r.title,
       coalesce(r.snoozed_until,r.due_at) as "dueAt",r.timezone,r.repeat_days as "repeatDays",r.state,r.source_deadline::text as "sourceDeadline",
       r.deadline_offset_days as "offsetDays",r.revision,coalesce(p.in_app_enabled and p.reminder_enabled,false) as "inAppEnabled"
       from creator_application_reminders r join opportunities o on o.id=r.opportunity_id
@@ -57,8 +68,12 @@ export class CreatorReminderRepository extends CreatorRepositoryBase {
         if (!window.ahead) throw new ReminderValidationError('Choose a reminder time that is still ahead.');
       } else if (!(await client.query<{ valid: boolean }>('select $1::timestamptz > now() as valid', [due])).rows[0].valid) throw new ReminderValidationError('Choose a reminder time that is still ahead.');
       // Existing active reminders are edited explicitly, never silently overwritten by a new request.
-      const existing = (await client.query<{ id: string; state: string }>('select id,state from creator_application_reminders where account_id=$1 and opportunity_id=$2 and kind=$3 for update', [envelope.accountId, input.opportunityId, input.kind])).rows[0];
+      // Only the creator's own row counts (no subject); Missa's default offsets are separate rows.
+      const existing = (await client.query<{ id: string; state: string }>('select id,state from creator_application_reminders where account_id=$1 and opportunity_id=$2 and kind=$3 and subject_kind is null and subject_id is null for update', [envelope.accountId, input.opportunityId, input.kind])).rows[0];
       if (existing && ['scheduled', 'needs-review'].includes(existing.state)) throw new ReminderValidationError('You already have this reminder. Open it to reschedule or cancel it.');
+      // The creator's own deadline reminder replaces a default reminder on the same day.
+      if (input.kind === 'deadline') await client.query(`update creator_application_reminders set state='cancelled',due_at=null,snoozed_until=null,revision=revision+1,updated_at=now()
+        where account_id=$1 and opportunity_id=$2 and kind='deadline' and subject_kind is null and subject_id=$3 and state in ('scheduled','needs-review')`, [envelope.accountId, input.opportunityId, defaultOffsetSubject(input.offsetDays)]);
       const row = (await client.query<{ id: string; revision: number }>(`insert into creator_application_reminders(id,account_id,opportunity_id,kind,title,timezone,due_at,repeat_days,deadline_offset_days,source_deadline)
         values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
         on conflict(account_id,opportunity_id,kind,coalesce(subject_kind,''),coalesce(subject_id,'')) do update set title=excluded.title,timezone=excluded.timezone,due_at=excluded.due_at,repeat_days=excluded.repeat_days,deadline_offset_days=excluded.deadline_offset_days,source_deadline=excluded.source_deadline,state='scheduled',snoozed_until=null,revision=creator_application_reminders.revision+1,updated_at=now()
@@ -95,7 +110,7 @@ export async function tickCreatorReminders(accountId?: string) {
       where ($1::text is null or r.account_id=$1) and r.state in ('scheduled','needs-review') and (
       not exists(select 1 from tracked_opportunities t where t.account_id=r.account_id and t.opportunity_id=r.opportunity_id) or
       exists(select 1 from tracked_opportunities t where t.account_id=r.account_id and t.opportunity_id=r.opportunity_id and
-      ((r.kind in ('preparation','deadline') and t.status not in ${saved}) or (r.kind='response' and (t.status in ${saved} or t.status in ${history})))) )`, [accountId ?? null]);
+      ((r.kind in ('preparation','deadline','deadline-day','tier') and t.status not in ${saved}) or (r.kind='response' and (t.status in ${saved} or t.status in ${history})))) )`, [accountId ?? null]);
     await client.query(`update creator_application_reminders r set state='needs-review',due_at=null,snoozed_until=null,revision=r.revision+1,updated_at=now()
       from opportunities o where o.id=r.opportunity_id and ($1::text is null or r.account_id=$1) and r.state='scheduled' and r.kind='deadline'
       and (o.publication_state<>'published' or o.deadline_date is null or o.deadline_kind not in ('fixed','exact'))`, [accountId ?? null]);
@@ -108,21 +123,35 @@ export async function tickCreatorReminders(accountId?: string) {
       and r.due_at >= coalesce(o.deadline_time,((o.deadline_date+1)::timestamp at time zone coalesce(o.deadline_timezone,r.timezone)))`, [accountId ?? null]);
     const deferred = await deferRemindersInQuietHours(client, accountId);
     const due = await client.query(`select r.*,o.title as application_title,t.status as application_status,o.deadline_date < (now() at time zone r.timezone)::date as deadline_passed,
-      coalesce(r.snoozed_until,r.due_at) as effective_due,coalesce(p.in_app_enabled and p.reminder_enabled,false) as allowed
+      coalesce(r.snoozed_until,r.due_at) as effective_due,coalesce(p.in_app_enabled and p.reminder_enabled,false) as allowed,
+      case when exists(select 1 from pg_timezone_names z where z.name=to_jsonb(p)->>'timezone') then to_jsonb(p)->>'timezone' else r.timezone end as account_timezone
       from creator_application_reminders r join opportunities o on o.id=r.opportunity_id
       join tracked_opportunities t on t.account_id=r.account_id and t.opportunity_id=r.opportunity_id
       left join notification_preferences p on p.account_id=r.account_id
       where ($1::text is null or r.account_id=$1) and r.state='scheduled' and coalesce(r.snoozed_until,r.due_at)<=now()
       order by coalesce(r.snoozed_until,r.due_at) for update of r skip locked limit 100`, [accountId ?? null]);
-    let delivered = 0;
+    let delivered = 0, capped = 0;
+    const budgets = new Map<string, number>();
     for (const r of due.rows) {
       let sent=false;
+      const inboxKind = reminderInboxKind(r.kind);
+      if (r.allowed && (DAILY_CAPPED_NOTICE_KINDS as readonly string[]).includes(inboxKind)) {
+        // Fee-tier and milestone notices share the creator's daily cap; over
+        // the cap they wait for the next local morning instead of piling up.
+        const left = budgets.get(r.account_id) ?? await dailyNoticeBudget(client, r.account_id, r.account_timezone);
+        if (left <= 0) {
+          await client.query(`update creator_application_reminders set snoozed_until=(((now() at time zone $2)::date+1)+time '09:00') at time zone $2,revision=revision+1,updated_at=now() where id=$1`, [r.id, r.account_timezone]);
+          budgets.set(r.account_id, 0); capped += 1;
+          continue;
+        }
+        budgets.set(r.account_id, left - 1);
+      }
       if (r.allowed) {
-        const isLateDeadline = r.kind === 'deadline' && r.deadline_passed;
+        const isLateDeadline = (r.kind === 'deadline' || r.kind === 'deadline-day') && r.deadline_passed;
         if (!isLateDeadline) {
           const href = `/tracker?view=${r.kind === 'response' ? 'awaiting' : 'saved'}&application=${encodeURIComponent(r.opportunity_id)}`;
           const inserted = await client.query(`insert into creator_inbox_alerts(id,account_id,opportunity_id,kind,title,body,reason,dedupe_key,delivery_eligibility,action_href,reminder_id)
-            values($1,$2,$3,$4,$5,$6,$7,$8,'in-app',$9,$10) on conflict do nothing returning id`, [randomUUID(), r.account_id, r.opportunity_id, r.kind === 'response' ? 'response-overdue' : 'deadline-reminder', r.title, r.application_title, 'You scheduled this reminder.', `application-reminder:${r.id}:${new Date(r.effective_due).toISOString()}`, href, r.id]);
+            values($1,$2,$3,$4,$5,$6,$7,$8,'in-app',$9,$10) on conflict do nothing returning id`, [randomUUID(), r.account_id, r.opportunity_id, inboxKind, r.title, reminderNoticeBody(r.application_title), reminderNoticeReason(r.kind, r.subject_id), reminderNoticeDedupeKey(r), href, r.id]);
           sent=Boolean(inserted.rowCount);delivered += inserted.rowCount ?? 0;
         }
       }
@@ -131,7 +160,7 @@ export async function tickCreatorReminders(accountId?: string) {
         last_delivered_at=case when $2 then now() else last_delivered_at end,revision=revision+1,updated_at=now() where id=$1`, [r.id, sent, !r.allowed]);
     }
     await client.query('commit');
-    return { processed: due.rowCount ?? 0, delivered, deferred };
+    return { processed: due.rowCount ?? 0, delivered, deferred, capped };
   } catch (e) { await client.query('rollback'); throw e; }
   finally { client.release(); }
 }
