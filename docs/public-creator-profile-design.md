@@ -176,7 +176,48 @@ read, so no database migration is needed.
 - Not covered without a database: the live `/@handle`, CV and share image
   routes. Their components are covered through the design-system routes.
 
+### Connections: messages, Follow and Invite to apply (October 2026)
+
+- **Get in touch** opens a message form (name, email, topic, message). It
+  goes to the creator's profile inbox and a notification email; the
+  creator's address is never shown. Per-sender limits (three a day to one
+  creator, ten in all) use a keyed hash of the sender's address, and a
+  hidden honeypot field is accepted and silently dropped.
+- **Follow** is for signed-in accounts; signed-out visitors go to login and
+  come back. Creators see followers, and the creators they follow, in the
+  inbox.
+- **Invite to apply** appears only for organization owners and managers. It
+  lists the organization's own open, published calls; the server re-checks
+  that on every invitation. One invitation per creator and call. The
+  organization isn't told when a creator declines.
+- **Profile inbox** (`/profile/inbox`, `ProfileInbox`): Messages,
+  Invitations, Followers and Following tabs, with read, archive, reply by
+  email, Not for me and Unfollow.
+- Creators can switch messages and invitations off in About and contact.
+  With messages off, a public email (if any) is the Get in touch button.
+- Storage: migration `0088_creator_profile_connections.sql`
+  (`creator_profile_follows`, `creator_inquiries`, `creator_invitations`)
+  and `PostgresCreatorConnectionsRepository`.
+
+### Confirmed on every read
+
+Published snapshots keep each Confirmed entry's decision id in storage
+only. The profile, CV, share image and public creators API re-check it
+against the owner's current acceptances on every read and strip it before
+output, so a withdrawn decision stops showing as Confirmed without a
+republish.
+
+### Live validation
+
+`e2e/creator-profile-relational.spec.ts` runs in the relational suite. It
+signs up real accounts, claims a handle, publishes, and covers `/@handle`,
+its CV and share image, messages, Follow, Invite to apply, the inbox and
+Confirmed re-verification against Postgres. Running it found and fixed a
+self-redirect on `/@handle` (Next passes the segment as `%40handle`) and a
+500 when claiming a handle in relational mode.
+
 ### Known gaps
 
-No inquiry inbox, Follow, or Invite to apply yet. A Confirmed entry in a
-published snapshot is re-verified only when the creator publishes again.
+Followers aren't notified when a creator publishes. Replies go through the
+creator's own email client, not Missa. The Paper theme was retired; stored
+Paper profiles render as Sage.

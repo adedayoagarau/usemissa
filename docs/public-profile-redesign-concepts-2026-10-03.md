@@ -173,6 +173,8 @@ Confirmed / Linked / Added provenance; Press; About and contact; printable CV;
 social share image; the studio with live desktop/phone preview, section
 ordering and visibility, suggestions and publishing.
 
-Not built yet: inquiry inbox, Follow, Invite to apply, Editions and Booking
-kit add-ons, Collaborators, and view analytics. Retiring the Paper theme is
-still an open question.
+Since built: the inquiry inbox, Follow, Invite to apply, Confirmed
+re-verification on every read, and retiring the Paper theme.
+
+Not built yet: Editions and Booking kit add-ons, Collaborators, view
+analytics, and notifying followers when a creator publishes.
