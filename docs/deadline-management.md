@@ -107,3 +107,7 @@ Saving a call to the Tracker adds default reminders and, on plans with start-by 
 - Ingestion reads fee tiers, entry fees and stated close times with deterministic rules first. The existing model extraction call also returns tiers, stages and the close time and zone, with no extra call (`packages/ingestion-v2/src/modelDeadlineFacts.ts` validates them strictly). Where the rules found something, the rules win: a model tier that agrees only fills a missing fee or time, a model tier that contradicts them is ignored, and a model tier never moves the final close. Model facts are saved as probable. Stages come only from the model and are saved with source `ingestion`. They never replace admin or organization stages, and a run without stages leaves the saved ones in place.
 - Crunch weeks show matching open calls only for creators who have chosen disciplines or genres. Busy weeks count tracked deadlines only.
 - The calendar feed writes exact closes in UTC (`DTSTART:...Z`), so every client shows them at the right local time. The organisation's time zone is named in the event description, not in the event time. Date-only closes stay all-day (`VALUE=DATE`).
+
+## Rollout log
+
+- 2026-10-04: #182 merged. The creator worker on Railway deployed from `main`. Production Neon was backed up as `backup-main-2026-10-04-before-0088-deadline-management`, then 0088 was applied after a rehearsal on a production copy.
