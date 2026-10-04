@@ -3,7 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 
 test.beforeEach(async ({ page }) => {
   const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  const signup = await page.request.post('/api/auth/signup', { data: { email: `season-${suffix}@example.com`, password: 'correct-horse-battery', displayName: 'Season User' } });
+  const signup = await page.request.post('/api/auth/signup', { data: { email: `season-${suffix}@example.com`, password: 'correct-horse-battery', givenName: 'Season', familyName: 'User' } });
   expect(signup.status()).toBe(201);
   const sessionCookie = signup.headers()['set-cookie']?.match(/(?:^|,\s*)missa_session=([^;]+)/)?.[1];
   expect(sessionCookie).toBeTruthy();

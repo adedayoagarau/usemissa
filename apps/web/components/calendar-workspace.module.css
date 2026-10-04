@@ -242,7 +242,7 @@
   cursor: not-allowed;
   opacity: 1;
 }
-.connectionModal { width:min(760px, 100%); padding:0; overflow:hidden; }
+.connectionModal { width:min(760px, 100%); max-height:calc(100dvh - 36px); padding:0; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; }
 .connectionHeader { position:relative; min-height:210px; align-items:flex-start; padding:30px; overflow:hidden; }
 .connectionHeader > img { object-fit:cover; object-position:center 58%; }
 .connectionHeader::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg, color-mix(in srgb, var(--background) 96%, transparent) 0 44%, color-mix(in srgb, var(--background) 65%, transparent) 75%, color-mix(in srgb, var(--background) 24%, transparent)); }
