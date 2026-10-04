@@ -2,9 +2,11 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import {
   creatorCommandEnvelope,
+  creatorPoolFor,
   CreatorCalendarError,
 } from "@missa/radar-adapters";
 import { getSessionAccount } from "@/lib/auth";
+import { EMPTY_CALENDAR_FACTS, loadCalendarFacts } from "@/lib/calendar-facts";
 import { CreatorReminderRepository } from "@/lib/creator-reminders";
 import { listGoals } from "@/lib/goal-engine";
 import { getCreatorCalendarRepository } from "@/lib/creatorRepositories";
@@ -36,7 +38,18 @@ export async function GET(request: Request) {
       new CreatorReminderRepository().list(session.account.id),
       listGoals(session.account.id),
     ]);
-    return json({ events, tracker, reminders, goals });
+    // Stages, tier closes, plan steps and predicted cycles are additions: when
+    // they cannot load, the calendar still shows everything else.
+    const facts = process.env.DATABASE_URL
+      ? await loadCalendarFacts(
+          creatorPoolFor(process.env.DATABASE_URL),
+          session.account.id,
+          tracker,
+          from,
+          to,
+        ).catch(() => EMPTY_CALENDAR_FACTS)
+      : EMPTY_CALENDAR_FACTS;
+    return json({ events, tracker, reminders, goals, ...facts });
   } catch {
     return json({ error: "Calendar could not load. Try again." }, 503);
   }
