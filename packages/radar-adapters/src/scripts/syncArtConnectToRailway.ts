@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import pg from "pg";
 import type { ArtConnectProfile } from "./artConnectParser.js";
+import { firstOwnUrl } from "@missa/radar-engine";
 
 // Load DATABASE_URL
 const possibleEnvFiles = [
@@ -38,12 +39,13 @@ console.log(`\n=== FAST VECTORIZED SYNC: ${orgs.length} ARTCONNECT ORGANIZATIONS
 
 // Pre-normalize websites
 const enrichedOrgs = orgs.map(o => {
-  const websiteUrl = o.website || o.artconnectUrl;
-  let normWebsite = "artconnect.com";
+  // ArtConnect's profile page is never recorded as the organization's website.
+  const websiteUrl = firstOwnUrl(o.website) ?? null;
+  let normWebsite: string | null = null;
   try {
-    normWebsite = new URL(websiteUrl).hostname.replace(/^www\./, "");
+    if (websiteUrl) normWebsite = new URL(websiteUrl).hostname.replace(/^www\./, "");
   } catch {}
-  return { ...o, normWebsite };
+  return { ...o, website: websiteUrl, normWebsite };
 });
 
 const { Client } = pg;
@@ -83,7 +85,7 @@ try {
         (x->>'profileKind'),
         substring(regexp_replace(lower(x->>'slug'), '[^a-z0-9]', '_', 'g') from 1 for 48),
         (x->>'name'),
-        coalesce(x->>'website', x->>'artconnectUrl'),
+        x->>'website',
         (x->>'normWebsite'),
         'confirmed',
         1.0,

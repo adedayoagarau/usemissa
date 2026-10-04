@@ -41,7 +41,7 @@ export {
   missaPostgresPoolConfig,
   type MissaPoolRole,
 } from "./postgresPoolPolicy.js";
-export { canonicalOpportunityIsPublic, canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
+export { canonicalListedOpportunityPredicate, canonicalOpportunityIsPublic, canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
 export {
   creatorRelationalAuthorityEnabled,
   creatorRelationalAuthorityHealth,

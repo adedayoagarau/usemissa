@@ -3,6 +3,7 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 import {
   canonicalOpportunityIsPublic,
+  canonicalListedOpportunityPredicate,
   canonicalPublicOpportunityPredicate,
 } from "../src/canonicalOpportunityProjection.js";
 
@@ -45,3 +46,14 @@ test("all creator Opportunity enrichments recheck the canonical public boundary"
   const projection = readFileSync(new URL("../../src/postgresStore.ts", import.meta.url), "utf8");
   assert.match(projection, /opportunity\.publication_state='published'/);
 });
+
+test("discovery requires a link to the organization itself, never only a platform's", () => {
+  const predicate = canonicalListedOpportunityPredicate("o");
+  assert.ok(predicate.startsWith("(o.publication_state = 'published' and ("), predicate);
+  assert.match(predicate, /o\.guidelines_url !~\* '\^https\?:/);
+  assert.match(predicate, /submittable\\\.com/);
+  assert.match(predicate, /artconnect\\\.com/);
+  assert.match(predicate, /gary_profiles listed_profile/);
+  assert.throws(() => canonicalListedOpportunityPredicate("o; drop table opportunities"));
+});
+

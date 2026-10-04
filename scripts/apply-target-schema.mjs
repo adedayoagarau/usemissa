@@ -120,6 +120,7 @@ const migrationFiles = [
   '0090_decision_ledger.sql',
   '0091_honest_defaults.sql',
   '0092_misattributed_artconnect_host.sql',
+  '0093_intermediary_publication_hold.sql',
 ];
 
 

@@ -51,36 +51,17 @@ async function run() {
   }
 
   console.log("\n=== 2. FIXING PLACEHOLDER ORGANIZATION NAMES ===");
-  // org_artconn_3e4e244173eda2fe is ArtConnect's profile of the artist "b",
-  // not ArtConnect. Renaming it presented a directory as the host of every
-  // listing wrongly bound to it (migration 0092), so it keeps its own name.
-  await pool.query(`
-    update radar_organizations
-    set data = jsonb_set(data, '{name}', '"Curatorspace"')
-    where id = 'org_cs_cc7819055cde3194';
-  `);
+  // Placeholder organizations are never renamed after a listing platform
+  // (ArtConnect, CuratorSpace, Playbill, Res Artis): that would present the
+  // platform as the host of every call attached to them (migration 0092). A
+  // listing with no known host keeps an unknown host until it is resolved.
   await pool.query(`
     update radar_organizations
     set data = jsonb_set(data, '{name}', '"Grants.gov"')
     where id = 'org_ca710b2a574f332244a38b51';
   `);
-  await pool.query(`
-    update radar_organizations
-    set data = jsonb_set(data, '{name}', '"Playbill"')
-    where id = 'org_1162b98e05ac040cc54a7409';
-  `);
-  await pool.query(`
-    update radar_organizations
-    set data = jsonb_set(data, '{name}', '"Res Artis"')
-    where id = 'org_c5bce68f0d3831e0575b5823';
-  `);
-  await pool.query(`
-    update radar_organizations
-    set data = jsonb_set(data, '{name}', '"Curatorspace"')
-    where id = 'org_cs_33e75ff09dd601bb';
-  `);
 
-  console.log("Updated core placeholder organizations (' ' -> 'Curatorspace', etc.).");
+  console.log("Updated core placeholder organizations.");
 
   console.log("\n=== 3. CONTEXTUALIZING GENERIC TITLES ===");
   const genericUpdates = [

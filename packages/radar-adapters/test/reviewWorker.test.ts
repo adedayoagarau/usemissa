@@ -247,3 +247,20 @@ test("content wait defaults to 24 hours and accepts an override", () => {
   assert.equal(contentWaitHours("nonsense"), 24);
   assert.equal(contentWaitHours("-1"), 24);
 });
+
+test("a listing whose only links are a platform's is held until the organization's own link is known", () => {
+  const submittableOnly = candidate({
+    title: "Outskirts Literary Journal Poetry Submissions",
+    organizationName: "Outskirts Literary Journal",
+    guidelinesUrl: "https://outskirts.submittable.com/submit/347653/poetry",
+    submissionUrl: "https://outskirts.submittable.com/submit/347653/poetry",
+    organizationProfileWebsiteUrl: "https://outskirts.submittable.com",
+  });
+  const held = editorialReview(submittableOnly, "auto");
+  assert.equal(held.decision, "needs-human");
+  assert.ok(held.holdReasons.includes("missing-organization-link"));
+
+  const withWebsite = editorialReview({ ...submittableOnly, organizationDataWebsiteUrl: "https://outskirtsjournal.com" }, "auto");
+  assert.equal(withWebsite.decision, "publish");
+  assert.deepEqual(withWebsite.holdReasons, []);
+});

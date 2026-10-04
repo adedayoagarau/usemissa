@@ -10,7 +10,7 @@ import { syncProfileOpportunityLinks } from "./profileIdentityMatcher.js";
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from "./workerTelemetry.js";
 import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 import { ensureOpportunityVersionHead } from "./recommendation/versionHead.js";
-import { assessOpportunityRelevance, normalizeOpportunityTitle, type OpportunityTitleResult } from "@missa/radar-engine";
+import { assessOpportunityRelevance, firstOwnUrl, normalizeOpportunityTitle, organizationLinkFor, type OpportunityTitleResult } from "@missa/radar-engine";
 
 type ReviewDecision = "publish" | "needs-human" | "suppress" | "error";
 type ReviewJob = { id: string; opportunityId: string; inputVersion: string };
@@ -27,14 +27,17 @@ export type ReviewPublishMode = "auto" | "queue";
  * Why a record the rubric would otherwise publish is not published.
  * `missing-organization` keeps the record unpublished until enrichment links
  * an organization, which re-queues the review automatically.
+ * `missing-organization-link` keeps it unpublished while its only link is an
+ * intermediary's; held reviews are re-checked on a schedule.
  * `possible-non-opportunity` suppresses the record. `held-for-editorial-review`
  * only occurs in the opt-in `queue` mode.
  */
-export type ReviewHoldReason = "held-for-editorial-review" | "missing-organization" | "possible-non-opportunity";
+export type ReviewHoldReason = "held-for-editorial-review" | "missing-organization" | "missing-organization-link" | "possible-non-opportunity";
 
 export const REVIEW_HOLD_REASON_TEXT: Record<ReviewHoldReason, string> = {
   "held-for-editorial-review": "Passed every automated gate; held for editorial approval because RADAR_REVIEW_PUBLISH_MODE is queue.",
   "missing-organization": "The title is a generic or bare label and no organization is known, so it cannot identify the opportunity. It stays unpublished until an organization is linked.",
+  "missing-organization-link": "The only known link is a listing platform's (Submittable, ArtConnect, …). It stays unpublished until the organization's own page or website is known.",
   "possible-non-opportunity": "The title looks like a blog post, newsletter, site page, promotional artist interview, or non-creative program rather than an opportunity, so it was suppressed.",
 };
 
@@ -139,6 +142,9 @@ export type ReviewCandidate = PublicationRubricCandidate & {
   callProfilePresent: boolean;
   /** Confirmed organization or linked profile name, when one is known. */
   organizationName?: string | null;
+  /** The organization's recorded websites (profile, then organization record). */
+  organizationProfileWebsiteUrl?: string | null;
+  organizationDataWebsiteUrl?: string | null;
 };
 
 async function candidate(pool: Pool, opportunityId: string): Promise<ReviewCandidate | null> {
@@ -157,7 +163,9 @@ async function candidate(pool: Pool, opportunityId: string): Promise<ReviewCandi
        profile.reading_period_kind as "readingPeriodKind",
        coalesce(enrichment.evidence_count, 0)::int as "evidenceCount",
        coalesce(nullif(btrim(organization.data->>'name'), ''), nullif(btrim(organization_profile.name), ''), linked_profile.name,
-         nullif(btrim(evidence.destination_reconciliation->>'organizerName'), '')) as "organizationName"
+         nullif(btrim(evidence.destination_reconciliation->>'organizerName'), '')) as "organizationName",
+       organization_profile.website_url as "organizationProfileWebsiteUrl",
+       coalesce(organization.data->>'website_url', organization.data->>'websiteUrl', organization.data->>'website') as "organizationDataWebsiteUrl"
      from opportunities o
      left join opportunity_sources s on s.id = o.source_id
      left join radar_review_jobs job on job.opportunity_id = o.id
@@ -227,6 +235,12 @@ export function editorialReview(candidate: ReviewCandidate, mode: ReviewPublishM
   const rubric = reviewCandidate({ ...candidate, title: title.title });
   const holdReasons: ReviewHoldReason[] = [];
   if (title.needsOrganization) holdReasons.push("missing-organization");
+  const organizationLink = organizationLinkFor({
+    guidelinesUrl: candidate.guidelinesUrl ?? undefined,
+    submissionUrl: candidate.submissionUrl ?? undefined,
+    organizationWebsiteUrl: firstOwnUrl(candidate.organizationProfileWebsiteUrl, candidate.organizationDataWebsiteUrl),
+  });
+  if (!organizationLink) holdReasons.push("missing-organization-link");
   if (!relevance.relevant) holdReasons.push("possible-non-opportunity");
   let decision: EditorialReviewResult["decision"] = rubric.decision === "error" ? "needs-human" : rubric.decision;
   if (decision !== "suppress" && !relevance.relevant) {

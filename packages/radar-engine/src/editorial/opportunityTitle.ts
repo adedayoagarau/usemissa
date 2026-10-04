@@ -7,6 +7,8 @@
  * script, or words containing combining marks, are left exactly as written.
  */
 
+import { isIntermediaryName } from './intermediaries.js';
+
 export interface OpportunityTitleOptions {
   /** Confirmed organization name, when one is known. */
   organizationName?: string | null;
@@ -341,7 +343,7 @@ export function isUsableOrganizationName(name: string): boolean {
   if (/^(?:\S\s){3,}/.test(value)) return false;
   if (isGenericOpportunityLabel(value) && (wordTokens(value).length === 1 || CALL_WORD.test(value))) return false;
   const folded = fold(value).trim();
-  if (LISTING_PLATFORMS.has(folded)) return false;
+  if (LISTING_PLATFORMS.has(folded) || isIntermediaryName(value)) return false;
   if (/^\p{Lu}?[a-z]{12,}$/u.test(value)) {
     const rest = value.slice(1);
     if (/^the[a-z]{7,}$/i.test(value) || RUN_TOGETHER_PART.test(rest.slice(2))) return false;

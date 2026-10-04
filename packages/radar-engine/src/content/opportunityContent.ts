@@ -1,3 +1,5 @@
+import { isIntermediaryName } from '../editorial/intermediaries.js';
+
 export type OpportunityContentReviewStatus =
   | 'pending'
   | 'approved'
@@ -174,7 +176,8 @@ function synthesizeInsiderTips(type: string, isBlind = false): string[] {
 
 export function buildOpportunityContent(input: OpportunityContentBuildInput): OpportunityContent {
   const generatedAt = input.generatedAt ?? new Date().toISOString();
-  const organization = input.organizationName ?? 'This organization';
+  // A listing platform is never written up as the organization.
+  const organization = input.organizationName && !isIntermediaryName(input.organizationName) ? input.organizationName : 'This organization';
   const focus = [...new Set([input.discipline, ...input.genres].filter(Boolean))].slice(0, 3);
   const deadline = deadlineText(input.deadline);
   const fee = feeText(input.fee);

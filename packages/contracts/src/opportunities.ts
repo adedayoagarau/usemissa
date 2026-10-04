@@ -420,6 +420,7 @@ export const opportunityDetailResponseSchema =
     requiredMaterials: z.array(opportunityRequiredMaterialSchema).max(64),
     guidelinesUrl: httpUrlSchema.optional(),
     submissionUrl: httpUrlSchema.optional(),
+    organizationWebsiteUrl: httpUrlSchema.optional(),
     simultaneousAllowed: z.boolean().optional(),
     changes: z.array(opportunityChangeSchema).max(32),
     organizationSummary: z.string().trim().max(1000).optional(),

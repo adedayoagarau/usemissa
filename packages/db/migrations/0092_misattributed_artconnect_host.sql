@@ -16,11 +16,16 @@
 -- "ArtConnect". The profile identity matcher confirmed each link because the
 -- listing already named that profile as its organization.
 --
--- So every listing is detached from the profile and its derived program, and
--- the profile's host links are rejected, as are links that rest only on
--- sharing the artconnect.com host. The profile gets back the name ArtConnect
--- gave it. Every change to a listing or the profile is recorded in
--- data_decisions with the value it replaced, so it can be reviewed or undone.
+-- "b" was the worst case of a general fault: "Artis" matched every "Artist",
+-- "PHOTO" every "Photography", "LUX" "Flux", "CAS" "Showcase", "Su" "Summer".
+-- Only org_artconn_* hosts come from that bind (no other writer sets them), so
+-- each is kept only where the title names the organization as a whole phrase
+-- and the name is distinctive (two words or more, or one of six letters or
+-- more), as "Villa Medici 2027-2028 Fellowships" names Villa Medici. Every other
+-- one is detached, with its derived program and its host links, and so are
+-- links that rest only on sharing the artconnect.com host. "b" gets back the
+-- name ArtConnect gave it. Every change to a listing or the profile is recorded
+-- in data_decisions with the value it replaced, so it can be reviewed or undone.
 
 INSERT INTO "data_decisions" (
   "id", "subject_type", "subject_id", "field_name", "question_key",
@@ -56,19 +61,36 @@ INSERT INTO "data_decisions" (
 SELECT
   'dec_0092_host_' || md5(o."id"), 'opportunity', o."id", 'organization_id',
   'opportunity.host_organization', 1, 'value',
-  md5(o."id" || ':' || o."organization_id"),
-  'https://www.artconnect.com/hakeem', NULL, '{}'::jsonb, 'apply', 'live',
-  'heuristic', 'migration-0092', 'opportunity.host_organization@1', 'applied',
-  now(), o."organization_id"
+  md5(o."id" || ':' || o."organization_id"), NULL, NULL, '{}'::jsonb, 'apply',
+  'live', 'heuristic', 'migration-0092', 'opportunity.host_organization@1',
+  'applied', now(), o."organization_id"
 FROM "opportunities" o
-WHERE o."organization_id" = 'org_artconn_3e4e244173eda2fe'
+LEFT JOIN "gary_profiles" p ON p."id" = o."organization_id"
+LEFT JOIN "radar_organizations" org ON org."id" = o."organization_id"
+CROSS JOIN LATERAL (
+  SELECT btrim(coalesce(p."name", org."data"->>'name', '')) AS "name"
+) host
+WHERE o."organization_id" LIKE 'org\_artconn\_%'
+  AND NOT (
+    (array_length(regexp_split_to_array(host."name", '\s+'), 1) >= 2 OR length(host."name") >= 6)
+    AND lower(o."title") ~ (
+      '(^|[^[:alnum:]])'
+      || regexp_replace(lower(host."name"), '([.^$*+?()\[\]{}|\\-])', '\\\1', 'g')
+      || '($|[^[:alnum:]])'
+    )
+  )
 ON CONFLICT DO NOTHING;
 
-UPDATE "opportunities"
+UPDATE "opportunities" o
 SET "organization_id" = NULL, "updated_at" = now()
-WHERE "organization_id" = 'org_artconn_3e4e244173eda2fe';
+FROM "data_decisions" d
+WHERE d."question_key" = 'opportunity.host_organization'
+  AND d."decider" = 'migration-0092'
+  AND d."subject_id" = o."id"
+  AND o."organization_id" = d."applied_from";
 
--- program_id exists only where the legacy sync scripts added it.
+-- program_id exists only where the legacy sync scripts added it; the bind set
+-- prog_<hash> alongside org_artconn_<hash>.
 DO $$
 BEGIN
   IF EXISTS (
@@ -76,22 +98,29 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'opportunities'
       AND column_name = 'program_id'
   ) THEN
-    UPDATE "opportunities"
+    UPDATE "opportunities" o
     SET "program_id" = NULL, "updated_at" = now()
-    WHERE "program_id" = 'prog_3e4e244173eda2fe';
+    FROM "data_decisions" d
+    WHERE d."question_key" = 'opportunity.host_organization'
+      AND d."decider" = 'migration-0092'
+      AND d."subject_id" = o."id"
+      AND o."program_id" = 'prog_' || substring(d."applied_from" FROM 13);
   END IF;
 END $$;
 
--- The profile hosts nothing outside its own website. Its links name the
--- profile's host (hakeemb.com) as the match, so the listing URL is checked.
-UPDATE "opportunity_profile_links"
+-- The detached profile hosted none of these listings. Its links name the
+-- profile's own host as the match, so the decision, not the host, selects them.
+UPDATE "opportunity_profile_links" l
 SET "status" = 'rejected', "verified_at" = now(), "verified_until" = NULL,
-    "evidence_json" = "evidence_json"
+    "evidence_json" = l."evidence_json"
       || jsonb_build_object('retiredBy', 'migration-0092', 'retiredAt', now()),
     "updated_at" = now()
-WHERE "profile_id" = 'org_artconn_3e4e244173eda2fe'
-  AND "opportunity_url" !~* '^https?://(www\.)?hakeemb\.com(/|$)'
-  AND "status" <> 'rejected';
+FROM "data_decisions" d
+WHERE d."question_key" = 'opportunity.host_organization'
+  AND d."decider" = 'migration-0092'
+  AND d."subject_id" = l."opportunity_id"
+  AND l."profile_id" = d."applied_from"
+  AND l."status" <> 'rejected';
 
 -- With no organization, a detached listing shows its best confirmed profile
 -- link. A link matched only because the listing and the profile's page are
