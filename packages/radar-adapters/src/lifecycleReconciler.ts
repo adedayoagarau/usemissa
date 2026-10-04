@@ -1,6 +1,7 @@
 import { parseDate } from "@missa/radar-engine";
 import type { Pool } from "pg";
 import { parseDisallowForUserAgent } from "./sourcePolicy.js";
+import { confirmingContextFromEnv, confirmLifecycleEvidence, LIFECYCLE_DECISION_SCOPE, type ConfirmingContext } from "./confirmingDecisions.js";
 
 export const LIFECYCLE_CLASSIFIER_VERSION = "lifecycle-source-v15";
 export const DEFAULT_LIFECYCLE_BATCH_SIZE = 25;
@@ -16,6 +17,8 @@ export type LifecycleDecision = {
   deadlineDate?: string;
   deadlineKind?: "exact" | "rolling" | "year-round" | "seasonal" | "until-filled";
   seasonLabel?: string;
+  /** Set when a live Jev decision resolved what the regex classifier sent to review. */
+  decider?: "jev";
 };
 
 type LifecycleJob = {
@@ -36,6 +39,8 @@ export type LifecycleReconcilerOptions = {
   now?: Date;
   fetchPage?: (url: string) => Promise<LifecycleFetchResult>;
   logger?: Pick<Console, "info" | "warn">;
+  /** Jev lifecycle decisions; defaults to the environment (shadow unless DECISIONS_MODE_LIFECYCLE=live). */
+  confirming?: ConfirmingContext;
 };
 
 const CLOSED = /\b(?:submissions?|applications?|the call|this call)\s+(?:are|is|has)\s+(?:now\s+)?closed\b|\b(?:submissions?|applications?)\s+have\s+closed\b|\bnot currently accepting\b/i;
@@ -80,7 +85,7 @@ type LifecycleEvidenceContext = { title?: string; sourceUrl?: string };
 const AGGREGATE_TITLE = /^(?:next\s*(?:-|&gt;|→)*|artconnect page \d+|opportunities without fees|art contests|opportunities for artists in .+|[^,]+,\s*[A-Z]{2},\s*[^,]+)$/i;
 const AGGREGATE_PAGE_FURNITURE = /\brolling deadline\s+\d+\s+opportunities\b|\bsort:\s*deadline\s+soonest\b|\bpopular filters\b[\s\S]{0,240}\brolling deadline\b/i;
 
-function isAggregateLifecycleEvidence(text: string, context: LifecycleEvidenceContext): boolean {
+export function isAggregateLifecycleEvidence(text: string, context: LifecycleEvidenceContext): boolean {
   if (context.title && AGGREGATE_TITLE.test(context.title.trim())) return true;
   if (AGGREGATE_PAGE_FURNITURE.test(text)) return true;
   if (!context.sourceUrl) return false;
@@ -295,7 +300,7 @@ async function recordDecision(pool: Pool, job: LifecycleJob, sourceUrl: string, 
         (opportunity_id,source_url,fetched_at,source_date,classifier_version,decision,confidence,evidence_passage,
          proposed_status,proposed_open_date,proposed_deadline_date,proposed_deadline_kind,metadata)
       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb)
-  `, [job.opportunityId, sourceUrl, fetchedAt, sourceDate ? sourceDate.slice(0, 10) : null, LIFECYCLE_CLASSIFIER_VERSION, decision.decision, decision.confidence, decision.evidencePassage ?? null, decision.status ?? null, decision.openDate ?? null, decision.deadlineDate ?? null, decision.deadlineKind ?? null, JSON.stringify({ reason: decision.reason, ...(decision.seasonLabel ? { seasonLabel: decision.seasonLabel } : {}) })]);
+  `, [job.opportunityId, sourceUrl, fetchedAt, sourceDate ? sourceDate.slice(0, 10) : null, LIFECYCLE_CLASSIFIER_VERSION, decision.decision, decision.confidence, decision.evidencePassage ?? null, decision.status ?? null, decision.openDate ?? null, decision.deadlineDate ?? null, decision.deadlineKind ?? null, JSON.stringify({ reason: decision.reason, ...(decision.seasonLabel ? { seasonLabel: decision.seasonLabel } : {}), ...(decision.decider ? { decider: decision.decider } : {}) })]);
 
     if (decision.decision === "apply" && decision.confidence === "high" && decision.status) {
       await client.query(`
@@ -350,14 +355,25 @@ export async function runLifecycleReconcilerBatch(pool: Pool, options: Lifecycle
   const fetchPage = options.fetchPage ?? defaultFetchPage;
   const now = options.now ?? new Date();
   const totals = { claimed: jobs.length, applied: 0, review: 0, deferred: 0, retry: 0 };
+  const confirming = options.confirming ?? confirmingContextFromEnv(LIFECYCLE_DECISION_SCOPE, pool);
   for (const job of jobs) {
     let handled = false;
     for (const url of urlCandidates(job)) {
       const result = await fetchPage(url);
       if (result.status !== "ok") continue;
       const scopedText = scopeToOpportunity(result.text, job.title);
+      const evidenceContext = { title: job.title, sourceUrl: result.finalUrl ?? url };
+      // Shadow by default; live scope lifecycle may only resolve what the regex sends to review.
       const decision = scopedText
-        ? classifyLifecycleEvidence(scopedText, now, { title: job.title, sourceUrl: result.finalUrl ?? url })
+        ? await confirmLifecycleEvidence(confirming, {
+            opportunityId: job.opportunityId,
+            title: job.title,
+            sourceUrl: evidenceContext.sourceUrl,
+            text: scopedText,
+            now,
+            aggregate: isAggregateLifecycleEvidence(scopedText.slice(0, 500_000), evidenceContext),
+            classifierVersion: LIFECYCLE_CLASSIFIER_VERSION,
+          }, classifyLifecycleEvidence(scopedText, now, evidenceContext))
         : { decision: "review", confidence: "low", reason: "Large source page could not be scoped to this opportunity title." } satisfies LifecycleDecision;
       try {
         await recordDecision(pool, job, result.finalUrl ?? url, now, result.sourceDate, decision);
