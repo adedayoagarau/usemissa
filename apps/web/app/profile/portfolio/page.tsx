@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { CreatorShell } from "@/components/creator-shell";
-import { CreatorPortfolioStudio } from "@/components/creator-portfolio-studio";
+import { ProfileStudio } from "@/components/creator-profile/studio/profile-studio";
 import { creatorShellOrganizations } from "@/lib/creatorShellOrganizations";
 
 export const metadata = {
@@ -21,7 +21,10 @@ export default async function PortfolioSettingsPage() {
       organizations={organizations}
       isAdmin={session.account.isAdmin}
     >
-      <CreatorPortfolioStudio ownerId={session.account.id} initialName={session.account.displayName ?? ""} />
+      <ProfileStudio
+        ownerId={session.account.id}
+        initialName={session.account.displayName ?? ""}
+      />
     </CreatorShell>
   );
 }

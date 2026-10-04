@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { getSessionAccount } from "@/lib/auth";
 import { getCreatorProfileRepository } from "@/lib/creatorRepositories";
+import { verifiedOutcomes } from "@/lib/accepted-outcomes";
 import {
   portfolioSchema,
   portfolioMediaIds,
+  withServerProvenance,
 } from "@/lib/creator-portfolio-schema";
 import { portfolioRequestBody } from "@/lib/portfolio-request";
 export const dynamic = "force-dynamic";
@@ -87,9 +89,13 @@ export async function PUT(request: Request) {
         { error: "Some media does not belong to this account." },
         { status: 400 },
       );
+    // Creators can never mark their own credits as confirmed.
     const revision = await repo.writePortfolio(
       session.account.id,
-      parsed.data,
+      withServerProvenance(
+        parsed.data,
+        await verifiedOutcomes(session.account.id),
+      ),
       body.revision,
     );
     return NextResponse.json({ revision });

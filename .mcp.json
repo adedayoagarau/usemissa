@@ -6,6 +6,19 @@
       "headers": {
         "Authorization": "Bearer ${BETTER_DESIGN_API_KEY}"
       }
+    },
+    "telnyx": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/team-telnyx/telnyx-mcp-server.git@3f6a1173fec2b5bf3db4338384a9f7b00b8eaec8",
+        "telnyx-mcp-server",
+        "--tools",
+        "send_message,get_message,list_messaging_profiles,get_messaging_profile,list_phone_numbers,get_phone_number"
+      ],
+      "env": {
+        "TELNYX_API_KEY": "${TELNYX_API_KEY}"
+      }
     }
   }
 }

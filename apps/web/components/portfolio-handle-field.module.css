@@ -1,0 +1,21 @@
+/* Label/control and helper spacing follow the fixed relationship scale. */
+.handleField {
+  display: grid;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+.handleField label {
+  font-size: 14px;
+  font-weight: 600;
+}
+.handleField p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted-foreground);
+}
+.handleField strong {
+  color: var(--foreground);
+}
+.handleField input {
+  min-height: 44px;
+}

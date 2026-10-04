@@ -103,6 +103,7 @@ export const config = {
     "/my-submissions/:path*",
     "/plan/:path*",
     "/saved/:path*",
+    "/season/:path*",
     "/tracker/:path*",
     "/reviewer/:path*",
     "/submissions/:path*",

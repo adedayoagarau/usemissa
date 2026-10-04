@@ -1,4 +1,5 @@
 import {
+  creatorPoolFor,
   listChartNotes,
   readGrowthMetrics,
   readMonthlyMetrics,
@@ -6,6 +7,7 @@ import {
   readSiteFunnels,
   readSiteHealth,
   readSiteTraffic,
+  readSmsHealth,
   type ChartNote,
   type FunnelDefinition,
   type FunnelResult,
@@ -13,9 +15,11 @@ import {
   type MonthlyMetricsRow,
   type SiteHealthData,
   type SiteTrafficData,
+  type SmsHealthData,
 } from '@missa/radar-adapters';
 import { ANALYTICS_EVENT_NAMES, SERVER_ANALYTICS_EVENT_NAMES } from './analytics-contract';
 import { platformAnalyticsDatabaseUrl } from './platformAnalyticsDatabase';
+import { smsConfig } from './sms';
 
 export const PERIOD_OPTIONS = [7, 30, 90, 365] as const;
 export type PeriodDays = (typeof PERIOD_OPTIONS)[number];
@@ -134,6 +138,28 @@ const emptyHealth: SiteHealthData = { available: false, generatedAt: new Date(0)
 
 export async function getHealthPage(days: PeriodDays) {
   return load(emptyHealth, (url) => readSiteHealth(url, { days: Math.min(days, 90) }));
+}
+
+const emptySms: SmsHealthData = { available: false, days: 30, pause: { paused: false }, sent: 0, delivered: 0, failed: 0, skipped: 0, costs: [], optedIn: 0, optedOut: 0, recentProblems: [] };
+
+/**
+ * Text message delivery for the Health page. The SMS ledger lives in the
+ * application database, so this reads DATABASE_URL rather than the analytics
+ * binding. configured says whether Telnyx credentials are set.
+ */
+export async function getSmsHealth(days = 30): Promise<Loaded<SmsHealthData> & { configured: boolean }> {
+  const configured = smsConfig() !== null;
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) return { configured, available: false, reason: 'Text messages need the application database (DATABASE_URL).', data: emptySms };
+  try {
+    const data = await readSmsHealth(creatorPoolFor(connectionString), { days });
+    return data.available
+      ? { configured, available: true, data }
+      : { configured, available: false, reason: 'The text message tables are not deployed yet. Run migration 0087.', data };
+  } catch (error) {
+    console.error('Admin SMS read failed', error instanceof Error ? error.message : error);
+    return { configured, available: false, reason: 'Text message records could not be read right now.', data: emptySms };
+  }
 }
 
 export async function getMonthlyMetrics(months = 12): Promise<Loaded<{ available: boolean; rows: MonthlyMetricsRow[] }>> {

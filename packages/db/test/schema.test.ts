@@ -706,11 +706,35 @@ test("residency intelligence specs schema defines stipends, amenities, cohort, a
   assert.ok(resIntelConfig.indexes.some((i) => i.config.name === "idx_res_intel_acceptance"));
 });
 
+test("deadline management migration is registered and keeps reminders unique per subject", () => {
+  const targetSchema = readFileSync("../../scripts/apply-target-schema.mjs", "utf8");
+  assert.match(targetSchema, /'0088_deadline_management\.sql'/);
+  const migration = readFileSync("migrations/0088_deadline_management.sql", "utf8");
+  for (const table of [
+    "opportunity_deadline_tiers",
+    "opportunity_stages",
+    "opportunity_cycle_history",
+    "opportunity_cycle_forecasts",
+    "creator_obligations",
+    "creator_planning_preferences",
+    "opportunity_recurring_rules",
+    "creator_opportunity_alerts",
+  ]) {
+    assert.match(migration, new RegExp(`CREATE TABLE IF NOT EXISTS ${table} \\(`), table);
+  }
+  assert.match(migration, /creator_application_reminders_owner_subject_idx/);
+  assert.match(migration, /response_time_days = 45/);
+  assert.match(
+    migration,
+    /creator_calendar_events_purpose_check\s+CHECK \(purpose IN \([^)]*'plan-step', 'stage', 'tier-close', 'forecast'\)\)/,
+  );
+});
+
 test("target schema replay creates programme identity on opportunities", () => {
   const targetSchema = readFileSync("../../scripts/apply-target-schema.mjs", "utf8");
-  const migration = readFileSync("migrations/0086_opportunity_program_identity.sql", "utf8");
+  const migration = readFileSync("migrations/0090_opportunity_program_identity.sql", "utf8");
   assert.ok(
-    targetSchema.indexOf("'0086_opportunity_program_identity.sql'") > targetSchema.indexOf("'0085_editorial_intelligence_sources.sql'"),
+    targetSchema.indexOf("'0090_opportunity_program_identity.sql'") > targetSchema.indexOf("'0089_creator_profile_connections.sql'"),
   );
   assert.match(migration, /ADD COLUMN IF NOT EXISTS program_id text/);
   assert.match(migration, /ADD COLUMN IF NOT EXISTS edition_label text/);

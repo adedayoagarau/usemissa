@@ -8,6 +8,7 @@ import {
   Bell,
   Building2,
   CalendarDays,
+  CalendarRange,
   Inbox,
   ListOrdered,
   Menu,
@@ -38,6 +39,7 @@ const primary = [
   { href: "/goals", label: "Goals", icon: Target },
   { href: "/library", label: "Library", icon: Archive },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/season", label: "Season", icon: CalendarRange },
 ] as const;
 
 export type CreatorOrganization = { id: string; name: string };

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   claimUserHandle,
+  creatorCommandEnvelope,
   HANDLE_CLAIM_WINDOW_MESSAGE,
   HANDLE_RENAME_TOO_SOON_MESSAGE,
   HANDLE_UNAVAILABLE_MESSAGE,
@@ -10,6 +11,7 @@ import {
   renameUserHandle,
 } from "@missa/radar-adapters";
 import { getSessionAccount } from "@/lib/auth";
+import { getCreatorProfileRepository } from "@/lib/creatorRepositories";
 import { getEngine, persistRadar } from "@/lib/engine";
 
 export async function GET(request: Request) {
@@ -69,6 +71,23 @@ export async function POST(request: Request) {
         { error: "Handle claim completed without a claim timestamp." },
         { status: 500 },
       );
+    // The claim has committed; recording the milestone must never undo it.
+    const repository = getCreatorProfileRepository();
+    if (repository) {
+      await repository
+        .recordMotion(
+          creatorCommandEnvelope(
+            session.account.id,
+            "profile.motion.record",
+            "profile-motion:handle-claimed",
+            { event: "handle-claimed" },
+            1,
+          ),
+          "handle-claimed",
+        )
+        .catch(() => undefined);
+      return NextResponse.json(result, { status: 201 });
+    }
     const engine = await getEngine();
     const motion = engine.markProfileMotion(
       session.account.userId,

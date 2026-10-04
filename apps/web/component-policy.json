@@ -60,7 +60,16 @@
     "composition.admin-publication-review": {
       "semantic": "PlatformAdminPublicationReview",
       "implementation": "apps/web/components/platform-admin-publication-review.tsx",
-      "composition": ["Button", "Field", "Input", "Textarea", "AlertDialog", "Alert", "Empty", "Sonner"],
+      "composition": [
+        "Button",
+        "Field",
+        "Input",
+        "Textarea",
+        "AlertDialog",
+        "Alert",
+        "Empty",
+        "Sonner"
+      ],
       "boundary": "Platform-admin decision queue for review-agent holds. Approve publishes through the database publication gates; block suppresses. Hold reasons are plain text, not badges."
     },
     "composition.application-tracker-preview": {
@@ -94,42 +103,69 @@
       "appearance": "asynchronous-directory-search-with-manual-name-fallback"
     },
     "choice.creator-theme": {
-      "semantic": "CreatorPortfolioStudio",
+      "semantic": "ProfileStudio",
       "base": "Button",
       "appearance": "single-pressed-curated-theme-card"
     },
     "composition.creator-profile-editor": {
-      "semantic": "CreatorPortfolioStudio",
+      "semantic": "ProfileStudio",
+      "implementation": "components/creator-profile/studio/profile-studio.tsx",
       "composition": [
         "Button",
         "Input",
         "Textarea",
-        "Combobox",
+        "NativeSelect",
+        "Switch",
         "Dialog",
-        "PortfolioLinkPreview"
+        "Combobox",
+        "PortfolioLinkPreview",
+        "PortfolioHandleField",
+        "ProvenanceBadge"
       ],
-      "appearance": "full-page-independent-sections-with-live-preview",
-      "mediaSelection": "labelled-button-trigger-with-replace-remove-and-preview"
+      "appearance": "section-rail-focused-editor-and-device-scaled-live-preview",
+      "mediaSelection": "labelled-button-trigger-with-replace-remove-and-preview",
+      "reorder": "explicit-move-up-down-buttons"
     },
     "composition.creator-portfolio": {
-      "semantic": "CreatorPortfolioStudio",
+      "semantic": "PublicCreatorProfile",
+      "implementation": "components/creator-profile/public-profile.tsx",
       "composition": [
         "Button",
-        "Input",
-        "Textarea",
         "Dialog",
-        "InstitutionSocialLinks"
+        "ProvenanceBadge",
+        "AvailabilityChip",
+        "ProfileConnect"
       ],
-      "appearance": "split-cover-asymmetric-archive-with-unified-project-viewer-and-separate-owner-settings",
-      "variants": ["public-profile", "embedded-marketing-sample"],
-      "embeddedBoundary": "Optional embedded sample removes nested main/h1 and contact/credit modules; retains actual work filters and reading/image disclosures. No ownerId, account loading or writes. Explicit fictional sample label remains visible."
+      "appearance": "craft-lens-composition-with-portrait-plate-or-type-hero",
+      "variants": ["page", "preview", "embedded"],
+      "lenses": [
+        "mixed",
+        "writing",
+        "visual",
+        "sound",
+        "stage",
+        "film",
+        "design"
+      ],
+      "embeddedBoundary": "Embedded samples show identity and selected work only, keep the fictional sample label, and disable contact actions."
+    },
+    "composition.creator-profile-inbox": {
+      "semantic": "ProfileInbox",
+      "implementation": "components/creator-profile/profile-inbox.tsx",
+      "composition": ["Tabs", "Button", "Empty", "Link"],
+      "appearance": "tabbed-messages-invitations-followers-following-with-archive",
+      "boundary": "Senders never see the creator's address unless the creator replies by email; organizations are not told when an invitation is declined."
     },
     "composition.auth-shell": {
       "semantic": "AuthShell",
       "implementation": "apps/web/components/auth-shell.tsx",
       "composition": ["MissaWordmark", "Link", "Image"],
       "appearance": "white-form-column-with-inset-campaign-photograph-and-editorial-caption",
-      "usedBy": ["AuthForm (/login, /signup)", "/forgot-password", "/reset-password"],
+      "usedBy": [
+        "AuthForm (/login, /signup)",
+        "/forgot-password",
+        "/reset-password"
+      ],
       "boundary": "Frame only: owns the main landmark, wordmark, legal links, and decorative photograph (hidden below 1024px and from assistive technology). Authentication, verification, and first-save logic stay in AuthForm. Form controls use Field, Input, InputOTP, Alert, Spinner, and Button; the Google action uses SocialAuthButton."
     },
     "composition.creator-onboarding": {
@@ -158,7 +194,7 @@
       "boundary": "Never infer an external application status or submission from a link open."
     },
     "filter.creator-work-format": {
-      "semantic": "CreatorPortfolioStudio",
+      "semantic": "PublicCreatorProfile",
       "base": "Button",
       "variant": "ghost",
       "appearance": "pressed-format-filter"
@@ -617,7 +653,7 @@
         "TableRow",
         "TableHead",
         "TableCell",
-        "CreatorPortfolioStudio",
+        "PublicCreatorProfile",
         "GoalSubmissionProgress",
         "Switch",
         "Button",
@@ -768,12 +804,16 @@
     "UrgencyBadge": {
       "base": "Badge",
       "studioCandidates": ["badge-05", "badge-10"],
-      "motion": "never"
+      "motion": "never",
+      "implementation": "components/missa/deadline-badges.tsx",
+      "boundary": "Time pressure only: ochre within seven days of a close, a calm neutral otherwise. Text is customer language such as 'Closes in 6 days'. Never pulses."
     },
     "FeeBadge": {
       "base": "Badge",
       "studioCandidates": ["badge-02", "badge-04"],
-      "motion": "never"
+      "motion": "never",
+      "implementation": "components/missa/deadline-badges.tsx",
+      "boundary": "An entry fee or 'No fee'. Renders nothing when the fee is unknown."
     },
     "AuthorityBadge": {
       "base": "Badge",
@@ -793,7 +833,9 @@
     "ProcessBadge": {
       "base": "Badge",
       "studioCandidates": ["badge-16", "badge-17", "badge-20", "badge-21"],
-      "motion": "indicator-while-confirmed-active"
+      "motion": "indicator-while-confirmed-active",
+      "implementation": "components/missa/deadline-badges.tsx",
+      "boundary": "Background process state (syncing, synced, waiting, not synced). A failed state is always paired with a recovery action."
     },
     "CountBadge": {
       "base": "Badge",
@@ -852,11 +894,46 @@
       "motion": "never",
       "boundary": "The creator's plan page: current plan and Free allowance, the Plus offer with prices read from Stripe, and one action (upgrade, or manage in Stripe). Status messages use role=status; only a failed checkout or portal request uses role=alert."
     },
+    "TextRemindersSettings": {
+      "base": "Switch",
+      "implementation": "components/missa/text-reminders-settings.tsx",
+      "motion": "never",
+      "composition": ["Field", "PhoneInput", "InputOTP", "Switch", "Button"],
+      "boundary": "Plus-only text (SMS) reminder settings inside notification preferences: Free creators see what Plus adds and a link to /plan; Plus creators add a number with PhoneInput, confirm it with a six-digit InputOTP code, then use one Switch to turn texts on or off, change or remove the number. Every change saves immediately through /api/me/sms; the plan is plain text, not a Badge. Always states 'Reply STOP to end. Msg & data rates may apply.' Status uses role=status; only failures use role=alert."
+    },
     "CookieConsent": {
       "base": "Button",
       "implementation": "components/missa/cookie-consent.tsx",
       "motion": "never",
       "boundary": "Permission question for optional analytics. Non-modal region above the page, one decision per visitor, no analytics client or first-party event ledger runs before an explicit Accept. The installed Alert is not used because it hard-codes role=alert."
+    },
+    "ProvenanceBadge": {
+      "base": "Badge",
+      "disclosure": "Popover",
+      "implementation": "components/missa/provenance-badge.tsx",
+      "states": ["confirmed", "linked", "added"],
+      "rule": "Confirmed only when the server matched a Missa acceptance; the popover always explains the source in plain language.",
+      "motion": "popover-transition-only"
+    },
+    "AvailabilityChip": {
+      "base": "Badge",
+      "implementation": "components/missa/availability-chip.tsx",
+      "states": ["open", "from", "booked"],
+      "rule": "A 'from' entry whose date has passed reads as open; meaning never depends on colour alone.",
+      "motion": "never"
+    },
+    "DateConfidenceBadge": {
+      "base": "Badge",
+      "studioCandidates": ["badge-05", "badge-10"],
+      "motion": "never",
+      "implementation": "components/missa/deadline-badges.tsx",
+      "boundary": "Whether a date is confirmed by the organization's source, predicted by Missa from past cycles (dotted underline, never presented as the organization's), changed since first recorded, or needs checking. The title carries the plain-language explanation."
+    },
+    "UpgradeHint": {
+      "base": "Button",
+      "implementation": "components/missa/upgrade-hint.tsx",
+      "motion": "never",
+      "boundary": "One calm line naming what a plan adds and a link to /plan. Says what the creator gets, never what they lose; no alarm colour, no modal."
     }
   },
   "productCompositions": {
@@ -923,7 +1000,10 @@
       "WorkflowBadge",
       "RowActions",
       "ResponsiveLabelledRows"
-    ]
+    ],
+    "CreatorCv": ["EditorialTypography", "PrintStyles", "ProvenanceMark"],
+    "ProfileConnect": ["Button", "Dialog", "Field", "Input", "NativeSelect", "Textarea"],
+    "ProfileInbox": ["Tabs", "Button", "Empty", "Link"]
   },
   "motion": {
     "requiresChangingState": true,
