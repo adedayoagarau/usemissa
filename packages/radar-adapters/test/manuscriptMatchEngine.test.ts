@@ -110,6 +110,90 @@ describe("ManuscriptMatchEngine", () => {
   });
 });
 
+describe("ManuscriptMatchEngine evidence", () => {
+  const engine = new ManuscriptMatchEngine(null);
+
+  it("leaves a magazine with no recorded facts at the neutral score with no reasons", () => {
+    const [card] = engine.scoreRows(
+      [{ profile_id: "bare", name: "Unrecorded Quarterly", prestige_tier: "unranked" }],
+      input,
+    );
+    assert.equal(card.matchScore, 50);
+    assert.deepEqual(card.reasons, []);
+    assert.equal(card.specs.allowsSimultaneous, null);
+    assert.equal(card.recognition.pushcart, null);
+    assert.equal(card.recognition.prizeSelections, 0);
+  });
+
+  it("uses the index's cited facts when the detailed tables are empty", () => {
+    const [card] = engine.scoreRows(
+      [
+        {
+          profile_id: "indexed",
+          name: "Indexed Review",
+          rk_pay_kind: "cash",
+          rk_charges_fee: false,
+          rk_simultaneous: "allowed",
+          rk_response_band: "under_3_months",
+          rk_debut_friendly: true,
+        },
+      ],
+      { ...input, feeTolerance: "free_only" },
+    );
+    assert.equal(card.compensation.paysContributors, true);
+    assert.equal(card.compensation.submissionFeeCents, 0);
+    assert.equal(card.specs.allowsSimultaneous, true);
+    assert.equal(card.telemetry.responseBand, "under_3_months");
+    assert.ok(card.reasons.includes("Free to submit"));
+    assert.ok(card.reasons.includes("Pays contributors"));
+    assert.ok(card.reasons.includes("Publishes debut writers"));
+    assert.ok(card.matchScore > 50);
+  });
+
+  it("marks down a recorded conflict with the brief", () => {
+    const [card] = engine.scoreRows(
+      [{ profile_id: "strict", name: "Strict Review", rk_simultaneous: "forbidden", rk_charges_fee: true }],
+      { ...input, feeTolerance: "free_only" },
+    );
+    assert.equal(card.specs.allowsSimultaneous, false);
+    assert.ok(card.matchScore < 50);
+  });
+
+  it("credits prize records and names writers from the brief it has published", () => {
+    const [card] = engine.scoreRows(
+      [
+        {
+          profile_id: "prized",
+          name: "Prized Review",
+          pushcart_rank: 12,
+          pushcart_edition: 2025,
+          pushcart_genre: "fiction",
+          anthology_count: 3,
+          anthology_authors: ["Carmen Maria Machado", "Someone Else"],
+          anthology_recent: JSON.stringify([
+            { anthology: "Best Microfiction", award_year: 2025, author_name: "Someone Else", piece_title: "Piece" },
+          ]),
+        },
+      ],
+      input,
+    );
+    assert.deepEqual(card.recognition.pushcart, { rank: 12, genre: "fiction", edition: 2025 });
+    assert.equal(card.recognition.anthologySelections, 3);
+    assert.deepEqual(card.recognition.publishedComps, ["Carmen Maria Machado"]);
+    assert.equal(card.reasons[0], "Published Carmen Maria Machado");
+    assert.equal(card.recognition.recent[0].writer, "Someone Else");
+  });
+
+  it("counts stories that prize anthologies picked from the magazine", () => {
+    const [card] = engine.scoreRows(
+      [{ profile_id: "ny", name: "The New Yorker" }],
+      input,
+    );
+    assert.ok(card.recognition.prizeSelections > 10);
+    assert.ok(card.recognition.recent.length > 0);
+  });
+});
+
 describe("ManuscriptMatchEngine name search", () => {
   function recordingPool(rows: unknown[]) {
     const calls: Array<{ sql: string; params: unknown[] }> = [];

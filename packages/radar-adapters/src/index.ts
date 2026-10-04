@@ -689,6 +689,7 @@ export {
 export * from "./ranking/live/sources.js";
 export * from "./ranking/live/feeFacts.js";
 export * from "./ranking/live/indexUpdate.js";
+export * from "./literary/index.js";
 
 export {
   PostgresMagazineRankingRepository,
