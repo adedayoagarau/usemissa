@@ -84,6 +84,8 @@ test("column mappings only produce values the database accepts", () => {
     "inferred",
     "rolling",
     "until-filled",
+    "year-round",
+    "seasonal",
     "conflicting",
     "unknown",
   ];

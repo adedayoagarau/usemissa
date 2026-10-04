@@ -118,7 +118,9 @@ export const readingRightsAcquired = defineQuestion({
 
 export const readingDeadlineKind = defineQuestion({
   key: "opportunity.reading.deadline_kind",
-  version: 1,
+  // v2: tiered windows (early, regular, final) on one page are one exact
+  // deadline, matching how ingestion models deadline tiers (migration 0088).
+  version: 2,
   subjectType: SUBJECT,
   fieldName: "deadline_kind",
   dataClass: "public",
@@ -126,7 +128,8 @@ export const readingDeadlineKind = defineQuestion({
     type: "choice",
     instructions: "What kind of deadline does the page state for this call?",
     criteria: {
-      exact: "The page states one specific closing date for this call.",
+      exact:
+        "The page states a specific closing date for this call. Dated entry windows on the same page (early, regular, late or final deadlines) still count as exact.",
       rolling:
         "The page states submissions are accepted year-round or on a rolling basis, with no closing date.",
       "until-filled":
@@ -134,7 +137,7 @@ export const readingDeadlineKind = defineQuestion({
       "reading-period":
         "The page states recurring reading periods (for example, open every March) rather than one closing date.",
       conflicting:
-        "The page gives two or more different closing dates for the same call.",
+        "The page gives two or more different closing dates for the same deadline and they contradict each other. Separate early, regular, late or final windows are not a conflict.",
       unstated: "The page gives no deadline or reading period.",
     },
   },

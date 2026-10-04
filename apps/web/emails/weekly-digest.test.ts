@@ -71,6 +71,67 @@ test('weekly digest escapes opportunity text', () => {
   assert.ok(!rendered.html.includes('<script>alert(1)</script>'));
 });
 
+const planning = {
+  upcoming: [
+    { kind: 'obligation' as const, id: 'obl_1', opportunityId: 'opp_saved', title: 'Saved Fellowship', label: 'Ask for references', dueOn: '2026-10-05' },
+    { kind: 'deadline' as const, id: 'opp_saved', opportunityId: 'opp_saved', title: 'Saved Fellowship', label: 'Application deadline', dueOn: '2026-10-07' },
+    { kind: 'obligation' as const, id: 'obl_2', opportunityId: 'opp_b', title: 'Second Grant', label: 'Final draft', dueOn: '2026-10-12' },
+    { kind: 'deadline' as const, id: 'opp_b', opportunityId: 'opp_b', title: 'Second Grant', label: 'Application deadline', dueOn: '2026-10-19' },
+  ],
+  applications: [
+    { opportunityId: 'opp_saved', title: 'Saved Fellowship', deadline: '2026-10-07' },
+    { opportunityId: 'opp_b', title: 'Second Grant', deadline: '2026-10-19' },
+    { opportunityId: 'opp_c', title: 'Third Prize', deadline: '2026-10-21' },
+    { opportunityId: 'opp_d', title: 'Fourth Residency', deadline: '2026-10-23' },
+    { opportunityId: 'opp_e', title: 'Spring Call', deadline: '2027-01-20' },
+    { opportunityId: 'opp_f', title: 'Rolling Call', deadline: null },
+  ],
+};
+
+test("This week's three lists the next three dates across saved applications", () => {
+  const rendered = renderWeeklyDigestEmail({
+    accountId: 'acc_1',
+    email: 'creator@example.com',
+    now,
+    digest: { newForYou: [], closingSoon: [], yourDeadlines: [item('opp_saved', 'Saved Fellowship', 'You saved this', '2026-10-07')], planning },
+  });
+  assert.ok(rendered.html.includes('This week&#39;s three') || rendered.html.includes("This week's three"));
+  assert.ok(rendered.html.includes('Ask for references'));
+  assert.ok(rendered.html.includes('Final draft'));
+  assert.ok(!rendered.html.includes('2026-10-19'), 'the fourth date is left out');
+  assert.ok(rendered.text.includes("THIS WEEK'S THREE"));
+  assert.ok(rendered.text.includes('- Tomorrow: Ask for references, Saved Fellowship'));
+  assert.ok(rendered.text.includes('- Wednesday: Saved Fellowship closes'));
+  assert.ok(rendered.html.indexOf('This week') < rendered.html.indexOf('In your Tracker'), 'the plan comes first');
+});
+
+test('the season section counts triage buckets and names busy weeks', () => {
+  const rendered = renderWeeklyDigestEmail({
+    accountId: 'acc_1',
+    email: 'creator@example.com',
+    now,
+    digest: { newForYou: [], closingSoon: [], yourDeadlines: [], planning },
+  });
+  assert.ok(rendered.text.includes('YOUR SEASON'));
+  assert.ok(rendered.text.includes('- Act now: 4 applications'));
+  assert.ok(rendered.text.includes('- Plan ahead: 1 application'));
+  assert.ok(rendered.text.includes('- Rolling or undated: 1 application'));
+  assert.ok(rendered.text.includes('- Busy: Week of 19 October, 3 deadlines'));
+  assert.equal(rendered.subject, 'The Sunday List: your week ahead');
+  assert.ok(rendered.text.includes('Next up: Ask for references tomorrow.'));
+});
+
+test('without saved applications the planning sections are left out', () => {
+  const rendered = renderWeeklyDigestEmail({
+    accountId: 'acc_1',
+    email: 'creator@example.com',
+    now,
+    digest: { newForYou: [item('opp_a', 'First New Call')], closingSoon: [], yourDeadlines: [] },
+  });
+  assert.ok(!rendered.text.includes("THIS WEEK'S THREE"));
+  assert.ok(!rendered.text.includes('YOUR SEASON'));
+});
+
 test('every card is one link to its opportunity and Forest text survives Gmail dark mode', () => {
   const rendered = renderWeeklyDigestEmail({
     accountId: 'acc_1',
