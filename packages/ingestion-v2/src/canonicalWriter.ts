@@ -6,7 +6,7 @@ import type { PublisherReview } from "./publisher.js";
 import type { CandidatePublisherReview } from "./publisher.js";
 import type { ShadowArtifact } from "./execution.js";
 import { writeWithDeepSeek } from "./deepseekWriter.js";
-import { finalCloseDeadline, resolveCurrentDeadline, resolveDeadlineClock, resolveDeadlineTiers, resolveEntryFee, type ResolvedDeadlineTier } from "./deadline.js";
+import { finalCloseDeadline, resolveCurrentDeadline, resolveDeadlineClock, resolveDeadlineTiers, resolveEntryFee, resolveStages, type ResolvedDeadlineTier, type ResolvedStage } from "./deadline.js";
 import { isAggregateOpportunityPage } from "./identity.js";
 
 function field(fields: ExtractionResult["fields"], name: string): string | undefined {
@@ -231,6 +231,7 @@ async function writeApprovedEvidence(
   const deadlineKind = resolvedDeadline.kind;
   const clock = resolveDeadlineClock(extraction.fields, resolvedDeadline);
   const fee = resolveEntryFee(extraction.fields, tiers, resolvedDeadline);
+  const stages = resolveStages(extraction.fields, resolvedDeadline);
   const type = field(extraction.fields, "opportunityType") ?? "other";
   const searchDocument = [title, organization, type, field(extraction.fields, "description")].filter(Boolean).join(" ").toLowerCase();
   // Review-mode ingestion can extract an organization name, but only a human
@@ -275,6 +276,7 @@ async function writeApprovedEvidence(
     );
     await writeDeadlineWindows(client, opportunityId, url, resolvedDeadline, tiers);
     await writeDeadlineTiers(client, opportunityId, url, tiers);
+    await writeStages(client, opportunityId, url, stages);
     await writeTaxonomyAssignments(client, source, canonicalSourceId, opportunityId, extraction);
     const content = await writeWithDeepSeek({ title, organization, type, deadline, authoritativeUrl: url, fields: extraction.fields });
     await client.query(
@@ -377,26 +379,134 @@ async function writeTaxonomyAssignments(client: PoolClient, source: SourceDefini
 }
 
 /**
+ * Pair each incoming row with the stored row it replaces, so a re-run keeps
+ * the stored ids that plan steps and reminders point at. The same kind and
+ * date first, then the same kind and label, then the first unclaimed stored
+ * row of the same kind (a moved date). Mirrors `matchStoredRows` in
+ * `@missa/radar-adapters` (opportunityDeadlineFactsWriter.ts), which this
+ * package cannot import.
+ */
+export function matchIngestionRows(
+  stored: ReadonlyArray<{ id: string; kind: string; date: string; label: string }>,
+  incoming: ReadonlyArray<{ kind: string; date: string; label: string }>,
+): Array<string | undefined> {
+  const claimed = new Set<string>();
+  const result: Array<string | undefined> = incoming.map(() => undefined);
+  const claim = (test: (row: (typeof stored)[number], candidate: (typeof incoming)[number]) => boolean) => {
+    incoming.forEach((candidate, index) => {
+      if (result[index] !== undefined) return;
+      const found = stored.find((row) => !claimed.has(row.id) && test(row, candidate));
+      if (!found) return;
+      claimed.add(found.id);
+      result[index] = found.id;
+    });
+  };
+  claim((row, candidate) => row.kind === candidate.kind && row.date === candidate.date);
+  claim((row, candidate) => row.kind === candidate.kind && row.label === candidate.label);
+  claim((row, candidate) => row.kind === candidate.kind);
+  return result;
+}
+
+/**
  * Replace the ingestion-sourced fee tiers for one opportunity. Tiers entered
  * by an admin or the organization are authoritative: when any exist, the
- * ingestion tiers are cleared and not rewritten. Skips cleanly before the
+ * ingestion tiers are cleared and not rewritten. Matching ingestion rows are
+ * updated in place so their ids survive a re-run. Skips cleanly before the
  * deadline-management migration is applied.
  */
 export async function writeDeadlineTiers(client: Pool | PoolClient, opportunityId: string, sourceUrl: string, tiers: ResolvedDeadlineTier[]): Promise<number> {
   const ready = await client.query<{ ready: boolean }>("select to_regclass('public.opportunity_deadline_tiers') is not null as ready");
   if (!ready.rows[0]?.ready) return 0;
-  await client.query("delete from opportunity_deadline_tiers where opportunity_id=$1 and source='ingestion'", [opportunityId]);
-  if (!tiers.length) return 0;
-  const curated = await client.query("select 1 from opportunity_deadline_tiers where opportunity_id=$1 and source<>'ingestion' limit 1", [opportunityId]);
-  if (curated.rowCount) return 0;
+  const curated = tiers.length
+    ? await client.query("select 1 from opportunity_deadline_tiers where opportunity_id=$1 and source<>'ingestion' limit 1", [opportunityId])
+    : { rowCount: 0 };
+  if (!tiers.length || curated.rowCount) {
+    await client.query("delete from opportunity_deadline_tiers where opportunity_id=$1 and source='ingestion'", [opportunityId]);
+    return 0;
+  }
+  const stored = await client.query<{ id: string; tier: string; closes_on: string; label: string }>(
+    "select id::text, tier, closes_on::text, label from opportunity_deadline_tiers where opportunity_id=$1 and source='ingestion' order by closes_on, position",
+    [opportunityId],
+  );
+  const ids = matchIngestionRows(
+    stored.rows.map((row) => ({ id: row.id, kind: row.tier, date: row.closes_on, label: row.label })),
+    tiers.map((tier) => ({ kind: tier.tier, date: tier.closesOn, label: tier.label })),
+  );
+  await client.query(
+    "delete from opportunity_deadline_tiers where opportunity_id=$1 and source='ingestion' and not (id::text = any($2::text[]))",
+    [opportunityId, ids.filter((id): id is string => Boolean(id))],
+  );
   for (const [position, tier] of tiers.entries()) {
-    await client.query(
-      `insert into opportunity_deadline_tiers (opportunity_id,tier,label,closes_on,closes_at,timezone,fee_cents,fee_currency,position,confidence,source,source_url,updated_at)
-       values ($1,$2,$3,$4::date,$5::timestamptz,$6,$7,$8,$9,$10,'ingestion',$11,now())`,
-      [opportunityId, tier.tier, tier.label, tier.closesOn, tier.closesAt ?? null, tier.timezone ?? null, tier.feeCents ?? null, tier.feeCents ? tier.feeCurrency ?? null : null, position, tier.confidence, sourceUrl],
-    );
+    const values = [opportunityId, tier.tier, tier.label, tier.closesOn, tier.closesAt ?? null, tier.timezone ?? null, tier.feeCents ?? null, tier.feeCents ? tier.feeCurrency ?? null : null, position, tier.confidence, sourceUrl];
+    const id = ids[position];
+    if (id) {
+      await client.query(
+        `update opportunity_deadline_tiers
+            set tier=$2,label=$3,closes_on=$4::date,closes_at=$5::timestamptz,timezone=$6,fee_cents=$7,fee_currency=$8,position=$9,confidence=$10,source_url=$11,updated_at=now()
+          where opportunity_id=$1 and source='ingestion' and id::text=$12`,
+        [...values, id],
+      );
+    } else {
+      await client.query(
+        `insert into opportunity_deadline_tiers (opportunity_id,tier,label,closes_on,closes_at,timezone,fee_cents,fee_currency,position,confidence,source,source_url,updated_at)
+         values ($1,$2,$3,$4::date,$5::timestamptz,$6,$7,$8,$9,$10,'ingestion',$11,now())`,
+        values,
+      );
+    }
   }
   return tiers.length;
+}
+
+/**
+ * Replace the ingestion-sourced stages for one opportunity. Only rows with
+ * source 'ingestion' are ever changed; admin and organization stages are
+ * authoritative, so when any exist the ingestion stages are cleared and not
+ * rewritten. Matching ingestion rows are updated in place so plan steps
+ * anchored to a stage keep their anchor. An empty list leaves the stored
+ * ingestion stages as they are: stages come only from model extraction,
+ * and a run where the model was unavailable or silent is not evidence that
+ * a stage was withdrawn. Skips cleanly before the deadline-management
+ * migration is applied.
+ */
+export async function writeStages(client: Pool | PoolClient, opportunityId: string, sourceUrl: string, stages: ResolvedStage[]): Promise<number> {
+  const ready = await client.query<{ ready: boolean }>("select to_regclass('public.opportunity_stages') is not null as ready");
+  if (!ready.rows[0]?.ready || !stages.length) return 0;
+  const curated = await client.query("select 1 from opportunity_stages where opportunity_id=$1 and source<>'ingestion' limit 1", [opportunityId]);
+  if (curated.rowCount) {
+    await client.query("delete from opportunity_stages where opportunity_id=$1 and source='ingestion'", [opportunityId]);
+    return 0;
+  }
+  const stored = await client.query<{ id: string; kind: string; due_on: string; label: string }>(
+    "select id::text, kind, due_on::text, label from opportunity_stages where opportunity_id=$1 and source='ingestion' order by due_on, position",
+    [opportunityId],
+  );
+  const ids = matchIngestionRows(
+    stored.rows.map((row) => ({ id: row.id, kind: row.kind, date: row.due_on, label: row.label })),
+    stages.map((stage) => ({ kind: stage.kind, date: stage.dueOn, label: stage.label })),
+  );
+  await client.query(
+    "delete from opportunity_stages where opportunity_id=$1 and source='ingestion' and not (id::text = any($2::text[]))",
+    [opportunityId, ids.filter((id): id is string => Boolean(id))],
+  );
+  for (const [position, stage] of stages.entries()) {
+    const values = [opportunityId, stage.kind, stage.label, stage.dueOn, position, stage.confidence, sourceUrl];
+    const id = ids[position];
+    if (id) {
+      await client.query(
+        `update opportunity_stages
+            set kind=$2,label=$3,due_on=$4::date,due_at=null,timezone=null,position=$5,confidence=$6,source_url=$7,updated_at=now()
+          where opportunity_id=$1 and source='ingestion' and id::text=$8`,
+        [...values, id],
+      );
+    } else {
+      await client.query(
+        `insert into opportunity_stages (opportunity_id,kind,label,due_on,position,confidence,source,source_url,updated_at)
+         values ($1,$2,$3,$4::date,$5,$6,'ingestion',$7,now())`,
+        values,
+      );
+    }
+  }
+  return stages.length;
 }
 
 async function writeDeadlineWindows(client: PoolClient, opportunityId: string, sourceUrl: string, resolved: ReturnType<typeof resolveCurrentDeadline>, tiers: ResolvedDeadlineTier[] = []): Promise<void> {

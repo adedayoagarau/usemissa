@@ -1,5 +1,5 @@
 import type { ExtractionResult } from "./contracts.js";
-import { parseFee, zonedInstant, type DeadlineTierKind, type ParsedFee, type TextDeadlineClock, type TextDeadlineTier } from "./deadlineDetails.js";
+import { parseFee, zonedInstant, type DeadlineTierKind, type ExtractedStage, type OpportunityStageKind, type ParsedFee, type TextDeadlineClock, type TextDeadlineTier } from "./deadlineDetails.js";
 
 export interface ResolvedDeadline {
   date: string | null;
@@ -137,11 +137,57 @@ function clockValue(value: unknown): TextDeadlineClock | undefined {
   return typeof candidate.date === "string" && typeof candidate.time === "string" && typeof candidate.timezone === "string" ? candidate as TextDeadlineClock : undefined;
 }
 
+const MODEL_METHOD = "deepseek-json-shadow";
+
+function isModelField(field: ExtractionResult["fields"][number]): boolean {
+  return field.provenance.method === MODEL_METHOD;
+}
+
+function resolvedTier(tier: TextDeadlineTier, closesOn: string, confidence: number): ResolvedDeadlineTier {
+  const closesAt = tier.clock ? zonedInstant(closesOn, tier.clock.time, tier.clock.timezone) : undefined;
+  return {
+    tier: tier.tier,
+    label: tier.label,
+    closesOn,
+    ...(closesAt && tier.clock ? { closesAt, timezone: tier.clock.timezone } : {}),
+    ...(tier.fee?.status === "paid" && tier.fee.cents !== undefined ? { feeCents: tier.fee.cents, feeCurrency: tier.fee.currency } : {}),
+    ...(tier.fee?.status === "no-fee" ? { feeCents: 0 } : {}),
+    confidence: confidence >= CONFIRMED_CONFIDENCE ? "confirmed" : "probable",
+  };
+}
+
+/** Every date the deterministic rules read as a deadline or a tier close. */
+function deterministicDeadlineDates(fields: ExtractionResult["fields"]): string[] {
+  return fields.flatMap((field) => {
+    if (isModelField(field)) return [];
+    if (field.fieldName === "deadline") {
+      const date = explicitDate(typeof field.normalizedValue === "string" ? field.normalizedValue : field.rawValue ?? "");
+      return date ? [date] : [];
+    }
+    if (field.fieldName === "deadlineTier") {
+      const tier = tierValue(field.normalizedValue);
+      const date = tier ? explicitDate(tier.date) : undefined;
+      return date ? [date] : [];
+    }
+    return [];
+  });
+}
+
 /**
  * Phased windows (early bird, regular, final) for the current cycle. Tiers
  * are returned only when the page names at least two distinct dates; a single
  * labelled date is just the deadline. Tiers from more than a year before the
  * resolved deadline belong to an earlier cycle and are dropped.
+ *
+ * Deterministic tiers are read first and always win. A model tier is merged
+ * only when it does not contradict them:
+ * - same tier and date as a deterministic tier: they agree, the deterministic
+ *   tier is kept, and the model only fills a fee or close time it lacks;
+ * - same tier on another date, or another tier on the same date: a conflict,
+ *   so the deterministic tier is kept and nothing new is recorded;
+ * - a new tier and date: added as probable, unless it closes after every
+ *   deterministic deadline date, because the final close (the stored
+ *   deadline) never moves on model evidence alone.
  */
 export function resolveDeadlineTiers(
   fields: ExtractionResult["fields"],
@@ -152,26 +198,98 @@ export function resolveDeadlineTiers(
   earliest.setUTCFullYear(earliest.getUTCFullYear() - 1);
   const floor = earliest.toISOString().slice(0, 10);
   const byKey = new Map<string, ResolvedDeadlineTier>();
+  const modelTiers: Array<{ tier: TextDeadlineTier; closesOn: string; confidence: number }> = [];
   for (const field of fields) {
     if (field.fieldName !== "deadlineTier") continue;
     const tier = tierValue(field.normalizedValue);
     const closesOn = tier ? explicitDate(tier.date) : undefined;
     if (!tier || !closesOn || closesOn < floor) continue;
+    if (isModelField(field)) {
+      modelTiers.push({ tier, closesOn, confidence: field.confidence });
+      continue;
+    }
     const key = `${tier.tier}|${closesOn}`;
     if (byKey.has(key)) continue;
-    const closesAt = tier.clock ? zonedInstant(closesOn, tier.clock.time, tier.clock.timezone) : undefined;
-    byKey.set(key, {
-      tier: tier.tier,
-      label: tier.label,
-      closesOn,
-      ...(closesAt && tier.clock ? { closesAt, timezone: tier.clock.timezone } : {}),
-      ...(tier.fee?.status === "paid" && tier.fee.cents !== undefined ? { feeCents: tier.fee.cents, feeCurrency: tier.fee.currency } : {}),
-      ...(tier.fee?.status === "no-fee" ? { feeCents: 0 } : {}),
-      confidence: field.confidence >= CONFIRMED_CONFIDENCE ? "confirmed" : "probable",
-    });
+    byKey.set(key, resolvedTier(tier, closesOn, field.confidence));
+  }
+  const deterministicDates = deterministicDeadlineDates(fields);
+  const ceiling = deterministicDates.length
+    ? deterministicDates.reduce((latest, date) => (date > latest ? date : latest))
+    : resolved.date;
+  const deterministic = [...byKey.values()];
+  for (const { tier, closesOn, confidence } of modelTiers) {
+    const agreeing = deterministic.find((candidate) => candidate.tier === tier.tier && candidate.closesOn === closesOn);
+    if (agreeing) {
+      const model = resolvedTier(tier, closesOn, confidence);
+      if (agreeing.feeCents === undefined && model.feeCents !== undefined) {
+        agreeing.feeCents = model.feeCents;
+        if (model.feeCurrency) agreeing.feeCurrency = model.feeCurrency;
+      }
+      if (!agreeing.closesAt && model.closesAt && model.timezone) {
+        agreeing.closesAt = model.closesAt;
+        agreeing.timezone = model.timezone;
+      }
+      continue;
+    }
+    const conflicting = deterministic.some((candidate) => (candidate.tier === tier.tier && tier.tier !== "other") || candidate.closesOn === closesOn);
+    if (conflicting || closesOn > ceiling) continue;
+    if ([...byKey.values()].some((candidate) => candidate.closesOn === closesOn)) continue;
+    byKey.set(`${tier.tier}|${closesOn}`, resolvedTier(tier, closesOn, Math.min(confidence, CONFIRMED_CONFIDENCE - 0.01)));
   }
   const tiers = [...byKey.values()].sort((a, b) => a.closesOn.localeCompare(b.closesOn));
   return new Set(tiers.map((tier) => tier.closesOn)).size >= 2 ? tiers : [];
+}
+
+export interface ResolvedStage {
+  kind: OpportunityStageKind;
+  label: string;
+  dueOn: string;
+  confidence: "confirmed" | "probable";
+}
+
+function stageValue(value: unknown): ExtractedStage | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const candidate = value as Partial<ExtractedStage>;
+  return typeof candidate.kind === "string" && typeof candidate.label === "string" && typeof candidate.dueOn === "string" ? candidate as ExtractedStage : undefined;
+}
+
+/** The most stages one call keeps, matching the admin and organization editors. */
+const MAX_STAGES = 12;
+
+/**
+ * Dated stages of the current cycle (letter of intent, shortlist,
+ * notification and so on). Only extraction proposes stages today, so there
+ * is no deterministic evidence to merge, and model stages stay probable.
+ * Stages are kept only within the current cycle: from a year before the
+ * resolved deadline to two years after it, or around today for a call
+ * without an exact date. A conflicting deadline yields no stages.
+ */
+export function resolveStages(
+  fields: ExtractionResult["fields"],
+  resolved: ResolvedDeadline,
+  now = new Date(),
+): ResolvedStage[] {
+  if (resolved.conflict) return [];
+  const anchor = resolved.date ?? now.toISOString().slice(0, 10);
+  const shift = (years: number) => {
+    const date = new Date(`${anchor}T00:00:00Z`);
+    date.setUTCFullYear(date.getUTCFullYear() + years);
+    return date.toISOString().slice(0, 10);
+  };
+  const floor = shift(-1);
+  const ceiling = shift(2);
+  const byKey = new Map<string, ResolvedStage>();
+  for (const field of fields) {
+    if (field.fieldName !== "deadlineStage") continue;
+    const stage = stageValue(field.normalizedValue);
+    const dueOn = stage ? explicitDate(stage.dueOn) : undefined;
+    if (!stage || !dueOn || dueOn < floor || dueOn > ceiling) continue;
+    const key = `${stage.kind}|${dueOn}`;
+    if (byKey.has(key)) continue;
+    const confirmed = field.confidence >= CONFIRMED_CONFIDENCE && !isModelField(field);
+    byKey.set(key, { kind: stage.kind, label: stage.label, dueOn, confidence: confirmed ? "confirmed" : "probable" });
+  }
+  return [...byKey.values()].sort((a, b) => a.dueOn.localeCompare(b.dueOn)).slice(0, MAX_STAGES);
 }
 
 /**
@@ -190,14 +308,15 @@ export function finalCloseDeadline(resolved: ResolvedDeadline, tiers: ResolvedDe
 /**
  * The close time for the resolved deadline date, only when every stated time
  * for that date agrees on one time and zone. Disagreement is ambiguous and
- * yields nothing.
+ * yields nothing. Deterministic times are preferred over model times.
  */
 export function resolveDeadlineClock(
   fields: ExtractionResult["fields"],
   resolved: ResolvedDeadline,
 ): ResolvedDeadlineClock | undefined {
   if (resolved.conflict || !resolved.date) return undefined;
-  const candidates = new Map<string, { time: string; timezone: string }>();
+  const deterministic = new Map<string, { time: string; timezone: string }>();
+  const model = new Map<string, { time: string; timezone: string }>();
   for (const field of fields) {
     let clock: TextDeadlineClock | undefined;
     if (field.fieldName === "deadlineClock") clock = clockValue(field.normalizedValue);
@@ -206,8 +325,11 @@ export function resolveDeadlineClock(
       clock = tier?.clock ? { date: tier.date, ...tier.clock } : undefined;
     }
     if (!clock || explicitDate(clock.date) !== resolved.date) continue;
-    candidates.set(`${clock.time}|${clock.timezone}`, { time: clock.time, timezone: clock.timezone });
+    (isModelField(field) ? model : deterministic).set(`${clock.time}|${clock.timezone}`, { time: clock.time, timezone: clock.timezone });
   }
+  // A deterministic time always wins; a model time that disagrees with it is
+  // ignored. The model's time is used only when the rules found none.
+  const candidates = deterministic.size ? deterministic : model;
   if (candidates.size !== 1) return undefined;
   const clock = [...candidates.values()][0]!;
   const closesAt = zonedInstant(resolved.date, clock.time, clock.timezone);
