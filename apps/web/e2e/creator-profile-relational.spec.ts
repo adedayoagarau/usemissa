@@ -72,6 +72,45 @@ async function saveAndPublish(
   expect(published.status(), await published.text()).toBe(200);
 }
 
+// Relational specs share one database. Remove every fixture this spec seeds,
+// so later specs that read "the first open opportunity" still see their own.
+test.afterAll(async () => {
+  const client = db();
+  await client.connect();
+  try {
+    await client.query("set session_replication_role = replica");
+    await client.query("delete from decisions where id=$1", [`dec-${run}`]);
+    await client.query("delete from works where id=$1", [`work-${run}`]);
+    await client.query("delete from submissions where id=$1", [`sub-${run}`]);
+    await client.query("delete from submission_paths where id=$1", [
+      `path-${run}`,
+    ]);
+    await client.query("delete from open_calls where id=$1", [`call-${run}`]);
+    await client.query("delete from programs where id=$1", [`prog-${run}`]);
+    await client.query("delete from entities where id=$1", [`ent-${run}`]);
+    await client.query(
+      "delete from creator_invitations where organization_id=$1",
+      [`org-${run}`],
+    );
+    await client.query("delete from opportunities where id = any($1::text[])", [
+      [`open-${run}`, `closed-${run}`],
+    ]);
+    await client.query("delete from opportunity_sources where id=$1", [
+      `src-${run}`,
+    ]);
+    await client.query(
+      "delete from radar_memberships where organization_id=$1",
+      [`org-${run}`],
+    );
+    await client.query("delete from radar_organizations where id=$1", [
+      `org-${run}`,
+    ]);
+    await client.query("set session_replication_role = origin");
+  } finally {
+    await client.end();
+  }
+});
+
 test("a published profile takes messages, follows and invitations, and re-checks Confirmed on every read", async ({
   browser,
 }) => {
