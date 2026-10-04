@@ -3,6 +3,7 @@ import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 import type { TickReport } from "@missa/radar-engine";
 import type { RadarEngine } from "@missa/radar-engine";
 import { createProductionEngine } from "./productionEngine.js";
+import { logOperationsUsage } from "./operationsDecisions.js";
 import { finishSourceRun, finishWorkerRun, heartbeatWorkerRun, readWorkerRunLifecycle, startSourceRun, startWorkerRun } from "./workerTelemetry.js";
 import { processPlatformAgentControlRequests } from "./platformAdminFoundations.js";
 import { reconcileExpiredOpportunitiesInDatabase } from "./databaseReconciliation.js";
@@ -155,6 +156,7 @@ export async function runRadarWorkerTick(
       opportunitiesUpdated: report.opportunitiesUpdated.length,
       duplicatesMerged: report.duplicatesMerged,
     }));
+    logOperationsUsage(production.decisionUsage, logger);
     await heartbeatWorkerRun(production.pool, options.workerRunId, "radar-worker", {
       inputCount: report.sourcesChecked,
       outputCount: report.changes.length,

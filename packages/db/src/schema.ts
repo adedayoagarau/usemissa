@@ -2801,6 +2801,98 @@ export const smsMessages = pgTable(
   ],
 );
 
+/**
+ * Ledger of every judgment Missa makes about its data — Jev, LLM, heuristic,
+ * human or cited source — with the question version, input hash, answer,
+ * probability and route. Shadow rows are never applied (migration 0090).
+ */
+export const dataDecisions = pgTable(
+  "data_decisions",
+  {
+    id: text("id").primaryKey(),
+    subjectType: text("subject_type").notNull(),
+    subjectId: text("subject_id").notNull(),
+    fieldName: text("field_name"),
+    questionKey: text("question_key").notNull(),
+    questionVersion: integer("question_version").notNull(),
+    questionKind: text("question_kind").notNull(),
+    options: text("options").array(),
+    inputHash: text("input_hash").notNull(),
+    evidenceUrl: text("evidence_url"),
+    answer: text("answer"),
+    probability: numeric("probability", { precision: 5, scale: 4 }),
+    confidence: numeric("confidence", { precision: 5, scale: 4 }),
+    distribution: jsonb("distribution")
+      .notNull()
+      .default(sql`'{}'::jsonb`)
+      .$type<Record<string, number>>(),
+    route: text("route").notNull(),
+    mode: text("mode").notNull().default("shadow"),
+    deciderKind: text("decider_kind").notNull(),
+    decider: text("decider").notNull(),
+    deciderVersion: text("decider_version"),
+    policyVersion: text("policy_version"),
+    reviewerAccountId: text("reviewer_account_id").references(() => accounts.id, {
+      onDelete: "set null",
+    }),
+    status: text("status").notNull().default("proposed"),
+    supersedesId: text("supersedes_id").references((): AnyPgColumn => dataDecisions.id, {
+      onDelete: "set null",
+    }),
+    usage: jsonb("usage").$type<Record<string, unknown>>(),
+    appliedAt: timestamp("applied_at", { withTimezone: true }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    check(
+      "data_decisions_question_kind_check",
+      sql`${table.questionKind} in ('noul', 'choice', 'score', 'value')`,
+    ),
+    check("data_decisions_route_check", sql`${table.route} in ('apply', 'review', 'reject')`),
+    check("data_decisions_mode_check", sql`${table.mode} in ('shadow', 'live')`),
+    check(
+      "data_decisions_decider_kind_check",
+      sql`${table.deciderKind} in ('jev', 'llm', 'heuristic', 'human', 'source')`,
+    ),
+    check(
+      "data_decisions_status_check",
+      sql`${table.status} in ('proposed', 'applied', 'rejected', 'superseded')`,
+    ),
+    check(
+      "data_decisions_probability_check",
+      sql`${table.probability} is null or (${table.probability} >= 0 and ${table.probability} <= 1)`,
+    ),
+    check(
+      "data_decisions_confidence_check",
+      sql`${table.confidence} is null or (${table.confidence} >= 0 and ${table.confidence} <= 1)`,
+    ),
+    check(
+      "data_decisions_shadow_not_applied_check",
+      sql`${table.mode} = 'live' or ${table.status} <> 'applied'`,
+    ),
+    uniqueIndex("data_decisions_machine_input_idx")
+      .on(
+        table.subjectType,
+        table.subjectId,
+        table.questionKey,
+        table.questionVersion,
+        table.decider,
+        table.inputHash,
+      )
+      .where(sql`${table.deciderKind} <> 'human'`),
+    index("data_decisions_subject_idx").on(table.subjectType, table.subjectId, table.createdAt),
+    index("data_decisions_question_status_idx").on(
+      table.questionKey,
+      table.status,
+      table.createdAt,
+    ),
+    index("data_decisions_review_queue_idx")
+      .on(table.questionKey, table.createdAt)
+      .where(sql`${table.route} = 'review' and ${table.status} = 'proposed'`),
+  ],
+);
+
 /** One verification code sent to a phone; only a keyed hash of the code is stored. */
 export const smsPhoneVerifications = pgTable(
   "sms_phone_verifications",
