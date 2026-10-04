@@ -86,7 +86,7 @@ Saving a call to the Tracker adds default reminders and, on plans with start-by 
 
 ## Known limits
 
-- Ingestion reads fee tiers, entry fees and stated close times with deterministic rules only. The LLM extraction prompt is unchanged.
+- Ingestion reads fee tiers, entry fees and stated close times with deterministic rules first. The existing model extraction call also returns tiers, stages and the close time and zone, with no extra call (`packages/ingestion-v2/src/modelDeadlineFacts.ts` validates them strictly). Where the rules found something, the rules win: a model tier that agrees only fills a missing fee or time, a model tier that contradicts them is ignored, and a model tier never moves the final close. Model facts are saved as probable. Stages come only from the model and are saved with source `ingestion`. They never replace admin or organization stages, and a run without stages leaves the saved ones in place.
 - Crunch weeks count tracked calls only, not matching open calls.
 - Google and Microsoft export (built in #148, drained by the creator worker) carries official deadlines, preparation blocks and personal targets, because those are `creator_calendar_events`. Plan steps, stages, fee-tier closes and forecasts reach the in-app Calendar and the calendar feed, not the provider export.
 - The calendar feed uses `TZID=<IANA zone>` for exact closes without a matching time zone definition block. Google and Apple accept this; some Outlook versions may not.

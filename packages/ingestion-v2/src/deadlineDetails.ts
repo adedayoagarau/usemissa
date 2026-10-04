@@ -34,6 +34,16 @@ export interface TextDeadlineClock extends ParsedClock {
   date: string;
 }
 
+export type OpportunityStageKind = "letter-of-intent" | "full-application" | "shortlist" | "interview" | "notification" | "decision" | "event" | "other";
+
+/** A dated stage within one call, as proposed by extraction. */
+export interface ExtractedStage {
+  kind: OpportunityStageKind;
+  label: string;
+  /** ISO date, YYYY-MM-DD. */
+  dueOn: string;
+}
+
 const MONTH = "(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|sept(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)";
 const DATE = `${MONTH}\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?(?:,?\\s+\\d{4})?|\\d{1,2}(?:st|nd|rd|th)?\\s+${MONTH}\\.?,?\\s+\\d{4}|\\d{4}-\\d{2}-\\d{2}`;
 const PHASE = "early[ -]?bird|early|regular|standard|general|late|extended|final";
@@ -56,6 +66,26 @@ const ZONE_PATTERN = "anywhere on earth|eastern|central|mountain|pacific|aest|ae
 const CLOCK_12 = new RegExp(`\\b(1[0-2]|0?[1-9])(?:[:.]([0-5]\\d))?\\s*(a\\.?\\s?m\\.?|p\\.?\\s?m\\.?)\\s*\\(?\\s*(${ZONE_PATTERN})\\b(?:\\s+time)?`, "i");
 const CLOCK_24 = new RegExp(`\\b([01]\\d|2[0-3])[:.]([0-5]\\d)\\s*(?:hrs?\\s*)?\\(?\\s*(${ZONE_PATTERN})\\b`, "i");
 const CLOCK_NOON = new RegExp(`\\b(noon|midday)\\s*\\(?\\s*(${ZONE_PATTERN})\\b`, "i");
+
+/**
+ * An IANA time zone for a zone written on a page or proposed by a model: a
+ * known abbreviation ("ET", "BST", "AoE") or a valid IANA name
+ * ("Europe/Paris"). Anything else, including offsets such as "UTC+2" whose
+ * daylight rules are unknown, returns undefined.
+ */
+export function normalizeTimeZone(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.replace(/\s+/g, " ").trim();
+  if (!trimmed || trimmed.length > 64) return undefined;
+  const known = ZONES[trimmed.toLowerCase().replace(/\s+time$/, "")];
+  if (known) return known;
+  if (!/^[A-Za-z]+(?:\/[A-Za-z0-9_+-]+){1,2}$/.test(trimmed)) return undefined;
+  try {
+    return new Intl.DateTimeFormat("en-US", { timeZone: trimmed }).resolvedOptions().timeZone;
+  } catch {
+    return undefined;
+  }
+}
 
 function phaseTier(phase: string): DeadlineTierKind {
   const value = phase.toLowerCase().replace(/[^a-z]/g, "");
@@ -146,10 +176,16 @@ export function deadlineTiersFromText(visible: string): TextDeadlineTier[] {
     const clock = parseDeadlineClock(windowText);
     tiers.push({ tier, label: phaseLabel(phase), date: date.trim(), ...(fee ? { fee } : {}), ...(clock ? { clock } : {}) });
   };
+  // Dates already read as "<phase> deadline: <date>"; the same date must not
+  // also be read as "<date> <next phase> deadline" when two labels run
+  // together ("Early bird deadline: Nov 1, 2026 Regular deadline: ...").
+  const claimedDateStarts = new Set<number>();
   for (const match of visible.matchAll(PHASE_DEADLINE)) {
+    claimedDateStarts.add(match.index! + match[0].length - match[2]!.length);
     push(match[1]!, match[2]!, trailingWindow(visible, match.index! + match[0].length));
   }
   for (const match of visible.matchAll(DATE_PHASE)) {
+    if (claimedDateStarts.has(match.index!)) continue;
     push(match[2]!, match[1]!, trailingWindow(visible, match.index! + match[0].length));
   }
   return tiers;
