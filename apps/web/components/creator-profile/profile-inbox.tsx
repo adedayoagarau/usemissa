@@ -220,7 +220,7 @@ export function ProfileInbox({
   ).length;
 
   return (
-    <div className={styles.inbox}>
+    <main id="main-content" className={styles.inbox}>
       <header className={styles.head}>
         <div>
           <h1 className="font-heading">Profile inbox</h1>
@@ -529,7 +529,7 @@ export function ProfileInbox({
           )}
         </TabsContent>
       </Tabs>
-    </div>
+    </main>
   );
 }
 

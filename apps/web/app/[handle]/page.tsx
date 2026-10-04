@@ -52,8 +52,9 @@ export default async function PublicHandlePage({
   const raw = (await params).handle;
   const loaded = await loadPortfolio(raw);
   if (!loaded) notFound();
-  const { resolved, portfolio } = loaded;
-  if (resolved.resolution === "alias" || raw !== `@${resolved.handleKey}`)
+  const { resolved, portfolio, segment } = loaded;
+  // Compare the decoded segment: Next passes "@handle" as "%40handle".
+  if (resolved.resolution === "alias" || segment !== `@${resolved.handleKey}`)
     permanentRedirect(`/@${resolved.handleKey}`);
   return (
     <PublicSiteShell>

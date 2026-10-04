@@ -75,8 +75,8 @@ export const inquiryInput = z.object({
     .trim()
     .min(10, "Write a little more so they know what you're asking.")
     .max(4000),
-  /** Honeypot: people never see or fill this field. */
-  website: z.string().max(0).optional().or(z.literal("")),
+  /** Honeypot: people never see or fill this field; bots that do are ignored. */
+  website: z.string().max(2000).optional(),
 });
 
 export const invitationInput = z.object({

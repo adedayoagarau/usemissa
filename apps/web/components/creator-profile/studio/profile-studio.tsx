@@ -205,7 +205,7 @@ export function ProfileStudio({
   };
 
   return (
-    <div className={styles.studio}>
+    <main id="main-content" className={styles.studio}>
       <header className={styles.bar}>
         <div className={styles.barTitle}>
           <Link
@@ -619,7 +619,7 @@ export function ProfileStudio({
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </main>
   );
 }
 

@@ -41,6 +41,18 @@ type Viewer = {
   organizations: { id: string; name: string }[];
 };
 
+function shortDate(value: string) {
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        timeZone: "UTC",
+      });
+}
+
 type InviteOption = {
   organizationId: string;
   organizationName: string;
@@ -508,9 +520,7 @@ function InviteDialog({
           Invite {first} to apply
         </DialogTitle>
         <DialogDescription>
-          {first} gets the call and your note in their profile inbox and by
-          email. An invitation isn&rsquo;t a promise of acceptance; your usual
-          guidelines and deadline apply.
+          {`${first} gets the call and your note in their profile inbox and by email. An invitation isn’t a promise of acceptance; your usual guidelines and deadline apply.`}
         </DialogDescription>
         {state.kind === "sent" ? (
           <div className={styles.done}>
@@ -551,7 +561,9 @@ function InviteDialog({
                     value={item.opportunityId}
                   >
                     {item.title}
-                    {item.deadline ? ` · closes ${item.deadline}` : ""}
+                    {item.deadline
+                      ? ` · closes ${shortDate(item.deadline)}`
+                      : ""}
                     {new Set(available.map((o) => o.organizationId)).size > 1
                       ? ` · ${item.organizationName}`
                       : ""}
