@@ -38,9 +38,13 @@ async function linkedOpportunityId(pool: Pool, access: OrganizationAccess, organ
 
 const NOT_LINKED = "This opportunity is not listed on Missa yet, so its dates cannot be edited here.";
 
+/**
+ * Any member who can open the opportunity builder can read the dates; the
+ * editor shows them read-only to members who cannot change them.
+ */
 export async function GET(request: Request, { params }: Params) {
   const { id, openCallId } = await params;
-  const result = await requireOrganizationAccess(request, id, { capability: "organization.manage" });
+  const result = await requireOrganizationAccess(request, id, { capability: "opportunities.read" });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status, headers });
   const pool = deadlineFactsPool();
   if (!pool) return NextResponse.json({ error: "A database is required to edit dates." }, { status: 503, headers });

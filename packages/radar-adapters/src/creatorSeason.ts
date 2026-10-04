@@ -102,7 +102,7 @@ async function hasPersonalTarget(db: Db): Promise<boolean> {
 
 /** Every published call the creator tracks, soonest deadline first. */
 export async function listSeasonTrackedCalls(db: Db, accountId: string): Promise<SeasonTrackedCall[]> {
-  const target = (await hasPersonalTarget(db)) ? "t.personal_target_on" : "null::date as personal_target_on";
+  const target = (await hasPersonalTarget(db)) ? "t.personal_target_on::text as personal_target_on" : "null::date as personal_target_on";
   const result = await db.query<SeasonRow>(
     `select t.id, t.opportunity_id, t.status, t.revision, ${target},
             o.title, coalesce(org.data->>'name', o.organization_id) as organization_name, o.type,
@@ -181,7 +181,8 @@ export async function listWatchedForecasts(db: Db, accountId: string, limit = 60
     `select o.id as opportunity_id, o.title, coalesce(org.data->>'name', o.organization_id) as organization_name,
             o.status as opportunity_status, o.deadline_date::text as deadline_date,
             exists (select 1 from tracked_opportunities t where t.account_id = $1 and t.opportunity_id = o.id) as tracked,
-            f.expected_open_start, f.expected_open_end, f.expected_close, f.confidence, f.based_on_cycles,
+            f.expected_open_start::text as expected_open_start, f.expected_open_end::text as expected_open_end,
+            f.expected_close::text as expected_close, f.confidence, f.based_on_cycles,
             f.confirmed_at, f.confirmed_delta_days
        from opportunity_cycle_forecasts f
        join opportunities o on o.id = f.opportunity_id

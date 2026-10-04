@@ -77,7 +77,16 @@ function fromRow(row: PreferenceRow): CreatorPlanningPreferences {
   };
 }
 
-async function available(db: Db): Promise<boolean> {
+/** Thrown when saving before migration 0088 has created the preferences table. */
+export class PlanningPreferencesUnavailableError extends Error {
+  constructor() {
+    super("Planning settings are not available yet");
+    this.name = "PlanningPreferencesUnavailableError";
+  }
+}
+
+/** False before migration 0088; reads then fall back to the defaults and saves are refused. */
+export async function planningPreferencesAvailable(db: Db): Promise<boolean> {
   const result = await db.query<{ ready: boolean }>(
     "select to_regclass('public.creator_planning_preferences') is not null as ready",
   );
@@ -89,7 +98,7 @@ export async function getPlanningPreferences(
   db: Db,
   accountId: string,
 ): Promise<CreatorPlanningPreferences> {
-  if (!(await available(db))) return { ...DEFAULT_PLANNING_PREFERENCES };
+  if (!(await planningPreferencesAvailable(db))) return { ...DEFAULT_PLANNING_PREFERENCES };
   const result = await db.query<PreferenceRow>(
     `select weekly_hours_available, default_buffer_days, material_effort, default_deadline_offsets,
             gone_quiet_days, deadline_day_alarm, opening_alerts, daily_notice_cap, revision
@@ -110,6 +119,7 @@ export type PlanningPreferencesInput = Omit<
  * Save preferences when `expectedRevision` matches what is stored (0 when
  * nothing is stored yet). Throws PlanningPreferencesConflictError otherwise so
  * the client can reload instead of overwriting another device's change.
+ * Throws PlanningPreferencesUnavailableError before migration 0088.
  */
 export async function putPlanningPreferences(
   db: Db,
@@ -117,6 +127,7 @@ export async function putPlanningPreferences(
   input: PlanningPreferencesInput,
   expectedRevision: number,
 ): Promise<CreatorPlanningPreferences> {
+  if (!(await planningPreferencesAvailable(db))) throw new PlanningPreferencesUnavailableError();
   const offsets = [...new Set(input.defaultDeadlineOffsets)].sort(
     (a, b) => b - a,
   );

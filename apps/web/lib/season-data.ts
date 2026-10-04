@@ -9,7 +9,8 @@ import {
   loadDeadlineFacts,
 } from "@missa/radar-adapters";
 import type { OpportunityDeadlineFacts } from "@missa/radar-engine";
-import { addDays, calendarDateIn } from "./deadline-moment";
+import { addDays } from "./deadline-moment";
+import { creatorToday } from "./deadline-planning";
 import type { SeasonCall, SeasonForecast, SeasonObligation, SeasonTier } from "./season-plan";
 
 export type SeasonData = {
@@ -29,7 +30,8 @@ export type SeasonData = {
  */
 export async function loadSeasonData(connectionString: string, accountId: string, now = new Date()): Promise<SeasonData> {
   const pool = creatorPoolFor(connectionString);
-  const today = calendarDateIn(now, "UTC");
+  // The creator's own date, so "today" here agrees with the capacity report.
+  const today = await creatorToday(accountId, now);
   const [calls, obligations, forecasts, preferences, plan] = await Promise.all([
     listSeasonTrackedCalls(pool, accountId),
     listObligations(pool, accountId, { to: addDays(today, 200), states: ["open"] }).catch(() => []),

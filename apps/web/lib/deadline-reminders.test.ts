@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { after, before, test } from 'node:test';
-import { creatorPoolFor } from '@missa/radar-adapters';
+import { creatorPoolFor, pendingCreatorReminderTexts } from '@missa/radar-adapters';
 import { CreatorReminderRepository, tickCreatorReminders } from './creator-reminders';
 import { applyDefaultReminders, tickDeadlineReminders } from './deadline-reminders';
 
@@ -56,6 +56,17 @@ async function account(options: { plan?: 'plus' | 'pro'; cap?: number; quietDays
   if (options.cap || options.quietDays)
     await q(`insert into creator_planning_preferences(account_id,daily_notice_cap,gone_quiet_days) values($1,$2,$3)`, [id, options.cap ?? 3, options.quietDays ?? 21]);
   return id;
+}
+
+/** Writes to opportunities outside the publication gates, as the fixtures do. */
+async function asFixture(sql: string, params: unknown[]) {
+  const client = await pool().connect();
+  try {
+    await client.query('begin');
+    await client.query(`set local session_replication_role = replica`);
+    await client.query(sql, params);
+    await client.query('commit');
+  } finally { client.release(); }
 }
 
 /** A published call with a confirmed deadline `days` from today (UTC). */
@@ -294,4 +305,150 @@ dbTest('time to follow up uses only stated windows with known confidence', async
   assert.equal(notices[0]!.title, 'Past the stated response time');
   assert.match(notices[0]!.body, /^You sent Stated magazine 40 days ago\./);
   assert.equal((await tickDeadlineReminders(a)).timeToQuery, 0, 'one notice per submission state');
+});
+
+dbTest('a milestone is re-worded for the day it goes out and expires once its step is due', async () => {
+  const a = await account();
+  const opp = await call(30);
+  const tracked = await track(a, opp, 'preparing');
+  const [step] = await q<{ id: string }>(`insert into creator_obligations(account_id,tracked_opportunity_id,opportunity_id,kind,label,due_on)
+    values($1,$2,$3,'sub-deadline','Budget',(now() at time zone 'UTC')::date+1) returning id`, [a, tracked, opp]);
+  await tickDeadlineReminders(a);
+  assert.equal((await reminders(a)).find(r => r.kind === 'milestone')?.title, 'Budget is due tomorrow');
+  // Held a day (by the cap or a snooze), the notice lands on the due day itself.
+  await q(`update creator_obligations set due_on=(now() at time zone 'UTC')::date where id=$1`, [step!.id]);
+  await q(`update creator_application_reminders set source_deadline=(now() at time zone 'UTC')::date where account_id=$1 and kind='milestone'`, [a]);
+  await makeDue(a, 'milestone');
+  await tickCreatorReminders(a);
+  assert.deepEqual((await alerts(a)).map(x => x.title), ['Budget is due today']);
+
+  const [late] = await q<{ id: string }>(`insert into creator_obligations(account_id,tracked_opportunity_id,opportunity_id,kind,label,due_on)
+    values($1,$2,$3,'sub-deadline','Letters',(now() at time zone 'UTC')::date+1) returning id`, [a, tracked, opp]);
+  await tickDeadlineReminders(a);
+  await q(`update creator_obligations set due_at=now()-interval '1 minute' where id=$1`, [late!.id]);
+  await makeDue(a, 'milestone');
+  await tickCreatorReminders(a);
+  assert.equal((await reminders(a)).find(r => r.subject_id === late!.id)?.state, 'expired');
+  assert.equal((await alerts(a)).length, 1, 'no notice for a step that is already due');
+});
+
+dbTest('over the daily cap, a milestone that closes before the next morning still goes out', async () => {
+  const a = await account({ cap: 1 });
+  const opp = await call(30);
+  const tracked = await track(a, opp, 'preparing');
+  await q(`insert into creator_inbox_alerts(id,account_id,opportunity_id,kind,title,body,reason,dedupe_key,delivery_eligibility)
+    values($1,$2,$3,'gone-quiet','No activity','x','x',$4,'in-app')`, [randomUUID(), a, opp, `fixture:${randomUUID()}`]);
+  const [step] = await q<{ id: string }>(`insert into creator_obligations(account_id,tracked_opportunity_id,opportunity_id,kind,label,due_on)
+    values($1,$2,$3,'sub-deadline','Reading',(now() at time zone 'UTC')::date+1) returning id`, [a, tracked, opp]);
+  await tickDeadlineReminders(a);
+  await q(`update creator_obligations set due_at=now()+interval '2 hours' where id=$1`, [step!.id]);
+  await makeDue(a, 'milestone');
+  const delivery = await tickCreatorReminders(a);
+  assert.equal(delivery.capped, 0);
+  assert.deepEqual((await alerts(a)).map(x => x.kind).sort(), ['gone-quiet', 'milestone-due']);
+});
+
+dbTest('a deadline moved earlier expires default reminders that would land in the past', async () => {
+  const a = await account();
+  const opp = await call(30);
+  await track(a, opp, 'preparing');
+  assert.deepEqual(await applyDefaultReminders(a, opp), { created: 2 });
+  await asFixture(`update opportunities set deadline_date=(now() at time zone 'UTC')::date+3 where id=$1`, [opp]);
+  await tickCreatorReminders(a);
+  const rows = await reminders(a);
+  assert.equal(rows.find(r => r.subject_id === 'offset:7')?.state, 'expired', '"Closes in a week" no longer fits');
+  assert.equal(rows.find(r => r.subject_id === 'offset:1')?.state, 'scheduled');
+  assert.deepEqual(await alerts(a), []);
+});
+
+dbTest('a snoozed milestone is announced again', async () => {
+  const a = await account();
+  const opp = await call(30);
+  const tracked = await track(a, opp, 'preparing');
+  await q(`insert into creator_obligations(account_id,tracked_opportunity_id,opportunity_id,kind,label,due_on)
+    values($1,$2,$3,'sub-deadline','Portfolio',(now() at time zone 'UTC')::date+1)`, [a, tracked, opp]);
+  await tickDeadlineReminders(a);
+  await makeDue(a, 'milestone');
+  await tickCreatorReminders(a);
+  const [row] = await q<{ id: string; revision: number; state: string }>(`select id,revision,state from creator_application_reminders where account_id=$1 and kind='milestone'`, [a]);
+  assert.equal(row!.state, 'delivered');
+  await new CreatorReminderRepository().change({ accountId: a, commandType: 'application-reminder.change', idempotencyKey: randomUUID(), expectedRevision: row!.revision, requestHash: randomUUID(), correlationId: randomUUID() },
+    row!.id, { action: 'snooze', days: 1 });
+  await q(`update creator_application_reminders set snoozed_until=now()-interval '1 minute' where id=$1`, [row!.id]);
+  await tickCreatorReminders(a);
+  assert.equal((await alerts(a)).filter(x => x.kind === 'milestone-due').length, 2);
+  assert.equal((await q<{ state: string }>(`select state from creator_application_reminders where id=$1`, [row!.id]))[0]!.state, 'delivered');
+});
+
+dbTest('gone quiet skips calls without a confirmed, published deadline', async () => {
+  const a = await account();
+  const estimated = await call(20, 'Estimated call');
+  await asFixture(`update opportunities set deadline_kind='estimated' where id=$1`, [estimated]);
+  await track(a, estimated, 'preparing', { lastActivityDaysAgo: 30 });
+  const withdrawn = await call(20, 'Withdrawn call');
+  await asFixture(`update opportunities set publication_state='withdrawn' where id=$1`, [withdrawn]);
+  await track(a, withdrawn, 'preparing', { lastActivityDaysAgo: 30 });
+  assert.equal((await tickDeadlineReminders(a)).goneQuiet, 0);
+  assert.deepEqual(await alerts(a), []);
+});
+
+dbTest('logging that the work was received does not repeat the follow-up notice', async () => {
+  const a = await account();
+  const opp = await call(null, 'Harbor magazine');
+  await q(`insert into opportunity_call_profiles(opportunity_id,response_time_days,confidence,source_url) values($1,30,'confirmed','https://example.invalid')`, [opp]);
+  const tracked = await track(a, opp, 'submitted', { submittedDaysAgo: 40 });
+  assert.equal((await tickDeadlineReminders(a)).timeToQuery, 1);
+  for (const status of ['received', 'in-review']) {
+    await q(`update tracked_opportunities set status=$2 where id=$1`, [tracked, status]);
+    assert.equal((await tickDeadlineReminders(a)).timeToQuery, 0, status);
+  }
+  assert.equal((await alerts(a)).length, 1);
+});
+
+dbTest('already-announced rows do not crowd new ones out of the batch', async () => {
+  const a = await account();
+  const bulk = `${prefix}-bulk-${++counter}`;
+  // 501 submissions past their stated window, each already announced, plus 501
+  // quiet applications already nudged in this period.
+  await asFixture(`insert into opportunities(id,slug,title,source_id,status,publication_state,type,deadline_kind,deadline_date)
+    select $1||'-'||g,$1||'-'||g,'Bulk call',$2,'open','published','grant','exact',(now() at time zone 'UTC')::date+20 from generate_series(1,1002) g`, [bulk, source]);
+  await q(`insert into opportunity_call_profiles(opportunity_id,response_time_days,confidence,source_url)
+    select $1||'-'||g,30,'confirmed','https://example.invalid' from generate_series(1,501) g`, [bulk]);
+  await q(`insert into tracked_opportunities(id,account_id,opportunity_id,status,submitted_at,last_activity_at)
+    select $1||'-t-'||g,$2,$1||'-'||g,'submitted',now()-interval '60 days',now()-interval '60 days' from generate_series(1,501) g`, [bulk, a]);
+  await q(`insert into tracked_opportunities(id,account_id,opportunity_id,status,last_activity_at)
+    select $1||'-t-'||g,$2,$1||'-'||g,'preparing',now()-interval '25 days' from generate_series(502,1002) g`, [bulk, a]);
+  await q(`insert into creator_inbox_alerts(id,account_id,opportunity_id,kind,title,body,reason,dedupe_key,delivery_eligibility,created_at)
+    select gen_random_uuid()::text,$2,$1||'-'||g,'time-to-query','x','x','x',
+      'time-to-query:'||$1||'-t-'||g||':'||((now()-interval '60 days') at time zone 'UTC')::date::text||':past-stated','in-app',now()-interval '20 days'
+    from generate_series(1,501) g`, [bulk, a]);
+  await q(`insert into creator_inbox_alerts(id,account_id,opportunity_id,kind,title,body,reason,dedupe_key,delivery_eligibility,created_at)
+    select gen_random_uuid()::text,$2,$1||'-'||g,'gone-quiet','x','x','x',
+      'gone-quiet:'||$1||'-t-'||g||':'||((now()-interval '25 days') at time zone 'UTC')::date::text||':1','in-app',now()-interval '3 days'
+    from generate_series(502,1002) g`, [bulk, a]);
+  const fresh = await call(null, 'Fresh magazine');
+  await q(`insert into opportunity_call_profiles(opportunity_id,response_time_days,confidence,source_url) values($1,30,'confirmed','https://example.invalid')`, [fresh]);
+  await track(a, fresh, 'submitted', { submittedDaysAgo: 40 });
+  const quiet = await call(20, 'Quiet call');
+  await track(a, quiet, 'preparing', { lastActivityDaysAgo: 22 });
+  const result = await tickDeadlineReminders(a);
+  assert.equal(result.timeToQuery, 1);
+  assert.equal(result.goneQuiet, 1);
+});
+
+dbTest('the deadline-day text waits only while the application is unsent', async () => {
+  const a = await account({ plan: 'plus' });
+  await q(`update notification_preferences set sms_enabled=true,sms_phone='+15555550123',sms_phone_verified_at=now() where account_id=$1`, [a]);
+  const opp = await call(0, 'Closing today');
+  const tracked = await track(a, opp, 'preparing');
+  await tickDeadlineReminders(a);
+  await makeDue(a, 'deadline-day');
+  await tickCreatorReminders(a);
+  const pending = async () => (await pendingCreatorReminderTexts(pool(), 10_000)).filter(t => t.accountId === a).map(t => t.kind);
+  assert.deepEqual(await pending(), ['deadline-day']);
+  await q(`update tracked_opportunities set status='submitted' where id=$1`, [tracked]);
+  assert.deepEqual(await pending(), [], 'no "closes today" text after the creator submitted');
+  await q(`update tracked_opportunities set status='preparing' where id=$1`, [tracked]);
+  await asFixture(`update opportunities set deadline_time=now()-interval '1 minute' where id=$1`, [opp]);
+  assert.deepEqual(await pending(), [], 'no text once the call has closed');
 });

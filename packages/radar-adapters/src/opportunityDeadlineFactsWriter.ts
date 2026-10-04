@@ -19,6 +19,8 @@ export const MAX_DEADLINE_TIERS = 8;
 export const MAX_OPPORTUNITY_STAGES = 12;
 
 export interface DeadlineTierInput {
+  /** The stored tier this row edits, as read; omitted for a new tier. */
+  id?: string | null;
   tier: OpportunityDeadlineTier["tier"];
   label: string;
   closesOn: string;
@@ -31,6 +33,8 @@ export interface DeadlineTierInput {
 }
 
 export interface OpportunityStageInput {
+  /** The stored stage this row edits, as read; omitted for a new stage. */
+  id?: string | null;
   kind: OpportunityStageKind;
   label: string;
   dueOn: string;
@@ -183,8 +187,8 @@ const STAGE_FALLBACK_LABELS: Record<OpportunityStageKind, string> = {
 
 /** Validate and normalise editor input. Throws DeadlineFactsValidationError with customer-facing copy. */
 export function normalizeDeadlineFactsInput(input: Pick<ReplaceDeadlineFactsInput, "tiers" | "stages" | "deadline">): {
-  tiers: Array<Required<Pick<DeadlineTierInput, "tier" | "label" | "closesOn">> & { closesAt?: string; timezone?: string; feeCents?: number; feeCurrency?: string; confidence: "confirmed" | "probable" }>;
-  stages: Array<Required<Pick<OpportunityStageInput, "kind" | "label" | "dueOn">> & { dueAt?: string; timezone?: string; confidence: "confirmed" | "probable" }>;
+  tiers: Array<Required<Pick<DeadlineTierInput, "tier" | "label" | "closesOn">> & { id?: string; closesAt?: string; timezone?: string; feeCents?: number; feeCurrency?: string; confidence: "confirmed" | "probable" }>;
+  stages: Array<Required<Pick<OpportunityStageInput, "kind" | "label" | "dueOn">> & { id?: string; dueAt?: string; timezone?: string; confidence: "confirmed" | "probable" }>;
   deadline?: { date?: string | null; closesAt?: string | null; timezone?: string | null };
 } {
   if (!Array.isArray(input.tiers) || !Array.isArray(input.stages)) throw new DeadlineFactsValidationError("Send tiers and stages as lists.");
@@ -204,6 +208,7 @@ export function normalizeDeadlineFactsInput(input: Pick<ReplaceDeadlineFactsInpu
     if (currency && !/^[A-Z]{3}$/.test(currency)) throw new DeadlineFactsValidationError(`${what} needs a three-letter currency code, like USD.`);
     if (feeCents && !currency) throw new DeadlineFactsValidationError(`${what} needs a currency with its fee.`);
     return {
+      ...(typeof tier.id === "string" && tier.id ? { id: tier.id } : {}),
       tier: tier.tier,
       label: cleanLabel(tier.label, TIER_FALLBACK_LABELS[tier.tier]),
       closesOn: tier.closesOn,
@@ -220,6 +225,7 @@ export function normalizeDeadlineFactsInput(input: Pick<ReplaceDeadlineFactsInpu
     if (!validDate(stage.dueOn)) throw new DeadlineFactsValidationError(`${what} needs a date.`);
     const parsed = clock(stage.dueTime, stage.timezone, what);
     return {
+      ...(typeof stage.id === "string" && stage.id ? { id: stage.id } : {}),
       kind: stage.kind,
       label: cleanLabel(stage.label, STAGE_FALLBACK_LABELS[stage.kind]),
       dueOn: stage.dueOn,
@@ -294,6 +300,36 @@ export async function readOpportunityDeadlineFacts(db: Db, opportunityId: string
   return { ...record, revision: fingerprint(record) };
 }
 
+/**
+ * Pair each incoming row with the stored row it edits, so saving keeps the
+ * stored ids. Stage-anchored plan steps and tier reminders point at those
+ * ids; recreating every row would detach the steps and send a reminder twice.
+ * An id the editor sent wins; otherwise the same kind and date, then the same
+ * kind and label, then the first unclaimed stored row of the same kind (a
+ * moved date). Returns the stored id per incoming index, or undefined for a
+ * new row; stored rows left unclaimed were removed.
+ */
+export function matchStoredRows<
+  Stored extends { id?: string; kind: string; date: string; label: string },
+  Incoming extends { id?: string; kind: string; date: string; label: string },
+>(stored: readonly Stored[], incoming: readonly Incoming[]): Array<string | undefined> {
+  const claimed = new Set<string>();
+  const result: Array<string | undefined> = incoming.map(() => undefined);
+  const claim = (index: number, test: (row: Stored) => boolean) => {
+    if (result[index] !== undefined) return;
+    const found = stored.find((row) => row.id && !claimed.has(row.id) && test(row));
+    if (found?.id) {
+      claimed.add(found.id);
+      result[index] = found.id;
+    }
+  };
+  incoming.forEach((row, index) => row.id && claim(index, (candidate) => candidate.id === row.id));
+  incoming.forEach((row, index) => claim(index, (candidate) => candidate.kind === row.kind && candidate.date === row.date));
+  incoming.forEach((row, index) => claim(index, (candidate) => candidate.kind === row.kind && candidate.label === row.label));
+  incoming.forEach((row, index) => claim(index, (candidate) => candidate.kind === row.kind));
+  return result;
+}
+
 async function auditPresent(db: Db): Promise<boolean> {
   const result = await db.query<{ ready: boolean }>("select to_regclass('public.audit_events') is not null as ready");
   return result.rows[0]?.ready === true;
@@ -305,8 +341,9 @@ const AUDIT_ACTION: Record<DeadlineFactsSource, string> = {
 };
 
 /**
- * Replace every tier and stage for an opportunity with the given lists, and
- * optionally correct the main deadline. A changed deadline date is recorded
+ * Replace the tiers and stages for an opportunity with the given lists, and
+ * optionally correct the main deadline. Rows that match a stored row keep its
+ * id (see matchStoredRows). A changed deadline date is recorded
  * in `opportunity_changes` as a verified correction, so the public record
  * shows it as changed with the previous date.
  */
@@ -347,21 +384,62 @@ export async function replaceOpportunityDeadlineFacts(pool: Pool, input: Replace
     const before = (await readOpportunityDeadlineFacts(client, input.opportunityId))!;
     if (input.expectedRevision && input.expectedRevision !== before.revision) throw new DeadlineFactsConflictError(before);
 
-    await client.query("delete from opportunity_deadline_tiers where opportunity_id = $1", [input.opportunityId]);
-    await client.query("delete from opportunity_stages where opportunity_id = $1", [input.opportunityId]);
+    // Update matched rows in place so their ids survive; delete only rows
+    // that were removed and insert only new ones.
+    const tierIds = matchStoredRows(
+      before.tiers.map((tier) => ({ id: tier.id, kind: tier.tier, date: tier.closesOn, label: tier.label })),
+      normalized.tiers.map((tier) => ({ id: tier.id, kind: tier.tier, date: tier.closesOn, label: tier.label })),
+    );
+    const keptTiers = tierIds.filter((id): id is string => Boolean(id));
+    await client.query(
+      "delete from opportunity_deadline_tiers where opportunity_id = $1 and not (id::text = any($2::text[]))",
+      [input.opportunityId, keptTiers],
+    );
     for (const [position, tier] of normalized.tiers.entries()) {
-      await client.query(
-        `insert into opportunity_deadline_tiers (opportunity_id,tier,label,closes_on,closes_at,timezone,fee_cents,fee_currency,position,confidence,source,source_url,updated_at)
-         values ($1,$2,$3,$4::date,$5::timestamptz,$6,$7,$8,$9,$10,$11,$12,now())`,
-        [input.opportunityId, tier.tier, tier.label, tier.closesOn, tier.closesAt ?? null, tier.timezone ?? null, tier.feeCents ?? null, tier.feeCurrency ?? null, position, tier.confidence, input.source, input.sourceUrl ?? null],
-      );
+      const values = [input.opportunityId, tier.tier, tier.label, tier.closesOn, tier.closesAt ?? null, tier.timezone ?? null, tier.feeCents ?? null, tier.feeCurrency ?? null, position, tier.confidence, input.source, input.sourceUrl ?? null];
+      const id = tierIds[position];
+      if (id) {
+        await client.query(
+          `update opportunity_deadline_tiers
+              set tier=$2,label=$3,closes_on=$4::date,closes_at=$5::timestamptz,timezone=$6,fee_cents=$7,fee_currency=$8,
+                  position=$9,confidence=$10,source=$11,source_url=$12,updated_at=now()
+            where opportunity_id=$1 and id::text=$13`,
+          [...values, id],
+        );
+      } else {
+        await client.query(
+          `insert into opportunity_deadline_tiers (opportunity_id,tier,label,closes_on,closes_at,timezone,fee_cents,fee_currency,position,confidence,source,source_url,updated_at)
+           values ($1,$2,$3,$4::date,$5::timestamptz,$6,$7,$8,$9,$10,$11,$12,now())`,
+          values,
+        );
+      }
     }
+    const stageIds = matchStoredRows(
+      before.stages.map((stage) => ({ id: stage.id, kind: stage.kind, date: stage.dueOn, label: stage.label })),
+      normalized.stages.map((stage) => ({ id: stage.id, kind: stage.kind, date: stage.dueOn, label: stage.label })),
+    );
+    const keptStages = stageIds.filter((id): id is string => Boolean(id));
+    await client.query(
+      "delete from opportunity_stages where opportunity_id = $1 and not (id::text = any($2::text[]))",
+      [input.opportunityId, keptStages],
+    );
     for (const [position, stage] of normalized.stages.entries()) {
-      await client.query(
-        `insert into opportunity_stages (opportunity_id,kind,label,due_on,due_at,timezone,position,confidence,source,source_url,updated_at)
-         values ($1,$2,$3,$4::date,$5::timestamptz,$6,$7,$8,$9,$10,now())`,
-        [input.opportunityId, stage.kind, stage.label, stage.dueOn, stage.dueAt ?? null, stage.timezone ?? null, position, stage.confidence, input.source, input.sourceUrl ?? null],
-      );
+      const values = [input.opportunityId, stage.kind, stage.label, stage.dueOn, stage.dueAt ?? null, stage.timezone ?? null, position, stage.confidence, input.source, input.sourceUrl ?? null];
+      const id = stageIds[position];
+      if (id) {
+        await client.query(
+          `update opportunity_stages
+              set kind=$2,label=$3,due_on=$4::date,due_at=$5::timestamptz,timezone=$6,position=$7,confidence=$8,source=$9,source_url=$10,updated_at=now()
+            where opportunity_id=$1 and id::text=$11`,
+          [...values, id],
+        );
+      } else {
+        await client.query(
+          `insert into opportunity_stages (opportunity_id,kind,label,due_on,due_at,timezone,position,confidence,source,source_url,updated_at)
+           values ($1,$2,$3,$4::date,$5::timestamptz,$6,$7,$8,$9,$10,now())`,
+          values,
+        );
+      }
     }
 
     const previousDeadlineDate = locked.rows[0].deadline_date ?? undefined;

@@ -41,6 +41,17 @@ const REARM_AFTER_DAYS = 60;
 type Scope = { accountId?: string; now?: Date };
 
 /**
+ * Alert rows stay after the creator stops tracking a call, mutes it or
+ * unfollows its organization; firing checks the reason still holds.
+ * `a` is the alert row and `o` its opportunity.
+ */
+const STILL_TRACKED_SQL = `exists (select 1 from tracked_opportunities t
+  where t.account_id = a.account_id and t.opportunity_id = a.opportunity_id
+    and t.notify and t.status not in ('archived', 'withdrawn'))`;
+const STILL_FOLLOWED_SQL = `exists (select 1 from organization_follows fo
+  where fo.account_id = a.account_id and fo.organization_id = o.organization_id)`;
+
+/**
  * SQL for accounts whose plan includes opening alerts and who have not turned
  * them off. Parameters: $1 plans, $2 account id or null.
  */
@@ -151,7 +162,7 @@ export async function fireOpeningAlerts(db: CycleDb, scope: Scope = {}): Promise
      select a.id, a.account_id, a.opportunity_id, o.title, o.open_date::text as open_date,
             f.expected_open_start::text as expected_open_start, f.expected_open_end::text as expected_open_end,
             f.based_on_cycles, f.confirmed_at is not null as confirmed,
-            exists (select 1 from tracked_opportunities t where t.account_id = a.account_id and t.opportunity_id = a.opportunity_id) as tracked
+            ${STILL_TRACKED_SQL} as tracked
        from creator_opportunity_alerts a
        join eligible e on e.account_id = a.account_id
        join opportunities o on o.id = a.opportunity_id
@@ -160,7 +171,8 @@ export async function fireOpeningAlerts(db: CycleDb, scope: Scope = {}): Promise
         and f.expected_open_start is not null
         and f.expected_open_start - a.lead_days <= $3::date
         and coalesce(f.expected_open_end, f.expected_open_start) >= $3::date
-        and o.status not in (${OPEN_STATUSES})`,
+        and o.status not in (${OPEN_STATUSES})
+        and (${STILL_TRACKED_SQL} or ${STILL_FOLLOWED_SQL})`,
     params,
   );
   for (const row of soon.rows) {
@@ -190,14 +202,15 @@ export async function fireOpeningAlerts(db: CycleDb, scope: Scope = {}): Promise
   }>(
     `with eligible as (${eligibleAccountsSql(true)})
      select a.id, a.account_id, a.opportunity_id, o.title, o.open_date::text as open_date, o.deadline_date::text as deadline_date,
-            exists (select 1 from tracked_opportunities t where t.account_id = a.account_id and t.opportunity_id = a.opportunity_id) as tracked
+            ${STILL_TRACKED_SQL} as tracked
        from creator_opportunity_alerts a
        join eligible e on e.account_id = a.account_id
        join opportunities o on o.id = a.opportunity_id
       where a.trigger_kind = 'on_open' and a.triggered_at is null
         and o.status in (${OPEN_STATUSES})
         and (o.open_date is null or o.open_date <= $3::date)
-        and (o.deadline_date is null or o.deadline_date >= $3::date)`,
+        and (o.deadline_date is null or o.deadline_date >= $3::date)
+        and (${STILL_TRACKED_SQL} or ${STILL_FOLLOWED_SQL})`,
     params,
   );
   for (const row of reopened.rows) {

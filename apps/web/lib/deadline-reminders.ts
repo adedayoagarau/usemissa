@@ -305,16 +305,30 @@ class Accounts {
   }
 }
 
-/** Gone quiet: no Tracker activity for gone_quiet_days while preparing, with the deadline still ahead. */
+/**
+ * Candidates are read a batch at a time, so ones not yet notified come first
+ * and each account's rows are interleaved; otherwise old rows that were
+ * already announced, or one account's backlog, would fill every batch.
+ */
+const BATCH = 500;
+
+/** Gone quiet: no Tracker activity for gone_quiet_days while preparing, with a confirmed deadline still ahead. */
 async function tickGoneQuiet(client: PoolClient, accounts: Accounts, accountId: string | null): Promise<number> {
   const candidates = await client.query<{ tracked_id: string; account_id: string; opportunity_id: string; title: string; deadline: string; last_activity_at: Date; period: number }>(
-    `select t.id as tracked_id,t.account_id,t.opportunity_id,o.title,o.deadline_date::text as deadline,t.last_activity_at,coalesce(pp.gone_quiet_days,21)::int as period
-       from tracked_opportunities t join opportunities o on o.id=t.opportunity_id
-       left join creator_planning_preferences pp on pp.account_id=t.account_id
-      where ($1::text is null or t.account_id=$1) and t.status in ${list(PREPARING_STATUSES)}
-        and t.last_activity_at < now()-make_interval(days=>coalesce(pp.gone_quiet_days,21)::int)
-        and o.deadline_date is not null and o.deadline_date >= current_date-1
-      order by t.last_activity_at limit 500`, [accountId]);
+    `select * from (
+       select t.id as tracked_id,t.account_id,t.opportunity_id,o.title,o.deadline_date::text as deadline,t.last_activity_at,n.period,n.notified,
+              row_number() over (partition by t.account_id order by n.notified,t.last_activity_at) as rank
+         from tracked_opportunities t join opportunities o on o.id=t.opportunity_id
+         left join creator_planning_preferences pp on pp.account_id=t.account_id
+         cross join lateral (select coalesce(pp.gone_quiet_days,21)::int as period) g
+         cross join lateral (select g.period,exists(select 1 from creator_inbox_alerts a where a.account_id=t.account_id
+             and starts_with(a.dedupe_key,'gone-quiet:'||t.id||':')
+             and a.created_at >= t.last_activity_at+make_interval(days=>(floor(extract(epoch from now()-t.last_activity_at)/86400/g.period)*g.period)::int)) as notified) n
+        where ($1::text is null or t.account_id=$1) and t.status in ${list(PREPARING_STATUSES)}
+          and t.last_activity_at < now()-make_interval(days=>g.period)
+          and o.publication_state='published' and o.deadline_kind in ('fixed','exact')
+          and o.deadline_date is not null and o.deadline_date >= current_date-1
+     ) c order by c.notified,c.rank,c.last_activity_at limit ${BATCH}`, [accountId]);
   let sent = 0;
   for (const c of candidates.rows) {
     const known = await accounts.get(c.account_id);
@@ -338,7 +352,7 @@ async function tickGoneQuiet(client: PoolClient, accounts: Accounts, accountId: 
  * Time to follow up: submitted applications past the organization's stated
  * response window (only from call profiles with known confidence) or past
  * what at least five Missa creators observed. One notice per submission and
- * status and clock state.
+ * clock state, whatever status the creator logs while waiting.
  */
 async function tickTimeToQuery(client: PoolClient, schema: Schema, accounts: Accounts, accountId: string | null): Promise<number> {
   const observed = schema.telemetry
@@ -347,16 +361,23 @@ async function tickTimeToQuery(client: PoolClient, schema: Schema, accounts: Acc
          from missa_submission_telemetry m join opportunity_profile_links l on l.profile_id=m.profile_id
         where l.opportunity_id=o.id and l.status='confirmed' and m.response_days is not null and m.response_days>=0) obs on true`
     : `left join lateral (select 0 as n,null::float8 as p50,null::float8 as p90) obs on true`;
-  const candidates = await client.query<{ tracked_id: string; account_id: string; opportunity_id: string; status: string; title: string; organization_name: string; submitted_at: Date; stated: number | null; n: number; p50: number | null; p90: number | null }>(
-    `select t.id as tracked_id,t.account_id,t.opportunity_id,t.status,o.title,coalesce(org.data->>'name','the organization') as organization_name,
-            t.submitted_at,cprof.response_time_days as stated,obs.n,obs.p50,obs.p90
-       from tracked_opportunities t join opportunities o on o.id=t.opportunity_id
-       left join radar_organizations org on org.id=o.organization_id
-       left join opportunity_call_profiles cprof on cprof.opportunity_id=o.id and cprof.confidence<>'unknown' and cprof.response_time_days>0
-       ${observed}
-      where ($1::text is null or t.account_id=$1) and t.status in ${list(AWAITING_STATUSES)} and t.submitted_at is not null
-        and (cprof.response_time_days is not null or obs.n>=5)
-      order by t.submitted_at limit 500`, [accountId]);
+  // Only submissions within a day of their shortest known window are read;
+  // responseClock makes the exact call in the creator's zone.
+  const candidates = await client.query<{ tracked_id: string; account_id: string; opportunity_id: string; title: string; organization_name: string; submitted_at: Date; stated: number | null; n: number; p50: number | null; p90: number | null }>(
+    `select * from (
+       select t.id as tracked_id,t.account_id,t.opportunity_id,o.title,coalesce(org.data->>'name','the organization') as organization_name,
+              t.submitted_at,cprof.response_time_days as stated,obs.n,obs.p50,obs.p90,nt.notified,
+              row_number() over (partition by t.account_id order by nt.notified,t.submitted_at) as rank
+         from tracked_opportunities t join opportunities o on o.id=t.opportunity_id
+         left join radar_organizations org on org.id=o.organization_id
+         left join opportunity_call_profiles cprof on cprof.opportunity_id=o.id and cprof.confidence<>'unknown' and cprof.response_time_days>0
+         ${observed}
+         cross join lateral (select exists(select 1 from creator_inbox_alerts a where a.account_id=t.account_id
+             and starts_with(a.dedupe_key,'time-to-query:'||t.id||':')) as notified) nt
+        where ($1::text is null or t.account_id=$1) and t.status in ${list(AWAITING_STATUSES)} and t.submitted_at is not null
+          and (cprof.response_time_days is not null or obs.n>=5)
+          and t.submitted_at <= now()-make_interval(days=>greatest(coalesce(least(cprof.response_time_days,case when obs.n>=5 then round(obs.p90)::int end),0)-1,0))
+     ) c order by c.notified,c.rank,c.submitted_at limit ${BATCH}`, [accountId]);
   let sent = 0;
   for (const c of candidates.rows) {
     const account = await accounts.get(c.account_id);
@@ -369,7 +390,7 @@ async function tickTimeToQuery(client: PoolClient, schema: Schema, accounts: Acc
       observed: c.n >= 5 && c.p50 !== null && c.p90 !== null ? { p50Days: Math.round(c.p50), p90Days: Math.round(c.p90), sampleSize: c.n } : null,
     });
     if (!shouldNotifyResponseClock(clock)) continue;
-    const dedupeKey = timeToQueryDedupeKey(c.tracked_id, c.status, submittedOn, clock.state);
+    const dedupeKey = timeToQueryDedupeKey(c.tracked_id, submittedOn, clock.state);
     if (await noticeExists(client, c.account_id, dedupeKey)) continue;
     if (!(await accounts.admit(c.account_id))) continue;
     const copy = timeToQueryCopy({ applicationTitle: c.title, organizationName: c.organization_name, clock });

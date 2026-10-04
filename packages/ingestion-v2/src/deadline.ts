@@ -175,6 +175,19 @@ export function resolveDeadlineTiers(
 }
 
 /**
+ * The opportunity's own deadline is the final close. With phased windows the
+ * current deadline resolves to the earliest upcoming date (often the early
+ * bird), so when two or more tiers are known the deadline becomes the latest
+ * tier's close; the earlier dates stay as tiers. Without tiers the resolved
+ * deadline is returned unchanged.
+ */
+export function finalCloseDeadline(resolved: ResolvedDeadline, tiers: ResolvedDeadlineTier[]): ResolvedDeadline {
+  if (resolved.conflict || !resolved.date || tiers.length < 2) return resolved;
+  const latest = tiers.reduce((last, tier) => (tier.closesOn > last ? tier.closesOn : last), resolved.date);
+  return latest === resolved.date ? resolved : { ...resolved, date: latest };
+}
+
+/**
  * The close time for the resolved deadline date, only when every stated time
  * for that date agrees on one time and zone. Disagreement is ambiguous and
  * yields nothing.

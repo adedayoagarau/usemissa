@@ -143,11 +143,36 @@ function StepRow({
 }) {
   const [editing, setEditing] = useState(false);
   const anchoredToDeadline = step.anchor === "deadline";
-  const [days, setDays] = useState(() =>
-    step.offsetDays === null ? "" : String(anchoredToDeadline ? -step.offsetDays : step.offsetDays),
-  );
+  const daysFor = (current: CreatorObligation) =>
+    current.offsetDays === null ? "" : String(current.anchor === "deadline" ? -current.offsetDays : current.offsetDays);
+  const [days, setDays] = useState(() => daysFor(step));
   const [policy, setPolicy] = useState(step.bufferPolicy);
   const [dueOn, setDueOn] = useState(step.dueOn);
+  // The row is keyed by id so it keeps focus across saves; take in a newer
+  // revision of the step here instead of remounting.
+  const [seenRevision, setSeenRevision] = useState(step.revision);
+  if (step.revision !== seenRevision) {
+    setSeenRevision(step.revision);
+    setDays(daysFor(step));
+    setPolicy(step.bufferPolicy);
+    setDueOn(step.dueOn);
+  }
+  // After Done, Skip or Reopen the pressed button is replaced; move focus to
+  // the control that replaced it so keyboard users stay on this step.
+  const doneButton = useRef<HTMLButtonElement>(null);
+  const reopenButton = useRef<HTMLButtonElement>(null);
+  const focusAfterChange = useRef<"done" | "reopen" | null>(null);
+  useEffect(() => {
+    const target = focusAfterChange.current;
+    if (!target || busy) return;
+    focusAfterChange.current = null;
+    (target === "reopen" ? reopenButton : doneButton).current?.focus();
+  }, [step.state, busy]);
+
+  async function changeState(state: CreatorObligation["state"]) {
+    focusAfterChange.current = state === "open" ? "done" : "reopen";
+    if (!(await onPatch(step, { state }))) focusAfterChange.current = null;
+  }
   const done = step.state === "done";
   const skipped = step.state === "skipped";
   const format = (iso: string) => formatShortDate(iso);
@@ -188,17 +213,17 @@ function StepRow({
         </div>
         <div className="flex flex-wrap gap-2">
           {done || skipped ? (
-            <Button variant="ghost" disabled={busy} onClick={() => void onPatch(step, { state: "open" })}>
+            <Button ref={reopenButton} variant="ghost" disabled={busy} onClick={() => void changeState("open")}>
               <RotateCcw aria-hidden="true" />
               Reopen<span className="sr-only"> {step.label}</span>
             </Button>
           ) : (
             <>
-              <Button variant="outline" disabled={busy} onClick={() => void onPatch(step, { state: "done" })}>
+              <Button ref={doneButton} variant="outline" disabled={busy} onClick={() => void changeState("done")}>
                 <Check aria-hidden="true" />
                 Done<span className="sr-only"> with {step.label}</span>
               </Button>
-              <Button variant="ghost" disabled={busy} onClick={() => void onPatch(step, { state: "skipped" })}>
+              <Button variant="ghost" disabled={busy} onClick={() => void changeState("skipped")}>
                 <SkipForward aria-hidden="true" />
                 Skip<span className="sr-only"> {step.label}</span>
               </Button>
@@ -719,7 +744,7 @@ export function TrackerItemSheet({
                     <ol className="space-y-2" aria-label="Steps before the deadline">
                       {preparationSteps.map((step) => (
                         <StepRow
-                          key={`${step.id}:${step.revision}`}
+                          key={step.id}
                           step={step}
                           today={today}
                           canEditChain={startBy}
@@ -753,7 +778,7 @@ export function TrackerItemSheet({
                     <ol className="space-y-2" aria-label="Steps after acceptance">
                       {acceptanceSteps.map((step) => (
                         <StepRow
-                          key={`${step.id}:${step.revision}`}
+                          key={step.id}
                           step={step}
                           today={today}
                           canEditChain={startBy}

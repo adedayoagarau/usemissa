@@ -3,6 +3,7 @@ import {
   creatorPlan,
   getPlanningPreferences,
   PlanningPreferencesConflictError,
+  PlanningPreferencesUnavailableError,
   putPlanningPreferences,
 } from "@missa/radar-adapters";
 import { getSessionAccount } from "@/lib/auth";
@@ -46,6 +47,8 @@ export async function PUT(request: Request) {
         { error: "These settings changed on another device. Review them and save again.", current: error.current },
         409,
       );
+    if (error instanceof PlanningPreferencesUnavailableError)
+      return planningJson({ error: "Planning settings are not available yet." }, 503);
     return planningJson({ error: "Planning settings could not be saved. Try again." }, 503);
   }
 }

@@ -372,3 +372,82 @@ test("planning preferences refuse a stale revision and return the current values
     assert.equal((await putPlanningPreferences(pool, creator, { ...input, weeklyHoursAvailable: 9 }, 1)).revision, 2);
   });
 });
+
+test("editing a step keeps its date when the server runs east of UTC", { skip: !databaseUrl }, async (t) => {
+  await withFixtures(t, async ({ pool, account, track }) => {
+    const creator = await account("zone");
+    const { trackedId } = await track(creator, "zone", day(30));
+    const previous = process.env.TZ;
+    // node-pg reads a date column as local midnight; far east of UTC that is
+    // the previous day in UTC unless the column is read as text.
+    process.env.TZ = "Pacific/Kiritimati";
+    try {
+      const created = await createObligation(pool, creator, { trackedOpportunityId: trackedId, label: "Print the portfolio", dueOn: day(20) });
+      assert.equal(created.obligation.dueOn, day(20));
+      const renamed = await updateObligation(pool, creator, created.obligation.id, { label: "Print and bind" }, { expectedRevision: 1 });
+      assert.equal(renamed.obligation.dueOn, day(20));
+      const done = await updateObligation(pool, creator, created.obligation.id, { state: "done" }, { expectedRevision: 2 });
+      assert.equal(done.obligation.dueOn, day(20));
+      const stored = await pool.query<{ due_on: string }>("select due_on::text due_on from creator_obligations where id=$1", [created.obligation.id]);
+      assert.equal(stored.rows[0]!.due_on, day(20), "an edit does not move the step a day earlier");
+    } finally {
+      if (previous === undefined) delete process.env.TZ;
+      else process.env.TZ = previous;
+    }
+  });
+});
+
+test("a deadline and a stage that move together each get their own notice", { skip: !databaseUrl }, async (t) => {
+  await withFixtures(t, async ({ pool, account, track, notices }) => {
+    const creator = await account("anchors", "plus");
+    const { opportunityId, trackedId } = await track(creator, "anchors", day(40));
+    const stage = await pool.query<{ id: string }>(
+      "insert into opportunity_stages(opportunity_id,kind,label,due_on) values($1,'letter-of-intent','Letter of intent',$2::date) returning id::text id",
+      [opportunityId, day(30)],
+    );
+    await createObligation(pool, creator, { trackedOpportunityId: trackedId, label: "Draft the letter", anchor: "stage", anchorStageId: stage.rows[0]!.id, offsetDays: -5 });
+    await createObligation(pool, creator, { trackedOpportunityId: trackedId, label: "Upload", offsetDays: -2 });
+
+    await pool.query("update opportunities set deadline_date=$2::date where id=$1", [opportunityId, day(45)]);
+    await pool.query("update opportunity_stages set due_on=$2::date where id::text=$1", [stage.rows[0]!.id, day(33)]);
+    const summary = await recalculateObligationChainsForAccount(pool, { accountId: creator });
+    assert.equal(summary.moved, 2);
+    assert.equal(summary.notices, 2);
+    const bodies = (await notices(creator, "obligations-moved")).map((notice) => notice.body).sort();
+    assert.equal(bodies.length, 2);
+    const deadlineNotice = bodies.find((body) => body.startsWith("The deadline"))!;
+    const stageNotice = bodies.find((body) => body.startsWith("The Letter of intent date"))!;
+    assert.match(deadlineNotice, new RegExp(`moved from ${shortCalendarDate(day(40))} to ${shortCalendarDate(day(45))}, so one step moved: Upload from`));
+    assert.match(stageNotice, new RegExp(`moved from ${shortCalendarDate(day(30))} to ${shortCalendarDate(day(33))}, so one step moved: Draft the letter from`));
+  });
+});
+
+test("steps anchored to a date that has passed wait instead of moving back", { skip: !databaseUrl }, async (t) => {
+  await withFixtures(t, async ({ pool, account, track }) => {
+    const creator = await account("carried", "plus");
+    const { opportunityId, trackedId } = await track(creator, "carried", day(20));
+    // A step carried to the next cycle, planned from a predicted close at
+    // day 60 while the record still shows the finished cycle's deadline.
+    const client = await pool.connect();
+    try {
+      await client.query("set session_replication_role = replica");
+      await client.query("update opportunities set deadline_date=$2::date where id=$1", [opportunityId, day(-30)]);
+    } finally {
+      await client.query("set session_replication_role = origin");
+      client.release();
+    }
+    await pool.query(
+      `insert into creator_obligations(account_id,tracked_opportunity_id,opportunity_id,kind,label,anchor,offset_days,buffer_policy,due_on,state,source)
+       values($1,$2,$3,'sub-deadline','Ask referees','deadline',-14,'keep',$4::date,'open','template')`,
+      [creator, trackedId, opportunityId, day(46)],
+    );
+    assert.deepEqual(await recalculateObligationChainsForAccount(pool, { accountId: creator }), { processed: 0, moved: 0, notices: 0 });
+    assert.equal((await listObligations(pool, creator))[0]!.dueOn, day(46));
+
+    // The source publishes the new deadline: the step follows it.
+    await pool.query("update opportunities set deadline_date=$2::date where id=$1", [opportunityId, day(63)]);
+    const moved = await recalculateObligationChainsForAccount(pool, { accountId: creator });
+    assert.equal(moved.moved, 1);
+    assert.equal((await listObligations(pool, creator))[0]!.dueOn, day(49));
+  });
+});

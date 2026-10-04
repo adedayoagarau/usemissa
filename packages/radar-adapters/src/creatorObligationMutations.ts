@@ -560,8 +560,10 @@ async function insertPlanNotice(
   return inserted.rowCount ?? 0;
 }
 
+/** Selects the call in the Tracker and opens its details sheet (`item`). */
 export function trackerItemHref(opportunityId: string, section?: string): string {
-  return `/tracker?application=${encodeURIComponent(opportunityId)}${section ? `&section=${encodeURIComponent(section)}` : ""}`;
+  const id = encodeURIComponent(opportunityId);
+  return `/tracker?application=${id}${section ? `&section=${encodeURIComponent(section)}` : ""}&item=${id}`;
 }
 
 export type ChainRecalculationOptions = {
@@ -569,7 +571,11 @@ export type ChainRecalculationOptions = {
   trackedOpportunityId?: string;
   /** Only accounts on these plans move automatically; omit for every account. */
   plans?: readonly CreatorPlan[];
-  /** Today, for notice wording. */
+  /**
+   * Today, for notice wording and to leave alone steps whose anchor date is
+   * already past (a carried cycle planned from a predicted date, before the
+   * source publishes the new deadline).
+   */
   today?: string;
   limit?: number;
 };
@@ -584,6 +590,7 @@ type ChainRow = {
   title: string;
   label: string;
   anchor: "deadline" | "stage";
+  anchor_stage_id: string | null;
   stage_label: string | null;
   due_on: string;
   offset_days: number;
@@ -591,14 +598,18 @@ type ChainRow = {
   anchor_on: string;
 };
 
+function anchorKey(row: Pick<ChainRow, "tracked_opportunity_id" | "anchor" | "anchor_stage_id">): string {
+  return `${row.tracked_opportunity_id}|${row.anchor}|${row.anchor === "stage" ? row.anchor_stage_id ?? "" : ""}`;
+}
+
 /**
  * Move anchored, open steps whose anchor date (the official deadline, or a
  * stage date) no longer matches the date they were planned from. The date a
  * step was planned from is its due date minus its offset, so the pass is
  * idempotent and needs no history: steps that already follow the anchor are
- * never touched, and an absorbed extension is left as slack. Each tracked
- * call with moves gets one 'obligations-moved' Inbox notice naming the old
- * and new dates. Runs inside the caller's transaction.
+ * never touched, and an absorbed extension is left as slack. Each moved
+ * anchor (the deadline, or one stage) on a tracked call gets one
+ * 'obligations-moved' Inbox notice naming its old and new dates. Runs inside the caller's transaction.
  */
 export async function recalculateObligationChainsIn(
   client: PoolClient,
@@ -606,19 +617,21 @@ export async function recalculateObligationChainsIn(
 ): Promise<ChainRecalculationSummary> {
   if (!(await obligationsAvailable(client))) return { processed: 0, moved: 0, notices: 0 };
   let planFilter = "";
-  const values: unknown[] = [options.accountId ?? null, options.trackedOpportunityId ?? null, options.limit ?? 500];
+  const today = options.today ?? new Date().toISOString().slice(0, 10);
+  const values: unknown[] = [options.accountId ?? null, options.trackedOpportunityId ?? null, options.limit ?? 500, today];
   if (options.plans) {
     if (!options.plans.length) return { processed: 0, moved: 0, notices: 0 };
     const plansReady = (await client.query<{ ready: boolean }>("select to_regclass('public.creator_plans') is not null ready")).rows[0]?.ready;
     if (!plansReady && !options.plans.includes("free")) return { processed: 0, moved: 0, notices: 0 };
     values.push([...options.plans]);
     planFilter = plansReady
-      ? `and coalesce((select p.plan from creator_plans p where p.account_id=ob.account_id and (p.expires_at is null or p.expires_at>now())),'free') = any($4::text[])`
+      ? `and coalesce((select p.plan from creator_plans p where p.account_id=ob.account_id and (p.expires_at is null or p.expires_at>now())),'free') = any($5::text[])`
       : "";
   }
   const rows = await client.query<ChainRow>(
     `select * from (
-       select ob.id::text id,ob.account_id,ob.tracked_opportunity_id,t.opportunity_id,o.title,ob.label,ob.anchor,s.label stage_label,
+       select ob.id::text id,ob.account_id,ob.tracked_opportunity_id,t.opportunity_id,o.title,ob.label,ob.anchor,
+              ob.anchor_stage_id::text anchor_stage_id,s.label stage_label,
               ob.due_on::text due_on,ob.offset_days,ob.buffer_policy,
               (case when ob.anchor='deadline' then o.deadline_date else s.due_on end)::text anchor_on
          from creator_obligations ob
@@ -629,6 +642,9 @@ export async function recalculateObligationChainsIn(
           and ($1::text is null or ob.account_id=$1) and ($2::text is null or ob.tracked_opportunity_id=$2)
           and ((ob.anchor='deadline' and o.deadline_date is not null and o.deadline_kind in ${EXACT_DEADLINE_SQL})
                or (ob.anchor='stage' and s.due_on is not null))
+          -- A past anchor is the finished cycle's date: a carried step planned
+          -- from a predicted date waits for the new one instead of moving back.
+          and (case when ob.anchor='deadline' then o.deadline_date else s.due_on end) >= $4::date
           ${planFilter}
         order by ob.tracked_opportunity_id,ob.due_on,ob.id
         for update of ob skip locked
@@ -641,14 +657,16 @@ export async function recalculateObligationChainsIn(
   const groups = new Map<string, ChainRow[]>();
   for (const row of rows.rows) {
     const plannedFrom = addCalendarDays(row.due_on, -row.offset_days);
-    const key = `${row.tracked_opportunity_id}|${row.anchor}|${plannedFrom}|${row.anchor_on}`;
+    const key = `${anchorKey(row)}|${plannedFrom}|${row.anchor_on}`;
     groups.set(key, [...(groups.get(key) ?? []), row]);
   }
-  const today = options.today ?? new Date().toISOString().slice(0, 10);
-  const perTracked = new Map<string, { row: ChainRow; was: string; now: string; moves: Array<ChainMove & { label: string }> }>();
+  // One notice per anchor: a deadline move and a stage move on the same call
+  // each name their own dates.
+  const perAnchor = new Map<string, { row: ChainRow; was: string; now: string; moves: Array<ChainMove & { label: string }> }>();
   let moved = 0;
   for (const [key, group] of groups) {
-    const plannedFrom = key.split("|")[2]!;
+    const parts = key.split("|");
+    const plannedFrom = parts[parts.length - 2]!;
     const anchorOn = group[0]!.anchor_on;
     const moves = chainMoves(
       group.map((row) => ({ id: row.id, dueOn: row.due_on, offsetDays: row.offset_days, bufferPolicy: row.buffer_policy })),
@@ -662,13 +680,13 @@ export async function recalculateObligationChainsIn(
       );
       moved += 1;
       const row = group.find((candidate) => candidate.id === move.id)!;
-      const entry = perTracked.get(row.tracked_opportunity_id) ?? { row, was: plannedFrom, now: anchorOn, moves: [] };
+      const entry = perAnchor.get(anchorKey(row)) ?? { row, was: plannedFrom, now: anchorOn, moves: [] };
       entry.moves.push({ ...move, label: row.label });
-      perTracked.set(row.tracked_opportunity_id, entry);
+      perAnchor.set(anchorKey(row), entry);
     }
   }
   let notices = 0;
-  for (const [trackedId, entry] of perTracked) {
+  for (const entry of perAnchor.values()) {
     const what = entry.row.anchor === "stage" ? `The ${entry.row.stage_label ?? "stage"} date` : "The deadline";
     const steps = entry.moves
       .map((move) => `${move.label} from ${shortCalendarDate(move.from, today)} to ${shortCalendarDate(move.to, today)}`)
@@ -680,7 +698,7 @@ export async function recalculateObligationChainsIn(
       kind: "obligations-moved",
       title: `Your plan moved with the date: ${entry.row.title}`,
       body: `${what} moved from ${shortCalendarDate(entry.was, today)} to ${shortCalendarDate(entry.now, today)}, so ${count === 1 ? "one step moved" : `${count} steps moved`}: ${steps}.`,
-      dedupeKey: `obligations-moved:${trackedId}:${entry.row.anchor}:${entry.now}`,
+      dedupeKey: `obligations-moved:${entry.row.tracked_opportunity_id}:${entry.row.anchor === "stage" ? `stage-${entry.row.anchor_stage_id}` : "deadline"}:${entry.now}`,
       actionHref: trackerItemHref(entry.row.opportunity_id, "plan"),
     });
   }

@@ -6,6 +6,7 @@ import {
   creatorPlan,
   creatorPoolFor,
   getPlanningPreferences,
+  planningPreferencesAvailable,
   type CreatorInboxAlertView,
   type CreatorPlanningPreferences,
 } from '@missa/radar-adapters';
@@ -129,12 +130,18 @@ function toProductItem(alert: InboxSourceAlert): InboxProductItem {
   };
 }
 
-/** Planning preferences and the plan's deadline features for the Deadlines settings; absent without a database. */
+/**
+ * Planning preferences and the plan's deadline features for the Deadlines
+ * settings; absent without a database or before migration 0088, so the
+ * section is hidden rather than shown with saves that cannot succeed.
+ */
 async function deadlineSettings(accountId: string): Promise<{ preferences: CreatorPlanningPreferences | null; features: DeadlinePlanFeatures }> {
   if (!process.env.DATABASE_URL) return { preferences: null, features: {} };
   const pool = creatorPoolFor(process.env.DATABASE_URL);
   const [preferences, plan] = await Promise.all([
-    getPlanningPreferences(pool, accountId).catch(() => null),
+    planningPreferencesAvailable(pool)
+      .then((available) => (available ? getPlanningPreferences(pool, accountId) : null))
+      .catch(() => null),
     creatorPlan(pool, accountId).catch(() => 'free' as const),
   ]);
   const features = creatorFeatures(plan);

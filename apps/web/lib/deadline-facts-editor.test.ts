@@ -26,9 +26,28 @@ test("a loaded record round-trips through the draft with local close times", () 
   assert.equal(draft.tiers[0]!.fee, "12.50");
   const built = draftToBody(draft);
   assert.ok("body" in built);
-  assert.deepEqual(built.body.tiers[0], { tier: "early", label: "Early bird", closesOn: "2027-02-01", closesTime: "23:59", timezone: "America/New_York", feeCents: 1250, feeCurrency: "USD", confidence: "confirmed" });
-  assert.deepEqual(built.body.deadline, { date: "2027-03-01", time: "23:59", timezone: "America/New_York" });
+  assert.deepEqual(built.body.tiers[0], { id: "t1", tier: "early", label: "Early bird", closesOn: "2027-02-01", closesTime: "23:59", timezone: "America/New_York", feeCents: 1250, feeCurrency: "USD", confidence: "confirmed" });
+  assert.equal(built.body.stages[0]!.id, "s1", "stored ids go back so saving keeps the rows");
+  assert.deepEqual(built.body.deadline, { date: "2027-03-01" }, "an unchanged closing time is left alone");
   assert.equal(built.body.expectedRevision, "abc");
+
+  const retimed = draftToBody({ ...draft, deadlineTime: "17:00" });
+  assert.ok("body" in retimed);
+  assert.deepEqual(retimed.body.deadline, { date: "2027-03-01", time: "17:00", timezone: "America/New_York" });
+  const moved = draftToBody({ ...draft, deadlineDate: "2027-03-08" });
+  assert.ok("body" in moved);
+  assert.deepEqual(moved.body.deadline, { date: "2027-03-08", time: "23:59", timezone: "America/New_York" }, "a moved date carries its time");
+  const parsed = parseDeadlineFactsBody(moved.body);
+  assert.ok(!("error" in parsed));
+  assert.equal(parsed.tiers[0]!.id, "t1");
+});
+
+test("saving only a tier keeps a stored closing time that has no time zone", () => {
+  // The editor cannot show a time without a zone, so it loads as empty.
+  const draft = recordToDraft({ opportunityId: "opp_2", deadlineDate: "2027-03-01", tiers: [], stages: [], revision: "r1" });
+  const built = draftToBody({ ...draft, tiers: [emptyTier({ closesOn: "2027-02-01" })] });
+  assert.ok("body" in built);
+  assert.deepEqual(built.body.deadline, { date: "2027-03-01" });
 });
 
 test("drafts explain what is missing before saving", () => {

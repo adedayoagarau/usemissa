@@ -62,8 +62,11 @@ export type SeasonForecast = {
   };
 };
 
-export const trackerItemHref = (opportunityId: string) =>
-  `/tracker?application=${encodeURIComponent(opportunityId)}`;
+/** Selects the call in the Tracker and opens its details sheet (`?item=`). */
+export const trackerItemHref = (opportunityId: string) => {
+  const id = encodeURIComponent(opportunityId);
+  return `/tracker?application=${id}&item=${id}`;
+};
 
 /** Calls still being prepared, with a date to work towards. */
 export function preparingCalls(calls: readonly SeasonCall[]): SeasonCall[] {

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { creatorRelationalAuthorityEnabled } from "@missa/radar-adapters";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { loadSeasonData, type SeasonData } from "@/lib/season-data";
-import { calendarDateIn } from "@/lib/deadline-moment";
+import { creatorToday } from "@/lib/deadline-planning";
 import { SeasonProduct } from "@/components/season-product";
 
 export const metadata = { title: "Season" };
@@ -19,9 +19,11 @@ export default async function SeasonPage() {
     ? await loadSeasonData(connectionString, session.account.id).catch(() => null)
     : null;
 
+  const today = data?.today ?? (await creatorToday(session.account.id));
+
   return (
     <SeasonProduct
-      today={data?.today ?? calendarDateIn(new Date(), "UTC")}
+      today={today}
       initialCalls={data?.calls ?? []}
       initialObligations={data?.obligations ?? []}
       initialTiers={data?.tiers ?? {}}

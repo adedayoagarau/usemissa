@@ -214,7 +214,14 @@ export function CalendarWorkspace({
         .filter((e: EventItem) => e.purpose !== "goal-date")
         .map((e: EventItem) => ({
           ...e,
-          kind: e.purpose === "official-deadline" ? "tracker" : "personal",
+          // A personal target mirrors the date set on the Tracker item, so it
+          // is changed there, not dragged or edited as personal time here.
+          kind:
+            e.purpose === "official-deadline"
+              ? "tracker"
+              : e.purpose === "personal-target"
+                ? "obligation"
+                : "personal",
           sourceLabel:
             e.purpose === "official-deadline"
               ? "Application deadline"
@@ -228,7 +235,9 @@ export function CalendarWorkspace({
                       ? "Unavailable"
                       : "Personal event",
           actionHref: e.opportunityId
-            ? `/tracker?application=${encodeURIComponent(e.opportunityId)}`
+            ? e.purpose === "personal-target"
+              ? `/tracker?application=${encodeURIComponent(e.opportunityId)}&item=${encodeURIComponent(e.opportunityId)}`
+              : `/tracker?application=${encodeURIComponent(e.opportunityId)}`
             : undefined,
           ...(e.purpose === "official-deadline" && e.opportunityId
             ? (() => {
@@ -2304,7 +2313,6 @@ export function CalendarWorkspace({
                 >
                   <option value="personal">Personal time</option>
                   <option value="preparation">Application preparation</option>
-                  <option value="personal-target">Personal target</option>
                   <option value="attendance">Attendance</option>
                   <option value="unavailable">Unavailable</option>
                 </NativeSelect>

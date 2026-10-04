@@ -6,7 +6,7 @@ import type { PublisherReview } from "./publisher.js";
 import type { CandidatePublisherReview } from "./publisher.js";
 import type { ShadowArtifact } from "./execution.js";
 import { writeWithDeepSeek } from "./deepseekWriter.js";
-import { resolveCurrentDeadline, resolveDeadlineClock, resolveDeadlineTiers, resolveEntryFee, type ResolvedDeadlineTier } from "./deadline.js";
+import { finalCloseDeadline, resolveCurrentDeadline, resolveDeadlineClock, resolveDeadlineTiers, resolveEntryFee, type ResolvedDeadlineTier } from "./deadline.js";
 import { isAggregateOpportunityPage } from "./identity.js";
 
 function field(fields: ExtractionResult["fields"], name: string): string | undefined {
@@ -222,11 +222,13 @@ async function writeApprovedEvidence(
   const canonicalSourceId = sourceId(source);
   const organization = field(extraction.fields, "organization");
   if (isAggregateOpportunityPage(extraction, url)) throw new Error("v2 candidate handoff rejected a directory or roundup page");
-  const resolvedDeadline = resolveCurrentDeadline(extraction.fields, url);
+  const currentDeadline = resolveCurrentDeadline(extraction.fields, url);
+  if (currentDeadline.conflict || (!currentDeadline.date && currentDeadline.kind === "unknown")) throw new Error("v2 candidate handoff requires a non-conflicting current deadline or declared rolling window");
+  const tiers = resolveDeadlineTiers(extraction.fields, currentDeadline);
+  // The stored deadline is the final close; the clock and fee follow it.
+  const resolvedDeadline = finalCloseDeadline(currentDeadline, tiers);
   const deadline = resolvedDeadline.date;
-  if (resolvedDeadline.conflict || (!deadline && resolvedDeadline.kind === "unknown")) throw new Error("v2 candidate handoff requires a non-conflicting current deadline or declared rolling window");
   const deadlineKind = resolvedDeadline.kind;
-  const tiers = resolveDeadlineTiers(extraction.fields, resolvedDeadline);
   const clock = resolveDeadlineClock(extraction.fields, resolvedDeadline);
   const fee = resolveEntryFee(extraction.fields, tiers, resolvedDeadline);
   const type = field(extraction.fields, "opportunityType") ?? "other";

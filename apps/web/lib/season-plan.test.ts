@@ -44,7 +44,7 @@ test("this week's three puts late steps first, then the soonest dates", () => {
   );
   assert.equal(actions[0]!.daysAway, -2);
   assert.equal(actions[0]!.title, "Ask for references · Call a");
-  assert.equal(actions[1]!.href, "/tracker?application=b");
+  assert.equal(actions[1]!.href, "/tracker?application=b&item=b");
 });
 
 test("crunch weeks count deadlines of calls in preparation", () => {

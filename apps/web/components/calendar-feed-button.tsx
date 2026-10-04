@@ -121,6 +121,7 @@ export function CalendarFeedCard({ userId }: { userId: string }) {
   const alarmsId = `${id}-alarms`;
   const includeId = `${id}-include`;
   const link = feedUrl ? calendarFeedUrl(feedUrl, types, alarms) : undefined;
+  const noneChosen = types.length === 0;
 
   async function copy(value = link) {
     if (!value) return;
@@ -146,13 +147,19 @@ export function CalendarFeedCard({ userId }: { userId: string }) {
         {link ? (
           <div className="flex flex-wrap gap-2">
             <Input id={linkId} readOnly value={link} className="min-h-11 min-w-0 flex-1" onFocus={(event) => event.currentTarget.select()} />
-            <Button type="button" variant="outline" className="min-h-11" onClick={() => void copy()}>
+            <Button type="button" variant="outline" className="min-h-11" disabled={noneChosen} onClick={() => void copy()}>
               <Copy aria-hidden="true" />
               Copy
             </Button>
-            <Button type="button" variant="ghost" className="min-h-11" render={<a href={webcalUrl(link)} />}>
-              Open in calendar app
-            </Button>
+            {noneChosen ? (
+              <Button type="button" variant="ghost" className="min-h-11" disabled>
+                Open in calendar app
+              </Button>
+            ) : (
+              <Button type="button" variant="ghost" className="min-h-11" render={<a href={webcalUrl(link)} />}>
+                Open in calendar app
+              </Button>
+            )}
           </div>
         ) : (
           <p id={linkId} className="text-sm text-muted-foreground">
@@ -177,7 +184,7 @@ export function CalendarFeedCard({ userId }: { userId: string }) {
             </label>
           ))}
         </div>
-        {types.length === 0 ? <p className="text-sm text-muted-foreground">Choose at least one kind of date for the link to show anything.</p> : null}
+        {noneChosen ? <p className="text-sm text-muted-foreground">Choose at least one kind of date for the link to show anything.</p> : null}
       </div>
       <div className="flex min-h-11 items-center justify-between gap-4">
         <label htmlFor={alarmsId} className="grid gap-0.5 text-sm">
@@ -188,7 +195,7 @@ export function CalendarFeedCard({ userId }: { userId: string }) {
       </div>
       {link ? <p className="text-sm text-muted-foreground">Changing these choices changes the link. Copy it again and replace the subscription in your calendar app.</p> : null}
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" className="min-h-11" disabled={busy} onClick={() => void make(state.active ? 'rotate' : 'issue')}>
+        <Button type="button" variant="outline" className="min-h-11" disabled={busy || noneChosen} onClick={() => void make(state.active ? 'rotate' : 'issue')}>
           {state.active ? 'Make a new link' : 'Connect local calendar'}
         </Button>
         {state.active ? (

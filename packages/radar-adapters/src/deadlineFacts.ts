@@ -183,9 +183,10 @@ export async function loadDeadlineFacts(
 
   const [base, tiers, stages] = await Promise.all([
     db.query<BaseRow>(
-      `select o.id, o.deadline_date, o.deadline_kind, o.status, o.source_checked_at,
+      `select o.id, o.deadline_date::text as deadline_date, o.deadline_kind, o.status, o.source_checked_at,
               ev.last_evidence_at, ch.old_value as change_old, ch.new_value as change_new, ch.created_at as change_at,
-              f.expected_open_start, f.expected_open_end, f.expected_close, f.confidence as forecast_confidence,
+              f.expected_open_start::text as expected_open_start, f.expected_open_end::text as expected_open_end,
+              f.expected_close::text as expected_close, f.confidence as forecast_confidence,
               f.based_on_cycles, f.confirmed_at, f.confirmed_delta_days
          from opportunities o
          left join lateral (
@@ -205,14 +206,14 @@ export async function loadDeadlineFacts(
       [ids],
     ),
     db.query<TierRow>(
-      `select id, opportunity_id, tier, label, closes_on, closes_at, timezone, fee_cents, fee_currency, confidence
+      `select id, opportunity_id, tier, label, closes_on::text as closes_on, closes_at, timezone, fee_cents, fee_currency, confidence
          from opportunity_deadline_tiers
         where opportunity_id = any($1::text[])
         order by opportunity_id, closes_on, position`,
       [ids],
     ),
     db.query<StageRow>(
-      `select id, opportunity_id, kind, label, due_on, due_at, timezone, confidence
+      `select id, opportunity_id, kind, label, due_on::text as due_on, due_at, timezone, confidence
          from opportunity_stages
         where opportunity_id = any($1::text[])
         order by opportunity_id, due_on, position`,

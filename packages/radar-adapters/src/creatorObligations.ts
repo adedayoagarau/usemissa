@@ -81,7 +81,7 @@ function isoTime(value: Date | string | null): string | null {
 
 export const OBLIGATION_COLUMNS_SQL = `ob.id, ob.account_id, ob.tracked_opportunity_id, ob.opportunity_id, o.title as opportunity_title,
   ob.kind, ob.label, ob.template_key, ob.anchor, ob.anchor_stage_id, ob.offset_days, ob.buffer_policy,
-  ob.due_on, ob.due_at, ob.timezone, ob.effort_hours, ob.checklist_item_id, ob.state, ob.source, ob.position,
+  ob.due_on::text as due_on, ob.due_at, ob.timezone, ob.effort_hours, ob.checklist_item_id, ob.state, ob.source, ob.position,
   ob.completed_at, ob.revision, ob.updated_at`;
 
 export function obligationFromRow(row: ObligationRow): CreatorObligation {

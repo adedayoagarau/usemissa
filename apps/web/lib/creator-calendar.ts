@@ -35,8 +35,13 @@ const AWAITING = new Set([
 const ACTIONABLE_STAGES = new Set(["letter-of-intent", "full-application", "interview", "event"]);
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** `?types=deadline,stage&alarms=0`; unknown types are ignored and an empty list means every type. */
+/**
+ * `?types=deadline,stage&alarms=0`; unknown types are ignored and an empty
+ * list means every type. `types=none` (every kind cleared) means no type.
+ */
 export function parseCalendarFeedOptions(params: URLSearchParams): CalendarFeedOptions {
+  if ((params.get("types") ?? "").trim().toLowerCase() === "none")
+    return { types: new Set(), alarms: params.get("alarms") !== "0" };
   const requested = (params.get("types") ?? "")
     .split(",")
     .map((value) => value.trim().toLowerCase())

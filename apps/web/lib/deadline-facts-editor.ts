@@ -47,6 +47,8 @@ export const COMMON_TIME_ZONES = [
 
 export type TierDraft = {
   key: string;
+  /** The stored tier this row edits; kept so saving does not replace it. */
+  id?: string;
   tier: (typeof TIER_OPTIONS)[number][0];
   label: string;
   closesOn: string;
@@ -60,6 +62,8 @@ export type TierDraft = {
 
 export type StageDraft = {
   key: string;
+  /** The stored stage this row edits; kept so plan steps stay attached. */
+  id?: string;
   kind: (typeof STAGE_OPTIONS)[number][0];
   label: string;
   dueOn: string;
@@ -76,6 +80,12 @@ export type DeadlineFactsDraft = {
   stages: StageDraft[];
   sourceUrl: string;
   revision?: string;
+  /**
+   * The closing time as loaded. The time is sent only when it changed, so a
+   * stored time the editor cannot show (one without a time zone) survives a
+   * save that only touches tiers or stages.
+   */
+  loadedDeadline?: { date: string; time: string; timezone: string };
 };
 
 let keySeed = 0;
@@ -115,6 +125,7 @@ export function recordToDraft(record: OpportunityDeadlineFactsRecord | null | un
     deadlineTime: record?.deadlineTime ?? "",
     deadlineTimezone: record?.deadlineTimezone ?? "",
     tiers: (record?.tiers ?? []).map((tier) => emptyTier({
+      id: tier.id,
       tier: tier.tier,
       label: tier.label,
       closesOn: tier.closesOn,
@@ -125,6 +136,7 @@ export function recordToDraft(record: OpportunityDeadlineFactsRecord | null | un
       confidence: tier.confidence,
     })),
     stages: (record?.stages ?? []).map((stage) => emptyStage({
+      id: stage.id,
       kind: stage.kind,
       label: stage.label,
       dueOn: stage.dueOn,
@@ -134,6 +146,9 @@ export function recordToDraft(record: OpportunityDeadlineFactsRecord | null | un
     })),
     sourceUrl: "",
     ...(record?.revision ? { revision: record.revision } : {}),
+    ...(record
+      ? { loadedDeadline: { date: record.deadlineDate ?? "", time: record.deadlineTime ?? "", timezone: record.deadlineTimezone ?? "" } }
+      : {}),
   };
 }
 
@@ -148,7 +163,7 @@ export function feeToCents(value: string): number | null | undefined {
 export type DraftBody = {
   tiers: Array<Record<string, unknown>>;
   stages: Array<Record<string, unknown>>;
-  deadline: { date: string | null; time: string | null; timezone: string | null };
+  deadline: { date: string | null; time?: string | null; timezone?: string | null };
   sourceUrl?: string;
   expectedRevision?: string;
 };
@@ -161,6 +176,7 @@ export function draftToBody(draft: DeadlineFactsDraft): { body: DraftBody } | { 
     const cents = feeToCents(tier.fee);
     if (cents === undefined) return { error: `Fee tier ${index + 1} needs a fee written as a number, like 25 or 12.50.` };
     tiers.push({
+      ...(tier.id ? { id: tier.id } : {}),
       tier: tier.tier,
       label: tier.label.trim(),
       closesOn: tier.closesOn,
@@ -175,6 +191,7 @@ export function draftToBody(draft: DeadlineFactsDraft): { body: DraftBody } | { 
   for (const [index, stage] of draft.stages.entries()) {
     if (!stage.dueOn) return { error: `Stage ${index + 1} needs a date.` };
     stages.push({
+      ...(stage.id ? { id: stage.id } : {}),
       kind: stage.kind,
       label: stage.label.trim(),
       dueOn: stage.dueOn,
@@ -184,14 +201,20 @@ export function draftToBody(draft: DeadlineFactsDraft): { body: DraftBody } | { 
     });
   }
   if (draft.deadlineTime && !draft.deadlineDate) return { error: "Add the deadline date before its time." };
+  const loaded = draft.loadedDeadline ?? { date: "", time: "", timezone: "" };
+  const clockChanged =
+    draft.deadlineTime !== loaded.time ||
+    draft.deadlineTimezone !== loaded.timezone ||
+    (Boolean(draft.deadlineTime) && draft.deadlineDate !== loaded.date);
   return {
     body: {
       tiers,
       stages,
       deadline: {
         date: draft.deadlineDate || null,
-        time: draft.deadlineTime || null,
-        timezone: draft.deadlineTimezone || null,
+        ...(clockChanged
+          ? { time: draft.deadlineTime || null, timezone: draft.deadlineTimezone || null }
+          : {}),
       },
       ...(draft.sourceUrl.trim() ? { sourceUrl: draft.sourceUrl.trim() } : {}),
       ...(draft.revision ? { expectedRevision: draft.revision } : {}),

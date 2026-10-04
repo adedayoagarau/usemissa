@@ -27,6 +27,7 @@ import {
   reanchoredDueOn,
   resolveTrackedId,
 } from "../src/carryToNextCycle.js";
+import { recalculateObligationChainsForAccount } from "../src/creatorObligationMutations.js";
 
 const NOW = new Date("2026-10-04T12:00:00Z");
 
@@ -497,5 +498,42 @@ describe(
     const replay = await carryTrackedToNextCycle(pool, owner, tracked, { idempotencyKey: `carry-${run}`, expectedRevision: 1, now: NOW });
     assert.equal(replay?.replayed, true);
     assert.equal(replay?.revision, 2);
+
+    // The copy planned from the predicted close is not pulled back to the
+    // finished cycle's deadline, which the record still shows.
+    const dueOf = async (label: string) =>
+      (await pool.query<{ due_on: string }>(
+        "select due_on::text from creator_obligations where tracked_opportunity_id = $1 and label = $2 and state = 'open'",
+        [tracked, label],
+      )).rows[0]!.due_on;
+    assert.equal((await recalculateObligationChainsForAccount(pool, { accountId: owner, today: "2026-10-04" })).moved, 0);
+    assert.equal(await dueOf("Ask for references"), "2027-04-16");
+    // Once the source publishes the new deadline, the copy follows it.
+    await fixture("update opportunities set deadline_date = '2027-05-07' where id = $1", [opp]);
+    assert.equal((await recalculateObligationChainsForAccount(pool, { accountId: owner, today: "2026-10-04" })).moved, 1);
+    assert.equal(await dueOf("Ask for references"), "2027-04-23");
+  });
+
+  test("opening alerts stop once the creator unfollows, mutes or removes the call", async () => {
+    const opp = await opportunity({ status: "closed", openDate: "2026-03-01", deadline: "2026-04-30", published: true, organizationId: orgId });
+    await forecast(opp, "2027-02-22", "2027-03-08", "2027-04-30");
+    const unfollowed = await account("pro");
+    const muted = await account("plus");
+    const removed = await account("plus");
+    await pool.query("insert into organization_follows (account_id, organization_id) values ($1, $2)", [unfollowed, orgId]);
+    await track(muted, opp, "submitted");
+    const removedTracked = await track(removed, opp, "submitted");
+    for (const id of [unfollowed, muted, removed]) assert.equal(await ensureDefaultOpeningAlerts(pool, { accountId: id, now: NOW }), 2);
+
+    await pool.query("delete from organization_follows where account_id = $1", [unfollowed]);
+    await pool.query("update tracked_opportunities set notify = false where account_id = $1", [muted]);
+    await pool.query("update tracked_opportunities set status = 'archived' where id = $1", [removedTracked]);
+    const leadTime = new Date("2027-02-12T09:00:00Z");
+    for (const id of [unfollowed, muted, removed]) {
+      assert.equal((await fireOpeningAlerts(pool, { accountId: id, now: leadTime })).opensSoon, 0);
+      assert.equal((await notices(id, "opens-soon")).length, 0);
+    }
+    await fixture("update opportunities set status = 'open', open_date = '2026-10-01', deadline_date = '2026-12-01' where id = $1", [opp]);
+    for (const id of [unfollowed, muted, removed]) assert.equal((await fireOpeningAlerts(pool, { accountId: id, now: NOW })).reopened, 0);
   });
 });

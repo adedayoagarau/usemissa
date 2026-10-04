@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { Pool } from "pg";
 import { GenericHtmlAdapter, createBenchmarkSources } from "../src/adapters/html.js";
 import { createRun } from "../src/runs.js";
-import { explicitDate, resolveCurrentDeadline, resolveDeadlineClock, resolveDeadlineTiers, resolveEntryFee } from "../src/deadline.js";
+import { explicitDate, finalCloseDeadline, resolveCurrentDeadline, resolveDeadlineClock, resolveDeadlineTiers, resolveEntryFee } from "../src/deadline.js";
 import { deadlineClocksFromText, deadlineTiersFromText, parseDeadlineClock, parseFee, zonedInstant } from "../src/deadlineDetails.js";
 import { writeDeadlineTiers } from "../src/canonicalWriter.js";
 import type { ExtractionResult } from "../src/contracts.js";
@@ -76,6 +76,20 @@ test("resolves tiered windows, the close time and the current fee from a page", 
 
   const regularOnly = { ...resolved, date: "2026-12-01" };
   assert.deepEqual(resolveDeadlineClock(extraction.fields, regularOnly), { time: "23:59", timezone: "America/New_York", closesAt: "2026-12-02T04:59:00.000Z" });
+});
+
+test("with phased windows the stored deadline is the final close, with its own fee and time", async () => {
+  const extraction = await fieldsFrom(`<h1>Example Poetry Prize</h1>
+    <p>Early bird deadline: November 1, 2026 ($10)</p>
+    <p>Regular deadline: December 1, 2026 at 11:59 pm ET ($20)</p>`);
+  const current = resolveCurrentDeadline(extraction.fields, "https://example.test/prize", NOW);
+  const tiers = resolveDeadlineTiers(extraction.fields, current);
+  const final = finalCloseDeadline(current, tiers);
+  assert.equal(final.date, "2026-12-01");
+  assert.equal(final.kind, "exact");
+  assert.deepEqual(resolveDeadlineClock(extraction.fields, final), { time: "23:59", timezone: "America/New_York", closesAt: "2026-12-02T04:59:00.000Z" });
+  assert.deepEqual(resolveEntryFee(extraction.fields, tiers, final), { status: "paid", cents: 2000, currency: "USD" });
+  assert.equal(finalCloseDeadline(current, []), current, "without tiers the deadline is unchanged");
 });
 
 test("a single labelled date is the deadline, not a tier", async () => {

@@ -56,6 +56,12 @@ export async function pendingCreatorReminderTexts(pool: Pool, limit = 100): Prom
           )
         )`
     : "";
+  // The deadline-day alarm is only true while the application is still unsent
+  // and the call has not closed: at the provider's stated time, else at the end
+  // of the deadline day in the deadline's zone (or the creator's).
+  const closeZone = ready.rows[0].timing
+    ? `coalesce(o.deadline_timezone, case when exists (select 1 from pg_timezone_names z where z.name = p.timezone) then p.timezone end, 'UTC')`
+    : `coalesce(o.deadline_timezone, 'UTC')`;
   const quietMinute = ready.rows[0].timing
     ? `left join lateral (
          select (extract(hour from now() at time zone p.timezone) * 60 + extract(minute from now() at time zone p.timezone))::int as minute
@@ -97,7 +103,9 @@ export async function pendingCreatorReminderTexts(pool: Pool, limit = 100): Prom
           or a.kind='call-closed'
           or (a.kind='response-overdue' and a.reminder_id is not null)
           or (a.kind='deadline-day' and a.reminder_id is not null
-            and o.deadline_date is not null and o.deadline_date >= current_date-1)
+            and t.status in ('interested','saved','preparing','draft-started','ready-to-submit')
+            and o.deadline_date is not null
+            and coalesce(o.deadline_time, ((o.deadline_date + 1)::timestamp at time zone ${closeZone})) > now())
         )
         ${quietHold}
         and not exists (

@@ -52,6 +52,16 @@ test('dedupe keys use kind, subject and date for Missa reminders', () => {
   assert.equal(reminderNoticeDedupeKey({ ...base, kind: 'deadline', subject_id: 'offset:7', source_deadline: '2026-10-11' }), 'application-reminder:r1:2026-10-04T09:00:00.000Z');
 });
 
+test('a snoozed tier, milestone or deadline-day reminder gets a fresh dedupe key', () => {
+  const base = { id: 'r1', opportunity_id: 'o1', source_deadline: '2026-10-09' };
+  for (const [kind, subject] of [['tier', 't1'], ['milestone', 'ob1'], ['deadline-day', 'deadline-day:2026-10-09']] as const) {
+    const delivered = reminderNoticeDedupeKey({ ...base, kind, subject_id: subject, effective_due: '2026-10-06T09:00:00Z', snoozed_until: null });
+    const snoozed = reminderNoticeDedupeKey({ ...base, kind, subject_id: subject, effective_due: '2026-10-07T09:00:00Z', snoozed_until: '2026-10-07T09:00:00Z' });
+    assert.notEqual(snoozed, delivered, kind);
+    assert.ok(snoozed.startsWith(`${delivered}:`), kind);
+  }
+});
+
 test('gone quiet sends one notice per quiet period', () => {
   assert.equal(goneQuietDedupeKey('t1', '2026-09-01', 21, 21), goneQuietDedupeKey('t1', '2026-09-01', 30, 21));
   assert.notEqual(goneQuietDedupeKey('t1', '2026-09-01', 30, 21), goneQuietDedupeKey('t1', '2026-09-01', 42, 21));
@@ -79,5 +89,5 @@ test('time to follow up only fires past a stated or observed window', () => {
     'You sent Spring issue 50 days ago. Nine in ten Missa creators heard back within 40 days.');
   const few = responseClock({ submittedOn: '2026-08-01', today: '2026-09-20', observed: { p50Days: 20, p90Days: 40, sampleSize: 4 } });
   assert.equal(shouldNotifyResponseClock(few), false, 'fewer than five reports are ignored');
-  assert.equal(timeToQueryDedupeKey('t1', 'submitted', '2026-08-01', 'past-stated'), 'time-to-query:t1:submitted:2026-08-01:past-stated');
+  assert.equal(timeToQueryDedupeKey('t1', '2026-08-01', 'past-stated'), 'time-to-query:t1:2026-08-01:past-stated', 'the Tracker status is not part of the key');
 });

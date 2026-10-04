@@ -133,7 +133,9 @@ export function reminderNoticeReason(kind: string, subjectId: string | null): st
 /**
  * Dedupe key for a delivered reminder notice. The creator's own reminders keep
  * their existing key; Missa's kinds use {inbox kind}:{subject}:{date} so one
- * subject on one date is announced once even if its row is recreated.
+ * subject on one date is announced once even if its row is recreated. A
+ * snoozed row (by the creator, quiet hours or the daily cap) adds the time it
+ * comes due, so a creator who snoozes a delivered notice hears it again.
  */
 export function reminderNoticeDedupeKey(row: {
   id: string;
@@ -142,10 +144,13 @@ export function reminderNoticeDedupeKey(row: {
   opportunity_id: string;
   source_deadline: string | Date | null;
   effective_due: string | Date;
+  snoozed_until?: string | Date | null;
 }): string {
   const date = row.source_deadline instanceof Date ? row.source_deadline.toISOString().slice(0, 10) : row.source_deadline;
-  if (row.kind === "deadline-day" || row.kind === "tier" || row.kind === "milestone")
-    return `${reminderInboxKind(row.kind)}:${row.subject_id ?? row.opportunity_id}:${date ?? "undated"}`;
+  if (row.kind === "deadline-day" || row.kind === "tier" || row.kind === "milestone") {
+    const key = `${reminderInboxKind(row.kind)}:${row.subject_id ?? row.opportunity_id}:${date ?? "undated"}`;
+    return row.snoozed_until ? `${key}:${new Date(row.effective_due).toISOString()}` : key;
+  }
   return `application-reminder:${row.id}:${new Date(row.effective_due).toISOString()}`;
 }
 
@@ -175,8 +180,13 @@ export function shouldNotifyResponseClock(clock: ResponseClock): boolean {
   return clock.state === "time-to-query" || clock.state === "past-stated";
 }
 
-export function timeToQueryDedupeKey(trackedId: string, status: string, submittedOn: string, state: string): string {
-  return `time-to-query:${trackedId}:${status}:${submittedOn}:${state}`;
+/**
+ * One notice per submission and clock state. The Tracker status is left out:
+ * logging that the organization received or is reviewing the work does not
+ * call for the same follow-up notice again.
+ */
+export function timeToQueryDedupeKey(trackedId: string, submittedOn: string, state: string): string {
+  return `time-to-query:${trackedId}:${submittedOn}:${state}`;
 }
 
 export function timeToQueryCopy(input: { applicationTitle: string; organizationName: string; clock: ResponseClock }) {

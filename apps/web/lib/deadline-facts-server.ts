@@ -52,6 +52,7 @@ export function parseDeadlineFactsBody(raw: unknown, ifMatch?: string | null): D
   const tiers = body.tiers.map((item) => {
     const tier = (item ?? {}) as Record<string, unknown>;
     return {
+      ...(typeof tier.id === "string" && tier.id ? { id: tier.id.slice(0, 64) } : {}),
       tier: tier.tier as DeadlineTierInput["tier"],
       label: typeof tier.label === "string" ? tier.label : "",
       closesOn: typeof tier.closesOn === "string" ? tier.closesOn : "",
@@ -65,6 +66,7 @@ export function parseDeadlineFactsBody(raw: unknown, ifMatch?: string | null): D
   const stages = body.stages.map((item) => {
     const stage = (item ?? {}) as Record<string, unknown>;
     return {
+      ...(typeof stage.id === "string" && stage.id ? { id: stage.id.slice(0, 64) } : {}),
       kind: stage.kind as OpportunityStageInput["kind"],
       label: typeof stage.label === "string" ? stage.label : "",
       dueOn: typeof stage.dueOn === "string" ? stage.dueOn : "",

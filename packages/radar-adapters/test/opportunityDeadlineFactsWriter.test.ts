@@ -9,6 +9,7 @@ import {
   PostgresOpportunityRepository,
   buildOpportunityCandidateQuery,
   instantToWallTime,
+  matchStoredRows,
   normalizeDeadlineFactsInput,
   readOpportunityDeadlineFacts,
   replaceOpportunityDeadlineFacts,
@@ -32,6 +33,29 @@ test("editor input is validated with customer copy and times convert in the stat
   assert.throws(() => normalizeDeadlineFactsInput({ tiers: [{ tier: "early", label: "", closesOn: "2027-02-01", closesTime: "23:59" }], stages: [] }), /time zone/);
   assert.throws(() => normalizeDeadlineFactsInput({ tiers: [{ tier: "early", label: "", closesOn: "2027-02-01", feeCents: 500 }], stages: [] }), /currency/);
   assert.throws(() => normalizeDeadlineFactsInput({ tiers: [], stages: [{ kind: "nope" as never, label: "", dueOn: "2027-02-01" }] }), /stage type/);
+});
+
+test("saved rows are matched to stored rows by id, then kind and date, label, or kind", () => {
+  const stored = [
+    { id: "a", kind: "early", date: "2027-01-01", label: "Early bird" },
+    { id: "b", kind: "regular", date: "2027-02-01", label: "Regular" },
+    { id: "c", kind: "late", date: "2027-03-01", label: "Late" },
+  ];
+  assert.deepEqual(
+    matchStoredRows(stored, [
+      { kind: "regular", date: "2027-02-01", label: "Regular" },
+      { kind: "early", date: "2027-01-08", label: "Early bird" },
+      { kind: "final", date: "2027-04-01", label: "Final" },
+    ]),
+    ["b", "a", undefined],
+    "unchanged and moved rows keep their ids; the late tier was removed",
+  );
+  assert.deepEqual(
+    matchStoredRows(stored, [{ id: "c", kind: "extended", date: "2027-03-15", label: "Extended" }, { kind: "late", date: "2027-03-01", label: "Late" }]),
+    ["c", undefined],
+    "an id the editor sent wins and is claimed once",
+  );
+  assert.deepEqual(matchStoredRows(stored, [{ id: "elsewhere", kind: "other", date: "2027-05-01", label: "x" }]), [undefined]);
 });
 
 test("confirmed-dates filter excludes inferred, conflicting, unknown and uncertain records", () => {
@@ -103,10 +127,28 @@ test("replacing deadline facts swaps tiers and stages and records a corrected da
       DeadlineFactsConflictError,
     );
 
+    // Saving again keeps the stored rows: plan steps follow stage ids and
+    // tier reminders follow tier ids.
+    const stageId = first.facts.stages[0]!.id;
+    const [earlyId, regularId] = first.facts.tiers.map((tier) => tier.id);
+    const resaved = await replaceOpportunityDeadlineFacts(pool, {
+      opportunityId: id,
+      source: "admin",
+      expectedRevision: first.facts.revision,
+      tiers: [
+        { tier: "early", label: "Early bird", closesOn: early, feeCents: 1200, feeCurrency: "USD" },
+        { id: regularId, tier: "regular", label: "Regular", closesOn: deadline, closesTime: "23:59", timezone: "America/New_York", feeCents: 2000, feeCurrency: "USD" },
+      ],
+      stages: [{ kind: "notification", label: "Results announced", dueOn: deadline }],
+    });
+    assert.deepEqual(resaved.facts.tiers.map((tier) => [tier.id, tier.feeCents]), [[earlyId, 1200], [regularId, 2000]]);
+    assert.equal(resaved.facts.stages[0]!.id, stageId, "a moved stage keeps its id");
+    assert.equal(resaved.facts.stages[0]!.dueOn, deadline);
+
     const second = await replaceOpportunityDeadlineFacts(pool, {
       opportunityId: id,
       source: "organization",
-      expectedRevision: first.facts.revision,
+      expectedRevision: resaved.facts.revision,
       tiers: [{ tier: "final", label: "Final", closesOn: moved, feeCents: 0 }],
       stages: [],
       deadline: { date: moved },
