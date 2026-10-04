@@ -15,12 +15,36 @@ export type WeeklyDigestItem = {
   prize: string | null;
 };
 
+/** One dated step across the creator's saved applications. */
+export type WeeklyDigestPlanItem = {
+  kind: "deadline" | "obligation";
+  /** Obligation id, or the opportunity id for a deadline. */
+  id: string;
+  opportunityId: string;
+  /** The call's title. */
+  title: string;
+  /** What is due: "Application deadline" or the obligation's own label. */
+  label: string;
+  /** YYYY-MM-DD. */
+  dueOn: string;
+};
+
+/** The planning view behind "This week's three", triage counts and crunch weeks. */
+export type WeeklyDigestPlanning = {
+  /** Open obligations and deadlines from today on, soonest first. */
+  upcoming: WeeklyDigestPlanItem[];
+  /** Every saved application still being prepared, with its exact deadline or null. */
+  applications: Array<{ opportunityId: string; title: string; deadline: string | null }>;
+};
+
 export type WeeklyDigest = {
   /** The creator's given name when their profile has one. */
   recipientName?: string | null;
   newForYou: WeeklyDigestItem[];
   closingSoon: WeeklyDigestItem[];
   yourDeadlines: WeeklyDigestItem[];
+  /** Present when the creator has saved applications still being prepared. */
+  planning?: WeeklyDigestPlanning;
 };
 
 export type WeeklyDigestRecipient = {
@@ -34,7 +58,9 @@ export type WeeklyDigestRecipient = {
 export const weeklyDigestKey = (accountId: string, isoWeek: string) => `weekly-digest:${accountId}:${isoWeek}`;
 
 const PRE_SUBMISSION = "'interested','saved','preparing','draft-started','ready-to-submit'";
-const OPEN = "'open','closing-soon','deadline-extended'";
+/** Opportunity statuses that accept submissions, as a SQL list. */
+export const OPEN_STATUS_SQL = "'open','closing-soon','deadline-extended'";
+const OPEN = OPEN_STATUS_SQL;
 
 /**
  * Accounts due a weekly digest now: weekly cadence and email on, it is Sunday
@@ -76,6 +102,32 @@ export async function weeklyDigestRecipients(pool: Pool, limit = 200): Promise<W
   }));
 }
 
+/**
+ * The creator's discipline and genre preferences, expanded to narrower terms
+ * (as in browse). Opens a query with `matches(opportunity_id, preference,
+ * preferred_label)`; `$1` must be the account id. Shared by the weekly digest
+ * and the Season page so both agree on what "matches you" means.
+ */
+export const PREFERENCE_MATCH_CTE = `with recursive expanded(root_id, term_id, preference) as (
+      select term_id, term_id, preference from account_taxonomy_preferences where account_id=$1
+      union
+      select e.root_id, r.subject_term_id, e.preference
+        from taxonomy_term_relations r join expanded e on r.object_term_id=e.term_id
+       where r.relation_type='broader'
+    ), matches as (
+      select a.opportunity_id, e.preference, t.preferred_label
+        from expanded e
+        join opportunity_taxonomy_terms a on a.term_id=e.term_id and a.certainty<>'rejected'
+        join taxonomy_terms t on t.id=e.root_id
+    )`;
+
+/** An opportunity matches when an included or preferred term covers it and no excluded term does. */
+export function preferenceMatchPredicate(alias = "o"): string {
+  if (!/^[a-z][a-z0-9_]*$/i.test(alias)) throw new Error("Invalid SQL alias for preference matching");
+  return `exists (select 1 from matches m where m.opportunity_id=${alias}.id and m.preference in ('include','prefer'))
+       and not exists (select 1 from matches m where m.opportunity_id=${alias}.id and m.preference='exclude')`;
+}
+
 type ItemRow = {
   id: string; title: string; organization_name: string | null; deadline: string | null; reason: string | null;
   type: string; fee_status: string; fee_cents: number | null; fee_currency: string | null; prize: string | null;
@@ -104,18 +156,7 @@ const item = (row: ItemRow, fallback: string): WeeklyDigestItem => ({
  */
 export async function buildWeeklyDigest(pool: Pool, accountId: string, perSection = 6): Promise<WeeklyDigest> {
   const matched = `
-    with recursive expanded(root_id, term_id, preference) as (
-      select term_id, term_id, preference from account_taxonomy_preferences where account_id=$1
-      union
-      select e.root_id, r.subject_term_id, e.preference
-        from taxonomy_term_relations r join expanded e on r.object_term_id=e.term_id
-       where r.relation_type='broader'
-    ), matches as (
-      select a.opportunity_id, e.preference, t.preferred_label
-        from expanded e
-        join opportunity_taxonomy_terms a on a.term_id=e.term_id and a.certainty<>'rejected'
-        join taxonomy_terms t on t.id=e.root_id
-    )
+    ${PREFERENCE_MATCH_CTE}
     select o.id,o.title,coalesce(org.data->>'name',o.organization_id) organization_name,o.deadline_date::text deadline,${FACTS},
            (select 'Because you chose ' || m.preferred_label from matches m
              where m.opportunity_id=o.id and m.preference in ('include','prefer')
@@ -123,8 +164,7 @@ export async function buildWeeklyDigest(pool: Pool, accountId: string, perSectio
       from opportunities o
       left join radar_organizations org on org.id=o.organization_id
      where o.publication_state='published' and o.status in (${OPEN})
-       and exists (select 1 from matches m where m.opportunity_id=o.id and m.preference in ('include','prefer'))
-       and not exists (select 1 from matches m where m.opportunity_id=o.id and m.preference='exclude')
+       and ${preferenceMatchPredicate("o")}
        and not exists (select 1 from tracked_opportunities t where t.account_id=$1 and t.opportunity_id=o.id)`;
   const newForYou = await pool.query<ItemRow>(
     `${matched}
@@ -154,6 +194,7 @@ export async function buildWeeklyDigest(pool: Pool, accountId: string, perSectio
       order by o.deadline_date, o.id limit $2`,
     [accountId, perSection],
   );
+  const planning = await weeklyDigestPlanning(pool, accountId);
   const profile = await pool
     .query<{ given_name: string | null }>("select nullif(trim(given_name),'') given_name from creator_profiles where account_id=$1", [accountId])
     .catch(() => ({ rows: [] as { given_name: string | null }[] }));
@@ -162,8 +203,67 @@ export async function buildWeeklyDigest(pool: Pool, accountId: string, perSectio
     newForYou: newForYou.rows.map((row) => item(row, "Matches your practice")),
     closingSoon: closingSoon.rows.map((row) => item(row, "Matches your practice")),
     yourDeadlines: yourDeadlines.rows.map((row) => item(row, "You saved this")),
+    ...(planning ? { planning } : {}),
+  };
+}
+
+/**
+ * Saved applications still being prepared, with their exact deadlines, and the
+ * open obligations and deadlines ahead. Obligations are read only once the
+ * obligation ledger exists.
+ */
+export async function weeklyDigestPlanning(pool: Pool, accountId: string, upcomingLimit = 40): Promise<WeeklyDigestPlanning | undefined> {
+  const applications = await pool.query<{ opportunity_id: string; title: string; deadline: string | null }>(
+    `select o.id opportunity_id,o.title,
+            case when o.deadline_kind in ('exact','fixed') and o.deadline_date >= current_date then o.deadline_date::text end deadline
+       from tracked_opportunities t join opportunities o on o.id=t.opportunity_id
+      where t.account_id=$1 and t.status in (${PRE_SUBMISSION}) and o.publication_state='published'
+        and (o.deadline_date is null or o.deadline_date >= current_date)
+      order by o.deadline_date nulls last, o.id limit 200`,
+    [accountId],
+  );
+  if (!applications.rows.length) return undefined;
+  const ledger = await pool.query<{ ready: boolean }>("select to_regclass('public.creator_obligations') is not null as ready");
+  const obligations = ledger.rows[0]?.ready
+    ? (
+        await pool.query<{ id: string; opportunity_id: string; title: string; label: string; due_on: string }>(
+          `select ob.id::text id,o.id opportunity_id,o.title,ob.label,ob.due_on::text due_on
+             from creator_obligations ob
+             join tracked_opportunities t on t.id=ob.tracked_opportunity_id
+             join opportunities o on o.id=t.opportunity_id
+            where ob.account_id=$1 and ob.state='open' and ob.due_on >= current_date
+            order by ob.due_on,ob.position,ob.id limit $2`,
+          [accountId, upcomingLimit],
+        )
+      ).rows
+    : [];
+  const upcoming: WeeklyDigestPlanItem[] = [
+    ...obligations.map((row) => ({
+      kind: "obligation" as const,
+      id: row.id,
+      opportunityId: row.opportunity_id,
+      title: row.title,
+      label: row.label,
+      dueOn: row.due_on,
+    })),
+    ...applications.rows
+      .filter((row) => row.deadline)
+      .map((row) => ({
+        kind: "deadline" as const,
+        id: row.opportunity_id,
+        opportunityId: row.opportunity_id,
+        title: row.title,
+        label: "Application deadline",
+        dueOn: row.deadline!,
+      })),
+  ]
+    .sort((a, b) => a.dueOn.localeCompare(b.dueOn) || (a.kind === b.kind ? 0 : a.kind === "obligation" ? -1 : 1) || a.id.localeCompare(b.id))
+    .slice(0, upcomingLimit);
+  return {
+    upcoming,
+    applications: applications.rows.map((row) => ({ opportunityId: row.opportunity_id, title: row.title, deadline: row.deadline })),
   };
 }
 
 export const weeklyDigestIsEmpty = (digest: WeeklyDigest) =>
-  !digest.newForYou.length && !digest.closingSoon.length && !digest.yourDeadlines.length;
+  !digest.newForYou.length && !digest.closingSoon.length && !digest.yourDeadlines.length && !digest.planning?.upcoming.length;

@@ -480,9 +480,10 @@
   font-size: 0.76rem;
 }
 
-.attention a {
+.attention a,
+.attentionButton {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 44px;
   flex: 0 0 auto;
   align-items: center;
   gap: 6px;
@@ -491,9 +492,52 @@
   font-weight: 700;
 }
 
-.attention a svg {
+.attention a svg,
+.attentionButton svg {
   width: 14px;
   height: 14px;
+}
+
+.attentionButton {
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.attentionButton:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.deadlineText {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.itemSignal {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 12px 0 0;
+  color: var(--muted-foreground);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.itemSignal svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.itemSignal small {
+  display: block;
+  font-size: 0.7rem;
 }
 
 .sectionHeading,
@@ -718,15 +762,6 @@
 .rowAction svg {
   width: 14px;
   height: 14px;
-}
-
-/* Inline: adjacent bordered controls sit 12px apart (DESIGN.md §6). */
-.cardActions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  margin-top: 16px;
 }
 
 .board {
@@ -1080,7 +1115,8 @@
     grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .attention > div > a {
+  .attention > div > a,
+  .attention > div > .attentionButton {
     grid-column: 2;
     width: fit-content;
   }

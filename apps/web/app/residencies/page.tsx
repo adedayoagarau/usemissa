@@ -48,34 +48,33 @@ export default async function Page({
       <PublicSiteShell current="Residencies">
         <main id="main-content" className={catalogueStyles.main}>
           <header className={`${catalogueStyles.pageIntro} mb-8`}>
-            <p className={catalogueStyles.eyebrow}>Residencies Index · 2026</p>
+            <p className={catalogueStyles.eyebrow}>Residency rankings</p>
             <div className={catalogueStyles.introRow}>
               <div className={catalogueStyles.introCopy}>
-                <h1>Residency rankings & reviews</h1>
+                <h1>Residency rankings</h1>
                 <p className={catalogueStyles.lede}>
-                  530+ residency programs ranked by funding, solitude, community feedback, and institutional prestige.
+                  {page.total.toLocaleString("en-US")} residencies ranked on
+                  cost, stipends, room to work and what residents say, each fact
+                  linked to its source.
                 </p>
               </div>
             </div>
           </header>
 
-          <ResidencyRankingsInteractive
-            initialItems={page.items}
-            total={page.total}
-          />
+          <ResidencyRankingsInteractive initialItems={page.items} />
 
-          <footer className="mt-8 border-t border-border pt-4 flex items-center justify-between text-sm text-muted-foreground">
+          <footer className="mt-8 flex items-center justify-between border-t border-border pt-4 text-sm text-muted-foreground">
             <Link
               href="/rankings/methodology"
               className="inline-flex min-h-11 items-center text-primary underline underline-offset-4"
             >
-              Methodology & Index Scoring
+              How the rankings work
             </Link>
             <Link
               href="/residencies"
-              className="inline-flex min-h-11 items-center text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+              className="inline-flex min-h-11 items-center text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
             >
-              Standard Directory View
+              Directory view
             </Link>
           </footer>
         </main>

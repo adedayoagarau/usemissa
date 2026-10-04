@@ -1701,10 +1701,11 @@
   "ApplicationRecord": {
     "status": "approved-adapt",
     "implementation": "apps/web/components/missa/application-record.tsx",
-    "route": "/tracker?application=<opportunityId>",
-    "composition": ["Sheet", "Tabs", "Button", "Dialog", "Field", "Input", "Textarea", "NativeSelect", "Switch", "Alert", "Empty", "Skeleton", "ApplicationPreparation", "ApplicationReminders", "ApplicationCalendarDelivery", "StartByDate"],
-    "source": "Installed Base UI Sheet, Tabs, Dialog, Field family, Switch, Alert, Empty and Skeleton. Absorbs the former route-less ApplicationsWorkspace panel.",
-    "adaptation": "Missa lifecycle and provenance, Newsreader record title, Fragment Mono dates, hairline-bordered next-step panel with a single Forest action.",
+    "container": "apps/web/components/missa/tracker-item-sheet.tsx",
+    "route": "/tracker?application=<opportunityId>&section=<section>",
+    "composition": ["Button", "Dialog", "Field", "Input", "Textarea", "NativeSelect", "Alert", "Skeleton", "ApplicationEmailEvidence"],
+    "source": "Installed Base UI Dialog, Field family, Alert and Skeleton. Sections hosted by the deadline-management TrackerItemSheet; absorbs the former route-less ApplicationsWorkspace panel.",
+    "adaptation": "Progress, Materials, Notes and History sections with the sheet's eyebrow and Newsreader headings; Missa lifecycle and provenance; Fragment Mono dates; a single Forest action for the next step.",
     "boundary": "Real API data; materials captured on explicit submission; email evidence only suggests a status."
   },
   "ApplicationPreparation": {

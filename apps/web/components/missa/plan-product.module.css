@@ -42,6 +42,18 @@
   line-height: 1.55;
 }
 
+.benefits {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding-inline-start: 20px;
+  max-width: 60ch;
+  color: var(--muted-foreground);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  list-style: disc;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;

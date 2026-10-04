@@ -9,6 +9,7 @@ import { randomBytes } from 'node:crypto';
 import { getEngine } from './engine';
 import { getNeonSessionAccount } from './neon-auth/account';
 import { getCreatorAccountRepository } from './creatorRepositories';
+import { SIGNED_IN_HINT_COOKIE } from './signedInHint';
 
 export const SESSION_COOKIE = 'missa_session';
 export const SESSION_MAX_AGE_SECONDS = 30 * 24 * 3_600;
@@ -25,6 +26,25 @@ export function sessionCookieOptions(maxAge = SESSION_MAX_AGE_SECONDS) {
     path: '/',
     maxAge,
   };
+}
+
+type CookieWriter = {
+  cookies: { set(name: string, value: string, options: ReturnType<typeof sessionCookieOptions>): unknown };
+};
+
+/**
+ * Issue the session cookie together with its readable signed-in hint, which
+ * lets pages served from the CDN show the right header (lib/signedInHint.ts).
+ */
+export function setSessionCookie(response: CookieWriter, token: string): void {
+  response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
+  response.cookies.set(SIGNED_IN_HINT_COOKIE, '1', { ...sessionCookieOptions(), httpOnly: false });
+}
+
+/** Clear the session cookie and its signed-in hint. */
+export function clearSessionCookie(response: CookieWriter): void {
+  response.cookies.set(SESSION_COOKIE, '', sessionCookieOptions(0));
+  response.cookies.set(SIGNED_IN_HINT_COOKIE, '', { ...sessionCookieOptions(0), httpOnly: false });
 }
 
 /** Same cookie name/verification as packages/radar-engine/src/server/server.ts's

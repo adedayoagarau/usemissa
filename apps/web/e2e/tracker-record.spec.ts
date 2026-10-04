@@ -28,16 +28,15 @@ async function creatorWithSavedCall(page: Page) {
   expect([200, 201]).toContain(save.status());
 }
 
-test("a Tracker deep link opens the record, and opening the official application never records a submission", async ({ page }) => {
+test("a Tracker deep link opens the sheet with its record, and opening the official application never records a submission", async ({ page }) => {
   await creatorWithSavedCall(page);
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(`/tracker?application=${opportunityId}`);
 
   const record = page.getByRole("dialog");
   await expect(record.getByRole("heading", { level: 2, name: title, exact: true })).toBeVisible();
-  await expect(record.getByRole("tab", { name: /Overview/ })).toHaveAttribute("aria-selected", "true");
-  await expect(record.getByRole("heading", { name: "Where this stands" })).toBeVisible();
   await expect(record.getByRole("heading", { name: "Start preparing" })).toBeVisible();
+  await expect(record.getByRole("heading", { name: "Where this stands" })).toBeVisible();
 
   const official = record.getByRole("link", { name: /Official application/ });
   await expect(official).toBeVisible();
@@ -57,7 +56,7 @@ test("a Tracker deep link opens the record, and opening the official application
   await recordDialog.getByRole("button", { name: "Record submission" }).click();
   await expect(recordDialog).toHaveCount(0);
   await expect(record.getByText("Recorded by you").first()).toBeVisible();
-  await record.getByRole("tab", { name: "History" }).click();
+  await record.getByRole("heading", { name: "What has been recorded" }).scrollIntoViewIfNeeded();
   await expect(record.getByText("Confirmation number E2E-1")).toBeVisible();
   const after = await page.request.get(`/api/me/applications/${opportunityId}`);
   expect(((await after.json()) as { myStatus: string }).myStatus).toBe("submitted");
@@ -67,13 +66,12 @@ test("a Tracker deep link opens the record, and opening the official application
   await expect(page).not.toHaveURL(/application=/);
 });
 
-test("a section link opens the record's Dates at phone width without horizontal scroll", async ({ page }) => {
+test("a section link scrolls the sheet to reminders at phone width without horizontal scroll", async ({ page }) => {
   await creatorWithSavedCall(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/tracker?application=${opportunityId}&section=timing`);
   const record = page.getByRole("dialog");
-  await expect(record.getByRole("tab", { name: "Dates" })).toHaveAttribute("aria-selected", "true");
-  await expect(record.getByText("Preparation reminder", { exact: true })).toBeVisible();
+  await expect(record.getByText("Preparation reminder", { exact: true })).toBeInViewport();
   await expect(record.getByText("Response check-in", { exact: true })).toBeVisible();
   await expect(record.getByText("Starts after you record a submission")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBeFalsy();

@@ -15,6 +15,7 @@ import type {
   OpportunityContent,
 } from "@missa/radar-engine";
 import { canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
+import { loadDeadlineFacts } from "./deadlineFacts.js";
 import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 import {
   cleanCrawledText,
@@ -26,6 +27,23 @@ export interface SqlQuery {
   text: string;
   values: unknown[];
 }
+
+/**
+ * Browse query with the "confirmed dates only" discovery filter. Kept beside
+ * the port type until `OpportunityRepositoryQuery` carries it directly.
+ */
+export type OpportunityRepositoryQueryWithDeadlineFacts = OpportunityRepositoryQuery & {
+  /** Exclude records whose deadline would be labelled needs-checking or predicted. */
+  confirmedDatesOnly?: boolean;
+};
+
+/**
+ * Rows whose deadline provenance is confirmed or changed: a published date
+ * (or a declared open-ended window) that is neither inferred nor conflicting,
+ * on a record that is not marked uncertain. Mirrors `deadlineProvenance`.
+ */
+export const CONFIRMED_DATES_PREDICATE =
+  "(o.deadline_kind not in ('inferred', 'conflicting', 'unknown') and coalesce(o.status, '') <> 'uncertain' and (o.deadline_date is not null or o.deadline_kind in ('rolling', 'year-round', 'seasonal', 'until-filled')))";
 
 interface OpportunityRow extends QueryResultRow {
   id: string;
@@ -254,6 +272,8 @@ function normalizeDeadlineKind(
     case "inferred":
     case "rolling":
     case "until-filled":
+    case "year-round":
+    case "seasonal":
     case "conflicting":
     case "unknown":
       return value;
@@ -765,7 +785,37 @@ export function buildOpportunityBrowseQuery(
       );
     }
   }
-  if (query.taxonomyTermIds?.length) {
+  if (query.taxonomyTermIds?.length && query.taxonomyMatch === "any") {
+    if (taxonomyReads) {
+      // At least one requested term (or, with descendants, one of its narrower
+      // terms) is assigned to the opportunity.
+      const anyPredicate = query.taxonomyIncludeDescendants
+        ? `with recursive expanded(term_id) as (
+            select unnest($VALUE::text[])
+            union
+            select relation.subject_term_id
+            from taxonomy_term_relations relation
+            join expanded on relation.object_term_id = expanded.term_id
+            where relation.relation_type = 'broader'
+          )
+          select 1 from expanded
+          join opportunity_taxonomy_terms taxonomy_filter on taxonomy_filter.term_id = expanded.term_id
+          where taxonomy_filter.opportunity_id = o.id
+            and taxonomy_filter.certainty <> 'rejected'`
+        : `select 1 from opportunity_taxonomy_terms taxonomy_filter
+          where taxonomy_filter.opportunity_id = o.id
+            and taxonomy_filter.term_id = any($VALUE::text[])
+            and taxonomy_filter.certainty <> 'rejected'`;
+      addCondition(
+        conditions,
+        values,
+        `exists (${anyPredicate})`,
+        query.taxonomyTermIds,
+      );
+    } else {
+      conditions.push("false");
+    }
+  } else if (query.taxonomyTermIds?.length) {
     if (taxonomyReads) {
       const taxonomyPredicate = query.taxonomyIncludeDescendants
         ? `with recursive requested(term_id) as (select unnest($VALUE::text[])), expanded(root_id, term_id) as (
@@ -862,6 +912,9 @@ export function buildOpportunityBrowseQuery(
   }
   if (query.deadlineKind === "rolling") {
     conditions.push("o.deadline_kind in ('rolling', 'year-round', 'until-filled')");
+  }
+  if ((query as OpportunityRepositoryQueryWithDeadlineFacts).confirmedDatesOnly) {
+    conditions.push(CONFIRMED_DATES_PREDICATE);
   }
   if (query.simultaneousRequired !== undefined) {
     addCondition(
@@ -1285,6 +1338,30 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
     return this.taxonomyReadsReady;
   }
 
+  /**
+   * Attach tiers, stages, provenance and forecast in one batch. Facts are an
+   * enrichment: before migration 0088, or if the read fails, items are
+   * returned unchanged rather than failing the page.
+   */
+  private async withDeadlineFacts<T extends OpportunityBrowseProjection>(
+    rows: ReadonlyArray<{ id: string }>,
+    items: T[],
+  ): Promise<T[]> {
+    if (items.length === 0) return items;
+    try {
+      // Projected ids may be display-prefixed, so look facts up by the stored row id.
+      const facts = await loadDeadlineFacts(this.pool as Pool, rows.map((row) => row.id));
+      if (facts.size === 0) return items;
+      return items.map((item, index) => {
+        const rowId = rows[index]?.id;
+        const itemFacts = rowId ? facts.get(rowId) : undefined;
+        return itemFacts ? { ...item, deadlineFacts: itemFacts } : item;
+      });
+    } catch {
+      return items;
+    }
+  }
+
   async browse(
     query: OpportunityRepositoryQuery,
     context?: OpportunityRepositoryContext,
@@ -1317,7 +1394,7 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
     const rows = result.rows;
     const hasNext = rows.length > query.limit;
     const visibleRows = hasNext ? rows.slice(0, query.limit) : rows;
-    const items = visibleRows.map(mapRow);
+    const items = await this.withDeadlineFacts(visibleRows, visibleRows.map(mapRow));
     return {
       items,
       nextCursor:
@@ -1461,8 +1538,9 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
       ? row.detail_related_ids
       : [];
 
+    const [projected] = await this.withDeadlineFacts([row], [mapRow(row)]);
     return {
-      ...mapRow(row),
+      ...projected!,
       openDate: row.open_date ?? undefined,
       eligibility: eligibility.map((item) => ({
         key: item.rule_key,

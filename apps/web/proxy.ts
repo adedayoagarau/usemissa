@@ -80,6 +80,35 @@ function shouldRedirectToWaitlist(request: NextRequest): boolean {
   return false;
 }
 
+/**
+ * The proxy runs as a server function on every matched request, so it is
+ * limited to the paths that need it. Public pages skip it and can be served
+ * straight from the CDN cache. Matched paths are the handle and legacy profile
+ * redirects, and the signed-in sections whose layouts send people to
+ * /login?next=<this path> (see lib/serverAuthRedirect.ts).
+ */
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  matcher: [
+    "/@:handle",
+    "/profile/:userId",
+    "/ask/:path*",
+    "/calendar/:path*",
+    "/following/:path*",
+    "/home/:path*",
+    "/import/:path*",
+    "/inbox/:path*",
+    "/insights/:path*",
+    "/library/:path*",
+    "/messages/:path*",
+    "/my-submissions/:path*",
+    "/plan/:path*",
+    "/saved/:path*",
+    "/season/:path*",
+    "/tracker/:path*",
+    "/reviewer/:path*",
+    "/submissions/:path*",
+    "/workspace/:path*",
+    "/organization/:path*",
+    "/reviews/:path*",
+  ],
 };

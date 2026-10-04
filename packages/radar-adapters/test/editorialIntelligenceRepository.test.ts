@@ -9,6 +9,7 @@ function fakePool(tables: Tables): Pool {
   return {
     query: async (sql: string) => {
       const table = [
+        "missa_magazine_rankings",
         "gary_profiles",
         "publication_editorial_specs",
         "publication_compensation_details",
@@ -37,6 +38,44 @@ describe("PostgresEditorialIntelligenceRepository", () => {
       fakePool({ gary_profiles: [profile] }),
     );
     assert.equal(await repo.getIntelligenceByProfileId("p1"), null);
+  });
+
+  it("returns the latest overall ranking row with its recorded facts", async () => {
+    const repo = new PostgresEditorialIntelligenceRepository(
+      fakePool({
+        gary_profiles: [profile],
+        missa_magazine_rankings: [
+          {
+            profile_id: "p1",
+            name: "Example Review",
+            slug: "example-review",
+            ranking_year: 2026,
+            genre: "overall",
+            rank_position: 4,
+            prestige_tier: "Tier 2 (High Distinction)",
+            total_score: 66.5,
+            accolades_score: 30,
+            pay_score: 8.5,
+            turnaround_score: 11.5,
+            fees_score: 15,
+            respect_score: 8.5,
+            format_ethics_score: 2.5,
+            regular_fee_cents: 0,
+            fact_sources: { fee: { url: "https://example.org/submit", recordedOn: "2026-09-01" } },
+            pillar_status: { accolades: "recorded", fees: "recorded" },
+            coverage: 0.7,
+          },
+        ],
+      }),
+    );
+    const result = await repo.getIntelligenceByProfileId("p1");
+    assert.ok(result?.ranking);
+    assert.equal(result.prestigeTier, "Tier 2 (High Distinction)");
+    assert.equal(result.ranking.rankPosition, 4);
+    assert.equal(result.ranking.regularFeeCents, 0);
+    assert.equal(result.ranking.factSources.fee?.url, "https://example.org/submit");
+    assert.equal(result.ranking.payKind, null);
+    assert.equal(result.aesthetic, null);
   });
 
   it("returns only stored sections and leaves missing figures empty", async () => {

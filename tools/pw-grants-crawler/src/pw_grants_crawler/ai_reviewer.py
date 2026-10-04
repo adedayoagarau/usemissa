@@ -130,7 +130,7 @@ class DeepSeekReviewer:
                     "messages": messages,
                     "response_format": {"type": "json_object"},
                     "temperature": 0,
-                    "max_tokens": 700,
+                    "max_tokens": 2000,
                 },
                 timeout=self.timeout,
             )

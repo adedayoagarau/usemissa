@@ -1,0 +1,67 @@
+/* Follow, write and invite dialogs on a public profile. */
+.notice {
+  flex-basis: 100%;
+  min-height: 0;
+  color: var(--muted-foreground);
+  font-size: 14px;
+}
+.notice:empty {
+  display: none;
+}
+.dialog {
+  max-width: min(560px, calc(100vw - 32px));
+}
+.form {
+  display: grid;
+  gap: 16px;
+}
+.pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 520px) {
+  .pair {
+    grid-template-columns: 1fr;
+  }
+}
+.select,
+.select select {
+  width: 100%;
+}
+.select select {
+  height: 44px;
+}
+.optional {
+  color: var(--muted-foreground);
+  font-weight: 400;
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.done {
+  display: grid;
+  gap: 16px;
+  justify-items: start;
+}
+.done p,
+.hint {
+  margin: 0;
+  color: var(--foreground);
+  line-height: 1.5;
+}
+.error {
+  margin: 0;
+  color: var(--destructive);
+}
+/* The honeypot stays in the document for bots but out of sight and reach. */
+.trap {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

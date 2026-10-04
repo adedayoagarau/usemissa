@@ -63,14 +63,32 @@ export default async function HomePage() {
         ? new Date(application.submittedAt).toISOString()
         : null,
     })),
-    reminders: reminders.map<HomeReminder>((reminder) => ({
-      id: reminder.id,
-      revision: reminder.revision,
-      opportunityId: reminder.opportunityId,
-      kind: reminder.kind,
-      dueAt: reminder.dueAt ? new Date(reminder.dueAt).toISOString() : null,
-      state: reminder.state,
-    })),
+    // Home plans around preparation, deadline, and response reminders; a
+    // deadline-day reminder counts as a deadline reminder.
+    reminders: reminders.flatMap<HomeReminder>((reminder) => {
+      const kind =
+        reminder.kind === "deadline-day"
+          ? "deadline"
+          : reminder.kind === "preparation" ||
+              reminder.kind === "deadline" ||
+              reminder.kind === "response"
+            ? reminder.kind
+            : null;
+      return kind
+        ? [
+            {
+              id: reminder.id,
+              revision: reminder.revision,
+              opportunityId: reminder.opportunityId,
+              kind,
+              dueAt: reminder.dueAt
+                ? new Date(reminder.dueAt).toISOString()
+                : null,
+              state: reminder.state,
+            },
+          ]
+        : [];
+    }),
     goals: (goals as Array<Record<string, unknown>>)
       .filter((goal) => goal.state === "active")
       .map<HomeGoal>((goal) => ({
@@ -89,7 +107,10 @@ export default async function HomePage() {
     reminders.find((reminder) => reminder.timezone)?.timezone ??
     (goals as Array<Record<string, unknown>>)
       .map((goal) => goal.timezone)
-      .find((value): value is string => typeof value === "string" && value.length > 0);
+      .find(
+        (value): value is string =>
+          typeof value === "string" && value.length > 0,
+      );
   const now = new Date();
   let today: string;
   try {

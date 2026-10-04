@@ -18,6 +18,32 @@ test("parses Tracker views and My applications aliases", () => {
   assert.equal(parseTrackerView(""), "active");
   assert.equal(parseTrackerView(undefined), "active");
   assert.equal(parseTrackerView("board"), "active");
+  assert.equal(parseTrackerView("Plan"), "plan");
+});
+
+test("Plan view lists calls in preparation and sends others home", () => {
+  assert.equal(viewShowsStatus("plan", "saved"), true);
+  assert.equal(viewShowsStatus("plan", "ready-to-submit"), true);
+  assert.equal(viewShowsStatus("plan", "submitted"), false);
+  assert.equal(viewShowsStatus("plan", "archived"), false);
+  assert.deepEqual(
+    resolveTrackerFocus({
+      view: "plan",
+      applicationId: "sent-1",
+      items: [{ opportunityId: "sent-1", myStatus: "submitted" }],
+      submissions: [],
+    }),
+    { view: "submissions", opportunityId: "sent-1", missing: false },
+  );
+  assert.deepEqual(
+    resolveTrackerFocus({
+      view: "plan",
+      applicationId: "saved-1",
+      items: [{ opportunityId: "saved-1", myStatus: "preparing" }],
+      submissions: [],
+    }),
+    { view: "plan", opportunityId: "saved-1", missing: false },
+  );
 });
 
 test("bounds application ids", () => {

@@ -9,6 +9,7 @@ import {
   Building2,
   CalendarDays,
   House,
+  CalendarRange,
   Inbox,
   ListOrdered,
   Menu,
@@ -28,7 +29,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { rememberSignedIn } from "@/lib/signedInHint";
 import styles from "./creator-shell.module.css";
 
 const primary = [
@@ -39,6 +41,7 @@ const primary = [
   { href: "/goals", label: "Goals", icon: Target },
   { href: "/library", label: "Library", icon: Archive },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/season", label: "Season", icon: CalendarRange },
 ] as const;
 
 export type CreatorOrganization = { id: string; name: string };
@@ -65,6 +68,11 @@ export function CreatorShell({
       window.localStorage.getItem("missa-creator-nav") === "collapsed",
   );
   const [logoutError, setLogoutError] = useState(false);
+
+  // Only signed-in people reach this shell. Recording it lets public pages,
+  // which are served from the CDN, show their account in the site header.
+  useEffect(() => rememberSignedIn(true), []);
+
   const links = [
     ...(applicationsPreview
       ? [
@@ -159,6 +167,7 @@ export function CreatorShell({
       setLogoutError(true);
       return;
     }
+    rememberSignedIn(false);
     router.push("/login");
     router.refresh();
   }

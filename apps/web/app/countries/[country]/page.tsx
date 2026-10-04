@@ -10,7 +10,15 @@ import { getPublicProfileBrowse } from "@/lib/publicProfileReads";
 import { getPublicOpportunityPage } from "@/lib/publicOpportunityReads";
 import styles from "./country-hub.module.css";
 
-export const dynamic = "force-dynamic";
+/**
+ * Served from the CDN: each page is generated on its first visit and then
+ * regenerated at most every five minutes.
+ */
+export const revalidate = 300;
+
+export function generateStaticParams() {
+  return [];
+}
 
 const COUNTRY_EMOJI: Record<string, string> = {
   US: "🇺🇸", GB: "🇬🇧", CA: "🇨🇦", AU: "🇦🇺", NG: "🇳🇬", IE: "🇮🇪",

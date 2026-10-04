@@ -98,6 +98,7 @@ test("browse queries default to safe, bounded public search behavior", () => {
     taxonomyTermIds: [],
     taxonomySchemeVersion: 1,
     taxonomyIncludeDescendants: false,
+    taxonomyMatch: "all",
     locations: [],
     openNow: true,
     verifiedOnly: false,

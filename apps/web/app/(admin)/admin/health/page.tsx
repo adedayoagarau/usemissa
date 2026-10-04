@@ -4,9 +4,11 @@ import { WEB_VITAL_THRESHOLDS, readAlerts } from '@missa/radar-adapters';
 import { AdminPageFrame } from '@/components/platform-admin';
 import TimeSeriesChart from '@/components/admin-time-series';
 import { AnalyticsHeader, BarList, NotConnected, Panel, PeriodPicker, StatGroup, StatTile, formatCount, formatPercent } from '@/components/admin-observability-ui';
-import { getHealthPage, parsePeriod } from '@/lib/platformAdminObservability';
+import { SmsPauseSwitch, SmsTestForm } from '@/components/admin-sms-controls';
+import { getHealthPage, getSmsHealth, parsePeriod } from '@/lib/platformAdminObservability';
 import { getPlatformAdminView } from '@/lib/platformAdmin';
 import { platformAnalyticsDatabaseUrl } from '@/lib/platformAnalyticsDatabase';
+import { maskPhoneNumber } from '@/lib/sms-phone';
 
 const VITAL_LABELS: Record<string, { name: string; help: string }> = {
   LCP: { name: 'Largest content paint', help: 'How long until the main content shows' },
@@ -35,6 +37,14 @@ const ratingStyle = {
   none: { icon: CircleDashed, text: 'text-muted-foreground', label: 'No data' },
 } as const;
 
+function money(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency, maximumFractionDigits: 2 }).format(amount);
+  } catch {
+    return `${amount.toFixed(2)} ${currency}`;
+  }
+}
+
 function when(value?: string): string {
   if (!value) return '—';
   const date = new Date(value);
@@ -44,10 +54,11 @@ function when(value?: string): string {
 export default async function AdminHealthPage({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
   const days = parsePeriod((await searchParams).days, 7);
   const connectionString = platformAnalyticsDatabaseUrl();
-  const [health, alerts, operations] = await Promise.all([
+  const [health, alerts, operations, sms] = await Promise.all([
     getHealthPage(days),
     connectionString ? readAlerts(connectionString).catch(() => []) : Promise.resolve([]),
     getPlatformAdminView('operations').catch(() => undefined),
+    getSmsHealth(30),
   ]);
   const data = health.data;
   const firing = alerts.filter((alert) => alert.state === 'firing');
@@ -212,6 +223,47 @@ export default async function AdminHealthPage({ searchParams }: { searchParams: 
             </section>
           </>
         )}
+
+        <section aria-labelledby="sms-title" className="space-y-3">
+          <h2 id="sms-title" className="text-2xl font-semibold tracking-[-0.02em] text-foreground">Text messages</h2>
+          {!sms.configured && <NotConnected reason="Texts are off: set TELNYX_API_KEY and TELNYX_MESSAGING_PROFILE_ID to send deadline reminders by text to Plus members. See docs/sms-reminders.md." />}
+          {!sms.available ? (
+            <NotConnected reason={sms.reason} />
+          ) : (
+            <>
+              <StatGroup label="Text messages, last 30 days" columns={5}>
+                <StatTile label="Sent" value={formatCount(sms.data.sent)} hint="Last 30 days" />
+                <StatTile label="Delivered" value={sms.data.sent ? formatPercent(sms.data.delivered / sms.data.sent) : '—'} hint={`${formatCount(sms.data.delivered)} texts`} />
+                <StatTile label="Failed" value={formatCount(sms.data.failed)} hint={`${formatCount(sms.data.skipped)} held back by a limit`} />
+                <StatTile label="Cost" value={sms.data.costs.length ? sms.data.costs.map((cost) => money(cost.amount, cost.currency)).join(' + ') : '—'} hint="As Telnyx reports it" />
+                <StatTile label="Plus members opted in" value={formatCount(sms.data.optedIn)} hint={`${formatCount(sms.data.optedOut)} replied STOP`} />
+              </StatGroup>
+              <div className="grid gap-6 lg:grid-cols-2">
+                <Panel title="Recent problems" description="Texts that failed or were held back, newest first.">
+                  {sms.data.recentProblems.length ? (
+                    <ul className="divide-y divide-border">
+                      {sms.data.recentProblems.map((problem, index) => (
+                        <li key={`${problem.at}-${index}`} className="py-2">
+                          <p className="text-sm text-foreground">{problem.error ?? (problem.status === 'failed' ? 'Failed without a reason' : 'Held back')}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground"><span className="font-mono">{when(problem.at)}</span> · {problem.kind} · {maskPhoneNumber(problem.toPhone)} · {problem.status === 'failed' ? 'Failed' : 'Not sent'}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="flex items-center gap-2 py-4 text-sm text-muted-foreground"><CheckCircle2 className="size-4 text-success" aria-hidden="true" />No failed texts.</p>
+                  )}
+                </Panel>
+                <Panel title="Controls" description="Both actions are written to the audit log.">
+                  <div className="space-y-6">
+                    <SmsPauseSwitch initialPaused={sms.data.pause.paused} />
+                    {sms.data.pause.updatedAt && <p className="text-xs text-muted-foreground">Last changed {when(sms.data.pause.updatedAt)} UTC.</p>}
+                    <SmsTestForm disabled={!sms.configured} />
+                  </div>
+                </Panel>
+              </div>
+            </>
+          )}
+        </section>
 
         <section aria-labelledby="jobs-title" className="space-y-3">
           <h2 id="jobs-title" className="text-2xl font-semibold tracking-[-0.02em] text-foreground">Background jobs</h2>

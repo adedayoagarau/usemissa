@@ -21,11 +21,11 @@ export type ApplicationSummary = {
   workId: string | null;
   notify: boolean;
   /** Applicable preparation checklist steps; 0 when no checklist exists yet. */
-  preparationTotal: number;
+  preparationTotal?: number;
   /** Checklist steps marked complete or ready. */
-  preparationDone: number;
-  /** Applicable checklist steps, used for start-by estimates. */
-  preparationItems: PreparationItemSummary[];
+  preparationDone?: number;
+  /** Applicable checklist steps, used for Home's start-by estimates. */
+  preparationItems?: PreparationItemSummary[];
 };
 export type PreparationItemSummary = {
   label: string;
