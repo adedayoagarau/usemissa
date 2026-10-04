@@ -88,5 +88,5 @@ Saving a call to the Tracker adds default reminders and, on plans with start-by 
 
 - Ingestion reads fee tiers, entry fees and stated close times with deterministic rules only. The LLM extraction prompt is unchanged.
 - Crunch weeks count tracked calls only, not matching open calls.
-- Google and Microsoft provider sync of the new event kinds has not been verified end to end. It needs OAuth credentials (roadmap W1).
+- Google and Microsoft export (built in #148, drained by the creator worker) carries official deadlines, preparation blocks and personal targets, because those are `creator_calendar_events`. Plan steps, stages, fee-tier closes and forecasts reach the in-app Calendar and the calendar feed, not the provider export.
 - The calendar feed uses `TZID=<IANA zone>` for exact closes without a matching time zone definition block. Google and Apple accept this; some Outlook versions may not.
