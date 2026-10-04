@@ -67,10 +67,17 @@ import {
 import { ShortlistSheet, useShortlist } from "./manuscript-shortlist";
 import styles from "./manuscript-match-wizard.module.css";
 
-type LaneKey = "all" | "dreamReach" | "debutChampions" | "rapidPro";
+type LaneKey =
+  "all" | "prizeTrack" | "dreamReach" | "debutChampions" | "rapidPro";
 
 const LANES: Array<{ key: LaneKey; label: string; description?: string }> = [
   { key: "all", label: "All" },
+  {
+    key: "prizeTrack",
+    label: "Prize record",
+    description:
+      "Magazines whose published work has been picked for Pushcart Prizes, prize anthologies or major prizes.",
+  },
   {
     key: "dreamReach",
     label: "Reach",
@@ -152,6 +159,7 @@ export function ManuscriptMatchWizard({
       dreamReach: results.dreamReach,
       debutChampions: results.debutChampions,
       rapidPro: results.rapidPro,
+      prizeTrack: results.prizeTrack ?? [],
     };
     return LANES.filter((entry) => cards[entry.key].length > 0).map(
       (entry) => ({ ...entry, cards: cards[entry.key] }),

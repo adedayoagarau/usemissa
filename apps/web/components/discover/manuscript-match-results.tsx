@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import {
+  Award,
   BookmarkCheck,
   BookmarkPlus,
-  CheckCircle2,
   ExternalLink,
   Info,
 } from "lucide-react";
@@ -20,10 +20,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { ManuscriptBrief } from "./manuscript-match-brief";
 import styles from "./manuscript-match-wizard.module.css";
 
-export type ResultSort = "fit" | "reply" | "pay" | "rank";
+export type ResultSort = "fit" | "prize" | "reply" | "pay" | "rank";
 
 export const SORT_LABELS: Record<ResultSort, string> = {
   fit: "Best fit",
+  prize: "Prize record",
   reply: "Fastest reply",
   pay: "Best pay",
   rank: "Missa ranking",
@@ -47,6 +48,7 @@ export function mergedResults(
     ...results.dreamReach,
     ...results.debutChampions,
     ...results.rapidPro,
+    ...(results.prizeTrack ?? []),
   ]) {
     if (seen.has(card.profileId)) continue;
     seen.add(card.profileId);
@@ -73,6 +75,33 @@ function payValue(card: ManuscriptMatchCard): number {
   return -1;
 }
 
+const BAND_DAYS: Record<string, number> = {
+  under_3_months: 60,
+  "3_to_6_months": 135,
+  over_6_months: 240,
+};
+
+const BAND_LABELS: Record<string, string> = {
+  under_3_months: "Replies in under 3 months",
+  "3_to_6_months": "Replies in 3 to 6 months",
+  over_6_months: "Replies in over 6 months",
+};
+
+/** Higher means a stronger recorded prize record. */
+export function prizeValue(card: ManuscriptMatchCard): number {
+  const record = card.recognition;
+  if (!record) return 0;
+  const pushcart = record.pushcart
+    ? Math.max(0, 120 - record.pushcart.rank)
+    : 0;
+  return (
+    record.publishedComps.length * 1000 +
+    pushcart +
+    record.prizeSelections * 6 +
+    record.anthologySelections * 3
+  );
+}
+
 /** A stable sort: ties keep the engine's best-fit order. */
 export function sortResults(
   cards: ManuscriptMatchCard[],
@@ -82,7 +111,12 @@ export function sortResults(
   const indexed = cards.map((card, index) => ({ card, index }));
   const key = (card: ManuscriptMatchCard): number => {
     if (sort === "reply")
-      return card.telemetry.medianResponseDays ?? Number.POSITIVE_INFINITY;
+      return (
+        card.telemetry.medianResponseDays ??
+        BAND_DAYS[card.telemetry.responseBand ?? ""] ??
+        Number.POSITIVE_INFINITY
+      );
+    if (sort === "prize") return -prizeValue(card);
     if (sort === "pay") return -payValue(card);
     return TIER_ORDER[card.prestigeTier];
   };
@@ -138,7 +172,10 @@ function recordedFacts(
   } else if (pay.paysContributors === true) {
     facts.push({ key: "pay", label: "Pays contributors" });
   } else if (pay.paysContributors === false) {
-    facts.push({ key: "pay", label: "Unpaid" });
+    facts.push({
+      key: "pay",
+      label: pay.payRateKind === "copies_only" ? "Pays in copies" : "Unpaid",
+    });
   }
   if (pay.submissionFeeCents === 0) {
     facts.push({ key: "fee", label: "Free to submit" });
@@ -169,6 +206,10 @@ function recordedFacts(
         </>
       ),
     });
+  }
+  if (telemetry.medianResponseDays === null && telemetry.responseBand) {
+    const label = BAND_LABELS[telemetry.responseBand];
+    if (label) facts.push({ key: "reply", label });
   }
   if (aesthetic.unsolicitedSlushRatioPercent !== null) {
     facts.push({
@@ -257,7 +298,12 @@ export function ResultList({
   for (const card of cards) {
     const facts = recordedFacts(card, brief);
     const warnings = watchouts(card, brief);
-    if (card.reasons.length || warnings.length || facts.length) {
+    if (
+      card.reasons.length ||
+      warnings.length ||
+      facts.length ||
+      prizeValue(card) > 0
+    ) {
       scored.push({ card, facts, warnings });
     } else {
       limited.push(card);
@@ -288,9 +334,9 @@ export function ResultList({
             <p className={styles.groupNote}>
               <Info aria-hidden="true" />
               <span>
-                Missa hasn&apos;t recorded guidelines, pay, or reply times for
-                these magazines yet, so there&apos;s no fit score. They&apos;re
-                listed in Missa ranking order.
+                Missa hasn&apos;t recorded guidelines, pay, reply times or a
+                prize record for these magazines yet, so there&apos;s no fit
+                score. They&apos;re listed in Missa ranking order.
               </span>
             </p>
           </div>
@@ -364,19 +410,60 @@ function ScoredResult({
           </ul>
         ) : null}
 
-        {card.reasons.length ? (
-          <ul className={styles.reasons} aria-label="Why it fits">
-            {card.reasons.slice(0, 3).map((reason) => (
-              <li key={reason}>
-                <CheckCircle2 aria-hidden="true" />
-                {reason}
-              </li>
-            ))}
-          </ul>
-        ) : null}
+        <PrizeRecord card={card} />
         <ResultActions card={card} shortlist={shortlist} />
       </div>
     </li>
+  );
+}
+
+/** What prizes and anthologies have recorded about this magazine. */
+function PrizeRecord({ card }: { card: ManuscriptMatchCard }) {
+  const record = card.recognition;
+  if (!record || prizeValue(card) === 0) return null;
+  const summary: string[] = [];
+  if (record.pushcart) {
+    summary.push(
+      `Pushcart Prize rank #${record.pushcart.rank} in ${record.pushcart.genre} (${record.pushcart.edition})`,
+    );
+  }
+  if (record.prizeSelections) {
+    summary.push(
+      `${record.prizeSelections} ${record.prizeSelections === 1 ? "story" : "stories"} picked by the O. Henry Prize, Best American Short Stories or a major prize`,
+    );
+  }
+  if (record.anthologySelections) {
+    summary.push(
+      `${record.anthologySelections} ${record.anthologySelections === 1 ? "piece" : "pieces"} in Best Microfiction or Best Small Fictions`,
+    );
+  }
+  return (
+    <div className={styles.prizeRecord}>
+      {record.publishedComps.length ? (
+        <p className={styles.publishedComps}>
+          <Award aria-hidden="true" />
+          Published {record.publishedComps.join(", ")}, a writer you named
+        </p>
+      ) : null}
+      <p className={styles.prizeSummary}>{summary.join(" · ")}</p>
+      {record.recent.length ? (
+        <ul
+          className={styles.prizePieces}
+          aria-label="Recently recognised pieces"
+        >
+          {record.recent.slice(0, 3).map((piece) => (
+            <li key={`${piece.source}-${piece.writer}-${piece.work}`}>
+              {piece.work ? <>&ldquo;{piece.work}&rdquo; by </> : null}
+              {piece.writer}
+              <span className={styles.prizeSource}>
+                {" "}
+                · {piece.source}, {piece.year}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
   );
 }
 

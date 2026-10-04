@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/input-group";
 import {
   NativeSelect,
+  NativeSelectOptGroup,
   NativeSelectOption,
 } from "@/components/ui/native-select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -49,8 +50,12 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   FORM_LABELS,
+  PRIZE_GROUPS,
+  PRIZE_NAMES,
+  PRIZE_WINNER_COUNT,
   WRITER_COUNT,
   groupedWriters,
+  prizeCounts,
   suggestedWriters,
   writerCountries,
   writerDetail,
@@ -397,9 +402,14 @@ function WriterPicker({
   const [filter, setFilter] = useState<WriterFilter>({
     form: "all",
     country: "all",
+    prize: "all",
   });
   const trimmed = query.trim();
-  const countries = useMemo(() => writerCountries(filter.form), [filter.form]);
+  const countries = useMemo(
+    () => writerCountries({ form: filter.form, prize: filter.prize }),
+    [filter.form, filter.prize],
+  );
+  const winners = useMemo(() => prizeCounts(), []);
   // Offer the typed name as a custom entry only when no writer shown matches.
   const groups = useMemo(() => {
     const grouped = groupedWriters(filter);
@@ -412,9 +422,10 @@ function WriterPicker({
       : grouped;
   }, [filter, trimmed]);
   const shown = groups.reduce((total, group) => total + group.items.length, 0);
-  const suggestions = suggestedWriters(genre, filter.country).filter(
-    (name) => !value.includes(name),
-  );
+  const suggestions = suggestedWriters(genre, {
+    country: filter.country,
+    prize: filter.prize,
+  }).filter((name) => !value.includes(name));
   const full = value.length >= MAX_WRITERS;
   const formLabel =
     genre === "poetry"
@@ -429,8 +440,9 @@ function WriterPicker({
         Comparable writers
       </FieldLegend>
       <FieldDescription className={styles.helper} id={`${id}-help`}>
-        Magazines that publish similar work rank higher. Search or browse{" "}
-        {WRITER_COUNT} writers, or type any name.
+        Magazines that published them rank higher. Search or browse{" "}
+        {WRITER_COUNT} writers, including {PRIZE_WINNER_COUNT} prize winners, or
+        type any name.
       </FieldDescription>
       <div className={styles.writerFilters}>
         <Field className={styles.writerFilter}>
@@ -478,6 +490,40 @@ function WriterPicker({
               <NativeSelectOption key={country} value={country}>
                 {country} ({count})
               </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </Field>
+        <Field className={styles.writerFilterWide}>
+          <FieldLabel htmlFor={`${id}-prize`} className={styles.filterLabel}>
+            Prize
+          </FieldLabel>
+          <NativeSelect
+            id={`${id}-prize`}
+            size="sm"
+            className={styles.filterSelect}
+            value={filter.prize}
+            onChange={(event) =>
+              setFilter((current) => ({
+                ...current,
+                prize: event.target.value,
+                country: "all",
+              }))
+            }
+          >
+            <NativeSelectOption value="all">Any writer</NativeSelectOption>
+            <NativeSelectOption value="any">
+              Prize winners ({PRIZE_WINNER_COUNT})
+            </NativeSelectOption>
+            {PRIZE_GROUPS.map((group) => (
+              <NativeSelectOptGroup key={group.label} label={group.label}>
+                {group.prizes
+                  .filter((prize) => winners.get(prize))
+                  .map((prize) => (
+                    <NativeSelectOption key={prize} value={prize}>
+                      {PRIZE_NAMES[prize]} ({winners.get(prize)})
+                    </NativeSelectOption>
+                  ))}
+              </NativeSelectOptGroup>
             ))}
           </NativeSelect>
         </Field>
@@ -561,6 +607,9 @@ function WriterPicker({
           <p className={styles.suggestionsLabel}>
             Often named for {formLabel}
             {filter.country !== "all" ? ` · ${filter.country}` : ""}
+            {filter.prize !== "all"
+              ? ` · ${filter.prize === "any" ? "prize winners" : PRIZE_NAMES[filter.prize]}`
+              : ""}
           </p>
           <div className={styles.chips}>
             {suggestions.slice(0, 6).map((name) => (
