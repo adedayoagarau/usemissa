@@ -5,8 +5,9 @@ import { addDays } from "./deadline-moment";
  * The private calendar feed (ICS) a creator subscribes to from Google, Apple
  * or Outlook. Each dated thing becomes one VEVENT with a stable UID so a
  * refreshed feed updates events in place. Deadlines with an exact closing
- * time use a timed DTSTART (TZID when the organisation names its timezone,
- * UTC otherwise); every other date stays all-day. Predicted dates always say
+ * time use a timed DTSTART in UTC (`DTSTART:...Z`), which every client places
+ * correctly without a time zone definition block; the organisation's time zone
+ * is named in the description. Every other date stays all-day (`VALUE=DATE`). Predicted dates always say
  * "Predicted:" so a forecast is never mistaken for a confirmed date.
  */
 
@@ -76,35 +77,6 @@ function fold(line: string): string {
 const dateValue = (isoDate: string) => isoDate.slice(0, 10).replaceAll("-", "");
 const utcStamp = (instant: Date) => instant.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
 
-function validZone(zone: string | null | undefined): zone is string {
-  if (!zone) return false;
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone: zone });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** Wall-clock time of an instant in a zone, as YYYYMMDDTHHMMSS. */
-function localStamp(instant: Date, zone: string): string {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: zone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hourCycle: "h23",
-    })
-      .formatToParts(instant)
-      .map((part) => [part.type, part.value]),
-  );
-  return `${parts.year}${parts.month}${parts.day}T${parts.hour}${parts.minute}${parts.second}`;
-}
-
 export type FeedEventInput = {
   uid: string;
   summary: string;
@@ -113,9 +85,8 @@ export type FeedEventInput = {
   date: string;
   /** Last all-day date for a range, inclusive. */
   endDate?: string | null;
-  /** Exact moment, ISO 8601; makes the event timed. */
+  /** Exact moment, ISO 8601; makes the event timed, written in UTC. */
   at?: string | null;
-  timezone?: string | null;
   /** Days before the date that alarms fire. */
   alarmOffsets?: readonly number[];
   url?: string;
@@ -141,7 +112,7 @@ export function feedEvent(input: FeedEventInput, generatedAt: Date): string {
   const timed = Boolean(at && !Number.isNaN(at.getTime()));
   const lines = ["BEGIN:VEVENT", `UID:${input.uid}@usemissa.com`, `DTSTAMP:${utcStamp(generatedAt)}`];
   if (timed && at) {
-    lines.push(validZone(input.timezone) ? `DTSTART;TZID=${input.timezone}:${localStamp(at, input.timezone)}` : `DTSTART:${utcStamp(at)}`);
+    lines.push(`DTSTART:${utcStamp(at)}`);
   } else {
     const last = input.endDate && input.endDate > input.date ? input.endDate : input.date;
     lines.push(`DTSTART;VALUE=DATE:${dateValue(input.date)}`, `DTEND;VALUE=DATE:${dateValue(addDays(last, 1))}`, "TRANSP:TRANSPARENT");
@@ -221,7 +192,6 @@ export function calendarFeed(
             uid: `${item.opportunityId}-deadline`,
             date: item.deadline,
             at: item.deadlineTime,
-            timezone: item.deadlineTimezone,
             summary: `Closes: ${item.title}`,
             description: `${organization} closes submissions${zone}. Your status: ${item.myStatus.replaceAll("-", " ")}. Check the official page before you send.`,
             alarmOffsets: offsets,
@@ -271,7 +241,6 @@ export function calendarFeed(
             uid: `stage-${stage.id}`,
             date: stage.dueOn,
             at: stage.dueAt,
-            timezone: stage.timezone,
             summary: `${predicted ? "Predicted: " : ""}${stage.label}: ${stage.opportunityTitle}`,
             description: predicted
               ? "A probable date for this stage. Check the official page before relying on it."
@@ -294,7 +263,6 @@ export function calendarFeed(
             uid: `tier-${tier.id}`,
             date: tier.closesOn,
             at: tier.closesAt,
-            timezone: tier.timezone,
             summary: `${tier.label} ends: ${tier.opportunityTitle}`,
             description: fee
               ? `The ${tier.label.toLowerCase()} rate (${fee}) ends on this date. Later entries may cost more.`
@@ -316,7 +284,6 @@ export function calendarFeed(
             uid: `obligation-${obligation.id}`,
             date: obligation.dueOn,
             at: obligation.dueAt,
-            timezone: obligation.timezone,
             summary: obligation.opportunityTitle ? `${obligation.label}: ${obligation.opportunityTitle}` : obligation.label,
             description:
               obligation.kind === "start-by"

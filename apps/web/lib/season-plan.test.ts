@@ -6,6 +6,7 @@ import {
   feeBudget,
   laterTarget,
   monthStart,
+  seasonCrunchRange,
   seasonCrunchWeeks,
   thisWeeksThree,
   type SeasonCall,
@@ -128,4 +129,36 @@ test("a later target moves a week but never past the deadline", () => {
   assert.equal(laterTarget("2026-10-27", "2026-10-30"), "2026-10-30");
   assert.equal(laterTarget("2026-10-30", "2026-10-30"), null);
   assert.equal(laterTarget("2026-10-10", undefined), "2026-10-17");
+});
+
+test("crunch weeks add matching open calls as a second series without changing busy weeks", () => {
+  const weeks = seasonCrunchWeeks(
+    [call("a", { deadline: "2026-10-06" })],
+    "2026-10-07",
+    4,
+    [
+      { date: "2026-10-05", count: 9 }, // before today: left out
+      { date: "2026-10-08", count: 2 },
+      { date: "2026-10-11", count: 2 },
+      { date: "2026-10-14", count: 1 },
+      { date: "2026-11-02", count: 5 }, // after the last week: left out
+    ],
+  );
+  assert.equal(weeks.length, 4);
+  assert.equal(weeks[0]!.weekStart, "2026-10-05");
+  assert.equal(weeks[0]!.count, 0, "a tracked deadline before today is not counted");
+  assert.equal(weeks[0]!.matchingCount, 4);
+  assert.equal(weeks[0]!.crunch, false, "matching open calls never make a week busy");
+  assert.equal(weeks[1]!.matchingCount, 1);
+  assert.equal(weeks[3]!.matchingCount, 0);
+});
+
+test("crunch weeks without matching calls report zero in the second series", () => {
+  const weeks = seasonCrunchWeeks([call("a", { deadline: "2026-10-06" })], "2026-10-05", 2);
+  assert.deepEqual(weeks.map((week) => [week.count, week.matchingCount]), [[1, 0], [0, 0]]);
+});
+
+test("the crunch range runs from today to the last day of the last week", () => {
+  assert.deepEqual(seasonCrunchRange("2026-10-07", 26), { from: "2026-10-07", to: "2027-04-04" });
+  assert.deepEqual(seasonCrunchRange("2026-10-05", 1), { from: "2026-10-05", to: "2026-10-11" });
 });

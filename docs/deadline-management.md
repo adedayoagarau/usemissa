@@ -36,7 +36,9 @@ Code that reads these tables checks that they exist first, so a deploy that reac
   - Stages, plan steps and predicted ranges.
   - Provenance in the event panel.
   - A feed card with the link, type filters and an alarms switch. The feed takes `?types=deadline,stage,tier,obligation,target,forecast,opens,response` (or `none`) and `?alarms=0|1`.
-- **Season (`/season`):** this week's three, a capacity check, crunch weeks, a fee budget, and calls that are coming back.
+- **Season (`/season`):**
+  - This week's three, a capacity check, a fee budget, and calls that are coming back.
+  - Crunch weeks: your tracked deadlines per week, with "Open calls that match you" as a second, striped series and a table view. These are published, open calls with an exact deadline that match your preferences (the same matching as the weekly digest), not counting ones you already track or have hidden. Creators without preferences see a link to set them.
 - **Inbox, email and text:** the new notice kinds are `deadline-day`, `tier-ending`, `milestone-due`, `gone-quiet`, `time-to-query`, `opens-soon`, `forecast-changed`, `obligations-suggested`, `obligations-moved` and `cycle-carry-suggested`. They respect quiet hours and the daily cap; the deadline-day alarm is exempt from the cap. Change notices state the old and new date.
 - **Settings:** a Deadlines section in notification preferences.
 
@@ -87,6 +89,6 @@ Saving a call to the Tracker adds default reminders and, on plans with start-by 
 ## Known limits
 
 - Ingestion reads fee tiers, entry fees and stated close times with deterministic rules only. The LLM extraction prompt is unchanged.
-- Crunch weeks count tracked calls only, not matching open calls.
+- Crunch weeks show matching open calls only for creators who have chosen disciplines or genres. Busy weeks count tracked deadlines only.
 - Google and Microsoft export (built in #148, drained by the creator worker) carries official deadlines, preparation blocks and personal targets, because those are `creator_calendar_events`. Plan steps, stages, fee-tier closes and forecasts reach the in-app Calendar and the calendar feed, not the provider export.
-- The calendar feed uses `TZID=<IANA zone>` for exact closes without a matching time zone definition block. Google and Apple accept this; some Outlook versions may not.
+- The calendar feed writes exact closes in UTC (`DTSTART:...Z`), so every client shows them at the right local time. The organisation's time zone is named in the event description, not in the event time. Date-only closes stay all-day (`VALUE=DATE`).

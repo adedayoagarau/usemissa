@@ -1,6 +1,7 @@
 import type { Pool, PoolClient } from "pg";
 import type { OpportunityCycleForecast } from "@missa/radar-engine";
 import { canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
+import { OPEN_STATUS_SQL, PREFERENCE_MATCH_CTE, preferenceMatchPredicate } from "./weeklyDigest.js";
 
 type Db = Pool | PoolClient;
 
@@ -198,4 +199,50 @@ export async function listWatchedForecasts(db: Db, accountId: string, limit = 60
     [accountId, limit],
   );
   return result.rows.map(watchedForecastFromRow);
+}
+
+/** Open calls that match the creator's preferences, counted per deadline date. */
+export type SeasonMatchingOpenCalls = {
+  /** False when the creator has not chosen any discipline or genre to include. */
+  hasPreferences: boolean;
+  /** One row per date with at least one matching call, soonest first. */
+  deadlines: Array<{ date: string; count: number }>;
+};
+
+/**
+ * Published, open calls with an exact deadline between `from` and `to`
+ * (inclusive, ISO dates) that match the creator's preferences, using the same
+ * matching as the weekly digest. Calls the creator already tracks or has
+ * hidden from recommendations are left out.
+ */
+export async function countSeasonMatchingOpenCalls(
+  db: Db,
+  accountId: string,
+  range: { from: string; to: string },
+): Promise<SeasonMatchingOpenCalls> {
+  const preferences = await db.query<{ ready: boolean }>(
+    `select exists (
+       select 1 from account_taxonomy_preferences where account_id=$1 and preference in ('include','prefer')
+     ) as ready`,
+    [accountId],
+  );
+  if (!preferences.rows[0]?.ready) return { hasPreferences: false, deadlines: [] };
+  const result = await db.query<{ date: string; count: number }>(
+    `${PREFERENCE_MATCH_CTE}
+     select o.deadline_date::text as date, count(*)::int as count
+       from opportunities o
+      where ${canonicalPublicOpportunityPredicate("o")} and o.status in (${OPEN_STATUS_SQL})
+        and o.deadline_kind in ('exact','fixed')
+        and o.deadline_date between $2::date and $3::date
+        and ${preferenceMatchPredicate("o")}
+        and not exists (select 1 from tracked_opportunities t where t.account_id=$1 and t.opportunity_id=o.id)
+        and not exists (
+          select 1 from creator_recommendation_feedback f
+           where f.account_id=$1 and f.opportunity_id=o.id and f.hidden
+        )
+      group by o.deadline_date
+      order by o.deadline_date`,
+    [accountId, range.from, range.to],
+  );
+  return { hasPreferences: true, deadlines: result.rows.map((row) => ({ date: row.date, count: Number(row.count) })) };
 }

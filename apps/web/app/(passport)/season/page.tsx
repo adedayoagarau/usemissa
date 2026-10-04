@@ -28,6 +28,7 @@ export default async function SeasonPage() {
       initialObligations={data?.obligations ?? []}
       initialTiers={data?.tiers ?? {}}
       initialForecasts={data?.forecasts ?? []}
+      initialMatching={data?.matching ?? null}
       initialFeatures={data?.features ?? { capacityPlanning: false, seasonPlan: false }}
       initialWeeklyHours={data?.weeklyHours ?? null}
       unavailable={!data}

@@ -27,6 +27,7 @@ import {
   trackerItemHref,
   type SeasonCall,
   type SeasonForecast,
+  type SeasonMatchingCalls,
   type SeasonObligation,
   type SeasonTier,
   type WeekAction,
@@ -53,6 +54,7 @@ type CapacityReport =
 type CapacityState = { phase: "loading" } | { phase: "error"; message: string } | { phase: "loaded"; report: CapacityReport };
 
 const PREFERENCES_HREF = "/inbox#notification-preferences-title";
+const PRACTICE_PREFERENCES_HREF = "/profile?section=preferences";
 const FREE_WEEKS = 8;
 const SEASON_WEEKS = 26;
 
@@ -68,6 +70,8 @@ export type SeasonProductProps = {
   initialObligations: SeasonObligation[];
   initialTiers: Record<string, SeasonTier[]>;
   initialForecasts: SeasonForecast[];
+  /** Open calls that match the creator's preferences; null when they could not be read. */
+  initialMatching?: SeasonMatchingCalls | null;
   initialFeatures: { capacityPlanning: boolean; seasonPlan: boolean };
   initialWeeklyHours: number | null;
   /** True when the plan data could not be read; the page still renders. */
@@ -80,6 +84,7 @@ export function SeasonProduct({
   initialObligations,
   initialTiers,
   initialForecasts,
+  initialMatching = null,
   initialFeatures,
   initialWeeklyHours,
   unavailable = false,
@@ -90,8 +95,14 @@ export function SeasonProduct({
 
   const actions = useMemo(() => thisWeeksThree({ calls, obligations: initialObligations, today }), [calls, initialObligations, today]);
   const weeks = useMemo(
-    () => seasonCrunchWeeks(calls, today, initialFeatures.seasonPlan ? SEASON_WEEKS : FREE_WEEKS),
-    [calls, today, initialFeatures.seasonPlan],
+    () =>
+      seasonCrunchWeeks(
+        calls,
+        today,
+        initialFeatures.seasonPlan ? SEASON_WEEKS : FREE_WEEKS,
+        initialMatching?.hasPreferences ? initialMatching.deadlines : [],
+      ),
+    [calls, today, initialFeatures.seasonPlan, initialMatching],
   );
   const budget = useMemo(
     () => feeBudget({ calls, tiersByOpportunity: new Map(Object.entries(initialTiers)), today }),
@@ -123,7 +134,12 @@ export function SeasonProduct({
         short={short}
         onCallChanged={(next) => setCalls((current) => current.map((call) => (call.opportunityId === next.opportunityId ? next : call)))}
       />
-      <CrunchWeeks weeks={weeks} full={initialFeatures.seasonPlan} short={short} />
+      <CrunchWeeks
+        weeks={weeks}
+        full={initialFeatures.seasonPlan}
+        matching={initialMatching ? (initialMatching.hasPreferences ? "shown" : "needs-preferences") : "unavailable"}
+        short={short}
+      />
       <FeeBudgetSection budget={budget} short={short} />
       <ComingBack rows={returning} short={short} />
     </main>
@@ -348,18 +364,52 @@ function deadlineCount(count: number) {
   return `${count} ${count === 1 ? "deadline" : "deadlines"}`;
 }
 
-function CrunchWeeks({ weeks, full, short }: { weeks: ReturnType<typeof seasonCrunchWeeks>; full: boolean; short: (date: string) => string }) {
+function matchingCount(count: number) {
+  return `${count} matching open ${count === 1 ? "call" : "calls"}`;
+}
+
+const MATCHING_LABEL = "Open calls that match you";
+
+function CrunchWeeks({
+  weeks,
+  full,
+  matching,
+  short,
+}: {
+  weeks: ReturnType<typeof seasonCrunchWeeks>;
+  full: boolean;
+  /** Whether the second series is shown, needs preferences first, or could not be read. */
+  matching: "shown" | "needs-preferences" | "unavailable";
+  short: (date: string) => string;
+}) {
+  const showMatching = matching === "shown";
   const total = weeks.reduce((sum, week) => sum + week.count, 0);
-  const max = Math.max(3, ...weeks.map((week) => week.count));
+  const matchingTotal = showMatching ? weeks.reduce((sum, week) => sum + week.matchingCount, 0) : 0;
+  const max = Math.max(3, ...weeks.map((week) => Math.max(week.count, showMatching ? week.matchingCount : 0)));
   const busy = weeks.filter((week) => week.crunch);
+  const summary = (week: (typeof weeks)[number], separator: string) =>
+    [
+      weekLabel(week.weekStart, short),
+      deadlineCount(week.count),
+      ...(showMatching ? [matchingCount(week.matchingCount)] : []),
+      ...(week.crunch ? ["Busy week"] : []),
+    ].join(separator);
   return (
     <section className={styles.section} aria-labelledby="season-crunch">
       <SectionHeading
         id="season-crunch"
         title="Crunch weeks"
-        description={`Deadlines per week for the next ${weeks.length} weeks, across calls you are preparing. Weeks with three or more are marked busy.`}
+        description={`Deadlines per week for the next ${weeks.length} weeks, across calls you are preparing. Weeks with three or more are marked busy.${showMatching ? " Open calls that match your preferences are shown beside them." : ""}`}
       />
-      {total === 0 ? (
+      {matching === "needs-preferences" ? (
+        <p className={styles.meta}>
+          Choose what you make to see open calls that match you here.{" "}
+          <Button variant="link" size="sm" className={styles.rowAction} render={<Link href={PRACTICE_PREFERENCES_HREF} />}>
+            Set your preferences
+          </Button>
+        </p>
+      ) : null}
+      {total === 0 && matchingTotal === 0 ? (
         <Empty variant="bordered">
           <EmptyHeader>
             <EmptyMedia variant="icon"><CalendarRange aria-hidden="true" /></EmptyMedia>
@@ -373,13 +423,19 @@ function CrunchWeeks({ weeks, full, short }: { weeks: ReturnType<typeof seasonCr
             {busy.length
               ? `${busy.length} busy ${busy.length === 1 ? "week" : "weeks"} ahead: ${busy.map((week) => short(week.weekStart)).join(", ")}.`
               : "No week has three or more deadlines."}
+            {showMatching
+              ? ` ${matchingTotal} open ${matchingTotal === 1 ? "call matches" : "calls match"} you and ${matchingTotal === 1 ? "is" : "are"} not in your Tracker.`
+              : ""}
           </p>
-          <div className={styles.strip} role="img" aria-label={`Deadlines per week: ${weeks.map((week) => `${weekLabel(week.weekStart, short)}, ${deadlineCount(week.count)}`).join("; ")}`}>
+          <div className={styles.strip} role="img" aria-label={`Deadlines per week: ${weeks.map((week) => summary(week, ", ")).join("; ")}`}>
             {weeks.map((week, index) => (
-              <div key={week.weekStart} className={styles.bar} data-crunch={week.crunch} title={`${weekLabel(week.weekStart, short)} · ${deadlineCount(week.count)}${week.crunch ? " · Busy week" : ""}`}>
+              <div key={week.weekStart} className={styles.bar} data-crunch={week.crunch} title={summary(week, " · ")}>
                 <span className={styles.barValue} aria-hidden="true">{week.count || ""}</span>
                 <span className={styles.barTrack} aria-hidden="true">
                   <span className={styles.barFill} style={{ height: `${(week.count / max) * 100}%` }} />
+                  {showMatching ? (
+                    <span className={styles.barMatching} data-empty={week.matchingCount === 0} style={{ height: `${(week.matchingCount / max) * 100}%` }} />
+                  ) : null}
                 </span>
                 <span className={styles.barLabel} aria-hidden="true">
                   {index === 0 || index % 4 === 0 ? short(week.weekStart) : ""}
@@ -388,18 +444,22 @@ function CrunchWeeks({ weeks, full, short }: { weeks: ReturnType<typeof seasonCr
             ))}
           </div>
           <p className={styles.legend}>
-            <span><i className={styles.swatch} aria-hidden="true" /> Deadlines that week</span>
+            <span><i className={styles.swatch} aria-hidden="true" /> Deadlines that week, solid</span>
             <span><i className={`${styles.swatch} ${styles.swatchBusy}`} aria-hidden="true" /> Busy week, three or more</span>
+            {showMatching ? (
+              <span><i className={`${styles.swatch} ${styles.swatchMatching}`} aria-hidden="true" /> {MATCHING_LABEL}, striped</span>
+            ) : null}
           </p>
           <Collapsible>
             <CollapsibleTrigger render={<Button variant="link" size="sm" className={styles.rowAction} />}>Show as a table</CollapsibleTrigger>
             <CollapsibleContent>
               <Table>
-                <TableCaption>Deadlines per week</TableCaption>
+                <TableCaption>Deadlines per week{showMatching ? ", with open calls that match you" : ""}</TableCaption>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Week</TableHead>
                     <TableHead>Deadlines</TableHead>
+                    {showMatching ? <TableHead>{MATCHING_LABEL}</TableHead> : null}
                     <TableHead>Busy</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -408,6 +468,7 @@ function CrunchWeeks({ weeks, full, short }: { weeks: ReturnType<typeof seasonCr
                     <TableRow key={week.weekStart}>
                       <TableCell>{weekLabel(week.weekStart, short)}</TableCell>
                       <TableCell>{week.count}</TableCell>
+                      {showMatching ? <TableCell>{week.matchingCount}</TableCell> : null}
                       <TableCell>{week.crunch ? "Busy week" : "No"}</TableCell>
                     </TableRow>
                   ))}

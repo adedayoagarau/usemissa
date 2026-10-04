@@ -3,7 +3,7 @@
  * budget and calls predicted to come back. Pure so every rule is testable;
  * dates are ISO calendar dates (YYYY-MM-DD) in the creator's day.
  */
-import { crunchWeeks, type CrunchWeek } from "./deadline-chain";
+import { crunchWeeks, weekStartOf, type CrunchWeek } from "./deadline-chain";
 import { addDays, daysBetween } from "./deadline-moment";
 
 export const PREPARING_STATUSES = new Set([
@@ -147,15 +147,50 @@ export function thisWeeksThree(input: {
     .slice(0, input.limit ?? 3);
 }
 
-/** Deadlines per week across calls in preparation. */
-export function seasonCrunchWeeks(calls: readonly SeasonCall[], today: string, weeks = 26): CrunchWeek[] {
-  return crunchWeeks(
+/** Matching open calls the creator does not track, counted per deadline date. */
+export type SeasonMatchingCalls = {
+  /** False when the creator has not chosen what to include, so nothing can match. */
+  hasPreferences: boolean;
+  deadlines: Array<{ date: string; count: number }>;
+};
+
+export type SeasonCrunchWeek = CrunchWeek & {
+  /** Open calls that match the creator's preferences and close that week. */
+  matchingCount: number;
+};
+
+/** The dates the crunch-weeks strip covers: today to the last day of the last week. */
+export function seasonCrunchRange(today: string, weeks = 26): { from: string; to: string } {
+  return { from: today, to: addDays(weekStartOf(today), weeks * 7 - 1) };
+}
+
+/**
+ * Deadlines per week across calls in preparation, the primary series, with
+ * matching open calls as a second series. Busy weeks count tracked deadlines
+ * only: an open call is a possibility, not a commitment.
+ */
+export function seasonCrunchWeeks(
+  calls: readonly SeasonCall[],
+  today: string,
+  weeks = 26,
+  matching: readonly { date: string; count: number }[] = [],
+): SeasonCrunchWeek[] {
+  const rows = crunchWeeks(
     preparingCalls(calls)
       .filter((call) => call.deadline)
       .map((call) => ({ id: call.opportunityId, date: call.deadline! })),
     today,
     weeks,
-  );
+  ).map((row) => ({ ...row, matchingCount: 0 }));
+  const first = rows[0]?.weekStart;
+  if (!first) return rows;
+  for (const entry of matching) {
+    if (entry.date < today || entry.count <= 0) continue;
+    const index = Math.floor((daysBetween(first, entry.date) ?? -1) / 7);
+    if (index < 0 || index >= rows.length) continue;
+    rows[index].matchingCount += entry.count;
+  }
+  return rows;
 }
 
 /** First day of the month `offset` months after the month containing `date`. */
