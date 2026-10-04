@@ -867,11 +867,10 @@ export function ProfileProduct({
           </div>
 
           {active === "profile" ? (
-            <form
-              className="flex flex-col gap-8"
-              onSubmit={saveProfile}
-              noValidate
-            >
+            // Not a <form>: the handle claim card inside has its own form, and
+            // nested forms are invalid HTML that the parser rewrites, which
+            // breaks hydration and remounts these fields after first paint.
+            <div className="flex flex-col gap-8">
               <section
                 aria-labelledby="profile-checklist-title"
                 className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-border p-5"
@@ -1081,9 +1080,10 @@ export function ProfileProduct({
                   label="You have unsaved changes"
                   saving={isPending}
                   onDiscard={discardProfile}
+                  onSave={() => saveProfile()}
                 />
               ) : null}
-            </form>
+            </div>
           ) : null}
 
           {active === "matching" ? (
