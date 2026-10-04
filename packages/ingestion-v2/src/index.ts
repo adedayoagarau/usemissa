@@ -28,3 +28,4 @@ export * from "./adapters/chillSubs.js";
 export { GenericHtmlAdapter, createBenchmarkSources, robotsAllowsPath } from "./adapters/html.js";
 export { DeepSeekHtmlAdapter, type DeepSeekHtmlAdapterOptions } from "./adapters/deepseek.js";
 export { GaryObservationAdapter, createGaryNeonObservationLoader, type GaryObservation, type GaryObservationLoader } from "./adapters/gary.js";
+export * from "./extractGate.js";

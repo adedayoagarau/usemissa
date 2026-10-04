@@ -64,6 +64,7 @@
     "@anthropic-ai/sdk": "^0.32.0",
     "@missa/contracts": "^0.1.0",
     "@missa/db": "^0.1.0",
+    "@missa/decisions": "0.1.0",
     "@missa/radar-engine": "^0.1.0",
     "openai": "^7.1.0",
     "pg": "^8.13.0",

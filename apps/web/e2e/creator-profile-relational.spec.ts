@@ -140,8 +140,8 @@ test("a published profile takes messages, follows and invitations, and re-checks
     await client.query("set session_replication_role = replica");
     await client.query(
       `insert into opportunities(id,slug,title,organization_id,source_id,status,publication_state,type,deadline_date) values
-       ($1,$1,'Spring reading period',$3,$4,'open','published','call',current_date + 40),
-       ($2,$2,'Winter issue',$3,$4,'closed','published','call',current_date - 5)`,
+       ($1,$1,'Spring reading period',$3,$4,'open','published','open-call',current_date + 40),
+       ($2,$2,'Winter issue',$3,$4,'closed','published','open-call',current_date - 5)`,
       [`open-${run}`, `closed-${run}`, org, `src-${run}`],
     );
     await client.query("set session_replication_role = origin");
