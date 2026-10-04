@@ -38,6 +38,8 @@
     "residency:rankings": "npm run build --workspace=@missa/radar-engine && npm run build --workspace=@missa/radar-adapters && node scripts/recompute-residency-rankings.mjs",
     "magazine:schedules": "npm run build --workspace=@missa/radar-engine && node scripts/backfill-magazine-schedules.mjs",
     "magazine:schedules:dry-run": "npm run build --workspace=@missa/radar-engine && node scripts/backfill-magazine-schedules.mjs --dry-run",
+    "trust:sweep": "npm run build --workspace=@missa/decisions && node scripts/jev-trust-sweep.mjs",
+    "test:trust-sweep": "npm run build --workspace=@missa/decisions && node --test scripts/tests/jev-trust-sweep.test.mjs",
     "postinstall": "node scripts/patch-next-themes.mjs"
   },
   "devDependencies": {

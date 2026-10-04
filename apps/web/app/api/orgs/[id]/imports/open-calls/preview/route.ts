@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { planOpenCallImport } from '@missa/workspace-engine';
 import { requireOrganizationAccess } from '@/lib/organizationAccess';
+import { resolveImportColumnMapping } from '@/lib/jevDecisions';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -10,7 +11,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (typeof body.csv !== 'string') return NextResponse.json({ error: 'csv is required' }, { status: 400 });
   try {
     const source = ['submittable', 'google-forms', 'airtable', 'generic'].includes(body.source) ? body.source : 'generic';
-    return NextResponse.json(planOpenCallImport(body.csv, result.access.workspace, id, source));
+    const { columnMapping, columns } = await resolveImportColumnMapping({ kind: 'open_call', csv: body.csv, organizationId: id, requestedMapping: body.columnMapping, recordInShadow: true });
+    if (!columns) return NextResponse.json(planOpenCallImport(body.csv, result.access.workspace, id, source));
+    return NextResponse.json({ ...planOpenCallImport(body.csv, result.access.workspace, id, source, { columnMapping }), columns });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to parse CSV' }, { status: 400 });
   }

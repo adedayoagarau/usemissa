@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { commitOpenCallImport, planOpenCallImport } from '@missa/workspace-engine';
 import { persistOrganizationMutation, requireOrganizationAccess } from '@/lib/organizationAccess';
+import { resolveImportColumnMapping } from '@/lib/jevDecisions';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -10,7 +11,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (typeof body.csv !== 'string') return NextResponse.json({ error: 'csv is required' }, { status: 400 });
   try {
     const source = ['submittable', 'google-forms', 'airtable', 'generic'].includes(body.source) ? body.source : 'generic';
-    const plan = planOpenCallImport(body.csv, result.access.workspace, id, source);
+    const { columnMapping, columns } = await resolveImportColumnMapping({ kind: 'open_call', csv: body.csv, organizationId: id, requestedMapping: body.columnMapping, recordInShadow: false });
+    const plan = planOpenCallImport(body.csv, result.access.workspace, id, source, columns ? { columnMapping } : undefined);
     if (plan.invalidRows > 0) return NextResponse.json({ error: 'Fix invalid rows before committing', plan }, { status: 422 });
     const imported = commitOpenCallImport(plan, result.access.workspace, id);
     for (const openCall of imported.created) {
