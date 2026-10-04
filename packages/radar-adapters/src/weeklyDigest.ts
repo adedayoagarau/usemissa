@@ -1,4 +1,12 @@
 import type { Pool } from "pg";
+import { orderByCreatorFit } from "@missa/radar-engine";
+import {
+  assessCreatorFit,
+  hasDeclaredPractice,
+  loadCreatorFitProfile,
+  recordDigestWorthSending,
+  type CreatorFitRanking,
+} from "./sorting/creatorFit.js";
 
 export type WeeklyDigestItem = {
   opportunityId: string;
@@ -102,7 +110,23 @@ const item = (row: ItemRow, fallback: string): WeeklyDigestItem => ({
  * opportunities already in the account's Tracker are left out of discovery
  * sections. Matching is deterministic; every item carries its reason.
  */
-export async function buildWeeklyDigest(pool: Pool, accountId: string, perSection = 6): Promise<WeeklyDigest> {
+export type WeeklyDigestOptions = {
+  /**
+   * Optional creator-fit ordering (scope creator_fit). Reorders items inside
+   * "new for you" and "closing soon" only; which items appear, and every
+   * reason, stay rule-based.
+   */
+  creatorFit?: CreatorFitRanking;
+  /** The digest's idempotency key; when set with creatorFit, its worth is recorded in shadow. */
+  digestKey?: string;
+};
+
+export async function buildWeeklyDigest(
+  pool: Pool,
+  accountId: string,
+  perSection = 6,
+  options: WeeklyDigestOptions = {},
+): Promise<WeeklyDigest> {
   const matched = `
     with recursive expanded(root_id, term_id, preference) as (
       select term_id, term_id, preference from account_taxonomy_preferences where account_id=$1
@@ -157,12 +181,72 @@ export async function buildWeeklyDigest(pool: Pool, accountId: string, perSectio
   const profile = await pool
     .query<{ given_name: string | null }>("select nullif(trim(given_name),'') given_name from creator_profiles where account_id=$1", [accountId])
     .catch(() => ({ rows: [] as { given_name: string | null }[] }));
-  return {
+  const digest: WeeklyDigest = {
     recipientName: profile.rows[0]?.given_name ?? null,
     newForYou: newForYou.rows.map((row) => item(row, "Matches your practice")),
     closingSoon: closingSoon.rows.map((row) => item(row, "Matches your practice")),
     yourDeadlines: yourDeadlines.rows.map((row) => item(row, "You saved this")),
   };
+  return options.creatorFit
+    ? orderDigestByCreatorFit(pool, accountId, digest, options.creatorFit, options.digestKey)
+    : digest;
+}
+
+type FitFactsRow = {
+  id: string; discipline: string | null; genres: string[] | null; location: string | null; country_code: string | null;
+};
+
+/** Never throws: any failure returns the digest in its rule-based order. */
+async function orderDigestByCreatorFit(
+  pool: Pool,
+  accountId: string,
+  digest: WeeklyDigest,
+  ranking: CreatorFitRanking,
+  digestKey: string | undefined,
+): Promise<WeeklyDigest> {
+  try {
+    const creator = await loadCreatorFitProfile(pool, accountId);
+    if (!hasDeclaredPractice(creator)) return digest;
+    if (digestKey) await recordDigestWorthSending(ranking, digestKey, creator, digest);
+    const discovery = [...digest.newForYou, ...digest.closingSoon];
+    if (!discovery.length) return digest;
+    const facts = await pool.query<FitFactsRow>(
+      "select id,discipline,genres,location,country_code from opportunities where id = any($1::text[])",
+      [discovery.map((entry) => entry.opportunityId)],
+    );
+    const byId = new Map(facts.rows.map((row) => [row.id, row]));
+    const fit = await assessCreatorFit(
+      ranking,
+      accountId,
+      creator,
+      discovery.map((entry) => {
+        const row = byId.get(entry.opportunityId);
+        return {
+          opportunityId: entry.opportunityId,
+          title: entry.title,
+          type: entry.type,
+          organizationName: entry.organizationName,
+          discipline: row?.discipline,
+          genres: row?.genres ?? [],
+          location: row?.location,
+          countryCode: row?.country_code,
+          feeStatus: entry.feeStatus,
+          prize: entry.prize,
+          deadline: entry.deadline,
+        };
+      }),
+    );
+    if (!fit.size) return digest;
+    const idOf = (entry: WeeklyDigestItem) => entry.opportunityId;
+    return {
+      ...digest,
+      newForYou: orderByCreatorFit(digest.newForYou, idOf, fit),
+      closingSoon: orderByCreatorFit(digest.closingSoon, idOf, fit),
+    };
+  } catch (error) {
+    ranking.onError?.(error);
+    return digest;
+  }
 }
 
 export const weeklyDigestIsEmpty = (digest: WeeklyDigest) =>

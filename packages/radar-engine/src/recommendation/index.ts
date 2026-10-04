@@ -5,6 +5,12 @@ export { FEATURE_WEIGHTS, GROUP_WEIGHTS, buildFeatureContributions } from "./fea
 export { deriveExplanation } from "./explain.js";
 export { rerankCandidates } from "./rerank.js";
 export {
+  CREATOR_FIT_LEVELS,
+  isCreatorFitLevel,
+  orderByCreatorFit,
+  type CreatorFitLevel,
+} from "./creatorFit.js";
+export {
   buildReplayReport,
   diffOrdering,
   explanationFaithfulnessFailures,
