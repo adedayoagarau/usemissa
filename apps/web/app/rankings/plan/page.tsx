@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { PublicSiteShell } from "@/components/public-site-shell";
@@ -11,11 +10,11 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { getMagazineRankingRepository } from "@/lib/magazineRankingRepository";
-import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { buildSubmissionPortfolioPlan } from "@missa/radar-engine";
 import { planningCandidate } from "@/lib/magazineFacts";
 
-export const dynamic = "force-dynamic";
+/** Served from the CDN and regenerated at most every five minutes. */
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Smart Submission Shortlist & Strategy · Missa Index",
@@ -25,13 +24,7 @@ export const metadata: Metadata = {
 
 export default async function SubmissionPlanPage() {
   const repository = getMagazineRankingRepository();
-  const [page, cookieStore] = await Promise.all([
-    repository.listRankings({ genre: "overall", limit: 1000 }),
-    cookies(),
-  ]);
-  const session = await getSessionAccountFromToken(
-    cookieStore.get(SESSION_COOKIE)?.value,
-  );
+  const page = await repository.listRankings({ genre: "overall", limit: 1000 });
 
   // Plans are built only from the live index. Seed rankings are sample data
   // and must never be presented as a real shortlist.
@@ -88,7 +81,6 @@ export default async function SubmissionPlanPage() {
           <SmartShortlistBuilder
             initialPlan={initialPlan}
             initialGenre="overall"
-            signedIn={Boolean(session)}
           />
         ) : (
           <Empty variant="bordered" size="spacious" role="status">

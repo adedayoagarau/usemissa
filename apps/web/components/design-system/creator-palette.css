@@ -5,11 +5,6 @@
 [data-creator-theme="sage"] {
   --creator-canvas: var(--accent-tint);
 }
-[data-creator-theme="paper"] {
-  --creator-canvas: var(--ochre-tint);
-  --primary: var(--ochre-deep);
-  --ring: var(--ochre-deep);
-}
 [data-creator-theme="mineral"] {
   --creator-canvas: var(--mineral-blue-tint);
   --primary: var(--mineral-blue);

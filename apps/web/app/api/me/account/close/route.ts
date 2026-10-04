@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { creatorBillingAccount, creatorPoolFor } from "@missa/radar-adapters";
-import { getSessionAccount, sessionCookieOptions, SESSION_COOKIE } from "@/lib/auth";
+import { getSessionAccount, clearSessionCookie } from "@/lib/auth";
 import { closeAccountAfterCancellingPlus } from "@/lib/creatorBilling";
 import { getCreatorAccountRepository } from "@/lib/creatorRepositories";
 import { getNeonAuth } from "@/lib/neon-auth/server";
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     if (closure.status === "not-found") return NextResponse.json({ error: "Account not found." }, { status: 404 });
     await getNeonAuth()?.signOut().catch(() => undefined);
     const response = NextResponse.json({ closed: true }, { headers: { "Cache-Control": "no-store" } });
-    response.cookies.set(SESSION_COOKIE, "", sessionCookieOptions(0));
+    clearSessionCookie(response);
     return response;
   } catch {
     return NextResponse.json({ error: "We could not close your account. Please try again." }, { status: 503 });

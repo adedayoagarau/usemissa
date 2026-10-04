@@ -51,3 +51,21 @@ Behaviour fixes shipped with the redesign:
 - Demo mode (no database) now stores interests and location for new accounts and reads location back.
 
 Validation: 1440px desktop, 390px mobile, 320px, and 640px (200% zoom equivalent) with no horizontal overflow; reduced motion (step entrance animations use `motion-reduce:animate-none`); keyboard (Space toggles tiles, Enter submits, Enter in a combobox selects without submitting). These states were exercised: empty, selected, save error, field validation, session expiry, skipped resume, completed edit, and handle claim in the preview. `e2e/beta-onboarding.spec.ts` was updated for "Finish later" and skipped resume.
+
+## Focused layout with live matches (October 2026)
+
+Supersedes the split layout. Each step is one centered question with no side image. Studio photographs (`public/homepage/studio/v1/*-desktop.webp`) appear only on the "What do you make?" choice tiles. A selected tile shows a check badge on the photo as well as the checkbox.
+
+- Live match count: the sticky action bar shows how many open calls fit the choices so far (`MatchCount`, a polite `role="status"` region). It reads `/api/opportunities` through `onboardingMatchParams` (`apps/web/lib/onboardingMatches.ts`), debounced and abortable. Kinds of work widen the set with the new `taxonomyMatch=any` browse option. Without it, terms were ANDed, so choosing more kinds of work lowered the count. A chosen sub-option narrows only its own kind of work. Opportunity types, country eligibility (which includes worldwide calls), and the no-fee preference narrow the set, the same way they do on /opportunities. The count says "open calls", not eligibility, and is hidden when the API fails.
+- Location: the time zone detected from the device is shown as one line with a Change action; the Combobox opens only on request or on error. Career stage, participation, and fees sit under "Fine-tune · optional" as compact radio chips and a Switch.
+- Address: when handle claiming is open, the last step leads with "Claim your Missa address". It uses a large `InputGroup` with the `usemissa.com/@` prefix, live availability, "Try:" suggestions when the address is taken, and a "Check again" retry. Finishing waits until the address is confirmed available. When claiming is closed or an address already exists, the step is "Confirm your name", and the address can be chosen later in Profile.
+- Welcome: shows the three matching calls that close soonest (`MatchList`), "See all N matches" (the same query on /opportunities), Open Tracker, and the editable setup summary.
+
+The handle picker was already wired in production (`HANDLE_CLAIM_ACCESS_MODE` is `open`). It only disappears locally when there is no database, because claiming then reports unavailable.
+
+Validation:
+
+- Unit tests: `apps/web/lib/onboardingMatches.test.ts`, the contracts default shape, and a repository test for `taxonomyMatch=any` across hierarchies.
+- Read-only counts against production data (Writing 210, Visual arts 671, either 826, both 55) confirmed that any-mode returns the union.
+- Layout: 1440px desktop, and 390px and 320px mobile, with no horizontal overflow on any step. The address field on the last step previously overflowed by 14px at 390px; its grid is now `grid-cols-1`.
+- E2E: `e2e/beta-onboarding.spec.ts`, the onboarding test in `e2e/design-remediation-mobile.spec.ts`, and `e2e/auth-onboarding-directions.spec.ts`.

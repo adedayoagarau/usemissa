@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { creatorCommandEnvelope, CreatorConflictError, CreatorIdempotencyConflictError, quietHoursMinute } from "@missa/radar-adapters";
 import { getSessionAccount } from "@/lib/auth";
 import { getCreatorNotificationRepository } from "@/lib/creatorRepositories";
+import { smsConfig } from "@/lib/sms";
+import { notificationPreferencesView, smsPlanEligible } from "@/lib/sms-preferences";
 
 const headers = { "Cache-Control": "private, no-store" };
 const json = (value: unknown, status = 200) => NextResponse.json(value, { status, headers });
@@ -48,7 +50,7 @@ export async function GET(request: Request) {
   if (!session) return json({ error: "Not authenticated" }, 401);
   const repository = getCreatorNotificationRepository();
   if (!repository) return json({ error: "Notification preferences are unavailable." }, 503);
-  return json(await repository.preferences(session.account.id));
+  return json(await notificationPreferencesView(session.account.id));
 }
 
 export async function PUT(request: Request) {
@@ -69,10 +71,14 @@ export async function PUT(request: Request) {
   }
   const timing = timingInput(body, await repository.preferences(session.account.id));
   if ("error" in timing) return json({ error: timing.error }, 400);
+  // Texts stay on only while Telnyx is configured and the plan includes them;
+  // the repository also requires a verified phone. The phone itself changes
+  // only through /api/me/sms.
+  const smsEnabled = body.smsEnabled === true && smsConfig() !== null && await smsPlanEligible(session.account.id);
   const input = {
     inAppEnabled: Boolean(body.inAppEnabled), emailEnabled: Boolean(body.emailEnabled),
     digestCadence: cadence as "off" | "weekly", savedSearchEnabled: Boolean(body.savedSearchEnabled),
-    followEnabled: Boolean(body.followEnabled), reminderEnabled: Boolean(body.reminderEnabled), smsEnabled: false, smsPhone: null,
+    followEnabled: Boolean(body.followEnabled), reminderEnabled: Boolean(body.reminderEnabled), smsEnabled,
     ...timing,
   };
   try {
@@ -80,7 +86,7 @@ export async function PUT(request: Request) {
       creatorCommandEnvelope(session.account.id, "notification-preferences.update", key, input, Number(expectedRevision)),
       input,
     );
-    return json({ ...await repository.preferences(session.account.id), receipt });
+    return json({ ...await notificationPreferencesView(session.account.id), receipt });
   } catch (error) {
     if (isRevisionConflict(error) || error instanceof CreatorIdempotencyConflictError) return json({ error: error.message }, 409);
     return json({ error: "We could not save notification preferences." }, 500);

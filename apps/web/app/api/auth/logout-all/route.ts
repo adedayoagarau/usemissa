@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { revokeAccountSessions } from '@missa/radar-engine';
-import { getSessionAccount, sessionCookieOptions, SESSION_COOKIE } from '@/lib/auth';
+import { getSessionAccount, clearSessionCookie } from '@/lib/auth';
 import { getCreatorAccountRepository } from '@/lib/creatorRepositories';
 import { getEngine, persistRadar } from '@/lib/engine';
 import { getNeonAuth } from '@/lib/neon-auth/server';
@@ -47,6 +47,6 @@ export async function POST(request: Request) {
   }
 
   const response = NextResponse.json({ ok: true }, { headers: NO_STORE });
-  response.cookies.set(SESSION_COOKIE, '', sessionCookieOptions(0));
+  clearSessionCookie(response);
   return response;
 }

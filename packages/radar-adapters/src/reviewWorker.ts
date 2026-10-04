@@ -45,6 +45,14 @@ export function reviewPublishMode(value: string | undefined = process.env.RADAR_
 const ACTIVE_STATUSES = ["opening-soon", "open", "closing-soon", "deadline-extended"];
 const REVIEW_INTERVAL_MINUTES = 2;
 const BACKLOG_DRAIN_DELAY_MS = 2_000;
+/** Held reviews are re-checked this often, since evidence and write-ups land after the first pass. */
+const HELD_REVIEW_RECHECK = "6 hours";
+
+/** Hours a listing waits for an approved write-up before it may publish with the listing facts only. */
+export function contentWaitHours(value: string | undefined = process.env.RADAR_CONTENT_WAIT_HOURS): number {
+  const hours = Number(value ?? 24);
+  return Number.isFinite(hours) && hours >= 0 ? hours : 24;
+}
 
 function batchSize(): number {
   const value = Number(process.env.RADAR_REVIEW_BATCH_SIZE ?? 50);
@@ -83,6 +91,18 @@ async function seedReviewJobs(pool: Pool): Promise<void> {
        set status = 'queued', input_version = excluded.input_version,
            next_attempt_at = now(), lease_until = null, last_error = null, updated_at = now()
        where radar_review_jobs.input_version is distinct from excluded.input_version`,
+  );
+  // Nobody works the human queue: re-check held reviews on a schedule, and at once when a write-up is approved.
+  await pool.query(
+    `update radar_review_jobs j
+     set status = 'queued', next_attempt_at = now(), lease_until = null, updated_at = now()
+     from opportunities o
+     where o.id = j.opportunity_id and o.publication_state = 'reviewable' and j.status = 'needs-human'
+       and (j.updated_at < now() - interval '${HELD_REVIEW_RECHECK}'
+         or exists (
+           select 1 from opportunity_contents c
+           where c.opportunity_id = o.id and c.review_status = 'approved' and c.reviewed_at > j.updated_at
+         ))`,
   );
 }
 
@@ -132,12 +152,15 @@ async function candidate(pool: Pool, opportunityId: string): Promise<ReviewCandi
        (coalesce((evidence.destination_reconciliation->>'v2ReviewOnly')::boolean, false)
          or (o.id like 'opp_v2_%' and o.source_id like 'v2_source_%')) as "reviewOnly",
        coalesce(content.review_status = 'approved', false) as "contentApproved",
+       coalesce(job.created_at < now() - make_interval(secs => $2::double precision * 3600), false) as "contentWaitExpired",
        (profile.opportunity_id is not null) as "callProfilePresent",
        profile.reading_period_kind as "readingPeriodKind",
        coalesce(enrichment.evidence_count, 0)::int as "evidenceCount",
-       coalesce(nullif(btrim(organization.data->>'name'), ''), nullif(btrim(organization_profile.name), ''), linked_profile.name) as "organizationName"
+       coalesce(nullif(btrim(organization.data->>'name'), ''), nullif(btrim(organization_profile.name), ''), linked_profile.name,
+         nullif(btrim(evidence.destination_reconciliation->>'organizerName'), '')) as "organizationName"
      from opportunities o
      left join opportunity_sources s on s.id = o.source_id
+     left join radar_review_jobs job on job.opportunity_id = o.id
      left join radar_organizations organization on organization.id = o.organization_id
      left join gary_profiles organization_profile on organization_profile.id = o.organization_id
      left join lateral (
@@ -171,7 +194,7 @@ async function candidate(pool: Pool, opportunityId: string): Promise<ReviewCandi
        where opportunity_id = o.id
      ) enrichment on true
      where o.id = $1 and o.publication_state = 'reviewable'`,
-    [opportunityId],
+    [opportunityId, contentWaitHours()],
   );
   return result.rows[0] ?? null;
 }

@@ -2,18 +2,17 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  DollarSign,
-  Star,
-  Home,
-  MapPin,
-  ExternalLink,
-  X,
-  Search,
-  Award,
-} from "lucide-react";
+import { ArrowLeft, MapPin, ExternalLink, X, Search } from "lucide-react";
 import type { ResidencyRankingRow } from "@missa/radar-adapters";
+import {
+  NOT_RECORDED,
+  costLabel,
+  mealsLabel,
+  ratingLabel,
+  selectionLabel,
+  stipendLabel,
+  studioLabel,
+} from "@/lib/residencyFacts";
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
 import { Button } from "@/components/ui/button";
 
@@ -77,7 +76,7 @@ export function ResidencyComparisonView({
           className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span>Back to Residency Rankings Index</span>
+          <span>Back to the residency rankings</span>
         </Link>
         <span className="text-xs text-muted-foreground">
           Comparing {selectedResidencies.length} of 3 programs
@@ -91,7 +90,7 @@ export function ResidencyComparisonView({
             htmlFor="compare-residency-search"
             className="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
           >
-            Add Residency Program to Compare
+            Add a residency to compare
           </label>
           <div className="relative max-w-md">
             <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -173,20 +172,14 @@ export function ResidencyComparisonView({
                     </h3>
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <MapPin className="h-3 w-3 shrink-0" />
-                      <span>
-                        {res.location ||
-                          [res.city, res.region, res.country]
-                            .filter(Boolean)
-                            .join(", ") ||
-                          "Location unlisted"}
-                      </span>
+                      <span>{res.location ?? "Location not recorded"}</span>
                     </div>
                   </div>
 
                   {/* Composite MRI Score */}
                   <div className="rounded-xl border border-border bg-muted/40 p-4 text-center">
-                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                      Missa Residency Index
+                    <span className="text-xs text-muted-foreground">
+                      Missa score · rank {res.rankPosition}
                     </span>
                     <div className="mt-1 font-mono text-3xl font-bold text-foreground">
                       {res.totalScore.toFixed(1)}
@@ -197,90 +190,81 @@ export function ResidencyComparisonView({
                     </div>
                   </div>
 
-                  {/* Dimension Metrics */}
-                  <div className="space-y-3 divide-y divide-border text-xs">
-                    {/* Funding */}
+                  {/* Score by pillar */}
+                  <dl className="space-y-3 divide-y divide-border text-xs">
                     <div className="flex items-center justify-between pt-2">
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />{" "}
+                      <dt className="text-muted-foreground">
                         Funding (35 pts)
-                      </span>
-                      <span className="font-mono font-semibold text-foreground">
+                      </dt>
+                      <dd className="font-mono font-semibold text-foreground">
                         {res.fundingScore.toFixed(1)} pts
-                      </span>
+                      </dd>
                     </div>
-
-                    {/* Community */}
                     <div className="flex items-center justify-between pt-2">
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <Star className="h-3.5 w-3.5 fill-warning text-warning" />{" "}
-                        Resident Rating (30 pts)
-                      </span>
-                      <span className="font-mono font-semibold text-foreground">
+                      <dt className="text-muted-foreground">
+                        What residents say (30 pts)
+                      </dt>
+                      <dd className="font-mono font-semibold text-foreground">
                         {res.ratingScore.toFixed(1)} pts
-                      </span>
+                      </dd>
                     </div>
-
-                    {/* Facilities */}
                     <div className="flex items-center justify-between pt-2">
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <Home className="h-3.5 w-3.5 text-sky-500" /> Facilities
-                        (20 pts)
-                      </span>
-                      <span className="font-mono font-semibold text-foreground">
+                      <dt className="text-muted-foreground">
+                        Room to work (20 pts)
+                      </dt>
+                      <dd className="font-mono font-semibold text-foreground">
                         {res.facilitiesScore.toFixed(1)} pts
-                      </span>
+                      </dd>
                     </div>
-
-                    {/* Prestige */}
                     <div className="flex items-center justify-between pt-2">
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <Award className="h-3.5 w-3.5 text-primary" /> Prestige
-                        (15 pts)
-                      </span>
-                      <span className="font-mono font-semibold text-foreground">
+                      <dt className="text-muted-foreground">
+                        Standing and access (15 pts)
+                      </dt>
+                      <dd className="font-mono font-semibold text-foreground">
                         {res.accessScore.toFixed(1)} pts
-                      </span>
+                      </dd>
                     </div>
-                  </div>
+                  </dl>
 
-                  {/* Amenities Comparison */}
-                  <div className="space-y-2 rounded-xl border border-border bg-muted/20 p-3 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">
-                        Tuition / Fee:
-                      </span>
-                      <span className="font-medium text-foreground">
-                        {res.isFullyFunded
-                          ? "100% Free Fellowship"
-                          : "Subsidized / Paid"}
-                      </span>
+                  {/* Recorded facts */}
+                  <dl className="space-y-2 rounded-xl border border-border bg-muted/20 p-3 text-xs">
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="text-muted-foreground">Cost</dt>
+                      <dd className="text-end font-medium text-foreground">
+                        {costLabel(res)}
+                      </dd>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">
-                        Living Stipend:
-                      </span>
-                      <span className="font-medium text-foreground">
-                        {res.hasStipend ? "Provided" : "None"}
-                      </span>
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="text-muted-foreground">Stipend</dt>
+                      <dd className="text-end font-medium text-foreground">
+                        {stipendLabel(res)}
+                      </dd>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Meals:</span>
-                      <span className="font-medium text-foreground">
-                        {res.hasMeals ? "Chef / Included" : "Self-catered"}
-                      </span>
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="text-muted-foreground">Meals</dt>
+                      <dd className="text-end font-medium text-foreground">
+                        {mealsLabel(res.meals)}
+                      </dd>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">
-                        Private Studio:
-                      </span>
-                      <span className="font-medium text-foreground">
-                        {res.hasPrivateStudio
-                          ? "Dedicated Private"
-                          : "Shared / Unlisted"}
-                      </span>
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="text-muted-foreground">Studio</dt>
+                      <dd className="text-end font-medium text-foreground">
+                        {studioLabel(res.privateStudio)}
+                      </dd>
                     </div>
-                  </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="text-muted-foreground">Rating</dt>
+                      <dd className="text-end font-medium text-foreground">
+                        {ratingLabel(res)}
+                      </dd>
+                    </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="text-muted-foreground">Selection</dt>
+                      <dd className="text-end font-medium text-foreground">
+                        {selectionLabel(res) ?? NOT_RECORDED}
+                      </dd>
+                    </div>
+                  </dl>
 
                   {/* Disciplines */}
                   {res.disciplines && (
@@ -301,7 +285,7 @@ export function ResidencyComparisonView({
                     href={`/residency/${res.slug}`}
                     className="inline-flex min-h-11 items-center text-xs font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
                   >
-                    View Missa Profile →
+                    Program profile →
                   </Link>
 
                   {res.websiteUrl && (
@@ -311,7 +295,7 @@ export function ResidencyComparisonView({
                       rel="noreferrer noopener"
                       className="inline-flex min-h-11 items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring"
                     >
-                      <span>Official Site</span>
+                      <span>Program website</span>
                       <ExternalLink className="h-3 w-3" />
                     </a>
                   )}

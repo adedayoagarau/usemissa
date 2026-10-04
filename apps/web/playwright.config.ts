@@ -14,6 +14,7 @@ const relationalSpecs = [
   "**/profile.spec.ts",
   "**/profile-privacy.spec.ts",
   "**/tracker-record.spec.ts",
+  "**/creator-profile-relational.spec.ts",
 ];
 
 export default defineConfig({

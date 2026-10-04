@@ -560,7 +560,7 @@ function listResidencyRankingsTool(context: ToolContext): MissaWebMcpTool {
     name: "missa.list_residency_rankings",
     title: "List residency rankings",
     description:
-      "List a bounded page of Missa's 2026 residency index with composite score components, coverage signals, and source state.",
+      "List a bounded page of Missa's residency index: scores by pillar, the recorded facts behind them with their sources, and how much of each score rests on records.",
     inputSchema: {
       type: "object",
       properties: {
@@ -592,25 +592,27 @@ function listResidencyRankingsTool(context: ToolContext): MissaWebMcpTool {
             slug: ranking.slug,
             websiteUrl: ranking.websiteUrl,
             location: ranking.location,
-            country: ranking.country,
+            rankPosition: ranking.rankPosition,
             prestigeTier: ranking.prestigeTier,
             totalScore: ranking.totalScore,
             scores: {
               funding: ranking.fundingScore,
-              communityRating: ranking.ratingScore,
-              facilities: ranking.facilitiesScore,
-              access: ranking.accessScore,
+              residentsRating: ranking.ratingScore,
+              roomToWork: ranking.facilitiesScore,
+              standingAndAccess: ranking.accessScore,
             },
-            communityRating: ranking.rmarRating,
-            communityRatingCount: ranking.rmarRatingsCount,
-            communityReviewCount: ranking.rmarReviewsCount,
-            isFullyFunded: ranking.isFullyFunded,
+            coverage: ranking.coverage,
+            freeToAttend: ranking.freeToAttend,
+            residencyFee: ranking.residencyFee,
             hasStipend: ranking.hasStipend,
-            hasMeals: ranking.hasMeals,
-            hasPrivateStudio: ranking.hasPrivateStudio,
-            disciplines: ranking.disciplines,
+            stipend: ranking.stipend,
+            meals: ranking.meals,
+            privateStudio: ranking.privateStudio,
+            rating: ranking.rating,
+            ratingCount: ranking.ratingCount,
             foundingYear: ranking.foundingYear,
-            summary: optionalString(ranking.summary, 600),
+            openCall: ranking.openCall,
+            factSources: ranking.factSources,
           };
         });
       return {
@@ -623,7 +625,7 @@ function listResidencyRankingsTool(context: ToolContext): MissaWebMcpTool {
         ...pagination(response.total, offset, items.length),
         items,
         ...authorityEnvelope(
-          "Residency scores are comparison aids from currently available program records and community reporting. They do not certify program quality, current terms, creator fit, eligibility, safety, or acceptance likelihood.",
+          "Residency scores are comparison aids built from directory listings and residents' ratings; a fact not on record is null and scores the middle of its range. They do not certify program quality, current terms, creator fit, eligibility, safety, or acceptance likelihood.",
         ),
       };
     },

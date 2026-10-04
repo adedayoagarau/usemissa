@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   issueSessionToken,
-  sessionCookieOptions,
-  SESSION_COOKIE,
+  setSessionCookie,
 } from "@/lib/auth";
 import {
   NeonAuthAccountError,
@@ -93,7 +92,7 @@ export async function POST(request: Request) {
       },
       { headers: { "Cache-Control": "no-store" } },
     );
-    response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
+    setSessionCookie(response, token);
     return response;
   } catch (error) {
     if (error instanceof NeonAuthAccountError) {

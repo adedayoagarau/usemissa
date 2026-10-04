@@ -27,18 +27,21 @@ import {
   responseLabel,
 } from "@/lib/magazineFacts";
 import { MagazineTrackerAction } from "@/components/rankings/magazine-tracker-action";
+import { useSignedIn } from "@/lib/browserSession";
 
 interface SmartShortlistBuilderProps {
   initialPlan?: PortfolioStrategyPlan;
   initialGenre?: RankingGenre;
-  signedIn: boolean;
+  /** Omit on pages served from the CDN; the session then loads in the browser. */
+  signedIn?: boolean;
 }
 
 export function SmartShortlistBuilder({
   initialPlan,
   initialGenre = "overall",
-  signedIn,
+  signedIn: serverSignedIn,
 }: SmartShortlistBuilderProps) {
+  const signedIn = useSignedIn(serverSignedIn);
   const [genre, setGenre] = useState<RankingGenre>(initialGenre);
   const [preset, setPreset] = useState<SubmissionStrategyPreset>("balanced");
   const [freeOnly, setFreeOnly] = useState(false);

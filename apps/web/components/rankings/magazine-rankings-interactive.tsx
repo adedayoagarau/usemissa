@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  RankingMovement,
-  RankingTierBadge,
-} from "@/components/missa/ranking-indicators";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ChevronLeft, ChevronRight, Search } from "lucide-react";
@@ -33,42 +29,41 @@ import { ReportResponseDialog } from "./report-response-dialog";
 import { MagazineTrackerAction } from "./magazine-tracker-action";
 import { EditorialIntelligenceDrawer } from "./editorial-intelligence-drawer";
 import {
+  MAGAZINE_SORT_LABELS,
   NOT_RECORDED,
   PRO_PAY_LABEL,
-  feeLabel,
+  compareMagazines,
+  feeCell,
+  honoursLines,
   magazineFilters,
-  responseLabel,
-  simultaneousLabel,
+  payCell,
+  replyCell,
   type MagazineFilterId,
+  type MagazineSort,
 } from "@/lib/magazineFacts";
 
 const genres = ["overall", "poetry", "fiction", "nonfiction"] as const;
 
 const pageSize = 25;
-type Sort = "rank" | "accolades" | "pay" | "turnaround";
 
 export function MagazineRankingsInteractive({
   initialItems,
   currentGenre,
-  total,
   signedIn,
   preview = false,
 }: {
   initialItems: MagazineRankingRow[];
   currentGenre: RankingGenre;
-  total: number;
   signedIn: boolean;
   preview?: boolean;
 }) {
   const router = useRouter();
-  const [items, setItems] = useState(initialItems);
+  const items = initialItems;
   const [search, setSearch] = useState("");
   const [tier, setTier] = useState("all");
-  const [sort, setSort] = useState<Sort>("rank");
+  const [sort, setSort] = useState<MagazineSort>("rank");
   const [filters, setFilters] = useState<MagazineFilterId[]>([]);
   const [page, setPage] = useState(0);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [loadMoreError, setLoadMoreError] = useState(false);
   const filtered = useMemo(
     () =>
       items
@@ -82,17 +77,7 @@ export function MagazineRankingsInteractive({
             return false;
           return filters.every((filter) => magazineFilters[filter](row));
         })
-
-        .sort((a, b) =>
-          sort === "accolades"
-            ? b.accoladesScore - a.accoladesScore
-            : sort === "pay"
-              ? b.payScore - a.payScore
-              : sort === "turnaround"
-                ? (a.medianResponseDays ?? Infinity) -
-                  (b.medianResponseDays ?? Infinity)
-                : a.rankPosition - b.rankPosition,
-        ),
+        .sort(compareMagazines(sort)),
     [items, search, tier, filters, sort],
   );
   const currentPage = Math.min(
@@ -104,40 +89,13 @@ export function MagazineRankingsInteractive({
     (currentPage + 1) * pageSize,
   );
   const hasFilters = Boolean(search || tier !== "all" || filters.length);
+  // Tier headings read naturally only while the list runs in rank order.
+  const groupByTier = sort === "rank" && tier === "all";
   function reset() {
     setSearch("");
     setTier("all");
     setFilters([]);
     setPage(0);
-  }
-
-  async function loadMore() {
-    if (loadingMore || items.length >= total) return;
-    setLoadingMore(true);
-    setLoadMoreError(false);
-    try {
-      const params = new URLSearchParams({
-        genre: currentGenre,
-        offset: String(items.length),
-        limit: "250",
-      });
-      const response = await fetch(`/api/rankings/magazines?${params}`);
-      if (!response.ok) throw new Error("Magazine rankings request failed");
-      const payload = (await response.json()) as {
-        items: MagazineRankingRow[];
-      };
-      setItems((current) => {
-        const known = new Set(current.map((item) => item.profileId));
-        return [
-          ...current,
-          ...payload.items.filter((item) => !known.has(item.profileId)),
-        ];
-      });
-    } catch {
-      setLoadMoreError(true);
-    } finally {
-      setLoadingMore(false);
-    }
   }
 
   return (
@@ -160,9 +118,10 @@ export function MagazineRankingsInteractive({
           ))}
         </nav>
         {!preview && (
-          <div className="flex flex-wrap gap-3 pb-3">
+          <div className="flex flex-wrap gap-1 pb-3">
             <Button
               variant="ghost"
+              size="sm"
               nativeButton={false}
               render={<Link href="/rankings/residencies" />}
             >
@@ -170,6 +129,7 @@ export function MagazineRankingsInteractive({
             </Button>
             <Button
               variant="ghost"
+              size="sm"
               nativeButton={false}
               render={<Link href="/rankings/compare" />}
             >
@@ -225,30 +185,36 @@ export function MagazineRankingsInteractive({
             id="magazine-sort"
             value={sort}
             onChange={(e) => {
-              setSort(e.target.value as Sort);
+              setSort(e.target.value as MagazineSort);
               setPage(0);
             }}
             className="w-full [&_select]:h-11"
           >
-            <option value="rank">Missa rank</option>
-            <option value="accolades">Anthology honors</option>
-            <option value="pay">Contributor pay score</option>
-            <option value="turnaround">Response time score</option>
+            {(
+              Object.entries(MAGAZINE_SORT_LABELS) as Array<
+                [MagazineSort, string]
+              >
+            ).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
           </NativeSelect>
         </Field>
       </div>
       {!preview && (
         <div
-          className="flex flex-wrap gap-3"
+          role="group"
+          className="flex flex-wrap gap-2"
           aria-label="Submission preferences"
         >
           {(
             [
-              ["debut", "Debut-friendly (recorded)"],
-              ["pro", PRO_PAY_LABEL],
-              ["free", "No submission fee"],
-              ["paying", "Pays contributors"],
-              ["simultaneous", "Allows simultaneous submissions"],
+              ["debut", "Debut-friendly"],
+              ["pro", "Pro pay"],
+              ["free", "No fee"],
+              ["paying", "Pays writers"],
+              ["simultaneous", "Simultaneous OK"],
               ["fast", "Replies within 3 months"],
             ] as Array<[MagazineFilterId, string]>
           )
@@ -261,8 +227,10 @@ export function MagazineRankingsInteractive({
             .map(([id, label]) => (
               <Button
                 key={id}
-                variant={filters.includes(id) ? "default" : "outline"}
+                size="sm"
+                variant={filters.includes(id) ? "secondary" : "outline"}
                 aria-pressed={filters.includes(id)}
+                title={id === "pro" ? PRO_PAY_LABEL : undefined}
                 onClick={() => {
                   setFilters((old) =>
                     old.includes(id)
@@ -282,9 +250,6 @@ export function MagazineRankingsInteractive({
           {filtered.length.toLocaleString()}{" "}
           {filtered.length === 1 ? "magazine" : "magazines"}
           {hasFilters ? " matching your search" : " in this index"}
-          {total > items.length
-            ? ` · searching ${items.length} of ${total} entries`
-            : ""}
         </p>
         {hasFilters && (
           <Button variant="ghost" onClick={reset}>
@@ -306,116 +271,89 @@ export function MagazineRankingsInteractive({
           </Button>
         </Empty>
       ) : (
-        <Table className="table-fixed">
+        <Table>
           <caption className="sr-only">
-            {items[0]?.rankingYear} {currentGenre} magazine rankings. Scores are index points;
-            facts no source records are shown as not recorded.
+            {items[0]?.rankingYear} {currentGenre} magazine rankings, ordered by{" "}
+            {MAGAZINE_SORT_LABELS[sort].toLowerCase()}. Scores are out of 100; a
+            dash means no source records the fact.
           </caption>
           <TableHeader>
             <TableRow variant="static">
-              <TableHead scope="col" className="w-12 text-start sm:w-20">
-                Rank
+              <TableHead scope="col" className="w-10 text-start sm:w-14">
+                {sort === "rank" ? "Rank" : "#"}
               </TableHead>
               <TableHead scope="col" className="text-start">
                 Magazine
               </TableHead>
+              <TableHead
+                scope="col"
+                className="hidden w-44 text-start xl:table-cell"
+              >
+                Honours
+              </TableHead>
+              <TableHead
+                scope="col"
+                className="hidden w-24 text-start lg:table-cell"
+              >
+                Fee
+              </TableHead>
+              <TableHead
+                scope="col"
+                className="hidden w-28 text-start lg:table-cell"
+              >
+                Pay
+              </TableHead>
+              <TableHead
+                scope="col"
+                className="hidden w-36 text-start md:table-cell"
+              >
+                Replies
+              </TableHead>
               <TableHead scope="col" className="w-16 text-end sm:w-24">
                 Score
-              </TableHead>
-              <TableHead
-                scope="col"
-                className="hidden w-28 text-end lg:table-cell"
-              >
-                Honors / 40
-              </TableHead>
-              <TableHead
-                scope="col"
-                className="hidden w-24 text-end lg:table-cell"
-              >
-                Pay / 15
-              </TableHead>
-              <TableHead
-                scope="col"
-                className="hidden w-32 text-end md:table-cell"
-              >
-                Response
               </TableHead>
               {!preview && (
                 <TableHead
                   scope="col"
-                  className="hidden w-48 text-end xl:table-cell"
+                  className="hidden w-28 text-end sm:table-cell"
                 >
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">Details</span>
                 </TableHead>
               )}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {visible.map((row) => (
-              <TableRow key={row.profileId}>
-                <TableCell
-                  tone="muted"
-                  className="py-6 align-top font-mono text-base tabular-nums"
-                >
-                  {row.rankPosition}
-                  <RankingMovement delta={row.rankDelta} />
-                </TableCell>
-                <TableCell className="py-6 whitespace-normal">
-                  <Link
-                    href={`/journal/${encodeURIComponent(row.slug)}`}
-                    className="inline-flex min-h-11 items-center text-base leading-snug font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring sm:text-lg"
-                  >
-                    {row.name}
-                  </Link>
-                  <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                    <RankingTierBadge tier={row.prestigeTier} />
-                    {!preview && (
-                      <MagazineScheduleBadge schedule={row.schedule} />
-                    )}
-                  </div>
-                  {!preview && (
-                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                      {feeLabel(row)}
-                      {" · "}
-                      {simultaneousLabel(row.simultaneousPolicy)}
-                    </p>
-                  )}
-                  <dl
-                    className="mt-4 grid gap-2 lg:hidden"
-                    aria-label={`${row.name} score details`}
-                  >
-                    <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
-                      <dt className="text-xs text-muted-foreground">
-                        Anthology honors
-                      </dt>
-                      <dd className="font-mono text-xs text-foreground tabular-nums">
-                        {row.accoladesScore} / 40
-                      </dd>
-                    </div>
-                    <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
-                      <dt className="text-xs text-muted-foreground">
-                        Contributor pay
-                      </dt>
-                      <dd className="font-mono text-xs text-foreground tabular-nums">
-                        {row.payScore} / 15
-                      </dd>
-                    </div>
-                    <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2 md:hidden">
-                      <dt className="text-xs text-muted-foreground">
-                        Response time
-                      </dt>
-                      <dd className="text-end font-mono text-xs text-foreground tabular-nums">
-                        {preview ? NOT_RECORDED : responseLabel(row)}
-                      </dd>
-                    </div>
-                  </dl>
-                  {!preview && (
-                    <div className="mt-3 flex flex-wrap gap-3 xl:hidden">
-                      <EditorialIntelligenceDrawer
-                        profileId={row.profileId}
-                        magazineName={row.name}
-                        magazineSlug={row.slug}
-                      />
+            {visible.map((row, index) => {
+              const fee = preview ? null : feeCell(row);
+              const pay = payCell(row);
+              const reply = preview ? null : replyCell(row);
+              const rowTier = tierParts(row.prestigeTier);
+              const honours = honoursLines(row);
+              // Other sorts number the list in their own order; the Missa
+              // rank stays visible under the name.
+              const position =
+                sort === "rank"
+                  ? row.rankPosition
+                  : currentPage * pageSize + index + 1;
+              const startsTier =
+                groupByTier &&
+                (index === 0 ||
+                  tierParts(visible[index - 1].prestigeTier).label !==
+                    rowTier.label);
+              const drawer = (
+                <EditorialIntelligenceDrawer
+                  profileId={row.profileId}
+                  magazineName={row.name}
+                  magazineSlug={row.slug}
+                  ranking={row}
+                  trigger={
+                    <Button variant="ghost" size="sm">
+                      Details
+                      <ChevronRight aria-hidden="true" />
+                    </Button>
+                  }
+                  actions={
+                    <>
                       <MagazineTrackerAction
                         magazineName={row.name}
                         magazineSlug={row.slug}
@@ -429,69 +367,129 @@ export function MagazineRankingsInteractive({
                           magazineName={row.name}
                           onSuccess={() => router.refresh()}
                           trigger={
-                            <Button variant="ghost">Report a response</Button>
+                            <Button variant="outline">Report a reply</Button>
                           }
                         />
                       )}
-                    </div>
+                    </>
+                  }
+                />
+              );
+              return (
+                <Fragment key={row.profileId}>
+                  {startsTier && (
+                    <TableRow variant="static">
+                      <TableHead
+                        scope="colgroup"
+                        colSpan={preview ? 7 : 8}
+                        className="pt-8 pb-2 text-start"
+                      >
+                        <span className="text-base font-semibold">
+                          {rowTier.label}
+                        </span>
+                        {rowTier.name && (
+                          <span className="ms-2 text-sm font-normal text-muted-foreground">
+                            {rowTier.name}
+                          </span>
+                        )}
+                      </TableHead>
+                    </TableRow>
                   )}
-                </TableCell>
-                <TableCell className="py-6 text-end align-top">
-                  <span className="font-mono text-lg font-medium text-primary tabular-nums">
-                    {row.totalScore.toFixed(1)}
-                  </span>
-                  <span className="mt-2 block text-xs text-muted-foreground">
-                    / 100
-                  </span>
-                </TableCell>
-                <TableCell className="hidden py-6 text-end font-mono tabular-nums lg:table-cell">
-                  {row.accoladesScore}
-                </TableCell>
-                <TableCell className="hidden py-6 text-end font-mono tabular-nums lg:table-cell">
-                  {row.payScore}
-                </TableCell>
-                <TableCell className="hidden py-6 text-end md:table-cell">
-                  <span
-                    className={
-                      !preview &&
-                      (row.medianResponseDays != null || row.responseTimeBand)
-                        ? "font-mono text-sm tabular-nums"
-                        : "text-xs text-muted-foreground"
-                    }
-                  >
-                    {preview ? NOT_RECORDED : responseLabel(row)}
-                  </span>
-                </TableCell>
-                {!preview && (
-                  <TableCell className="hidden py-6 xl:table-cell">
-                    <div className="flex flex-col items-end gap-2.5">
-                      <EditorialIntelligenceDrawer
-                        profileId={row.profileId}
-                        magazineName={row.name}
-                        magazineSlug={row.slug}
-                      />
-                      <div className="flex items-center gap-2">
-                        <MagazineTrackerAction
-                          magazineName={row.name}
-                          magazineSlug={row.slug}
-                          activeOpportunity={row.activeOpportunity}
-                          signedIn={signedIn}
-                          returnTo={`/rankings/magazines?genre=${currentGenre}`}
-                        />
-                        {signedIn && (
-                          <ReportResponseDialog
-                            profileId={row.profileId}
-                            magazineName={row.name}
-                            onSuccess={() => router.refresh()}
-                            trigger={<Button variant="ghost">Report</Button>}
-                          />
+                  <TableRow>
+                    <TableCell
+                      tone="muted"
+                      className="py-5 align-top text-lg leading-tight tabular-nums"
+                    >
+                      {position}
+                    </TableCell>
+                    <TableCell className="py-5 align-top whitespace-normal">
+                      <Link
+                        href={`/journal/${encodeURIComponent(row.slug)}`}
+                        className="text-lg leading-snug font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                      >
+                        {row.name}
+                      </Link>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        {sort !== "rank" && (
+                          <span>Missa rank {row.rankPosition}</span>
+                        )}
+                        {!groupByTier && <span>{rowTier.label}</span>}
+                        {!preview && (
+                          <MagazineScheduleBadge schedule={row.schedule} />
+                        )}
+                        {!preview && row.simultaneousPolicy === "allowed" && (
+                          <span>Simultaneous submissions OK</span>
                         )}
                       </div>
-                    </div>
-                  </TableCell>
-                )}
-              </TableRow>
-            ))}
+                      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 md:grid-cols-3 lg:grid-cols-1 xl:hidden">
+                        <FactItem
+                          label="Honours"
+                          value={
+                            honours.length ? (
+                              honours.map((line) => (
+                                <span key={line} className="block">
+                                  {line}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-muted-foreground">
+                                None on record
+                              </span>
+                            )
+                          }
+                          className="col-span-2 md:col-span-1"
+                        />
+                        <FactItem
+                          label="Fee"
+                          value={fee}
+                          className="lg:hidden"
+                        />
+                        <FactItem
+                          label="Pay"
+                          value={pay}
+                          className="lg:hidden"
+                        />
+                        <FactItem
+                          label="Replies"
+                          value={reply}
+                          className="md:hidden"
+                        />
+                      </dl>
+                      {!preview && (
+                        <div className="-ms-2.5 mt-2 sm:hidden">{drawer}</div>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden py-5 align-top text-sm xl:table-cell">
+                      {honours.length ? (
+                        <>
+                          <span className="block">{honours[0]}</span>
+                          {honours[1] && (
+                            <span className="mt-0.5 block text-xs text-muted-foreground">
+                              {honours[1]}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          None on record
+                        </span>
+                      )}
+                    </TableCell>
+                    <FactCell value={fee} className="hidden lg:table-cell" />
+                    <FactCell value={pay} className="hidden lg:table-cell" />
+                    <FactCell value={reply} className="hidden md:table-cell" />
+                    <TableCell className="py-5 text-end align-top">
+                      <ScoreMark score={row.totalScore} />
+                    </TableCell>
+                    {!preview && (
+                      <TableCell className="hidden py-4 text-end align-top sm:table-cell">
+                        {drawer}
+                      </TableCell>
+                    )}
+                  </TableRow>
+                </Fragment>
+              );
+            })}
           </TableBody>
         </Table>
       )}
@@ -523,18 +521,75 @@ export function MagazineRankingsInteractive({
           </div>
         </nav>
       )}
-      {items.length < total && !preview ? (
-        <div className="flex flex-col items-center gap-2 border-t border-border pt-6">
-          <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
-            {loadingMore ? "Loading more rankings…" : "Load more rankings"}
-          </Button>
-          {loadMoreError ? (
-            <p role="alert" className="text-sm text-destructive">
-              More rankings could not load. Try again.
-            </p>
-          ) : null}
-        </div>
-      ) : null}
     </div>
+  );
+}
+
+function NotRecorded() {
+  return (
+    <span className="text-muted-foreground">
+      <span aria-hidden="true">—</span>
+      <span className="sr-only">{NOT_RECORDED}</span>
+    </span>
+  );
+}
+
+function FactCell({
+  value,
+  className,
+}: {
+  value: string | null;
+  className?: string;
+}) {
+  return (
+    <TableCell className={`py-5 align-top text-sm ${className ?? ""}`}>
+      {value ?? <NotRecorded />}
+    </TableCell>
+  );
+}
+
+function FactItem({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="text-sm text-foreground">{value ?? <NotRecorded />}</dd>
+    </div>
+  );
+}
+
+/** "Tier 2 (High Distinction)" → { label: "Tier 2", name: "High distinction" }. */
+function tierParts(tier: string): { label: string; name: string | null } {
+  const label = tier.match(/tier[ _-]?([1-4])/i)?.[1];
+  const name = tier.match(/\((.+)\)/)?.[1] ?? null;
+  return {
+    label: label ? `Tier ${label}` : tier,
+    name: name ? name.charAt(0) + name.slice(1).toLowerCase() : null,
+  };
+}
+
+function ScoreMark({ score }: { score: number }) {
+  return (
+    <span className="inline-flex flex-col items-end gap-1.5">
+      <span className="text-lg leading-none font-medium text-foreground tabular-nums">
+        {score.toFixed(1)}
+      </span>
+      <span
+        aria-hidden="true"
+        className="block h-1 w-14 overflow-hidden rounded-full bg-muted"
+      >
+        <span
+          className="block h-full rounded-full bg-primary"
+          style={{ width: `${Math.max(0, Math.min(100, score))}%` }}
+        />
+      </span>
+    </span>
   );
 }

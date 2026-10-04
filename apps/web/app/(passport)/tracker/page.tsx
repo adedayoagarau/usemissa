@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   creatorEntitlements,
+  creatorFeatures,
   creatorPoolFor,
   creatorRelationalAuthorityEnabled,
   listCanonicalTrackedOpportunities,
@@ -17,8 +18,6 @@ import {
   type TrackerProductLayout,
 } from "@/components/tracker-product";
 import { parseApplicationId, parseTrackerView } from "@/lib/trackerViews";
-import { ApplicationWorkspaceRepository } from "@/lib/application-workspace";
-import { CreatorReminderRepository } from "@/lib/creator-reminders";
 import { emailIntegrationFlags } from "@/lib/email-integrations";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -76,27 +75,6 @@ export default async function TrackerPage({
             workTitle: item.workTitle,
             importId: item.importId,
           }));
-
-  // Checklist steps and reminders make start-by dates and reminder summaries
-  // visible on each card. Either can fail without hiding the Tracker.
-  if (postgresTracker) {
-    const [applications, reminders] = await Promise.all([
-      new ApplicationWorkspaceRepository().list(session.account.id).catch(() => []),
-      new CreatorReminderRepository().list(session.account.id).catch(() => []),
-    ]);
-    const preparation = new Map(applications.map((application) => [application.opportunityId, application]));
-    const scheduled = reminders.filter((reminder) => ["scheduled", "needs-review"].includes(reminder.state));
-    for (const item of initialItems) {
-      const application = preparation.get(item.opportunityId);
-      if (application) {
-        item.preparationItems = application.preparationItems;
-        item.workTitle ??= application.workTitle ?? undefined;
-      }
-      const own = scheduled.filter((reminder) => reminder.opportunityId === item.opportunityId);
-      const next = own.flatMap((reminder) => (reminder.dueAt ? [new Date(reminder.dueAt).toISOString()] : [])).sort()[0];
-      item.reminders = { count: own.length, ...(next ? { nextDueAt: next } : {}) };
-    }
-  }
 
   const hostedSubmissions: TrackerHostedSubmission[] = workspaceRelationalAuthorityEnabled()
     ? await (await getRelationalWorkspace()).submissionsForOwner(session.account.id)
@@ -163,6 +141,7 @@ export default async function TrackerPage({
   const entitlements = postgresTracker && process.env.DATABASE_URL
     ? await creatorEntitlements(creatorPoolFor(process.env.DATABASE_URL), session.account.id).catch(() => undefined)
     : undefined;
+  const features = creatorFeatures(entitlements?.plan ?? "free");
   const allowance = entitlements?.activeTrackedLimit != null
     ? { active: entitlements.activeTracked, limit: entitlements.activeTrackedLimit }
     : undefined;
@@ -177,9 +156,13 @@ export default async function TrackerPage({
       userId={userId}
       initialView={parseTrackerView(first(raw.view))}
       initialApplicationId={parseApplicationId(first(raw.application))}
+      initialItemId={parseApplicationId(first(raw.item))}
+      initialNow={new Date().toISOString()}
+      features={features}
       initialLayout={safeLayout(first(raw.layout))}
       initialQuery={first(raw.q).slice(0, 200)}
       initialImportId={first(raw.import).slice(0, 240)}
+      initialSection={first(raw.section).slice(0, 40)}
       recordsAvailable={postgresTracker}
       emailEvidence={(() => {
         const flags = emailIntegrationFlags();

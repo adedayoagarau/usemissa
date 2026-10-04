@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { renderDeadlineMomentEmail, type DeadlineMomentNotice } from './deadline-moments';
+import { noticeUnsubscribeCategory, renderDeadlineMomentEmail, type DeadlineMomentNotice } from './deadline-moments';
 
 const now = new Date('2026-10-04T09:00:00Z');
 const notice: Omit<DeadlineMomentNotice, 'kind'> = {
@@ -74,4 +74,89 @@ test('deadline-moment letters escape call text and keep Forest text light in Gma
   assert.ok(!rendered.html.includes('<script>alert(1)</script>'));
   assert.ok(rendered.html.includes('background-image:linear-gradient(#1d4037,#1d4037)'));
   assert.ok(rendered.html.includes('gmail-blend-screen'));
+});
+
+test('the deadline-day alarm says it closes today and points at the Tracker', () => {
+  const rendered = render('deadline-day', {
+    deadline: '2026-10-04',
+    deadlineTime: null,
+    noticeTitle: 'Poetry Fellowship 2027 closes today',
+    noticeBody: 'Poetry Fellowship 2027 closes today. Send it when you are ready.',
+    actionHref: '/tracker?view=saved&application=opp_fixture',
+  });
+  assert.equal(rendered.subject, 'Poetry Fellowship 2027 closes today');
+  assert.ok(rendered.text.startsWith('It closes today, Tola.'));
+  assert.ok(rendered.html.includes('Deadline day'));
+  assert.ok(rendered.text.includes('/tracker?view=saved&application=opp_fixture'));
+  assert.ok(rendered.html.includes('mark it submitted'));
+});
+
+test('a fee tier ending uses the notice copy and keeps the final deadline in view', () => {
+  const rendered = render('tier-ending', {
+    noticeTitle: 'Early-bird ends Friday, $15 less',
+    noticeBody: 'The early-bird rate for Poetry Fellowship 2027 ends on Oct 9. Entering before then costs $15 less.',
+  });
+  assert.equal(rendered.subject, 'Early-bird ends Friday, $15 less');
+  assert.ok(rendered.html.includes('A lower fee ends soon.'));
+  assert.ok(rendered.html.includes('Final deadline'));
+  assert.ok(rendered.html.includes('$15 less'));
+});
+
+test('change notices show was and now values from the notice body', () => {
+  const moved = render('obligations-moved', {
+    noticeTitle: 'Your plan moved with the date: Poetry Fellowship 2027',
+    noticeBody: 'The deadline moved from 2026-10-03 to 2026-10-10, so 2 steps moved: Final draft, Upload.',
+  });
+  assert.equal(moved.subject, 'Your plan moved with the date: Poetry Fellowship 2027');
+  assert.ok(moved.html.includes('text-decoration:line-through'));
+  assert.ok(moved.html.includes('>Oct 3<'));
+  assert.ok(moved.html.includes('>Oct 10<'));
+  assert.ok(moved.text.includes('moved from Oct 3 to Oct 10'), 'ISO dates are written as short dates');
+
+  const forecast = render('forecast-changed', {
+    noticeTitle: 'Poetry Fellowship 2027 now has a confirmed opening date',
+    noticeBody: 'The predicted opening moved from between Feb 1 and Feb 14 to Feb 20, now confirmed by the source. That is 6 days later than predicted.',
+  });
+  assert.ok(forecast.html.includes('between Feb 1 and Feb 14'));
+  assert.ok(forecast.html.includes('#e7eff2'), 'confirmed dates are not time pressure, so the panel is mineral');
+});
+
+test('opening alerts carry a prediction note and their own preferences link', () => {
+  const rendered = render('opens-soon', {
+    noticeTitle: 'Poetry Fellowship 2027 may open soon',
+    noticeBody: 'Based on 3 past cycles, Missa expects it to open between Nov 1 and Nov 8. This is a prediction until the source confirms the dates.',
+    actionHref: '/opportunities/opp_fixture',
+  });
+  assert.equal(rendered.subject, 'Poetry Fellowship 2027 may open soon');
+  assert.ok(rendered.html.includes('It opens soon.'));
+  assert.ok(rendered.html.includes('Change opening alerts'));
+  assert.ok(rendered.html.includes('Predicted dates come from past cycles'));
+  assert.equal(noticeUnsubscribeCategory('opens-soon'), 'notification_digest');
+  assert.equal(noticeUnsubscribeCategory('deadline-day'), 'deadline_reminder');
+});
+
+test('quiet, follow-up, suggestion and carry notices stay calm and never use the ochre panel', () => {
+  for (const kind of ['gone-quiet', 'time-to-query', 'obligations-suggested', 'cycle-carry-suggested'] as const) {
+    const rendered = render(kind, { noticeTitle: null, noticeBody: null, trackedStatus: kind === 'time-to-query' ? 'submitted' : 'preparing' });
+    assert.ok(rendered.subject.length > 0, kind);
+    assert.ok(rendered.html.includes('#e7eff2'), `${kind} uses the mineral tint`);
+    assert.doesNotMatch(rendered.text, /urgent|overdue|hurry|last chance/i, kind);
+  }
+  assert.equal(render('gone-quiet', { noticeTitle: null }).subject, 'Still working on Poetry Fellowship 2027?');
+  assert.ok(render('time-to-query', { noticeTitle: null, noticeBody: null }).html.includes('Missa never contacts an organisation for you'));
+  assert.ok(render('obligations-suggested', { noticeTitle: null }).text.startsWith('Congratulations, Tola.'));
+});
+
+test('a milestone uses the notice title and links to the plan', () => {
+  const rendered = render('milestone-due', {
+    noticeTitle: 'Ask for references: Poetry Fellowship 2027',
+    noticeBody: 'Ask for references is due on Oct 6 for Poetry Fellowship 2027.',
+  });
+  assert.equal(rendered.subject, 'Ask for references: Poetry Fellowship 2027');
+  assert.ok(rendered.html.includes('Open your plan'));
+});
+
+test('notice links that leave Missa are ignored', () => {
+  const rendered = render('milestone-due', { actionHref: '//elsewhere.example/page' });
+  assert.ok(!rendered.html.includes('elsewhere.example'));
 });
