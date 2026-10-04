@@ -54,6 +54,9 @@ export function renderReminderText(notice: ReminderTextNotice, now = new Date())
         return `Missa: ${name} has closed early. ${url} ${SIGN_OFF}`;
       case 'response-overdue':
         return `Missa: Any reply from ${organization} about ${name}? Log it: ${url} ${SIGN_OFF}`;
+      default:
+        // Newer notice kinds are emailed but not yet selected for texts.
+        return `Missa: An update about ${name}. ${url} ${SIGN_OFF}`;
     }
   };
   for (const url of [tracker, link('/tracker')]) {

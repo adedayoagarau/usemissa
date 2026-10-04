@@ -15,12 +15,36 @@ export type WeeklyDigestItem = {
   prize: string | null;
 };
 
+/** One dated step across the creator's saved applications. */
+export type WeeklyDigestPlanItem = {
+  kind: "deadline" | "obligation";
+  /** Obligation id, or the opportunity id for a deadline. */
+  id: string;
+  opportunityId: string;
+  /** The call's title. */
+  title: string;
+  /** What is due: "Application deadline" or the obligation's own label. */
+  label: string;
+  /** YYYY-MM-DD. */
+  dueOn: string;
+};
+
+/** The planning view behind "This week's three", triage counts and crunch weeks. */
+export type WeeklyDigestPlanning = {
+  /** Open obligations and deadlines from today on, soonest first. */
+  upcoming: WeeklyDigestPlanItem[];
+  /** Every saved application still being prepared, with its exact deadline or null. */
+  applications: Array<{ opportunityId: string; title: string; deadline: string | null }>;
+};
+
 export type WeeklyDigest = {
   /** The creator's given name when their profile has one. */
   recipientName?: string | null;
   newForYou: WeeklyDigestItem[];
   closingSoon: WeeklyDigestItem[];
   yourDeadlines: WeeklyDigestItem[];
+  /** Present when the creator has saved applications still being prepared. */
+  planning?: WeeklyDigestPlanning;
 };
 
 export type WeeklyDigestRecipient = {
@@ -154,6 +178,7 @@ export async function buildWeeklyDigest(pool: Pool, accountId: string, perSectio
       order by o.deadline_date, o.id limit $2`,
     [accountId, perSection],
   );
+  const planning = await weeklyDigestPlanning(pool, accountId);
   const profile = await pool
     .query<{ given_name: string | null }>("select nullif(trim(given_name),'') given_name from creator_profiles where account_id=$1", [accountId])
     .catch(() => ({ rows: [] as { given_name: string | null }[] }));
@@ -162,8 +187,67 @@ export async function buildWeeklyDigest(pool: Pool, accountId: string, perSectio
     newForYou: newForYou.rows.map((row) => item(row, "Matches your practice")),
     closingSoon: closingSoon.rows.map((row) => item(row, "Matches your practice")),
     yourDeadlines: yourDeadlines.rows.map((row) => item(row, "You saved this")),
+    ...(planning ? { planning } : {}),
+  };
+}
+
+/**
+ * Saved applications still being prepared, with their exact deadlines, and the
+ * open obligations and deadlines ahead. Obligations are read only once the
+ * obligation ledger exists.
+ */
+export async function weeklyDigestPlanning(pool: Pool, accountId: string, upcomingLimit = 40): Promise<WeeklyDigestPlanning | undefined> {
+  const applications = await pool.query<{ opportunity_id: string; title: string; deadline: string | null }>(
+    `select o.id opportunity_id,o.title,
+            case when o.deadline_kind in ('exact','fixed') and o.deadline_date >= current_date then o.deadline_date::text end deadline
+       from tracked_opportunities t join opportunities o on o.id=t.opportunity_id
+      where t.account_id=$1 and t.status in (${PRE_SUBMISSION}) and o.publication_state='published'
+        and (o.deadline_date is null or o.deadline_date >= current_date)
+      order by o.deadline_date nulls last, o.id limit 200`,
+    [accountId],
+  );
+  if (!applications.rows.length) return undefined;
+  const ledger = await pool.query<{ ready: boolean }>("select to_regclass('public.creator_obligations') is not null as ready");
+  const obligations = ledger.rows[0]?.ready
+    ? (
+        await pool.query<{ id: string; opportunity_id: string; title: string; label: string; due_on: string }>(
+          `select ob.id::text id,o.id opportunity_id,o.title,ob.label,ob.due_on::text due_on
+             from creator_obligations ob
+             join tracked_opportunities t on t.id=ob.tracked_opportunity_id
+             join opportunities o on o.id=t.opportunity_id
+            where ob.account_id=$1 and ob.state='open' and ob.due_on >= current_date
+            order by ob.due_on,ob.position,ob.id limit $2`,
+          [accountId, upcomingLimit],
+        )
+      ).rows
+    : [];
+  const upcoming: WeeklyDigestPlanItem[] = [
+    ...obligations.map((row) => ({
+      kind: "obligation" as const,
+      id: row.id,
+      opportunityId: row.opportunity_id,
+      title: row.title,
+      label: row.label,
+      dueOn: row.due_on,
+    })),
+    ...applications.rows
+      .filter((row) => row.deadline)
+      .map((row) => ({
+        kind: "deadline" as const,
+        id: row.opportunity_id,
+        opportunityId: row.opportunity_id,
+        title: row.title,
+        label: "Application deadline",
+        dueOn: row.deadline!,
+      })),
+  ]
+    .sort((a, b) => a.dueOn.localeCompare(b.dueOn) || (a.kind === b.kind ? 0 : a.kind === "obligation" ? -1 : 1) || a.id.localeCompare(b.id))
+    .slice(0, upcomingLimit);
+  return {
+    upcoming,
+    applications: applications.rows.map((row) => ({ opportunityId: row.opportunity_id, title: row.title, deadline: row.deadline })),
   };
 }
 
 export const weeklyDigestIsEmpty = (digest: WeeklyDigest) =>
-  !digest.newForYou.length && !digest.closingSoon.length && !digest.yourDeadlines.length;
+  !digest.newForYou.length && !digest.closingSoon.length && !digest.yourDeadlines.length && !digest.planning?.upcoming.length;
