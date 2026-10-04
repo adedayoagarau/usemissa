@@ -6,7 +6,7 @@ import type { PublisherReview } from "./publisher.js";
 import type { CandidatePublisherReview } from "./publisher.js";
 import type { ShadowArtifact } from "./execution.js";
 import { writeWithDeepSeek } from "./deepseekWriter.js";
-import { resolveCurrentDeadline } from "./deadline.js";
+import { resolveCurrentDeadline, resolveDeadlineClock, resolveDeadlineTiers, resolveEntryFee, type ResolvedDeadlineTier } from "./deadline.js";
 import { isAggregateOpportunityPage } from "./identity.js";
 
 function field(fields: ExtractionResult["fields"], name: string): string | undefined {
@@ -226,6 +226,9 @@ async function writeApprovedEvidence(
   const deadline = resolvedDeadline.date;
   if (resolvedDeadline.conflict || (!deadline && resolvedDeadline.kind === "unknown")) throw new Error("v2 candidate handoff requires a non-conflicting current deadline or declared rolling window");
   const deadlineKind = resolvedDeadline.kind;
+  const tiers = resolveDeadlineTiers(extraction.fields, resolvedDeadline);
+  const clock = resolveDeadlineClock(extraction.fields, resolvedDeadline);
+  const fee = resolveEntryFee(extraction.fields, tiers, resolvedDeadline);
   const type = field(extraction.fields, "opportunityType") ?? "other";
   const searchDocument = [title, organization, type, field(extraction.fields, "description")].filter(Boolean).join(" ").toLowerCase();
   // Review-mode ingestion can extract an organization name, but only a human
@@ -246,12 +249,20 @@ async function writeApprovedEvidence(
     }
     await upsertSource(client, source, canonicalSourceId);
     const persisted = await client.query(
-      `insert into opportunities (id,slug,title,source_id,status,publication_state,type,genres,deadline_date,deadline_kind,fee_status,guidelines_url,submission_url,submission_host,submission_state,search_document,source_checked_at,processing_succeeded_at,last_changed_at,created_at,updated_at)
-       values ($1,$2,$3,$4,'open','reviewable',$5,'{}'::text[],$6,$7,'unknown',$8,$8,$9,'available',$10,now(),now(),now(),now(),now())
-       on conflict (id) do update set title=excluded.title,source_id=excluded.source_id,type=excluded.type,deadline_date=excluded.deadline_date,deadline_kind=excluded.deadline_kind,guidelines_url=excluded.guidelines_url,submission_url=excluded.submission_url,submission_host=excluded.submission_host,submission_state=excluded.submission_state,search_document=excluded.search_document,source_checked_at=excluded.source_checked_at,processing_succeeded_at=excluded.processing_succeeded_at,last_changed_at=excluded.last_changed_at,updated_at=now()
+      `insert into opportunities (id,slug,title,source_id,status,publication_state,type,genres,deadline_date,deadline_time,deadline_timezone,deadline_kind,fee_status,fee_cents,fee_currency,guidelines_url,submission_url,submission_host,submission_state,search_document,source_checked_at,processing_succeeded_at,last_changed_at,created_at,updated_at)
+       values ($1,$2,$3,$4,'open','reviewable',$5,'{}'::text[],$6,$11::timestamptz,$12,$7,$13,$14,$15,$8,$8,$9,'available',$10,now(),now(),now(),now(),now())
+       on conflict (id) do update set title=excluded.title,source_id=excluded.source_id,type=excluded.type,deadline_date=excluded.deadline_date,deadline_time=excluded.deadline_time,deadline_timezone=excluded.deadline_timezone,deadline_kind=excluded.deadline_kind,
+         fee_status=case when excluded.fee_status <> 'unknown' then excluded.fee_status else opportunities.fee_status end,
+         fee_cents=case when excluded.fee_status <> 'unknown' then excluded.fee_cents else opportunities.fee_cents end,
+         fee_currency=case when excluded.fee_status <> 'unknown' then excluded.fee_currency else opportunities.fee_currency end,
+         guidelines_url=excluded.guidelines_url,submission_url=excluded.submission_url,submission_host=excluded.submission_host,submission_state=excluded.submission_state,search_document=excluded.search_document,source_checked_at=excluded.source_checked_at,processing_succeeded_at=excluded.processing_succeeded_at,last_changed_at=excluded.last_changed_at,updated_at=now()
        where opportunities.publication_state = 'reviewable'
        returning id`,
-      [opportunityId, `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 100)}-${opportunityId}`, title, canonicalSourceId, type, deadline, deadlineKind, url, new URL(url).host, searchDocument],
+      [
+        opportunityId, `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 100)}-${opportunityId}`, title, canonicalSourceId, type, deadline, deadlineKind, url, new URL(url).host, searchDocument,
+        clock?.closesAt ?? null, clock?.timezone ?? null,
+        fee?.status ?? "unknown", fee?.status === "paid" ? fee.cents ?? null : fee?.status === "no-fee" ? 0 : null, fee?.status === "paid" ? fee.currency ?? null : null,
+      ],
     );
     if (persisted.rowCount !== 1) throw new Error("v2 candidate handoff could not preserve the reviewable publication boundary");
     await client.query(
@@ -260,7 +271,8 @@ async function writeApprovedEvidence(
        on conflict (id) do update set checked_at=now(),processing_succeeded_at=now(),organization_confirmed=excluded.organization_confirmed,destination_reconciled=true,destination_reconciliation=excluded.destination_reconciliation`,
       [`${opportunityId}:evidence:${canonicalSourceId}`, opportunityId, canonicalSourceId, source.kind, source.name, source.url, false, JSON.stringify(reviewOnlyReconciliation)],
     );
-    await writeDeadlineWindows(client, opportunityId, url, resolvedDeadline);
+    await writeDeadlineWindows(client, opportunityId, url, resolvedDeadline, tiers);
+    await writeDeadlineTiers(client, opportunityId, url, tiers);
     await writeTaxonomyAssignments(client, source, canonicalSourceId, opportunityId, extraction);
     const content = await writeWithDeepSeek({ title, organization, type, deadline, authoritativeUrl: url, fields: extraction.fields });
     await client.query(
@@ -362,15 +374,39 @@ async function writeTaxonomyAssignments(client: PoolClient, source: SourceDefini
   }
 }
 
-async function writeDeadlineWindows(client: PoolClient, opportunityId: string, sourceUrl: string, resolved: ReturnType<typeof resolveCurrentDeadline>): Promise<void> {
+/**
+ * Replace the ingestion-sourced fee tiers for one opportunity. Tiers entered
+ * by an admin or the organization are authoritative: when any exist, the
+ * ingestion tiers are cleared and not rewritten. Skips cleanly before the
+ * deadline-management migration is applied.
+ */
+export async function writeDeadlineTiers(client: Pool | PoolClient, opportunityId: string, sourceUrl: string, tiers: ResolvedDeadlineTier[]): Promise<number> {
+  const ready = await client.query<{ ready: boolean }>("select to_regclass('public.opportunity_deadline_tiers') is not null as ready");
+  if (!ready.rows[0]?.ready) return 0;
+  await client.query("delete from opportunity_deadline_tiers where opportunity_id=$1 and source='ingestion'", [opportunityId]);
+  if (!tiers.length) return 0;
+  const curated = await client.query("select 1 from opportunity_deadline_tiers where opportunity_id=$1 and source<>'ingestion' limit 1", [opportunityId]);
+  if (curated.rowCount) return 0;
+  for (const [position, tier] of tiers.entries()) {
+    await client.query(
+      `insert into opportunity_deadline_tiers (opportunity_id,tier,label,closes_on,closes_at,timezone,fee_cents,fee_currency,position,confidence,source,source_url,updated_at)
+       values ($1,$2,$3,$4::date,$5::timestamptz,$6,$7,$8,$9,$10,'ingestion',$11,now())`,
+      [opportunityId, tier.tier, tier.label, tier.closesOn, tier.closesAt ?? null, tier.timezone ?? null, tier.feeCents ?? null, tier.feeCents ? tier.feeCurrency ?? null : null, position, tier.confidence, sourceUrl],
+    );
+  }
+  return tiers.length;
+}
+
+async function writeDeadlineWindows(client: PoolClient, opportunityId: string, sourceUrl: string, resolved: ReturnType<typeof resolveCurrentDeadline>, tiers: ResolvedDeadlineTier[] = []): Promise<void> {
   await client.query("delete from opportunity_call_windows where opportunity_id=$1", [opportunityId]);
   const today = new Date().toISOString().slice(0, 10);
   const dates = resolved.values.filter((date) => date >= today);
   for (const [index, date] of dates.entries()) {
+    const tierLabel = tiers.find((tier) => tier.closesOn === date)?.label;
     await client.query(
       `insert into opportunity_call_windows (id,opportunity_id,label,closes_at,kind,current,source_url,confidence,updated_at)
        values ($1,$2,$3,$4,'exact',$5,$6,'confirmed',now())`,
-      [`${opportunityId}:window:${date}`, opportunityId, dates.length > 1 ? `Deadline ${index + 1}` : "Deadline", date, date === resolved.date, sourceUrl],
+      [`${opportunityId}:window:${date}`, opportunityId, tierLabel ?? (dates.length > 1 ? `Deadline ${index + 1}` : "Deadline"), date, date === resolved.date, sourceUrl],
     );
   }
   if (!dates.length && ["rolling", "year-round", "seasonal"].includes(resolved.kind)) {

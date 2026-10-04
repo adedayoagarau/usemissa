@@ -801,3 +801,5 @@ export { relationsReady as cycleRelationsReady, type CycleDb, type CycleNotice }
 export * from "./cycleForecasts.js";
 export * from "./openingAlerts.js";
 export * from "./carryToNextCycle.js";
+export * from "./opportunityDeadlineFactsWriter.js";
+export { CONFIRMED_DATES_PREDICATE, type OpportunityRepositoryQueryWithDeadlineFacts } from "./opportunityRepository.js";
