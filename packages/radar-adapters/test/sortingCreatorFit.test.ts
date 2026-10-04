@@ -38,6 +38,8 @@ function fakePool() {
       if (text.includes("current_date+21"))
         return { rows: [row("saved-1", "You saved this")] };
       if (text.includes("given_name")) return { rows: [{ given_name: "Ada" }] };
+      // Planning (saved applications ahead); none here, so no planning section.
+      if (text.includes("select o.id opportunity_id")) return { rows: [] };
       if (text.includes("from radar_accounts a"))
         return {
           rows: [
@@ -139,7 +141,15 @@ const ids = (items: { opportunityId: string }[]) =>
 test("without creator fit the digest runs exactly today's queries", async () => {
   const { pool, queries } = fakePool();
   const digest = await buildWeeklyDigest(pool, "acct");
-  assert.equal(queries.length, 4);
+  // The three sections, the planning lookup and the greeting; nothing for fit.
+  assert.equal(queries.length, 5);
+  assert.ok(
+    !queries.some(
+      (text) =>
+        text.includes("from radar_accounts a") ||
+        text.includes("select id,discipline,genres"),
+    ),
+  );
   assert.deepEqual(ids(digest.newForYou), ["new-1", "new-2", "new-3"]);
 });
 

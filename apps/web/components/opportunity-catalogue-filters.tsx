@@ -33,6 +33,9 @@ import {
 import styles from "./opportunity-catalogue-filters.module.css";
 import type { OpportunityFacetCounts } from "@/lib/opportunityFacetCounts";
 
+/** URL parameter for "Confirmed dates only"; mirrors CONFIRMED_DATES_PARAM in lib/opportunityQuery. */
+const CONFIRMED_DATES = "confirmedDates";
+
 const visibleFacets = MISSA_TAXONOMY.facets
   .filter((facet) => facet.userVisible)
   .sort((a, b) => a.sortOrder - b.sortOrder);
@@ -103,7 +106,7 @@ function DesktopFilters({
 
   function clearAll() {
     const next = new URLSearchParams(searchParams.toString());
-    for (const key of ["type", "discipline", "taxonomy", "taxonomyDescendants", "taxonomyVersion", "location", "fee", "deadlineWithinDays", "deadline"])
+    for (const key of ["type", "discipline", "taxonomy", "taxonomyDescendants", "taxonomyVersion", "location", "fee", "deadlineWithinDays", "deadline", CONFIRMED_DATES])
       next.delete(key);
     navigate(next);
   }
@@ -122,6 +125,7 @@ function DesktopFilters({
 
   const deadline = searchParams.get("deadlineWithinDays");
   const deadlineKind = searchParams.get("deadline");
+  const confirmedDates = searchParams.get(CONFIRMED_DATES) === "1";
   const fee = searchParams.get("fee");
   const location = searchParams.get("location");
   const selectedTypeLabel =
@@ -161,8 +165,13 @@ function DesktopFilters({
           {locations.map((option) => <CommandItem key={option.value} value={option.label} data-checked={location === option.value} onSelect={() => setValue("location", option.value)}><span>{option.label}</span></CommandItem>)}
         </CommandGroup></CommandList>
       </Command>)}
-      {menu("Deadline", deadline || deadlineKind ? 1 : 0, <Command><CommandList><CommandGroup>
+      {menu("Deadline", (deadline || deadlineKind ? 1 : 0) + (confirmedDates ? 1 : 0), <Command><CommandList><CommandGroup>
         {[["", "Any time"], ["7", "Closing this week"], ["30", "Next 30 days"], ["90", "Next 90 days"], ["rolling", "Rolling / year-round"]].map(([value, label]) => <CommandItem key={label} data-checked={value === "rolling" ? deadlineKind === value : (deadline ?? "") === value} onSelect={() => setDeadline(value)}>{label}</CommandItem>)}
+      </CommandGroup><CommandGroup heading="Date confidence">
+        <CommandItem value="Confirmed dates only" data-checked={confirmedDates} onSelect={() => setValue(CONFIRMED_DATES, confirmedDates ? undefined : "1")}>
+          <Checkbox checked={confirmedDates} aria-hidden="true" tabIndex={-1} />
+          <span>Confirmed dates only</span>
+        </CommandItem>
       </CommandGroup></CommandList></Command>)}
       {menu("Fee", fee ? 1 : 0, <Command><CommandList><CommandGroup>
         {[["", "Any fee"], ["no-fee", "No fee"], ["paid", "Application fee"], ["unknown", "Fee not listed"]].map(([value, label]) => <CommandItem key={label} data-checked={(fee ?? "") === value} onSelect={() => setValue("fee", value)}>{label}</CommandItem>)}
@@ -269,6 +278,7 @@ function FilterPanel({
       "openNow",
       "deadlineWithinDays",
       "deadline",
+      CONFIRMED_DATES,
       "maxFeeCents",
       "simultaneous",
     ])
@@ -350,6 +360,15 @@ function FilterPanel({
           <option value="90">Next 90 days</option>
           <option value="rolling">Rolling / year-round</option>
         </select>
+      </label>
+
+      <label className={styles.checkRow}>
+        <Checkbox
+          aria-label="Confirmed dates only"
+          checked={searchParams.get(CONFIRMED_DATES) === "1"}
+          onCheckedChange={(checked) => update(CONFIRMED_DATES, checked === true ? "1" : "")}
+        />
+        <span>Confirmed dates only</span>
       </label>
 
       <label className={styles.selectField}>

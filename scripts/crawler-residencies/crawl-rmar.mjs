@@ -15,7 +15,7 @@ async function fetchWithRetry(url, retries = 3) {
     try {
       const res = await fetch(url, {
         headers: {
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "User-Agent": "MissaResidencyIndex/1.0 (+https://www.usemissa.com/rankings/methodology)",
           "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         },
       });
@@ -29,7 +29,8 @@ async function fetchWithRetry(url, retries = 3) {
   return null;
 }
 
-function parseResidencyPage(html, url) {
+export function parseResidencyPage(html, url) {
+  const pageSlug = url.split("/").filter(Boolean).pop();
   const jsonLdMatches = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
   let org = null;
   let event = null;
@@ -39,18 +40,12 @@ function parseResidencyPage(html, url) {
       const parsed = JSON.parse(j[1]);
       const graph = parsed["@graph"] || (Array.isArray(parsed) ? parsed : [parsed]);
       for (const item of graph) {
-        if (
-          item["@type"] === "EducationalOrganization" ||
-          item["@type"] === "Organization" ||
-          (item["@type"] && item.aggregateRating)
-        ) {
-          if (!org || item.aggregateRating) {
-            org = item;
-          }
-        }
-        if (item["@type"] === "Event") {
-          event = item;
-        }
+        if (item["@type"] === "Event") event = item;
+        if (!item["@type"] || item["@type"] === "WebSite" || item["@type"] === "BreadcrumbList") continue;
+        // Every page also describes the directory itself; only the residency's own block counts.
+        const id = String(item["@id"] || "");
+        if (id.endsWith(`/residency/${pageSlug}#organization`)) org = item;
+        else if (!org && item.aggregateRating && !/ratemyartistresidency\.com\/?#organization$/.test(id)) org = item;
       }
     } catch {}
   }
@@ -58,7 +53,7 @@ function parseResidencyPage(html, url) {
   // Fallback regex scraping if JSON-LD is minimal
   const slug = url.split("/").pop();
   const name = org?.name || slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  const website = org?.sameAs?.[0] || org?.url || null;
+  const website = org?.sameAs?.[0] || (org?.url && !org.url.includes("ratemyartistresidency.com") ? org.url : null);
   const location = org?.address?.addressLocality
     ? `${org.address.addressLocality}, ${org.address.addressCountry || ""}`.trim()
     : null;
@@ -117,7 +112,7 @@ async function main() {
   console.log(`Discovered ${residencyUrls.length} individual residency programs in RMAR sitemap.`);
 
   const results = [];
-  const concurrency = 5;
+  const concurrency = 1;
 
   for (let i = 0; i < residencyUrls.length; i += concurrency) {
     const chunk = residencyUrls.slice(i, i + concurrency);
@@ -133,7 +128,7 @@ async function main() {
     }
 
     process.stdout.write(`\rCrawled ${results.length} / ${residencyUrls.length} residencies...`);
-    await sleep(250);
+    await sleep(1000);
   }
 
   console.log("\nCrawl complete!");

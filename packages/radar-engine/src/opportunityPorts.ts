@@ -15,11 +15,15 @@ export type OpportunityRepositoryDeadlineKind =
   | "inferred"
   | "rolling"
   | "until-filled"
+  | "year-round"
+  | "seasonal"
   | "conflicting"
   | "unknown";
 
 export interface OpportunityRepositoryQuery {
   /** Internal shortlist lookup; public visibility and account exclusions still apply. */
+  /** Only calls whose deadline the organization's source confirms. */
+  confirmedDatesOnly?: boolean;
   ids?: string[];
   query?: string;
   category?: string;
@@ -60,6 +64,65 @@ export interface OpportunityRepositoryDeadline {
   time?: string;
   timezone?: string;
   raw?: string;
+}
+
+export interface OpportunityDeadlineTier {
+  id: string;
+  tier: "early" | "regular" | "late" | "extended" | "final" | "other";
+  label: string;
+  closesOn: string;
+  closesAt?: string;
+  timezone?: string;
+  feeCents?: number;
+  feeCurrency?: string;
+  confidence: "confirmed" | "probable";
+}
+
+export type OpportunityStageKind =
+  | "letter-of-intent"
+  | "full-application"
+  | "shortlist"
+  | "interview"
+  | "notification"
+  | "decision"
+  | "event"
+  | "other";
+
+export interface OpportunityStage {
+  id: string;
+  kind: OpportunityStageKind;
+  label: string;
+  dueOn: string;
+  dueAt?: string;
+  timezone?: string;
+  confidence: "confirmed" | "probable";
+}
+
+export type DeadlineProvenanceState = "confirmed" | "predicted" | "changed" | "needs-checking";
+
+export interface OpportunityDeadlineProvenance {
+  state: DeadlineProvenanceState;
+  lastCheckedAt?: string;
+  previousDate?: string;
+  changedAt?: string;
+}
+
+export interface OpportunityCycleForecast {
+  expectedOpenStart?: string;
+  expectedOpenEnd?: string;
+  expectedClose?: string;
+  confidence: "high" | "medium" | "low";
+  basedOnCycles: number;
+  confirmedAt?: string;
+  confirmedDeltaDays?: number;
+}
+
+/** Tiers, stages, provenance and forecast for one opportunity (migration 0088). */
+export interface OpportunityDeadlineFacts {
+  tiers: OpportunityDeadlineTier[];
+  stages: OpportunityStage[];
+  provenance: OpportunityDeadlineProvenance;
+  forecast?: OpportunityCycleForecast;
 }
 
 export interface OpportunityRepositoryFee {
@@ -179,6 +242,7 @@ export interface OpportunityBrowseProjection {
   personal?: OpportunityRepositoryPersonalState;
   callProfile?: OpportunityCallProfile;
   content?: OpportunityContent;
+  deadlineFacts?: OpportunityDeadlineFacts;
 }
 
 export interface OpportunityDetailProjection extends OpportunityBrowseProjection {

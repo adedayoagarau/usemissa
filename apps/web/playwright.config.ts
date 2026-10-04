@@ -13,6 +13,7 @@ const relationalSpecs = [
   "**/discovery-relational.spec.ts",
   "**/profile.spec.ts",
   "**/profile-privacy.spec.ts",
+  "**/creator-profile-relational.spec.ts",
 ];
 
 export default defineConfig({

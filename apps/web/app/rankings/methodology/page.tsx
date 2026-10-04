@@ -123,9 +123,9 @@ export default async function RankingsMethodologyPage() {
               When no source records a fact, it scores the middle of its range:
               a program is neither rewarded nor punished for what we have not
               found. Each program’s details panel shows which facts are on
-              record and what share of its score rests on them. Only programs
-              with a Missa profile are ranked, so a residency missing from the
-              list may simply not be in the directory yet.
+              record and what share of its score rests on them. Every program
+              those directories list is ranked; one that is missing may not be
+              listed in either directory yet.
             </p>
           </section>
 

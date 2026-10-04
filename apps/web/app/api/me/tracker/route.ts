@@ -24,6 +24,7 @@ import {
 } from "@/lib/saveOpportunityToTracker";
 import type { FirstSaveReceipt } from "@/lib/firstSaveTypes";
 import { getCreatorCalendarRepository } from "@/lib/creatorRepositories";
+import { onTrackerSaved } from "@/lib/tracker-save-hooks";
 
 const noStore = { "Cache-Control": "no-store" };
 
@@ -119,6 +120,7 @@ export async function POST(request: Request) {
         calendar = { status: "pending" };
       }
     }
+    await onTrackerSaved(session.account.id, opportunity.id);
     const nextAction = firstSaveNextAction(opportunity);
     const completion = createFirstSaveCompletionToken({
       journeyId,

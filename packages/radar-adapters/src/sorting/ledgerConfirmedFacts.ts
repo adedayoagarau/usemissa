@@ -6,7 +6,7 @@ import type {
 
 /**
  * Reads confirmed opportunity facts for search from the data_decisions ledger
- * (migration 0088). The reading question set owns these questions; this only
+ * (migration 0090). The reading question set owns these questions; this only
  * consumes what it recorded.
  *
  * A fact counts only when the latest decision for that question is live or
