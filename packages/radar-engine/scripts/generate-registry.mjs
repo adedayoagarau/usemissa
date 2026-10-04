@@ -36,7 +36,7 @@ function entry(name, url, verticalId, opts = {}) {
     disciplines: opts.disciplines,
     geography: opts.geography,
     checkIntervalHours: opts.checkIntervalHours ?? TIER_CADENCE[tier],
-    active: true,
+    active: opts.active ?? true,
     organizationName: tier === 0 ? name : undefined,
     followsOutboundLinks: opts.followsOutboundLinks ?? tier === 2,
     discoveryAdapterId: opts.discoveryAdapterId,

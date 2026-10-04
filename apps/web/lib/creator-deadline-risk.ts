@@ -8,6 +8,7 @@ import {
   creatorDecisionContext,
   type CreatorDecisionContext,
 } from "./creator-decisions";
+import { PRE_SUBMISSION_STATUSES } from "./deadline-reminder-copy";
 
 /** Applications checked per creator tick; each is asked at most once a day. */
 export const DEADLINE_RISK_BATCH = 25;
@@ -24,9 +25,9 @@ type RiskRow = {
 /**
  * Records, for saved applications with a confirmed deadline in the next two
  * weeks, whether the writer looks likely to miss it (scope `nudges`). This is
- * shadow-only for now: Missa has no nudge surface beyond the reminders the
- * creator schedules, and adding one would be new creator-facing copy, so a
- * live answer changes nothing yet. Never throws.
+ * shadow-only for now: the status-aware deadline reminders (deadline-day
+ * alarm, gone-quiet nudge) already cover these calls by rule, so Jev's answer
+ * is recorded for comparison and changes nothing yet. Never throws.
  */
 export async function recordDeadlineRisk(
   db: Queryable,
@@ -45,7 +46,7 @@ export async function recordDeadlineRisk(
       await db.query(
         `select t.id, t.status,
               (o.deadline_date - current_date)::int as days_until,
-              floor(extract(epoch from now() - t.updated_at) / 86400)::int as days_since_update,
+              floor(extract(epoch from now() - coalesce((to_jsonb(t)->>'last_activity_at')::timestamptz, t.updated_at)) / 86400)::int as days_since_update,
               exists(select 1 from creator_application_reminders r
                       where r.account_id = t.account_id and r.opportunity_id = t.opportunity_id
                         and r.state in ('scheduled', 'delivered')) as has_reminder,
@@ -53,7 +54,7 @@ export async function recordDeadlineRisk(
          from tracked_opportunities t
          join opportunities o on o.id = t.opportunity_id
         where ($1::text is null or t.account_id = $1)
-          and t.status in ('interested', 'saved', 'preparing', 'draft-started', 'ready-to-submit')
+          and t.status = any($5::text[])
           and o.publication_state = 'published'
           and o.deadline_kind in ('fixed', 'exact')
           and o.deadline_date between current_date and current_date + 14
@@ -67,6 +68,7 @@ export async function recordDeadlineRisk(
           deadlineAtRisk.subjectType,
           deadlineAtRisk.key,
           options.limit ?? DEADLINE_RISK_BATCH,
+          [...PRE_SUBMISSION_STATUSES],
         ],
       )
     ).rows as RiskRow[];

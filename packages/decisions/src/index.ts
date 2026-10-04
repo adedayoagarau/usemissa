@@ -6,3 +6,4 @@ export * from "./ledger.js";
 export * from "./decide.js";
 export * from "./questions.js";
 export * from "./sets/creator.js";
+export * from "./sets/operations.js";

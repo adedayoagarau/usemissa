@@ -44,6 +44,7 @@ import type {
 } from "./domain/types.js";
 import type {
   Clock,
+  ExtractionGate,
   Extractor,
   Fetcher,
   FetchResult,
@@ -561,6 +562,8 @@ export interface RadarEngineOptions {
   fetcher: Fetcher;
   store?: RadarStore;
   extractor?: Extractor;
+  /** Optional; without it every changed page is extracted. */
+  extractionGate?: ExtractionGate;
   clock?: Clock;
   ids?: IdGenerator;
 }
@@ -603,6 +606,7 @@ export class RadarEngine {
   readonly store: RadarStore;
   private readonly fetcher: Fetcher;
   private readonly extractor: Extractor;
+  private readonly extractionGate?: ExtractionGate;
   private readonly clock: Clock;
   private readonly ids: IdGenerator;
 
@@ -612,6 +616,7 @@ export class RadarEngine {
     this.clock = opts.clock ?? systemClock;
     this.ids = opts.ids ?? sequentialIds(idsInStore(this.store));
     this.extractor = opts.extractor ?? new DeterministicExtractor(this.clock);
+    this.extractionGate = opts.extractionGate;
   }
 
   private get ctx(): AlertContext {
@@ -1656,7 +1661,22 @@ export class RadarEngine {
           contentHash: hash,
           content: result.content,
         };
+        const previousSnapshot = this.extractionGate
+          ? this.latestSnapshotWithHash(source.id, source.lastContentHash)
+          : undefined;
         this.store.snapshots.set(snapshot.id, snapshot);
+
+        if (
+          this.extractionGate &&
+          !(await this.gateAllowsExtraction(source, previousSnapshot, snapshot))
+        ) {
+          source.lastContentHash = hash;
+          source.lastProcessedAt = now.toISOString();
+          source.consecutiveProcessingFailures = 0;
+          source.nextCheckAt = nextCheckAt(source, now).toISOString();
+          this.touchOpportunities(source, now);
+          continue;
+        }
 
         const candidate = await this.extractor.extract(source, snapshot);
         report.extractionSuccesses++;
@@ -2034,6 +2054,32 @@ export class RadarEngine {
         opp.id,
       );
       if (task) report.verificationTasksOpened.push(task);
+    }
+  }
+
+  private latestSnapshotWithHash(
+    sourceId: string,
+    contentHash: string | undefined,
+  ): PageSnapshot | undefined {
+    if (!contentHash) return undefined;
+    let latest: PageSnapshot | undefined;
+    for (const snapshot of this.store.snapshots.values()) {
+      if (snapshot.sourceId !== sourceId || snapshot.contentHash !== contentHash)
+        continue;
+      if (!latest || snapshot.fetchedAt > latest.fetchedAt) latest = snapshot;
+    }
+    return latest;
+  }
+
+  private async gateAllowsExtraction(
+    source: Source,
+    previous: PageSnapshot | undefined,
+    next: PageSnapshot,
+  ): Promise<boolean> {
+    try {
+      return (await this.extractionGate!.shouldExtract(source, previous, next)) !== false;
+    } catch {
+      return true;
     }
   }
 

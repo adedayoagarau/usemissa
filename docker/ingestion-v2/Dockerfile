@@ -7,6 +7,7 @@ COPY apps ./apps
 
 RUN npm ci --ignore-scripts
 RUN npm run build --workspace=@missa/taxonomy \
+  && npm run build --workspace=@missa/decisions \
   && npm run build --workspace=@missa/radar-engine \
   && npm run build --workspace=@missa/ingestion-v2
 
@@ -19,6 +20,8 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/packages/taxonomy/package.json ./packages/taxonomy/package.json
 COPY --from=build /app/packages/taxonomy/dist ./packages/taxonomy/dist
+COPY --from=build /app/packages/decisions/package.json ./packages/decisions/package.json
+COPY --from=build /app/packages/decisions/dist ./packages/decisions/dist
 COPY --from=build /app/packages/radar-engine/package.json ./packages/radar-engine/package.json
 COPY --from=build /app/packages/radar-engine/dist ./packages/radar-engine/dist
 COPY --from=build /app/packages/ingestion-v2/package.json ./packages/ingestion-v2/package.json

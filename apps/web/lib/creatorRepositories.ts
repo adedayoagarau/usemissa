@@ -1,4 +1,5 @@
 import {
+  PostgresCreatorConnectionsRepository,
   creatorPoolFor,
   creatorRelationalAuthorityEnabled,
   PostgresCreatorAccountRepository,
@@ -18,6 +19,7 @@ declare global {
   var __missaCreatorPreferenceRepository: PostgresCreatorPreferenceRepository | undefined;
   var __missaCreatorTrackerRepository: PostgresCreatorTrackerRepository | undefined;
   var __missaCreatorInboxRepository: PostgresCreatorInboxRepository | undefined;
+  var __missaCreatorConnectionsRepository: PostgresCreatorConnectionsRepository | undefined;
   var __missaCreatorEmailReviewRepository: PostgresCreatorEmailReviewRepository | undefined;
   var __missaCreatorLibraryRepository: PostgresCreatorLibraryRepository | undefined;
   var __missaCreatorNotificationRepository: PostgresCreatorNotificationRepository | undefined;
@@ -96,4 +98,11 @@ export function getCreatorCalendarRepository(): PostgresCreatorCalendarRepositor
   if (!database) return undefined;
   if (!globalThis.__missaCreatorCalendarRepository) globalThis.__missaCreatorCalendarRepository = new PostgresCreatorCalendarRepository(database);
   return globalThis.__missaCreatorCalendarRepository;
+}
+
+export function getCreatorConnectionsRepository(): PostgresCreatorConnectionsRepository | undefined {
+  const database = pool();
+  if (!database) return undefined;
+  if (!globalThis.__missaCreatorConnectionsRepository) globalThis.__missaCreatorConnectionsRepository = new PostgresCreatorConnectionsRepository(database);
+  return globalThis.__missaCreatorConnectionsRepository;
 }

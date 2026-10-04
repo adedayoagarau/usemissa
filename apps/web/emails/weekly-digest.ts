@@ -10,6 +10,7 @@ import {
 } from './components/call-facts';
 import { CREATOR_EMAIL_COLORS as c, keepLight, renderEmailDocument, renderEmailFooter, wordmark } from './components/email-document';
 import { dateLine, factsLine, label, opportunityUrl, placard, sectionHeading } from './components/wall';
+import { digestPlanningSummary, planningRows, planningText } from './components/planning-wall';
 import { buildUnsubscribeUrl } from '../lib/email-tokens';
 import { siteUrl } from '../lib/siteUrl';
 
@@ -38,6 +39,12 @@ function closesOn(date: Date, now: Date): string {
 function lede(digest: WeeklyDigest, now: Date): string {
   const total = digest.yourDeadlines.length + digest.newForYou.length + digest.closingSoon.length;
   const who = digest.recipientName ? `for ${digest.recipientName}` : 'for you';
+  if (!total) {
+    const next = digestPlanningSummary(digest.planning, now).three[0];
+    const nextDate = calendarDate(next?.dueOn);
+    if (next && nextDate)
+      return `Your plan ${who} this week. Next up: ${next.kind === 'deadline' ? `${next.title} closes` : next.label} ${closesOn(nextDate, now)}.`;
+  }
   const opening = `${capitalise(numberWord(total))} ${total === 1 ? 'call' : 'calls'} ${who} this week.`;
   const clauses: string[] = [];
   const mine = digest.yourDeadlines[0];
@@ -63,12 +70,16 @@ function subjectLine(digest: WeeklyDigest, now: Date): string {
     return `The Sunday List: ${numberWord(n)} ${n === 1 ? 'call' : 'calls'} just opened for you`;
   }
   const n = digest.closingSoon.length;
-  return `The Sunday List: ${numberWord(n)} ${n === 1 ? 'call' : 'calls'} closing soon`;
+  if (n) return `The Sunday List: ${numberWord(n)} ${n === 1 ? 'call' : 'calls'} closing soon`;
+  return 'The Sunday List: your week ahead';
 }
 
 /**
- * The Sunday List: the weekly digest laid out as labels on a Forest wall. The
- * creator's own nearest deadline leads as an ochre placard; without one, the
+ * The Sunday List: the weekly digest laid out as labels on a Forest wall. It
+ * opens with "This week's three" (the next dated steps across saved
+ * applications) and the season at a glance (triage buckets and busy weeks)
+ * when the creator has saved applications. The creator's own nearest deadline
+ * then leads as an ochre placard; without one, the
  * first new call leads on white. Empty sections are omitted, and callers skip
  * sending when every section is empty.
  */
@@ -81,7 +92,8 @@ export function renderWeeklyDigestEmail(props: WeeklyDigestEmailProps): { subjec
   const profile = new URL('/profile', `${siteUrl()}/`).toString();
   const today = `${new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'UTC' }).format(now)} ${dayMonth(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())), now)}`;
 
-  const rows: string[] = [];
+  const planning = digestPlanningSummary(digest.planning, now);
+  const rows: string[] = [...planningRows(planning, now)];
   const [mine, ...moreMine] = digest.yourDeadlines;
   let newItems = digest.newForYou;
   let index = 0;
@@ -153,6 +165,7 @@ export function renderWeeklyDigestEmail(props: WeeklyDigestEmailProps): { subjec
     'The Sunday List',
     '',
     summary,
+    ...planningText(planning, now),
     ...textSection('In your Tracker', digest.yourDeadlines),
     ...textSection('Just opened', digest.newForYou),
     ...textSection('Closing soon', digest.closingSoon),

@@ -6,6 +6,8 @@ import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 import { fetchWithPolicy, USER_AGENT } from "./mediaFetcher.js";
 import { extractMediaCandidates } from "./mediaExtractor.js";
 import type { SourceRole } from "./mediaExtractionContracts.js";
+import { OperationsUsage } from "@missa/decisions";
+import { HostHistoryTracker, logOperationsUsage, radarOperationsDecider, retryShouldWaitLongest, type OperationsDecider } from "./operationsDecisions.js";
 
 type JobKind = "media" | "winners" | "guidelines" | "call-profile";
 export type ClaimedJob = {
@@ -307,9 +309,17 @@ async function completeJob(client: PoolClient, job: ClaimedJob, payload: Record<
   );
 }
 
-async function failJob(client: PoolClient, job: ClaimedJob, error: unknown): Promise<void> {
+/** The longest enrichment retry delay allowed today, in minutes. */
+export const MAX_ENRICHMENT_RETRY_MINUTES = 24 * 60;
+
+/** Today's retry delay, or the longest allowed one when a live Jev answer says the retry will fail. */
+export function enrichmentRetryDelayMinutes(attempts: number, waitLongest = false): number {
+  return waitLongest ? MAX_ENRICHMENT_RETRY_MINUTES : Math.min(MAX_ENRICHMENT_RETRY_MINUTES, 2 ** Math.min(attempts, 8));
+}
+
+export async function failJob(client: Pick<PoolClient, "query">, job: ClaimedJob, error: unknown, waitLongest = false): Promise<void> {
   const message = error instanceof Error ? error.message : String(error);
-  const delayMinutes = Math.min(24 * 60, 2 ** Math.min(job.attempts, 8));
+  const delayMinutes = enrichmentRetryDelayMinutes(job.attempts, waitLongest);
   await client.query(
     `update radar_enrichment_jobs set status = case when attempts >= 8 then 'blocked' else 'failed' end, last_error = $2, next_attempt_at = now() + ($3 || ' minutes')::interval, lease_until = null, updated_at = now() where id = $1`,
     [job.id, message.slice(0, 500), String(delayMinutes)],
@@ -470,7 +480,23 @@ async function processJob(client: PoolClient, job: ClaimedJob): Promise<void> {
   await completeJob(client, job, { guidelineLinks: links.length, checkedUrl: finalUrl });
 }
 
-async function tick(pool: Pool, limit: number): Promise<{ claimed: number; completed: number }> {
+/**
+ * Asks Jev (scope `enrichment_retry`) whether a failed job's retry will
+ * succeed. Without a decider, or in shadow mode, the delay is today's.
+ */
+export async function enrichmentRetryWaitsLongest(decider: OperationsDecider | undefined, job: ClaimedJob, error: unknown, hosts?: HostHistoryTracker, usage?: OperationsUsage): Promise<boolean> {
+  // At eight attempts the job is blocked whatever the delay, so nothing to ask.
+  if (job.attempts >= 8) return false;
+  return retryShouldWaitLongest(decider, "enrichment_retry", {
+    subjectId: job.id,
+    url: job.sourceUrl,
+    error: error instanceof Error ? error.message : String(error),
+    attempts: job.attempts,
+    hosts,
+  }, usage);
+}
+
+async function tick(pool: Pool, limit: number, decider?: OperationsDecider, usage?: OperationsUsage): Promise<{ claimed: number; completed: number }> {
   const client = await pool.connect();
   try {
     await client.query("begin");
@@ -478,11 +504,19 @@ async function tick(pool: Pool, limit: number): Promise<{ claimed: number; compl
     const jobs = await claimJobs(client, limit);
     await client.query("commit");
     let completed = 0;
+    const hosts = new HostHistoryTracker();
     for (const job of jobs) {
       const worker = await pool.connect();
-      try { await processJob(worker, job); completed++; } catch (error) { await failJob(worker, job, error); } finally { worker.release(); }
+      try {
+        await processJob(worker, job); completed++;
+        hosts.record(job.sourceUrl, true);
+      } catch (error) {
+        hosts.record(job.sourceUrl, false);
+        await failJob(worker, job, error, await enrichmentRetryWaitsLongest(decider, job, error, hosts, usage));
+      } finally { worker.release(); }
     }
     console.log(`[missa-enrichment-worker] tick: claimed=${jobs.length} completed=${completed}`);
+    logOperationsUsage(usage);
     return { claimed: jobs.length, completed };
   } catch (error) {
     await client.query("rollback").catch(() => undefined);
@@ -500,13 +534,16 @@ async function main(): Promise<void> {
   const stop = () => controller.abort();
   process.once("SIGINT", stop); process.once("SIGTERM", stop);
   const limit = batchSize(); const delay = intervalMs();
+  // Undefined without JEV_API_KEY: retry delays stay exactly as today.
+  const decider = radarOperationsDecider(pool);
+  const usage = decider ? new OperationsUsage() : undefined;
   console.log(`[missa-enrichment-worker] running every ${Math.round(delay / 60_000)} minutes, batch=${limit}`);
   try {
     while (!controller.signal.aborted) {
       let hasMore = false;
       try {
         await heartbeatWorkerRun(pool, workerRunId, "enrichment-worker");
-        const result = await tick(pool, limit);
+        const result = await tick(pool, limit, decider, usage);
         await heartbeatWorkerRun(pool, workerRunId, "enrichment-worker", { inputCount: result.claimed, outputCount: result.completed });
         hasMore = result.claimed >= limit;
       } catch (error) {

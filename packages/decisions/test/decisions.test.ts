@@ -317,6 +317,75 @@ test("the same input is recorded once per question version", async () => {
   assert.equal(ledger.records.length, 1);
 });
 
+test("an unchanged input reuses recorded answers instead of calling again", async () => {
+  const ledger = createMemoryDecisionLedger();
+  const first = fakeFetch([
+    {
+      status: 200,
+      body: {
+        model: "jev-1.13.0",
+        answers: {
+          q0: { type: "noul", noul: 0.95 },
+          q1: {
+            type: "choice",
+            choice: "paid",
+            probabilities: { paid: 0.9, "no-fee": 0.1 },
+            confidence: 0.85,
+          },
+        },
+      },
+    },
+  ]);
+  const state = { title: "Spring Residency" };
+  await decide({
+    client: createJevClient({ apiKey: "k", fetch: first.fetchImpl }),
+    ledger,
+    mode: "shadow",
+    subjectId: "opp_1",
+    state,
+    questions: [isSingleCall, feeStatus],
+  });
+
+  const second = fakeFetch([]);
+  const again = await decide({
+    client: createJevClient({ apiKey: "k", fetch: second.fetchImpl }),
+    ledger,
+    mode: "live",
+    subjectId: "opp_1",
+    state,
+    questions: [isSingleCall, feeStatus],
+  });
+  assert.equal(second.calls.length, 0, "no second call for the same input");
+  assert.equal(again.model, "jev-1.13.0");
+  assert.equal(again.outcomes["opportunity.is_single_call"]!.route, "apply");
+  assert.equal(
+    again.outcomes["opportunity.is_single_call"]!.actionable,
+    true,
+    "reused answers are routed under the current mode",
+  );
+  assert.equal(again.outcomes["opportunity.fee_status"]!.answer, "paid");
+  assert.equal(ledger.records.length, 2);
+
+  const changed = fakeFetch([
+    {
+      status: 200,
+      body: {
+        model: "jev-1.13.0",
+        answers: { q0: { type: "noul", noul: 0.2 } },
+      },
+    },
+  ]);
+  await decide({
+    client: createJevClient({ apiKey: "k", fetch: changed.fetchImpl }),
+    ledger,
+    mode: "shadow",
+    subjectId: "opp_1",
+    state: { title: "Spring Residency 2027" },
+    questions: [isSingleCall],
+  });
+  assert.equal(changed.calls.length, 1, "a changed input is asked again");
+});
+
 test("modes default to shadow and can be switched per scope", () => {
   assert.equal(decisionModeFromEnv("review", {}), "shadow");
   assert.equal(

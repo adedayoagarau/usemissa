@@ -3,10 +3,12 @@ import type { MyStatus } from "@missa/radar-engine";
 /**
  * Views the Tracker can open. Links from reminders, Calendar, Library and
  * email use the My applications names (`saved`, `awaiting`, `history`), so
- * those resolve to the Tracker view that shows the same records.
+ * those resolve to the Tracker view that shows the same records. `plan`
+ * groups calls in preparation by how soon they close.
  */
 export const TRACKER_VIEWS = [
   "active",
+  "plan",
   "saved",
   "submissions",
   "calendar",
@@ -67,7 +69,8 @@ export function trackerStage(status: MyStatus): TrackerStage {
 export function viewShowsStatus(view: TrackerView, status: MyStatus): boolean {
   const stage = trackerStage(status);
   if (view === "active") return stage !== "Archived";
-  if (view === "saved") return stage === "Saved" || stage === "Preparing";
+  if (view === "saved" || view === "plan")
+    return stage === "Saved" || stage === "Preparing";
   if (view === "submissions")
     return ["Submitted", "In progress", "Outcome"].includes(stage);
   if (view === "archive") return stage === "Archived";
