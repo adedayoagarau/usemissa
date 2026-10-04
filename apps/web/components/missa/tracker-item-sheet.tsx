@@ -20,6 +20,20 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApplicationReminders } from "@/components/missa/application-reminders";
+import { ApplicationCalendarDeliveryPanel } from "@/components/missa/application-calendar-delivery";
+import {
+  RecordDialog,
+  RecordHistory,
+  RecordMaterials,
+  RecordNotes,
+  RecordProgress,
+  recordSectionTargets,
+  useApplicationRecord,
+} from "@/components/missa/application-record";
+import { SheetSectionHeading as SectionHeading } from "@/components/missa/sheet-section-heading";
+import { PreSubmitCheck } from "@/components/missa/pre-submit-check";
+import { SimilarOpportunities } from "@/components/missa/similar-opportunities";
+import type { TrackerHostedSubmission } from "@/components/tracker-product";
 import {
   DateConfidenceBadge,
   dateConfidenceDescription,
@@ -113,17 +127,6 @@ function applicationSummary(item: TrackerSheetItem): ApplicationSummary {
     workId: item.workId ?? null,
     notify: Boolean(item.notify),
   };
-}
-
-function SectionHeading({ id, eyebrow, children }: { id: string; eyebrow: string; children: React.ReactNode }) {
-  return (
-    <header className="space-y-1">
-      <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{eyebrow}</p>
-      <h3 id={id} className="font-heading text-xl leading-tight">
-        {children}
-      </h3>
-    </header>
-  );
 }
 
 function StepRow({
@@ -318,6 +321,10 @@ export function TrackerItemSheet({
   onOpenChange,
   onItemChange,
   onCarried,
+  section,
+  hosted,
+  works = [],
+  emailEvidence = false,
 }: {
   item: TrackerSheetItem | undefined;
   open: boolean;
@@ -328,6 +335,14 @@ export function TrackerItemSheet({
   onOpenChange: (open: boolean) => void;
   onItemChange: (opportunityId: string, changes: Partial<TrackerSheetItem>) => void;
   onCarried: (item: TrackerSheetItem) => void;
+  /** `&section=` from a deep link: scroll the sheet to that part once it has loaded. */
+  section?: string;
+  /** The Missa-hosted submission for this call, when there is one. */
+  hosted?: TrackerHostedSubmission;
+  /** Library Works that can be linked to this application. */
+  works?: Array<{ id: string; title: string }>;
+  /** Email forwarding or Gmail sync is on, so matching emails can be suggested. */
+  emailEvidence?: boolean;
 }) {
   const [facts, setFacts] = useState<Load<OpportunityDeadlineFacts | null>>({ state: "loading" });
   const [steps, setSteps] = useState<Load<CreatorObligation[]>>({ state: "loading" });
@@ -351,6 +366,40 @@ export function TrackerItemSheet({
   const moment = item ? rowDeadline(item, clock) : undefined;
   const summary = useMemo(() => (item ? applicationSummary(item) : undefined), [item]);
   const stepRequest = useRef(0);
+  const [checklistVersion, setChecklistVersion] = useState(0);
+  const checklistLoaded = useCallback(() => setChecklistVersion((version) => version + 1), []);
+  const record = useApplicationRecord({
+    opportunityId,
+    enabled: open && relational,
+    hosted,
+    onChanged: (detail) =>
+      onItemChange(detail.opportunityId, {
+        myStatus: detail.myStatus,
+        revision: detail.revision,
+        submittedAt: detail.submittedAt ?? undefined,
+        workId: detail.workId ?? undefined,
+        workTitle: detail.workTitle ?? undefined,
+      }),
+  });
+  const recordLoaded = Boolean(record.data);
+
+  // A deep link names a section; go there once the record has rendered.
+  const scrolledTo = useRef("");
+  useEffect(() => {
+    if (!open) {
+      scrolledTo.current = "";
+      return;
+    }
+    const key = `${opportunityId}:${section ?? ""}`;
+    if (!section || scrolledTo.current === key || (relational && !recordLoaded)) return;
+    const target = recordSectionTargets(section)
+      .map((id) => document.getElementById(id))
+      .find(Boolean);
+    if (!target) return;
+    scrolledTo.current = key;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    target.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
+  }, [open, opportunityId, section, relational, recordLoaded, steps.state]);
 
   const loadSteps = useCallback(async () => {
     if (!opportunityId) return;
@@ -661,6 +710,15 @@ export function TrackerItemSheet({
                 </section>
               ) : null}
 
+              {relational ? <RecordProgress record={record} emailEvidence={emailEvidence} /> : null}
+
+              {relational &&
+              (item.myStatus === "declined" ||
+                item.myStatus === "withdrawn" ||
+                (preSubmission && moment.state === "closed")) ? (
+                <SimilarOpportunities opportunityId={item.opportunityId} />
+              ) : null}
+
               {relational && !accepted ? (
                 <section aria-labelledby="sheet-plan-title" className="space-y-4">
                   <SectionHeading id="sheet-plan-title" eyebrow="Plan">
@@ -813,16 +871,29 @@ export function TrackerItemSheet({
               {relational && summary ? (
                 <>
                   <Separator />
-                  <section aria-label="Reminders">
+                  <section id="sheet-reminders" aria-label="Reminders and calendar" className="space-y-6">
                     <ApplicationReminders application={summary} />
+                    <ApplicationCalendarDeliveryPanel opportunityId={item.opportunityId} />
                   </section>
                 </>
               ) : null}
 
               {!item.isManual && preSubmission ? (
-                <section aria-label="Checklist">
-                  <PrepareChecklist opportunityId={item.opportunityId} enabled={open} />
+                <section id="sheet-checklist" aria-label="Checklist" className="space-y-6">
+                  {relational ? (
+                    <PreSubmitCheck opportunityId={item.opportunityId} refreshKey={checklistVersion} />
+                  ) : null}
+                  <PrepareChecklist opportunityId={item.opportunityId} enabled={open} onLoaded={checklistLoaded} />
                 </section>
+              ) : null}
+
+              {relational && record.data ? (
+                <>
+                  <Separator />
+                  <RecordMaterials record={record} works={works} />
+                  <RecordNotes record={record} />
+                  <RecordHistory record={record} />
+                </>
               ) : null}
 
               {carry && relational ? (
@@ -856,6 +927,7 @@ export function TrackerItemSheet({
             </div>
           </>
         ) : null}
+        {relational ? <RecordDialog record={record} /> : null}
       </SheetContent>
     </Sheet>
   );

@@ -13,11 +13,15 @@ export async function GET(request: Request) {
   const state = url.searchParams.get('state') === 'all' ? 'all' : 'pending';
   const classification = url.searchParams.get('classification') || undefined;
   const source = url.searchParams.get('source');
+  const opportunityId = url.searchParams.get('opportunity')?.slice(0, 240) || undefined;
   const repository = getCreatorEmailReviewRepository();
   const allCandidates = repository
     ? await repository.candidates(session.account.id, session.account.userId, state, classification)
     : (await getEngine()).emailCandidates(session.account.userId, state, classification);
-  const candidates = allCandidates.filter((candidate) => !source || (source === 'gmail' ? candidate.sourceMode === 'gmail-sync' || candidate.sourceMode === 'autopilot' : candidate.sourceMode !== 'gmail-sync' && candidate.sourceMode !== 'autopilot'));
+  const candidates = allCandidates
+    .filter((candidate) => !source || (source === 'gmail' ? candidate.sourceMode === 'gmail-sync' || candidate.sourceMode === 'autopilot' : candidate.sourceMode !== 'gmail-sync' && candidate.sourceMode !== 'autopilot'))
+    // One application record asks only for evidence about its own opportunity.
+    .filter((candidate) => !opportunityId || candidate.matchedOpportunityId === opportunityId || candidate.candidates.some((match) => match.opportunityId === opportunityId));
   const pendingCount = repository
     ? (await repository.candidates(session.account.id, session.account.userId, 'pending')).length
     : (await getEngine()).emailCandidates(session.account.userId, 'pending').length;
