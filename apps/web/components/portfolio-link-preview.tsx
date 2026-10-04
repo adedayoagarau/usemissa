@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Globe, ArrowUpRight } from "lucide-react";
 import { publicWebUrl } from "@/lib/creator-portfolio-draft";
 import { Button } from "./ui/button";
-import styles from "./creator-portfolio-studio.module.css";
+import styles from "./portfolio-link-preview.module.css";
 export function PortfolioLinkPreview({
   url,
   title,

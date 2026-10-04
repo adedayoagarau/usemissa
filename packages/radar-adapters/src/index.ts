@@ -71,7 +71,20 @@ export {
   type CreatorProfileInput,
   type CreatorProfileView,
   type CreatorPrivacyInput,
+  type AcceptedOutcome,
 } from "./creatorProfileRepository.js";
+export {
+  INQUIRY_TOPICS,
+  InquiryRateLimitError,
+  PostgresCreatorConnectionsRepository,
+  type CreatorInquiry,
+  type CreatorInvitation,
+  type InquiryStatus,
+  type InquiryTopic,
+  type InvitationStatus,
+  type InviteOption,
+  type ProfilePerson,
+} from "./creatorConnectionsRepository.js";
 export {
   CreatorAccountProvisionError,
   PostgresCreatorAccountRepository,

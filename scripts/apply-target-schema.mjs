@@ -116,6 +116,7 @@ const migrationFiles = [
   '0086_missa_residency_provenance.sql',
   '0087_sms_reminders.sql',
   '0088_deadline_management.sql',
+  '0089_creator_profile_connections.sql',
 ];
 
 

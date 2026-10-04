@@ -103,35 +103,58 @@
       "appearance": "asynchronous-directory-search-with-manual-name-fallback"
     },
     "choice.creator-theme": {
-      "semantic": "CreatorPortfolioStudio",
+      "semantic": "ProfileStudio",
       "base": "Button",
       "appearance": "single-pressed-curated-theme-card"
     },
     "composition.creator-profile-editor": {
-      "semantic": "CreatorPortfolioStudio",
+      "semantic": "ProfileStudio",
+      "implementation": "components/creator-profile/studio/profile-studio.tsx",
       "composition": [
         "Button",
         "Input",
         "Textarea",
-        "Combobox",
+        "NativeSelect",
+        "Switch",
         "Dialog",
-        "PortfolioLinkPreview"
+        "Combobox",
+        "PortfolioLinkPreview",
+        "PortfolioHandleField",
+        "ProvenanceBadge"
       ],
-      "appearance": "full-page-independent-sections-with-live-preview",
-      "mediaSelection": "labelled-button-trigger-with-replace-remove-and-preview"
+      "appearance": "section-rail-focused-editor-and-device-scaled-live-preview",
+      "mediaSelection": "labelled-button-trigger-with-replace-remove-and-preview",
+      "reorder": "explicit-move-up-down-buttons"
     },
     "composition.creator-portfolio": {
-      "semantic": "CreatorPortfolioStudio",
+      "semantic": "PublicCreatorProfile",
+      "implementation": "components/creator-profile/public-profile.tsx",
       "composition": [
         "Button",
-        "Input",
-        "Textarea",
         "Dialog",
-        "InstitutionSocialLinks"
+        "ProvenanceBadge",
+        "AvailabilityChip",
+        "ProfileConnect"
       ],
-      "appearance": "split-cover-asymmetric-archive-with-unified-project-viewer-and-separate-owner-settings",
-      "variants": ["public-profile", "embedded-marketing-sample"],
-      "embeddedBoundary": "Optional embedded sample removes nested main/h1 and contact/credit modules; retains actual work filters and reading/image disclosures. No ownerId, account loading or writes. Explicit fictional sample label remains visible."
+      "appearance": "craft-lens-composition-with-portrait-plate-or-type-hero",
+      "variants": ["page", "preview", "embedded"],
+      "lenses": [
+        "mixed",
+        "writing",
+        "visual",
+        "sound",
+        "stage",
+        "film",
+        "design"
+      ],
+      "embeddedBoundary": "Embedded samples show identity and selected work only, keep the fictional sample label, and disable contact actions."
+    },
+    "composition.creator-profile-inbox": {
+      "semantic": "ProfileInbox",
+      "implementation": "components/creator-profile/profile-inbox.tsx",
+      "composition": ["Tabs", "Button", "Empty", "Link"],
+      "appearance": "tabbed-messages-invitations-followers-following-with-archive",
+      "boundary": "Senders never see the creator's address unless the creator replies by email; organizations are not told when an invitation is declined."
     },
     "composition.auth-shell": {
       "semantic": "AuthShell",
@@ -171,7 +194,7 @@
       "boundary": "Never infer an external application status or submission from a link open."
     },
     "filter.creator-work-format": {
-      "semantic": "CreatorPortfolioStudio",
+      "semantic": "PublicCreatorProfile",
       "base": "Button",
       "variant": "ghost",
       "appearance": "pressed-format-filter"
@@ -630,7 +653,7 @@
         "TableRow",
         "TableHead",
         "TableCell",
-        "CreatorPortfolioStudio",
+        "PublicCreatorProfile",
         "GoalSubmissionProgress",
         "Switch",
         "Button",
@@ -884,6 +907,21 @@
       "motion": "never",
       "boundary": "Permission question for optional analytics. Non-modal region above the page, one decision per visitor, no analytics client or first-party event ledger runs before an explicit Accept. The installed Alert is not used because it hard-codes role=alert."
     },
+    "ProvenanceBadge": {
+      "base": "Badge",
+      "disclosure": "Popover",
+      "implementation": "components/missa/provenance-badge.tsx",
+      "states": ["confirmed", "linked", "added"],
+      "rule": "Confirmed only when the server matched a Missa acceptance; the popover always explains the source in plain language.",
+      "motion": "popover-transition-only"
+    },
+    "AvailabilityChip": {
+      "base": "Badge",
+      "implementation": "components/missa/availability-chip.tsx",
+      "states": ["open", "from", "booked"],
+      "rule": "A 'from' entry whose date has passed reads as open; meaning never depends on colour alone.",
+      "motion": "never"
+    },
     "DateConfidenceBadge": {
       "base": "Badge",
       "studioCandidates": ["badge-05", "badge-10"],
@@ -962,7 +1000,10 @@
       "WorkflowBadge",
       "RowActions",
       "ResponsiveLabelledRows"
-    ]
+    ],
+    "CreatorCv": ["EditorialTypography", "PrintStyles", "ProvenanceMark"],
+    "ProfileConnect": ["Button", "Dialog", "Field", "Input", "NativeSelect", "Textarea"],
+    "ProfileInbox": ["Tabs", "Button", "Empty", "Link"]
   },
   "motion": {
     "requiresChangingState": true,
