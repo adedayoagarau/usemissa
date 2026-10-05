@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { applySmsDeliveryReport, creatorPoolFor, optInSmsPhone, optOutSmsPhone, smsLedgerReady } from '@missa/radar-adapters';
+import { creatorDecisionContext, decideSmsReply } from '@/lib/creator-decisions';
 import { smsConfig } from '@/lib/sms';
-import { handleTelnyxEvent, parseTelnyxEvent, verifyTelnyxSignature } from '@/lib/sms-webhook';
+import { handleInboundReply, handleTelnyxEvent, parseInboundReply, parseTelnyxEvent, verifyTelnyxSignature } from '@/lib/sms-webhook';
 
 const headers = { 'Cache-Control': 'no-store' };
 
@@ -19,7 +20,20 @@ export async function POST(request: Request) {
   }
   const connectionString = process.env.DATABASE_URL;
   try {
-    const event = parseTelnyxEvent(JSON.parse(rawBody));
+    const body = JSON.parse(rawBody);
+    const event = parseTelnyxEvent(body);
+    const reply = event.type === 'ignored' ? parseInboundReply(body) : null;
+    const decisions = reply ? creatorDecisionContext('sms_intent') : null;
+    if (reply && decisions && connectionString) {
+      // Recorded after the response. Live, a reply that confidently reads as
+      // an opt-out in other words is treated as STOP; nothing is sent back,
+      // and keywords are never routed here.
+      const pool = creatorPoolFor(connectionString);
+      after(() => handleInboundReply(reply, {
+        decide: (item) => decideSmsReply(decisions, item),
+        optOut: async (phone) => (await smsLedgerReady(pool)) ? optOutSmsPhone(pool, phone) : undefined,
+      }).then(() => undefined, (error: unknown) => console.error('Telnyx reply decision failed', error instanceof Error ? error.message : error)));
+    }
     if (event.type !== 'ignored' && connectionString) {
       const pool = creatorPoolFor(connectionString);
       if (await smsLedgerReady(pool)) {

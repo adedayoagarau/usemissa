@@ -214,9 +214,19 @@ async function writeOutbox(
   );
 }
 
+export interface PlatformAdminSupportQueueOptions {
+  limit?: number;
+  /**
+   * Orders open cases by the latest live, applied credibility decision with
+   * this question key in data_decisions (high first, unscored in the middle,
+   * low last). Ordering only: every case stays in the queue.
+   */
+  credibility?: { questionKey: string; subjectType: string };
+}
+
 export async function readPlatformAdminSupportQueue(
   connectionString: string,
-  options: { limit?: number } = {},
+  options: PlatformAdminSupportQueueOptions = {},
 ): Promise<PlatformAdminSupportQueue> {
   const generatedAt = new Date().toISOString();
   const pool = new Pool({ connectionString, max: 1, connectionTimeoutMillis: 3_000 });
@@ -227,6 +237,19 @@ export async function readPlatformAdminSupportQueue(
     }
 
     const warnings: string[] = [];
+    const credibility = options.credibility && (await tablePresent(pool, "data_decisions")) ? options.credibility : undefined;
+    const open = "r.status in ('open', 'in-progress', 'in_progress')";
+    const credibilityJoin = credibility
+      ? `left join lateral (
+             select d.answer from data_decisions d
+              where d.subject_type = $2 and d.subject_id = r.id and d.question_key = $3
+                and d.mode = 'live' and d.route = 'apply'
+              order by d.created_at desc limit 1
+           ) credibility on true`
+      : "";
+    const credibilityOrder = credibility
+      ? `case when ${open} then case split_part(credibility.answer, ':', 1) when 'high' then 0 when 'low' then 2 else 1 end else 1 end,`
+      : "";
     const [counts, rows] = await Promise.all([
       pool.query<{ status: string; count: number | string }>(
         "select status, count(*)::int as count from opportunity_issue_reports group by status",
@@ -239,10 +262,12 @@ export async function readPlatformAdminSupportQueue(
            from opportunity_issue_reports r
            left join radar_accounts a on a.id = r.account_id
            left join opportunities o on o.id = r.opportunity_id
-          order by case when r.status in ('open', 'in-progress', 'in_progress') then 0 else 1 end,
+           ${credibilityJoin}
+          order by case when ${open} then 0 else 1 end,
+                   ${credibilityOrder}
                    r.created_at desc
           limit $1`,
-        [limit],
+        credibility ? [limit, credibility.subjectType, credibility.questionKey] : [limit],
       ),
     ]).catch((error: unknown) => {
       warnings.push(error instanceof Error ? "Support case read failed; no rows are shown." : "Support case read failed; no rows are shown.");

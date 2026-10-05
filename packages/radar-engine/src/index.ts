@@ -55,6 +55,16 @@ export {
   type IngestResult,
 } from './email/emailForwarding.js';
 export {
+  EMAIL_DECISION_MAX_CALLS,
+  applyEmailDecisionVerdict,
+  decideEmailCandidate,
+  emailCandidateDecidable,
+  emailDecisionRequest,
+  type EmailDecider,
+  type EmailDecisionRequest,
+  type EmailDecisionVerdict,
+} from './email/emailDecisions.js';
+export {
   GMAIL_READONLY_SCOPE,
   GMAIL_DEFAULT_WINDOW_DAYS,
   encryptGmailRefreshToken,

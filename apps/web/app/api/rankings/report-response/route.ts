@@ -1,8 +1,12 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { getSessionAccount } from "@/lib/auth";
 import { clientAddress } from "@/lib/auth-rate-limit";
 import { getMagazineRankingRepository } from "@/lib/magazineRankingRepository";
 import { submitResponseReport } from "@/lib/responseReportSubmission";
+import {
+  creatorDecisionContext,
+  recordResponseReportCredibility,
+} from "@/lib/creator-decisions";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +21,21 @@ export async function POST(request: Request) {
       body,
       account: session?.account,
       ip: clientAddress(request),
-      recordReport: (report) => repo.recordSubmissionTelemetry(report),
+      recordReport: async (report) => {
+        const saved = await repo.recordSubmissionTelemetry(report);
+        // Shadow-only credibility (scope moderation), recorded after the
+        // response: reports have no review queue to order yet.
+        const decisions = saved.success
+          ? creatorDecisionContext("moderation")
+          : null;
+        if (decisions)
+          after(() =>
+            recordResponseReportCredibility(decisions, report).catch(
+              () => undefined,
+            ),
+          );
+        return saved;
+      },
     });
 
     const profileId =
