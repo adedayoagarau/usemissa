@@ -5,9 +5,10 @@ import { classifyIngestionFailure, createRunId, INGESTION_V2_VERSION, type Inges
 import type { PipelineJobData, QueueBundle } from "./queues.js";
 import { destinationConfig, isPotentialDestination } from "./destinations.js";
 import { assessEvidenceQuality, type EvidenceQuality } from "./quality.js";
-import { reviewForPublication, reviewOfficialSourceCard, type CandidatePublisherReview, type PublisherReview } from "./publisher.js";
+import { reviewForPublication, reviewOfficialSourceCard, type CandidatePublisherReview, type PublisherDecisionContext, type PublisherReview } from "./publisher.js";
 import { promoteApprovedArtifact } from "./canonicalWriter.js";
 import { hasCurrentDeadlineOrWindow } from "./deadline.js";
+import type { OpportunityIdentityShadow } from "./identity.js";
 import type { Pool } from "pg";
 
 export const UNCHANGED_ROOT_WARNING = "Source root unchanged; extraction and child destination fetches skipped";
@@ -70,6 +71,10 @@ export interface PipelineExecutionOptions {
   logger?: Pick<Console, "info" | "warn">;
   promotionPool?: Pool;
   forceReprocess?: boolean;
+  /** Records Jev same_opportunity decisions for ambiguous identities; shadow only. */
+  identityShadow?: OpportunityIdentityShadow;
+  /** Jev decisions beside the publisher's DeepSeek gate (shadow unless DECISIONS_MODE_INGESTION_PUBLISHER=live). */
+  decisions?: PublisherDecisionContext;
 }
 
 function runFromJob(job: PipelineJobData, now: Date): IngestionRun {
@@ -95,6 +100,7 @@ export async function executeShadowPipeline(
   const now = options.now ?? (() => new Date());
   const logger = options.logger ?? console;
   const run = runFromJob(job, now());
+  const publisherOptions = { decisions: options.decisions, identityShadow: options.identityShadow };
   const adapter = registry.get(source.adapterId);
   if (!adapter.canHandle(source)) throw new Error(`Adapter ${source.adapterId} cannot handle source ${source.id}`);
   logger.info(`[missa-ingestion-v2] shadow run ${run.id} fetching ${source.url}`);
@@ -187,7 +193,7 @@ export async function executeShadowPipeline(
             relatedFields: firstPartyExtraction.fields,
             candidate: firstPartyCandidate,
             candidateSnapshot: firstPartySnapshot,
-          });
+          }, publisherOptions);
           candidateReviews.push({
             candidate: firstPartyCandidate,
             snapshotId: firstPartySnapshot.id,
@@ -217,8 +223,8 @@ export async function executeShadowPipeline(
           candidateSnapshot: destinationSnapshot,
         };
         const review = destination.structuredRecordAuthority
-          ? await reviewOfficialSourceCard(publisherInput)
-          : await reviewForPublication(publisherInput);
+          ? await reviewOfficialSourceCard(publisherInput, publisherOptions)
+          : await reviewForPublication(publisherInput, publisherOptions);
         candidateReviews.push({
           candidate,
           snapshotId: destinationSnapshot.id,
@@ -230,7 +236,7 @@ export async function executeShadowPipeline(
         const sourceCard = destinationConfig(source).sourceCard;
         if (sourceCard?.allowBlockedDestination && scopedSourceFields.length) {
           const candidateExtraction: ExtractionResult = { fields: scopedSourceFields, candidateLinks: [candidate], warnings: ["External application destination was unavailable; configured official source-card evidence was retained"] };
-          const review = await reviewOfficialSourceCard({ source, sourceSnapshot: snapshot, sourceExtraction: candidateExtraction, relatedSnapshots: [], relatedFields: [], candidate });
+          const review = await reviewOfficialSourceCard({ source, sourceSnapshot: snapshot, sourceExtraction: candidateExtraction, relatedSnapshots: [], relatedFields: [], candidate }, publisherOptions);
           candidateReviews.push({ candidate, snapshotId: snapshot.id, extraction: candidateExtraction, quality: assessEvidenceQuality(snapshot, candidateExtraction), review });
           extraction.warnings.push(`Destination ${candidate.url} unavailable; configured official source-card evidence was used for review`);
           continue;
@@ -254,7 +260,7 @@ export async function executeShadowPipeline(
         }
       : candidateReviews.length === 1
         ? { ...candidateReviews[0]!.review, candidateReviews, candidateCoverage }
-        : { ...await reviewForPublication({ source, sourceSnapshot: snapshot, sourceExtraction, relatedSnapshots, relatedFields: extraction.fields }), candidateCoverage };
+        : { ...await reviewForPublication({ source, sourceSnapshot: snapshot, sourceExtraction, relatedSnapshots, relatedFields: extraction.fields }, publisherOptions), candidateCoverage };
     const artifact: ShadowArtifact = { run: { ...run, status: "completed" }, snapshot, relatedSnapshots, extraction, quality: assessEvidenceQuality(snapshot, extraction), publisher, published: false };
     await store.save(artifact);
     return artifact;

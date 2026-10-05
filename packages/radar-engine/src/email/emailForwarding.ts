@@ -141,6 +141,9 @@ function extractStatus(text: string): { status?: MyStatus; confidence: EmailConf
     [/\b(congratulations|selected)\b/i, 'accepted', 'possible', 'The message contains a selection signal.', true],
     [/\b(we regret|not selected|declined)\b/i, 'declined', 'possible', 'The message contains a decline signal.', true],
     [/\b(now under review|currently reviewing|in review)\b/i, 'in-review', 'high', 'The message says the submission is under review.', false],
+    // A portal confirming that the creator sent something proposes Submitted;
+    // the creator still confirms it, and Gmail autopilot never applies it.
+    [/(your (application|submission|entry) (has been|was) (successfully )?submitted|submission confirmation|application confirmation|you('ve| have) (successfully )?submitted)/i, 'submitted', 'high', 'The message confirms your submission was sent.', false],
     [/(thank you for your submission|submission received|we received)/i, 'received', 'high', 'The message confirms receipt.', false],
   ];
   for (const [pattern, status, confidence, reason, sensitive] of checks) if (pattern.test(text)) return { status, confidence, reason, sensitive };

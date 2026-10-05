@@ -190,7 +190,7 @@ export const AFRICAN_COUNTRY_CODES = AFRICAN_COUNTRIES.map(
 /**
  * Common aliases, variations, and legacy names mapped to 2-letter code.
  */
-const COUNTRY_ALIASES: Record<string, string> = {
+export const COUNTRY_ALIASES: Record<string, string> = {
   usa: "US",
   "united states of america": "US",
   "u.s.a.": "US",

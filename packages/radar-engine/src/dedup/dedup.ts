@@ -64,3 +64,56 @@ export function findCanonical(candidate: OpportunityCandidate, existing: Iterabl
   }
   return best ? { kind: 'duplicate', ...best } : { kind: 'new' };
 }
+
+/** A record findCanonical deliberately did not merge, but that is close enough to ask about. */
+export interface DedupNearMiss {
+  opportunity: Opportunity;
+  similarity: number;
+  reason: 'similar-title-same-organization' | 'same-title-different-organization';
+}
+
+/**
+ * Optional port for an identity model (Jev) that records a same-opportunity
+ * decision for each near miss. The engine awaits it but ignores its result and
+ * swallows its errors, so the core stays free of database and network code and
+ * dedup behaviour never changes.
+ */
+export type DedupIdentityDecider = (
+  candidate: OpportunityCandidate,
+  nearMisses: DedupNearMiss[],
+) => Promise<void>;
+
+/**
+ * Pairs findCanonical's thresholds left unmerged: the same organization with a
+ * title similarity in [minSimilarity, 0.8), or a highly similar title under a
+ * different stated organization. Uses the same skip rules as findCanonical.
+ */
+export function findDedupNearMisses(
+  candidate: OpportunityCandidate,
+  existing: Iterable<Opportunity>,
+  match: DedupMatch,
+  options: { minSimilarity?: number; limit?: number } = {},
+): DedupNearMiss[] {
+  if (candidate.discoveryExternalId || !candidate.title) return [];
+  const minSimilarity = options.minSimilarity ?? 0.5;
+  const matchedId = match.kind === 'new' ? undefined : match.opportunity.id;
+  const nearMisses: DedupNearMiss[] = [];
+  for (const opp of existing) {
+    if (opp.duplicateOfId || opp.id === matchedId) continue;
+    if (opp.sourceId === candidate.sourceId || opp.sourceUrl === candidate.url) continue;
+    const similarity = titleSimilarity(candidate.title, opp.fields.title);
+    if (similarity < minSimilarity) continue;
+    const bothNamed = Boolean(candidate.organizationName && opp.fields.organizationName);
+    const sameOrg =
+      bothNamed &&
+      normalizeName(candidate.organizationName!) === normalizeName(opp.fields.organizationName!);
+    if (sameOrg && similarity < 0.8) {
+      nearMisses.push({ opportunity: opp, similarity, reason: 'similar-title-same-organization' });
+    } else if (bothNamed && !sameOrg && similarity >= 0.8) {
+      nearMisses.push({ opportunity: opp, similarity, reason: 'same-title-different-organization' });
+    }
+  }
+  return nearMisses
+    .sort((left, right) => right.similarity - left.similarity)
+    .slice(0, options.limit ?? 3);
+}

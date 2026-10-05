@@ -1,4 +1,4 @@
-import { buildWeeklyDigest, creatorPoolFor, weeklyDigestIsEmpty, weeklyDigestRecipients } from '@missa/radar-adapters';
+import { buildWeeklyDigest, creatorFitRankingFromEnv, creatorPoolFor, weeklyDigestIsEmpty, weeklyDigestRecipients } from '@missa/radar-adapters';
 import { renderWeeklyDigestEmail } from '../emails/weekly-digest';
 import { sendMail } from './mail-service';
 
@@ -16,11 +16,17 @@ export async function deliverWeeklyDigests(): Promise<WeeklyDigestReport> {
   if (!connectionString) return { status: 'skipped', sent: 0, empty: 0, failed: 0, reason: 'Durable message ledger is unavailable' };
 
   const pool = creatorPoolFor(connectionString);
+  // Optional creator-fit ordering (scope creator_fit); off without Jev and the
+  // creator-data agreement, and it only reorders items inside a section.
+  const creatorFit = creatorFitRankingFromEnv(pool);
   let sent = 0;
   let empty = 0;
   let failed = 0;
   for (const recipient of await weeklyDigestRecipients(pool)) {
-    const digest = await buildWeeklyDigest(pool, recipient.accountId);
+    const digest = await buildWeeklyDigest(pool, recipient.accountId, undefined, {
+      creatorFit,
+      digestKey: recipient.idempotencyKey,
+    });
     if (weeklyDigestIsEmpty(digest)) {
       empty += 1;
       continue;

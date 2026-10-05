@@ -1,4 +1,5 @@
 import { buildReplayReport, diffOrdering, type OrderingDiff, type ReplayReport } from "./replay.js";
+import type { CreatorFitLevel } from "./creatorFit.js";
 import { recommendFeed, type RecommendationFeedResult } from "./policy.js";
 import {
   DETERMINISTIC_FIT_POLICY_VERSION,
@@ -23,6 +24,7 @@ export interface RecommendationHarnessInput {
   ttlMs?: number;
   executionState?: RecommendationExecutionState;
   config?: RecommendationPolicyConfig;
+  creatorFit?: ReadonlyMap<string, CreatorFitLevel>;
 }
 
 export interface RecommendationHarnessResult {
