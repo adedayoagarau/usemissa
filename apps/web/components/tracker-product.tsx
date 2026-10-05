@@ -591,6 +591,9 @@ export function TrackerProduct({
   initialItemId = "",
   initialNow,
   features = {},
+  initialSection = "",
+  recordsAvailable = false,
+  emailEvidence = false,
   allowance,
 }: {
   /** Free-plan tracking allowance; omitted for plans without a limit. */
@@ -612,6 +615,15 @@ export function TrackerProduct({
   initialNow?: string;
   /** Plan features from creatorFeatures(plan). */
   features?: TrackerFeatures;
+  /** `&section=` from a deep link; the sheet scrolls to that section. */
+  initialSection?: string;
+  /**
+   * Account storage holds application records, so `?application=` opens the
+   * details sheet. Without it (the demo world) the link only selects the card.
+   */
+  recordsAvailable?: boolean;
+  /** Email forwarding or Gmail sync is on, so the sheet can show email evidence. */
+  emailEvidence?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -645,11 +657,16 @@ export function TrackerProduct({
     now: initialNow ? new Date(initialNow) : new Date(),
     timeZone: "UTC",
   }));
-  const [sheetId, setSheetId] = useState(() =>
-    initialItems.some((item) => item.opportunityId === initialItemId)
-      ? initialItemId
-      : "",
-  );
+  // `?item=` opens the sheet; so does `?application=`, the link every other
+  // surface (Inbox, email, Calendar, Library, Home) already uses.
+  const [sheetId, setSheetId] = useState(() => {
+    const requested =
+      initialItemId || (recordsAvailable ? initialApplicationId : "");
+    return initialItems.some((item) => item.opportunityId === requested)
+      ? requested
+      : "";
+  });
+  const [sheetSection, setSheetSection] = useState(initialSection);
   const sheetTrigger = useRef<HTMLElement | null>(null);
   const [dueSteps, setDueSteps] = useState<AttentionObligation[]>([]);
 
@@ -1008,13 +1025,15 @@ export function TrackerProduct({
   function openDetails(item: TrackerProductItem, trigger?: HTMLElement) {
     sheetTrigger.current = trigger ?? null;
     setSheetId(item.opportunityId);
-    updateUrl({ item: item.opportunityId });
+    setSheetSection("");
+    updateUrl({ item: item.opportunityId, section: undefined });
   }
 
   function closeDetails() {
     const closing = sheetId;
     setSheetId("");
-    updateUrl({ item: undefined });
+    setSheetSection("");
+    updateUrl({ item: undefined, application: undefined, section: undefined });
     if (!sheetTrigger.current && closing)
       sheetTrigger.current = document.querySelector<HTMLElement>(
         `[data-details-for="${CSS.escape(closing)}"]`,
@@ -1692,6 +1711,10 @@ export function TrackerProduct({
         open={Boolean(sheetItem)}
         features={features}
         clock={clock}
+        section={sheetSection}
+        hosted={sheetItem ? submissionByOpportunity.get(sheetItem.opportunityId) : undefined}
+        works={works}
+        emailEvidence={emailEvidence}
         returnFocus={() => sheetTrigger.current}
         onOpenChange={(open) => {
           if (!open) closeDetails();

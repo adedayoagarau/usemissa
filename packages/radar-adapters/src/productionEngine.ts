@@ -28,6 +28,7 @@ import { LlmExtractor } from "./llmExtractor.js";
 import { createJevRadarExtractionGate, radarOperationsDecider } from "./operationsDecisions.js";
 import type { OperationsUsage } from "@missa/decisions";
 import { uuidIds } from "./uuidIds.js";
+import { dedupIdentityDeciderFromEnv } from "./dedupIdentityDecider.js";
 import {
   commitTrackerImportTransaction,
   consumeTrackerImportPreviewRateLimit,
@@ -220,11 +221,20 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
   // hydration below is a real state migration: new sources, corrected source
   // authority, and adapter changes must be durably written on the next tick.
   let persistedStore = cloneStore(store);
-  // The gate only guards paid model calls: without an LLM extractor or
-  // JEV_API_KEY every changed page is extracted exactly as before.
+  // The extraction gate only guards paid model calls: without an LLM
+  // extractor or JEV_API_KEY every changed page is extracted exactly as
+  // before. Shadow-only Jev same_opportunity decisions for dedup near misses
+  // are likewise absent without JEV_API_KEY, so the tick is unchanged.
   const decider = extractor ? radarOperationsDecider(pool) : undefined;
   const extractionGate = decider ? createJevRadarExtractionGate(decider) : undefined;
-  const engine = new RadarEngine({ store, fetcher, extractor, ids: uuidIds(), ...(extractionGate ? { extractionGate } : {}) });
+  const engine = new RadarEngine({
+    store,
+    fetcher,
+    extractor,
+    ids: uuidIds(),
+    dedupIdentityDecider: dedupIdentityDeciderFromEnv(pool),
+    ...(extractionGate ? { extractionGate } : {}),
+  });
   // Hydrate registry tier metadata for every persisted source in memory. The
   // persistence baseline remains the database snapshot, so only actual
   // additions and metadata changes are written on the next persist.
@@ -254,6 +264,10 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
             throw error;
           }
         }
+        // Release the previous baseline before cloning: holding the old
+        // baseline, the live store and the new clone at once is the peak that
+        // OOM-killed /api/cron/tick (V8 heap limit inside structuredClone).
+        persistedStore = engine.store;
         persistedStore = cloneStore(engine.store);
       });
       pendingPersist = next.catch(() => undefined);
@@ -267,6 +281,7 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
         engine.store.manualTrackerEntries = [...engine.store.manualTrackerEntries.filter((row) => row.userId !== input.userId), ...output.manualTrackerEntries];
         if (output.auditEntry && !engine.store.auditLog.some((entry) => entry.id === output!.auditEntry!.id)) engine.store.auditLog.push(output.auditEntry);
         snapshotVersion = output.snapshotVersion;
+        persistedStore = engine.store;
         persistedStore = cloneStore(engine.store);
       });
       pendingPersist = next.catch(() => undefined);

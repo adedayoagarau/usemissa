@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { billingEventType, crmNoteEvidence, platformAdminFoundationsSchema, platformAgentControlPrecondition, platformAgentControlReplayStatus, platformAgentControlRequestIdentity, platformBillingReceiptDigest, providerEventEffectStatus, reducePlatformMessageProviderEvents, sanitizePlatformMessageError, sanitizePlatformMessageProviderMetadata, summarizeDurableCrmRows } from '../src/platformAdminFoundations.js';
+import { billingEventType, crmNoteEvidence, platformAdminFoundationsSchema, platformAgentControlPrecondition, platformAgentControlReplayStatus, platformAgentControlRequestIdentity, platformBillingReceiptDigest, platformMessageEffectMetadata, providerEventEffectStatus, reducePlatformMessageProviderEvents, sanitizePlatformMessageError, sanitizePlatformMessageProviderMetadata, summarizeDurableCrmRows } from '../src/platformAdminFoundations.js';
 
 test('message provider errors redact personal, network, URL, and credential values while retaining safe context', () => {
   const original = 'recipient artist@example.com sender=staff@usemissa.com diagnostic https://provider.test/events/evt_123 click http://click.test/a?token=visible ipv4 203.0.113.42 ipv6 2001:db8:85a3::8a2e:370:7334 database postgres://dbuser:dbpass@db.test/missa password="open sesame" category=recipient_rejected';
@@ -127,4 +127,30 @@ test('provider event metadata sanitizes diagnostic errors and preserves adverse 
     () => sanitizePlatformMessageProviderMetadata({ unsupported_key: 'malicious' }),
     /Unsupported provider event metadata key: unsupported_key/,
   );
+});
+
+test('message effect metadata accepts what each sender records and nothing that identifies a person', () => {
+  // One entry per sendMail caller in apps/web, with the shape it passes.
+  const senders = {
+    creatorReminder: { inboxAlertId: '0897e8f1-d1c1-4143-90f7-ac5a040eb6f0', opportunityId: 'opp_8f2a' },
+    goalCheckIn: { inboxAlertId: '0897e8f1-d1c1-4143-90f7-ac5a040eb6f0', goalId: 'goal_12' },
+    welcome: { accountId: 'acct_d95e6240-4fd5-4c3c-be2b-509b2e435500' },
+    profileConnection: { accountId: 'acct_1', id: 'inquiry_9' },
+    deadlineReminder: { opportunityCount: 3 },
+    weeklyDigest: { isoWeek: '2026-W40', newForYou: 4, closingSoon: 0, yourDeadlines: 2 },
+    submissionReceipt: { submissionId: 'sub_1' },
+    alertDigest: { alertCount: 5 },
+    waitlist: { signupId: 'signup_1' },
+    decisionLetter: { workId: 'work_1', decisionId: 'decision_1' },
+  };
+  for (const [sender, metadata] of Object.entries(senders))
+    assert.deepEqual(platformMessageEffectMetadata(metadata), metadata, sender);
+  assert.deepEqual(platformMessageEffectMetadata(undefined), {});
+
+  assert.throws(() => platformMessageEffectMetadata({ email: 'artist@example.com' }), /Unsupported message metadata key: email/);
+  assert.throws(() => platformMessageEffectMetadata({ accountId: 'artist@example.com' }), /Invalid message metadata accountId/);
+  assert.throws(() => platformMessageEffectMetadata({ isoWeek: 'week of 4 October' }), /Invalid message metadata isoWeek/);
+  assert.throws(() => platformMessageEffectMetadata({ opportunityCount: -1 }), /Invalid message metadata opportunityCount/);
+  assert.throws(() => platformMessageEffectMetadata({ newForYou: '4' }), /Invalid message metadata newForYou/);
+  assert.throws(() => platformMessageEffectMetadata({ accountId: 7 }), /Invalid message metadata accountId/);
 });

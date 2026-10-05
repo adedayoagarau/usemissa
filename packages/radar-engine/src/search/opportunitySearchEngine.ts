@@ -1,5 +1,10 @@
 import type { Opportunity, OpportunityStatus, OpportunityType } from "../domain/types.js";
 import type { RadarStore } from "../store/store.js";
+import {
+  loadConfirmedFacts,
+  type ConfirmedFactsProvider,
+  type ConfirmedOpportunityFacts,
+} from "./confirmedFacts.js";
 
 export type OpportunitySearchDomain = "visual_arts" | "multidisciplinary" | "residencies" | "literature";
 
@@ -82,6 +87,8 @@ export interface OpportunitySearchHit {
   stipendAmountCents?: number;
   studioProvided: boolean;
   housingProvided: boolean;
+  /** Ledger-confirmed facts used for this hit, when a provider supplied any. */
+  confirmed?: ConfirmedOpportunityFacts;
 }
 
 export interface OpportunitySearchResult {
@@ -184,47 +191,174 @@ export function matchesDomain(opp: Opportunity, domain: OpportunitySearchDomain 
   return textBody.includes(normDomain) || oppGenres.some((g) => g.includes(normDomain));
 }
 
-function parseFinancialsAndFacilities(opp: Opportunity): {
+const AMOUNT_PATTERN = /(?:\$|\busd\s?)\s?(\d{1,3}(?:,\d{3})+|\d+)(\.\d{1,2})?(\s?k\b)?/gi;
+// Money the artist receives. "Artist fee" is a payment to the artist, so it is
+// matched here before the generic fee wording below can claim it.
+const PAYMENT_WORDING =
+  /\b(?:stipends?|honorari(?:um|ums|a)|awards?|awarded|grants?|fellowships?|prizes?|purse|cash|artists?'?s? fees?|(?:paid|payment|payments) to (?:the )?(?:selected |winning )?(?:artists?|writers?|poets?|authors?|creators?|contributors?|residents?|fellows?)|pays? (?:artists?|writers?|poets?|authors?|creators?|contributors?))\b/gi;
+// Money the artist pays.
+const FEE_WORDING =
+  /\b(?:fees?|entry|entries|reading|submissions?|submit|applications?|apply|processing|charge[sd]?)\b/gi;
+// Clause breaks: sentence punctuation (not a decimal point) and line breaks.
+const CLAUSE_BREAK = /[.;!?\n](?!\d)/;
+
+interface WordingMatch {
+  start: number;
+  end: number;
+  kind: "payment" | "fee";
+}
+
+function wordingMatches(clause: string): WordingMatch[] {
+  const payments = [...clause.matchAll(PAYMENT_WORDING)].map((match) => ({
+    start: match.index!,
+    end: match.index! + match[0].length,
+    kind: "payment" as const,
+  }));
+  const fees = [...clause.matchAll(FEE_WORDING)]
+    .map((match) => ({ start: match.index!, end: match.index! + match[0].length, kind: "fee" as const }))
+    .filter((fee) => !payments.some((payment) => fee.start < payment.end && payment.start < fee.end));
+  return [...payments, ...fees];
+}
+
+/**
+ * Amounts (in cents) that the text ties to money paid to the artist. Each
+ * amount is read against the nearest stipend/award or fee wording in its own
+ * clause, so "$25 reading fee" is never a stipend and "Entry fee $15. Prize
+ * $1,000" yields only the prize. An amount with no wording near it counts only
+ * when `untiedIsPayment` is set (the opportunity's prize field).
+ */
+export function paymentAmountsInText(text: string, untiedIsPayment = false): number[] {
+  const amounts: number[] = [];
+  for (const clause of text.toLowerCase().split(CLAUSE_BREAK)) {
+    const wording = wordingMatches(clause);
+    for (const match of clause.matchAll(AMOUNT_PATTERN)) {
+      const start = match.index!;
+      const end = start + match[0].trimEnd().length;
+      let nearest: { distance: number; kind: WordingMatch["kind"] } | undefined;
+      for (const word of wording) {
+        const distance = word.end <= start ? start - word.end : word.start >= end ? word.start - end : 0;
+        // On a tie the fee reading wins: a missed stipend is safer than a fee shown as pay.
+        if (!nearest || distance < nearest.distance || (distance === nearest.distance && word.kind === "fee")) {
+          nearest = { distance, kind: word.kind };
+        }
+      }
+      const isPayment = nearest ? nearest.kind === "payment" : untiedIsPayment;
+      if (!isPayment) continue;
+      const value = Number(`${match[1]!.replace(/,/g, "")}${match[2] ?? ""}`) * (match[3] ? 1000 : 1);
+      if (Number.isFinite(value) && value > 0) amounts.push(Math.round(value * 100));
+    }
+  }
+  return amounts;
+}
+
+const STUDIO_WORDING = /\b(private studio|studio space|workspace provided|shared studio|studio access)\b/gi;
+const HOUSING_WORDING = /\b(housing provided|private room|lodging provided|accommodations? provided|cabin|living quarters)\b/gi;
+const NEGATED_BEFORE = /\b(?:no|not|without|nor)\s+(?:\w+\s+)?$/;
+
+/** True when the wording appears and is not directly negated ("no private studio"). */
+function statesProvided(text: string, pattern: RegExp): boolean {
+  for (const match of text.matchAll(pattern)) {
+    if (!NEGATED_BEFORE.test(text.slice(Math.max(0, match.index! - 24), match.index!))) return true;
+  }
+  return false;
+}
+
+export interface OpportunityFinancials {
   hasStipend: boolean;
   stipendAmountCents?: number;
   studioProvided: boolean;
   housingProvided: boolean;
-} {
-  const combinedText = [
+}
+
+/** Keyword reading of the stored fields; confirmed facts override it when available. */
+export function parseFinancialsAndFacilities(opp: Opportunity): OpportunityFinancials {
+  const otherText = [
     opp.fields.title,
-    opp.fields.prize ?? "",
     opp.fields.guidelinesUrl ?? "",
     opp.fields.eligibility.map((e) => `${e.key} ${e.description} ${e.value}`).join(" "),
-  ].join(" ").toLowerCase();
+  ].join("\n");
+  const prizeText = opp.fields.prize ?? "";
+  const combinedText = `${otherText}\n${prizeText}`.toLowerCase();
 
-  let hasStipend = false;
-  let stipendAmountCents: number | undefined = undefined;
-
-  const stipendMatch = combinedText.match(/\$\s?(\d{1,3}(?:,\d{3})*)\s*(?:stipend|honorarium|grant|award|fellowship)?/i);
-  if (stipendMatch && (combinedText.includes("stipend") || combinedText.includes("honorarium") || combinedText.includes("cash") || opp.fields.prize)) {
-    hasStipend = true;
-    const num = Number(stipendMatch[1]!.replace(/,/g, ""));
-    if (!Number.isNaN(num) && num > 0) {
-      stipendAmountCents = Math.round(num * 100);
-    }
-  }
-
-  const studioProvided = /\b(private studio|studio space|workspace provided|shared studio|studio access)\b/i.test(combinedText);
-  const housingProvided = /\b(housing provided|private room|lodging provided|accommodations? provided|cabin|living quarters)\b/i.test(combinedText);
+  const amounts = [...paymentAmountsInText(prizeText, true), ...paymentAmountsInText(otherText)];
+  const hasStipend = amounts.length > 0;
+  const stipendAmountCents = hasStipend ? Math.max(...amounts) : undefined;
 
   return {
     hasStipend,
     stipendAmountCents,
-    studioProvided,
-    housingProvided,
+    studioProvided: statesProvided(combinedText, STUDIO_WORDING),
+    housingProvided: statesProvided(combinedText, HOUSING_WORDING),
   };
 }
 
+/** A disclosed fee with no amount matches no fee filter, as before. */
+function feeStatusOf(
+  opp: Opportunity,
+  facts: ConfirmedOpportunityFacts | undefined,
+): "no-fee" | "paid" | "unknown" | undefined {
+  if (facts?.feeStatus) return facts.feeStatus;
+  if (!opp.fields.fee.disclosed) return "unknown";
+  if (opp.fields.fee.amountCents === 0) return "no-fee";
+  return (opp.fields.fee.amountCents ?? 0) > 0 ? "paid" : undefined;
+}
+
+/** Confirmed facts win over the keyword reading, one fact at a time. */
+function withConfirmedFacts(
+  financials: OpportunityFinancials,
+  facts: ConfirmedOpportunityFacts | undefined,
+): OpportunityFinancials {
+  if (!facts) return financials;
+  const merged = { ...financials };
+  if (facts.hasStipend === false) {
+    merged.hasStipend = false;
+    merged.stipendAmountCents = undefined;
+  } else if (facts.hasStipend === true) {
+    merged.hasStipend = true;
+  }
+  if (facts.studioProvided !== undefined) merged.studioProvided = facts.studioProvided;
+  if (facts.housingProvided !== undefined) merged.housingProvided = facts.housingProvided;
+  return merged;
+}
+
+export interface OpportunitySearchEngineOptions {
+  /** Per-opportunity facts confirmed in the decision ledger; absent means keyword reading only. */
+  confirmedFacts?: ReadonlyMap<string, ConfirmedOpportunityFacts>;
+}
+
 export class OpportunitySearchEngine {
-  constructor(private opportunities: Opportunity[] = []) {}
+  private readonly confirmedFacts: ReadonlyMap<string, ConfirmedOpportunityFacts> | undefined;
+
+  constructor(
+    private opportunities: Opportunity[] = [],
+    options: OpportunitySearchEngineOptions = {},
+  ) {
+    this.confirmedFacts = options.confirmedFacts?.size ? options.confirmedFacts : undefined;
+  }
 
   static fromStore(store: RadarStore): OpportunitySearchEngine {
     return new OpportunitySearchEngine(Array.from(store.opportunities.values()));
+  }
+
+  /**
+   * Loads confirmed facts for these opportunities first. A missing provider or
+   * a provider failure leaves the keyword reading in charge.
+   */
+  static async withConfirmedFacts(
+    opportunities: Opportunity[],
+    provider: ConfirmedFactsProvider | undefined,
+    onError?: (error: unknown) => void,
+  ): Promise<OpportunitySearchEngine> {
+    const confirmedFacts = await loadConfirmedFacts(
+      provider,
+      opportunities.map((opp) => opp.id),
+      onError,
+    );
+    return new OpportunitySearchEngine(opportunities, { confirmedFacts });
+  }
+
+  private factsFor(opp: Opportunity): ConfirmedOpportunityFacts | undefined {
+    return this.confirmedFacts?.get(opp.id);
   }
 
   search(options: OpportunitySearchOptions): OpportunitySearchResult {
@@ -290,14 +424,8 @@ export class OpportunitySearchEngine {
     // Fee status filter
     if (options.feeStatus) {
       pool = pool.filter((opp) => {
-        if (options.feeStatus === "no-fee") {
-          return opp.fields.fee.disclosed && opp.fields.fee.amountCents === 0;
-        }
-        if (options.feeStatus === "paid") {
-          return opp.fields.fee.disclosed && (opp.fields.fee.amountCents ?? 0) > 0;
-        }
-        if (options.feeStatus === "unknown") {
-          return !opp.fields.fee.disclosed;
+        if (options.feeStatus === "no-fee" || options.feeStatus === "paid" || options.feeStatus === "unknown") {
+          return feeStatusOf(opp, this.factsFor(opp)) === options.feeStatus;
         }
         return true;
       });
@@ -306,7 +434,10 @@ export class OpportunitySearchEngine {
     // Max fee filter
     if (options.maxFeeCents !== undefined) {
       pool = pool.filter((opp) => {
+        const facts = this.factsFor(opp);
+        if (facts?.feeStatus === "no-fee") return true;
         if (!opp.fields.fee.disclosed) return true;
+        if (facts?.feeStatus === "paid" && !opp.fields.fee.amountCents) return true;
         return (opp.fields.fee.amountCents ?? 0) <= options.maxFeeCents!;
       });
     }
@@ -326,7 +457,8 @@ export class OpportunitySearchEngine {
 
     // Score and enrich each candidate
     const scoredHits: OpportunitySearchHit[] = pool.map((opp) => {
-      const financials = parseFinancialsAndFacilities(opp);
+      const facts = this.factsFor(opp);
+      const financials = withConfirmedFacts(parseFinancialsAndFacilities(opp), facts);
       const detectedDomain = detectOpportunityDomain(opp);
 
       const matchedMediums: string[] = [];
@@ -362,7 +494,7 @@ export class OpportunitySearchEngine {
       if (financials.housingProvided) score += 10;
 
       // Fee-free boost
-      if (opp.fields.fee.disclosed && opp.fields.fee.amountCents === 0) {
+      if (feeStatusOf(opp, facts) === "no-fee") {
         score += 10;
       }
 
@@ -372,6 +504,7 @@ export class OpportunitySearchEngine {
         domain: detectedDomain,
         matchedMediums: Array.from(new Set(matchedMediums)),
         ...financials,
+        ...(facts ? { confirmed: facts } : {}),
       };
     });
 
@@ -432,5 +565,16 @@ export function searchOpportunities(
   options: OpportunitySearchOptions
 ): OpportunitySearchResult {
   const engine = new OpportunitySearchEngine(opportunities);
+  return engine.search(options);
+}
+
+/** Same as searchOpportunities, with ledger-confirmed facts when a provider is given. */
+export async function searchOpportunitiesWithConfirmedFacts(
+  opportunities: Opportunity[],
+  options: OpportunitySearchOptions,
+  provider?: ConfirmedFactsProvider,
+  onError?: (error: unknown) => void,
+): Promise<OpportunitySearchResult> {
+  const engine = await OpportunitySearchEngine.withConfirmedFacts(opportunities, provider, onError);
   return engine.search(options);
 }
