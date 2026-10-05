@@ -91,9 +91,9 @@ together, because the old code cannot read the new columns:
 
 1. Branch the production database in Neon as a backup.
 2. Apply the migration, then publish with a manual run.
-3. Deploy at once. Vercel builds only commits whose message contains
-   `[vercel build]` (`scripts/vercel-ignore-build.sh`), so a squash merge
-   without it leaves the old code live.
+3. Merge at once. Every push to `main` builds and deploys production
+   (`scripts/vercel-ignore-build.sh`), so the new code goes live with the
+   merge; confirm the deployment is ready before relying on it.
 
 ## Scoring (`packages/radar-engine/src/ranking/magazineRankingEngine.ts`)
 
