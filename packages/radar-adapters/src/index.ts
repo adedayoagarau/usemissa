@@ -160,8 +160,25 @@ export {
   weeklyDigestRecipients,
   type WeeklyDigest,
   type WeeklyDigestItem,
+  type WeeklyDigestOptions,
   type WeeklyDigestRecipient,
 } from "./weeklyDigest.js";
+export {
+  CREATOR_FIT_SCOPE,
+  DIGEST_WORTH_SENDING_SCOPE,
+  assessCreatorFit,
+  creatorFitRankingFromEnv,
+  hasDeclaredPractice,
+  loadCreatorFitProfile,
+  recordDigestWorthSending,
+  type CreatorFitRanking,
+} from "./sorting/creatorFit.js";
+export {
+  DEFAULT_CONFIRMED_FACT_KEYS,
+  createLedgerConfirmedFactsProvider,
+  type ConfirmedFactField,
+  type LedgerConfirmedFactsOptions,
+} from "./sorting/ledgerConfirmedFacts.js";
 export {
   applyCreatorSubscription,
   creatorBillingAccount,
@@ -295,10 +312,18 @@ export {
   profileNameEvidence,
   profileLinkRetirementStatement,
   syncProfileOpportunityLinks,
+  adjudicatePendingProfileLinks,
+  profileIdentityJevFromEnv,
+  profileLinkActionFromJev,
   type OpportunityIdentityInput,
   type ProfileIdentityDecision,
+  type ProfileIdentityJevOptions,
   type ProfileUrlEvidence,
 } from "./profileIdentityMatcher.js";
+export {
+  createDedupIdentityDecider,
+  dedupIdentityDeciderFromEnv,
+} from "./dedupIdentityDecider.js";
 export {
   commitTrackerImportTransaction,
   commitRelationalTrackerImportTransaction,

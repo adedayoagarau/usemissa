@@ -1,4 +1,4 @@
-import { buildOpportunityIdentity, compareOpportunityIdentity, type OpportunityIdentity } from "./identity.js";
+import { buildOpportunityIdentity, compareOpportunityIdentity, type OpportunityIdentity, type OpportunityIdentityShadow } from "./identity.js";
 import { isPotentialDestination, type DestinationCandidate } from "./destinations.js";
 import type { EvidenceQuality } from "./quality.js";
 import type { ExtractionResult, PageSnapshot, SourceDefinition } from "./contracts.js";
@@ -50,6 +50,8 @@ export interface PublisherReviewOptions {
   apiKey?: string;
   /** Defaults to the environment without a ledger. */
   decisions?: PublisherDecisionContext;
+  /** Records Jev same_opportunity decisions for ambiguous identities; shadow only. */
+  identityShadow?: OpportunityIdentityShadow;
 }
 
 export interface DestinationReconciliation {
@@ -110,7 +112,7 @@ function fieldsForSnapshot(fields: ExtractionResult["fields"], snapshotId: strin
   return fields.filter((field) => field.provenance.snapshotId === snapshotId);
 }
 
-function deterministicReconciliation(input: PublisherInput): DestinationReconciliation {
+function deterministicReconciliation(input: PublisherInput, ambiguous: Array<[OpportunityIdentity, OpportunityIdentity]> = []): DestinationReconciliation {
   const sourceIdentity = buildOpportunityIdentity(input.sourceExtraction);
   const candidates = input.candidate
     ? [input.candidate]
@@ -124,7 +126,9 @@ function deterministicReconciliation(input: PublisherInput): DestinationReconcil
     const authoritativeUrl = candidate.canonicalUrl ?? destination.finalUrl ?? destination.url;
     const destinationIdentity = buildOpportunityIdentity(destinationExtraction, authoritativeUrl);
     const sourceIdentityForCandidate = buildOpportunityIdentity(input.sourceExtraction, authoritativeUrl);
-    const identityDecision = compareOpportunityIdentity(sourceIdentityForCandidate.key === "unidentifiable" ? sourceIdentity : sourceIdentityForCandidate, destinationIdentity);
+    const comparedSource = sourceIdentityForCandidate.key === "unidentifiable" ? sourceIdentity : sourceIdentityForCandidate;
+    const identityDecision = compareOpportunityIdentity(comparedSource, destinationIdentity);
+    if (identityDecision === "review") ambiguous.push([comparedSource, destinationIdentity]);
     if (identityDecision === "same") return { decision: "pass", authoritativeUrl, sourceIdentity, destinationIdentity, reasons: ["The source record reconciles to the fetched authoritative destination by canonical URL or title and organization."] };
     if (identityDecision === "review") return { decision: "review", authoritativeUrl, sourceIdentity, destinationIdentity, reasons: ["The linked destination was fetched, but its identity is ambiguous against the source record."] };
   }
@@ -246,7 +250,10 @@ async function modelGate(input: PublisherInput, reconciliation: DestinationRecon
 }
 
 export async function reviewForPublication(input: PublisherInput, options: PublisherReviewOptions = {}): Promise<PublisherReview> {
-  const reconciliation = deterministicReconciliation(input);
+  const ambiguous: Array<[OpportunityIdentity, OpportunityIdentity]> = [];
+  const reconciliation = deterministicReconciliation(input, ambiguous);
+  // Shadow only: Jev's same_opportunity answer is recorded, never acted on.
+  if (options.identityShadow) for (const [left, right] of ambiguous) await options.identityShadow(left, right).catch(() => null);
   if (reconciliation.decision !== "pass") return { decision: reconciliation.decision === "reject" ? "reject" : "review", model: "deterministic", publicWrite: false, rationale: reconciliation.reasons, reconciliation, pipelineVersion: INGESTION_V2_VERSION };
   return modelGate(input, reconciliation, options, "DeepSeek publisher review is not configured; no automatic publication decision was made.");
 }
