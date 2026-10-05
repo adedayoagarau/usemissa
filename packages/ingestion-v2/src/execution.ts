@@ -8,6 +8,7 @@ import { assessEvidenceQuality, type EvidenceQuality } from "./quality.js";
 import { reviewForPublication, reviewOfficialSourceCard, type CandidatePublisherReview, type PublisherDecisionContext, type PublisherReview } from "./publisher.js";
 import { promoteApprovedArtifact } from "./canonicalWriter.js";
 import { hasCurrentDeadlineOrWindow } from "./deadline.js";
+import type { OpportunityIdentityShadow } from "./identity.js";
 import type { Pool } from "pg";
 
 export const UNCHANGED_ROOT_WARNING = "Source root unchanged; extraction and child destination fetches skipped";
@@ -70,6 +71,8 @@ export interface PipelineExecutionOptions {
   logger?: Pick<Console, "info" | "warn">;
   promotionPool?: Pool;
   forceReprocess?: boolean;
+  /** Records Jev same_opportunity decisions for ambiguous identities; shadow only. */
+  identityShadow?: OpportunityIdentityShadow;
   /** Jev decisions beside the publisher's DeepSeek gate (shadow unless DECISIONS_MODE_INGESTION_PUBLISHER=live). */
   decisions?: PublisherDecisionContext;
 }
@@ -97,7 +100,7 @@ export async function executeShadowPipeline(
   const now = options.now ?? (() => new Date());
   const logger = options.logger ?? console;
   const run = runFromJob(job, now());
-  const publisherOptions = { decisions: options.decisions };
+  const publisherOptions = { decisions: options.decisions, identityShadow: options.identityShadow };
   const adapter = registry.get(source.adapterId);
   if (!adapter.canHandle(source)) throw new Error(`Adapter ${source.adapterId} cannot handle source ${source.id}`);
   logger.info(`[missa-ingestion-v2] shadow run ${run.id} fetching ${source.url}`);

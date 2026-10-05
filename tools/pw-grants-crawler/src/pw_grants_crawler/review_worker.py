@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
-from .ai_reviewer import DeepSeekReviewer
+from .ai_reviewer import DeepSeekReviewer, JevPublicationRouter, deterministic_blockers, deterministic_checks, jev_publication_router_from_env
 from .alerts import recipient_hash, send_daily_digest
 from .harness import DEFAULT_MODEL, HarnessStore, heartbeat_loop
 from .health import start_health_server
@@ -31,6 +31,7 @@ def process_batch(
     batch_size: int,
     publish_threshold: float,
     daily_cost_limit_usd: float,
+    router: JevPublicationRouter | None = None,
 ) -> dict[str, int]:
     counts = {"reviewed": 0, "published": 0, "needs_human": 0, "rejected": 0, "failed": 0}
     spent = store.cost_today()
@@ -45,10 +46,21 @@ def process_batch(
             if spent >= daily_cost_limit_usd:
                 store.defer(job.id, "Daily DeepSeek cost limit reached")
                 continue
-            result = reviewer.review(candidate)
+            # Jev only sees candidates without a deterministic blocker, so a
+            # blocker always sends the job to a person exactly as before.
+            checks = deterministic_checks(candidate)
+            jev = router.route(candidate, checks) if router and not deterministic_blockers(checks) else None
+            if router and JevPublicationRouter.confident(jev, publish_threshold):
+                result = JevPublicationRouter.review_result(jev, checks)
+                model = f"jev/{jev.model}"
+            else:
+                result = reviewer.review(candidate)
+                model = reviewer.model
+                if jev is not None:
+                    router.record_llm(candidate, checks, result, model=reviewer.model, publish_threshold=publish_threshold)
             spent += result.estimated_cost_usd or 0
             store.save_decision(
-                job, candidate, model=reviewer.model, recommendation=result.recommendation,
+                job, candidate, model=model, recommendation=result.recommendation,
                 confidence=result.confidence, reasons=result.reasons, checks=result.checks,
                 raw_output=result.raw, input_hash=result.input_hash, output_hash=result.output_hash,
                 input_tokens=result.input_tokens, output_tokens=result.output_tokens,
@@ -57,7 +69,7 @@ def process_batch(
             counts["reviewed"] += 1
             if result.recommendation == "publish" and result.confidence >= publish_threshold:
                 publish_opportunity(database_url, candidate)
-                store.mark_published(job.id, candidate.opportunity_id, reviewer.model)
+                store.mark_published(job.id, candidate.opportunity_id, model)
                 counts["published"] += 1
             elif result.recommendation == "needs_human" or result.recommendation == "publish":
                 if result.recommendation == "publish":
@@ -74,7 +86,14 @@ def process_batch(
     return counts
 
 
-def run_cycle(args: argparse.Namespace, store: HarnessStore, reviewer: DeepSeekReviewer, owner: str, release: str) -> dict[str, object]:
+def run_cycle(
+    args: argparse.Namespace,
+    store: HarnessStore,
+    reviewer: DeepSeekReviewer,
+    owner: str,
+    release: str,
+    router: JevPublicationRouter | None = None,
+) -> dict[str, object]:
     started = datetime.now(timezone.utc)
     enqueued = store.enqueue_unreviewed(limit=args.enqueue_limit)
     superseded = store.supersede_stale_jobs()
@@ -83,7 +102,7 @@ def run_cycle(args: argparse.Namespace, store: HarnessStore, reviewer: DeepSeekR
         batch = process_batch(
             store, reviewer, args.database_url, owner=owner, release=release,
             batch_size=args.batch_size, publish_threshold=args.publish_threshold,
-            daily_cost_limit_usd=args.daily_cost_limit_usd,
+            daily_cost_limit_usd=args.daily_cost_limit_usd, router=router,
         )
         for key, value in batch.items():
             totals[key] += value
@@ -130,6 +149,8 @@ def main(argv: list[str] | None = None) -> int:
     store = HarnessStore(args.database_url)
     release = store.register_release(args.model)
     reviewer = DeepSeekReviewer(api_key, model=args.model)
+    # Shadow unless DECISIONS_MODE_GARY_REVIEW=live; absent without JEV_API_KEY.
+    router = jev_publication_router_from_env(args.database_url)
     owner = os.environ.get("RAILWAY_REPLICA_ID") or f"gary-reviewer-{uuid4().hex[:12]}"
     recipient = os.environ.get("GARY_REVIEW_EMAIL")
     recipient_key = recipient_hash(recipient or "unconfigured")
@@ -139,7 +160,7 @@ def main(argv: list[str] | None = None) -> int:
         due, local_date = should_run_morning(datetime.now(timezone.utc), args.timezone, args.review_hour, last_date)
         if args.once or due or args.continuous:
             with heartbeat_loop(store, "reviewer", owner, release=release, status="working"):
-                summary = run_cycle(args, store, reviewer, owner, release)
+                summary = run_cycle(args, store, reviewer, owner, release, router)
             if due or args.once:
                 alert = send_daily_digest(
                     api_key=os.environ.get("RESEND_API_KEY"), sender=os.environ.get("RESEND_FROM"),

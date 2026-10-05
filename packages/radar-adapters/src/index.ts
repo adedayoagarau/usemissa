@@ -295,10 +295,18 @@ export {
   profileNameEvidence,
   profileLinkRetirementStatement,
   syncProfileOpportunityLinks,
+  adjudicatePendingProfileLinks,
+  profileIdentityJevFromEnv,
+  profileLinkActionFromJev,
   type OpportunityIdentityInput,
   type ProfileIdentityDecision,
+  type ProfileIdentityJevOptions,
   type ProfileUrlEvidence,
 } from "./profileIdentityMatcher.js";
+export {
+  createDedupIdentityDecider,
+  dedupIdentityDeciderFromEnv,
+} from "./dedupIdentityDecider.js";
 export {
   commitTrackerImportTransaction,
   commitRelationalTrackerImportTransaction,
