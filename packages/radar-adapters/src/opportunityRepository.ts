@@ -14,7 +14,8 @@ import type {
   OpportunityCallProfile,
   OpportunityContent,
 } from "@missa/radar-engine";
-import { canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
+import { firstOwnUrl, isIntermediaryUrl, toPublicOpportunity } from "@missa/radar-engine";
+import { canonicalListedOpportunityPredicate } from "./canonicalOpportunityProjection.js";
 import { loadDeadlineFacts } from "./deadlineFacts.js";
 import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 import {
@@ -51,6 +52,9 @@ interface OpportunityRow extends QueryResultRow {
   title: string;
   organization_id: string | null;
   organization_name: string | null;
+  organization_profile_website_url: string | null;
+  official_site_url?: string | null;
+  organization_data_website_url: string | null;
   organization_verified: string | null;
   identity_asset_url: string | null;
   identity_asset_alt: string | null;
@@ -395,6 +399,11 @@ function baseSelect(
     o.organization_id,
     coalesce(org.data->>'name', o.organization_id) as organization_name,
     org.data->>'verified' as organization_verified,
+    org_profile.website_url as organization_profile_website_url,
+    (select e.url from opportunity_source_evidence e
+      where e.opportunity_id = o.id and e.kind = 'official-site'
+      order by e.checked_at desc limit 1) as official_site_url,
+    coalesce(org.data->>'website_url', org.data->>'websiteUrl', org.data->>'website') as organization_data_website_url,
     asset.url as identity_asset_url,
     asset.alt as identity_asset_alt,
     o.status,
@@ -473,6 +482,7 @@ function baseFrom(
     from opportunities o
     join opportunity_sources source on source.id = o.source_id
     left join radar_organizations org on org.id = o.organization_id
+    left join gary_profiles org_profile on org_profile.id = o.organization_id
     left join lateral (
       select asset_candidate.url, asset_candidate.alt
       from (
@@ -738,7 +748,7 @@ export function buildOpportunityBrowseQuery(
   const garyVisualsReads = options.garyVisualsReads ?? garyVisualsReadsEnabled();
   const values: unknown[] = [];
   const conditions: string[] = [
-    canonicalPublicOpportunityPredicate("o"),
+    canonicalListedOpportunityPredicate("o"),
     query.openNow
       ? `(o.status = any($${values.length + 1}::text[]) and (o.deadline_date is null or o.deadline_date >= current_date))`
       : "true",
@@ -1220,6 +1230,7 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
     organizationId: row.organization_id ? (row.organization_id.includes("_") ? row.organization_id : `org_${row.organization_id}`) : undefined,
     organizationName: row.organization_name ? cleanTitleOrLabel(row.organization_name) : undefined,
     organizationVerified: row.organization_verified === "true",
+    organizationWebsiteUrl: firstOwnUrl(row.organization_profile_website_url, row.organization_data_website_url),
     identityAssetUrl: row.identity_asset_url ?? undefined,
     identityAssetAlt: row.identity_asset_alt ? cleanTitleOrLabel(row.identity_asset_alt) : undefined,
     status: row.status,
@@ -1254,7 +1265,7 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
     location: row.location ? cleanTitleOrLabel(row.location) : undefined,
     simultaneousAllowed: row.simultaneous_allowed ?? undefined,
     submissionAvailable:
-      row.submission_state === "available" && Boolean(row.submission_url),
+      row.submission_state === "available" && Boolean(row.submission_url) && !isIntermediaryUrl(row.submission_url),
     source: {
       kind: (VALID_SOURCE_KINDS.has(row.source_kind as OpportunityRepositorySource["kind"]) ? row.source_kind as OpportunityRepositorySource["kind"] : "organization-website"),
 
@@ -1394,7 +1405,8 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
     const rows = result.rows;
     const hasNext = rows.length > query.limit;
     const visibleRows = hasNext ? rows.slice(0, query.limit) : rows;
-    const items = await this.withDeadlineFacts(visibleRows, visibleRows.map(mapRow));
+    const items = (await this.withDeadlineFacts(visibleRows, visibleRows.map(mapRow)))
+      .map((item) => toPublicOpportunity(item, listingPageUrl(item.slug)));
     return {
       items,
       nextCursor:
@@ -1539,7 +1551,7 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
       : [];
 
     const [projected] = await this.withDeadlineFacts([row], [mapRow(row)]);
-    return {
+    return toPublicOpportunity({
       ...projected!,
       openDate: row.open_date ?? undefined,
       eligibility: eligibility.map((item) => ({
@@ -1554,7 +1566,9 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
         required: item.required,
         limit: item.limit ?? undefined,
       })),
-      guidelinesUrl: row.guidelines_url ?? undefined,
+      // The page on the organization's site that names the call (official-site
+      // resolver) stands in when the stored guidelines are a platform's page.
+      guidelinesUrl: firstOwnUrl(row.guidelines_url, row.official_site_url) ?? row.guidelines_url ?? undefined,
       submissionUrl: row.submission_url ?? undefined,
       simultaneousAllowed: row.simultaneous_allowed ?? undefined,
       changes: changes.map((item) => ({
@@ -1568,8 +1582,15 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
       ...(row.head_material_fingerprint
         ? { materialFingerprint: row.head_material_fingerprint }
         : {}),
-    };
+    }, listingPageUrl(projected!.slug));
   }
+}
+
+/** Missa's own page for a listing, used where a link is required and the organization has none. */
+function listingPageUrl(slug: string): string {
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim() || process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim() || "https://www.usemissa.com";
+  const origin = new URL(/^https?:\/\//i.test(configured) ? configured : `https://${configured}`).origin;
+  return `${origin}/opportunities/${encodeURIComponent(slug)}`;
 }
 
 export function createPostgresOpportunityRepository(

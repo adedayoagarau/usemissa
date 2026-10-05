@@ -3,6 +3,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import pg from "pg";
 import type { RivetOpenCall } from "./rivetParser.js";
+import { firstOwnUrl } from "@missa/radar-engine";
 
 interface EnrichedRivetCall extends RivetOpenCall {
   orgWebsite?: string | null;
@@ -113,9 +114,10 @@ try {
       orgId = `org_rivet_${cleanOrgKey}`;
       createdOrgs++;
 
-      const websiteUrl = c.orgWebsite || c.applicationUrl || c.url;
+      // The directory's page is never recorded as the organization's website.
+      const websiteUrl = firstOwnUrl(c.orgWebsite, c.applicationUrl) ?? null;
       let normWebsite = "";
-      try { normWebsite = new URL(websiteUrl).hostname.replace(/^www\./, ""); } catch {}
+      try { if (websiteUrl) normWebsite = new URL(websiteUrl).hostname.replace(/^www\./, ""); } catch {}
 
       // Insert into radar_organizations first (satisfies foreign key)
       await client.query(`

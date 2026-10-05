@@ -4,7 +4,7 @@ import {
   CreatorRepositoryBase,
   CreatorConflictError,
   creatorCommandEnvelope,
-  canonicalPublicOpportunityPredicate,
+  canonicalListedOpportunityPredicate,
 } from "@missa/radar-adapters";
 import { z } from "zod";
 import { opportunityTypes } from "./goal-options.ts";
@@ -75,7 +75,8 @@ export function goalPool() {
   if (!process.env.DATABASE_URL) throw new Error("Goal storage unavailable");
   return creatorPoolFor(process.env.DATABASE_URL);
 }
-const publicOpportunity = canonicalPublicOpportunityPredicate("o");
+// Goal search only offers listings a creator can open (see canonicalListedOpportunityPredicate).
+const publicOpportunity = canonicalListedOpportunityPredicate("o");
 export async function goalDisciplines() {
   return (
     await goalPool().query(

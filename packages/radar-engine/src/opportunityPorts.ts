@@ -219,6 +219,8 @@ export interface OpportunityBrowseProjection {
   organizationId?: string;
   organizationName?: string;
   organizationVerified?: boolean;
+  /** The organization's own website, when one is recorded. */
+  organizationWebsiteUrl?: string;
   identityAssetUrl?: string;
   identityAssetAlt?: string;
   status: "opening-soon" | "open" | "closing-soon" | "deadline-extended" | "closed" | "archived";

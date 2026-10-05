@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { firstOwnUrl, isIntermediaryName } from "@missa/radar-engine";
 import {
   CANONICAL_COUNTRIES,
   normalizeCountry,
@@ -234,6 +235,11 @@ function nullableText(value: unknown): string | null {
 const ALPHABETICAL_PROFILE_ORDER =
   "lower(regexp_replace(btrim(p.name), '^[^a-z0-9]+', '', 'i')) ASC, p.name ASC";
 
+/** A listing platform (ArtConnect, Submittable, …) is never shown as an organization of its own. */
+function isPublicProfileRow(row: Record<string, unknown>): boolean {
+  return !isIntermediaryName(typeof row.name === "string" ? row.name : null);
+}
+
 function card(
   row: Record<string, unknown>,
   extra?: { opportunities?: ProfileOpportunity[] },
@@ -285,7 +291,8 @@ function card(
     slug: cleanSlug,
     kind: row.profile_kind as ProfileKind,
     name: cleanTitleOrLabel(String(row.name)),
-    websiteUrl: nullableText(row.website_url),
+    // A listing platform's page is never shown as the organization's website.
+    websiteUrl: firstOwnUrl(nullableText(row.website_url)) ?? null,
     summary: row.source_summary
       ? cleanCrawledText(String(row.source_summary))
       : null,
@@ -296,7 +303,7 @@ function card(
     country,
     countryCode,
     city: rawCity,
-    sourceUrl: nullableText(row.source_detail_url),
+    sourceUrl: firstOwnUrl(nullableText(row.source_detail_url)) ?? null,
     mediaUrl: nullableText(row.media_url),
     mediaAlt: row.media_alt ? cleanTitleOrLabel(String(row.media_alt)) : null,
   };
@@ -434,7 +441,7 @@ export class PostgresProfileRepository implements ProfileRepository {
       values: [normalizedNames],
     });
 
-    return result.rows.map((row) => card(row));
+    return result.rows.filter(isPublicProfileRow).map((row) => card(row));
   }
 
   async browse(query: ProfileBrowseQuery): Promise<ProfileBrowsePage> {
@@ -541,7 +548,7 @@ export class PostgresProfileRepository implements ProfileRepository {
         values,
       });
 
-      const cards = result.rows.map((row) => card(row));
+      const cards = result.rows.filter(isPublicProfileRow).map((row) => card(row));
       let filtered = cards;
 
       if (scheduleFilter) {
@@ -676,7 +683,7 @@ export class PostgresProfileRepository implements ProfileRepository {
       values,
     });
     return {
-      items: result.rows.map((row) => card(row)),
+      items: result.rows.filter(isPublicProfileRow).map((row) => card(row)),
       total: Number(result.rows[0]?.total_count ?? 0),
     };
   }
@@ -763,7 +770,7 @@ export class PostgresProfileRepository implements ProfileRepository {
       }
     }
     const row = result.rows[0] as Record<string, unknown> | undefined;
-    if (!row) return null;
+    if (!row || !isPublicProfileRow(row)) return null;
     const actualId = String(row.id);
     const base = card(row);
     const links = await this.pool.query({
@@ -931,8 +938,8 @@ export class PostgresProfileRepository implements ProfileRepository {
           ? item.deadline.toISOString().slice(0, 10)
           : String(item.deadline).slice(0, 10)
         : null,
-      detailUrl: nullableText(item.source_detail_url),
-      officialWebsite: nullableText(item.official_website),
+      detailUrl: firstOwnUrl(nullableText(item.source_detail_url)) ?? null,
+      officialWebsite: firstOwnUrl(nullableText(item.official_website)) ?? null,
       status: item.status,
     }));
     const isPublication =
@@ -1052,7 +1059,7 @@ export class PostgresProfileRepository implements ProfileRepository {
       values: [opportunityId],
     });
     const row = result.rows[0] as Record<string, unknown> | undefined;
-    if (!row) return null;
+    if (!row || !isPublicProfileRow(row)) return null;
     const baseCard = card(row);
     try {
       baseCard.mediaBundle = await getOrganizationMediaBundle(

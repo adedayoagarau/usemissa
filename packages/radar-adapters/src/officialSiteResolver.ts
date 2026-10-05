@@ -1,6 +1,8 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import type { Pool } from "pg";
+import { INTERMEDIARY_PLATFORMS } from "@missa/radar-engine";
+import { organizationLinkSql } from "./canonicalOpportunityProjection.js";
 
 export const OFFICIAL_SITE_RESOLVER_VERSION = "official-site-v1";
 
@@ -17,6 +19,10 @@ export const LISTING_SITE_HOSTS = new Set([
   "nyfa.org", "artsjobs.org", "creativecapital.org", "artist-communities.org", "allianceartistcommunities.org",
   "opportunity-list.com", "artopportunitiesmonthly.com", "artshub.com.au", "artquest.org.uk",
   "a-n.co.uk", "curatorsintl.org", "residencyunlimited.org", "theresidencyproject.org",
+  // Every platform Missa never shows publicly (radar-engine intermediaries.ts):
+  // a listing known only from one stays hidden until this resolver finds the
+  // organization's own page.
+  ...INTERMEDIARY_PLATFORMS.flatMap((platform) => platform.hosts),
 ]);
 
 /** Links that never lead to an organization's own site. */
@@ -276,10 +282,15 @@ async function claimCandidates(pool: Pool, limit: number): Promise<OfficialSiteC
      left join opportunity_official_site_checks checks on checks.opportunity_id = o.id
      where o.publication_state in ('reviewable', 'published')
        and o.id not like 'opp_v2_%'
-       and not coalesce(evidence.organization_confirmed, false)
-       and not exists (
-         select 1 from opportunity_profile_links link
-         where link.opportunity_id = o.id and link.status = 'confirmed' and link.verified_until > now()
+       and (
+         (not coalesce(evidence.organization_confirmed, false)
+           and not exists (
+             select 1 from opportunity_profile_links link
+             where link.opportunity_id = o.id and link.status = 'confirmed' and link.verified_until > now()
+           ))
+         -- A confirmed host still needs its own page when every known link is
+         -- an intermediary's: such a listing stays off public pages until then.
+         or not ${organizationLinkSql("o")}
        )
        and (o.guidelines_url ~* $2 or s.url ~* $2 or o.submission_url ~* $2)
        and (checks.opportunity_id is null or checks.resolver_version <> $3 or checks.next_check_at <= now())

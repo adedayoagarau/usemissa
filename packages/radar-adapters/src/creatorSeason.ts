@@ -1,6 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import type { OpportunityCycleForecast } from "@missa/radar-engine";
-import { canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
+import { canonicalListedOpportunityPredicate, canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
 import { OPEN_STATUS_SQL, PREFERENCE_MATCH_CTE, preferenceMatchPredicate } from "./weeklyDigest.js";
 
 type Db = Pool | PoolClient;
@@ -231,7 +231,7 @@ export async function countSeasonMatchingOpenCalls(
     `${PREFERENCE_MATCH_CTE}
      select o.deadline_date::text as date, count(*)::int as count
        from opportunities o
-      where ${canonicalPublicOpportunityPredicate("o")} and o.status in (${OPEN_STATUS_SQL})
+      where ${canonicalListedOpportunityPredicate("o")} and o.status in (${OPEN_STATUS_SQL})
         and o.deadline_kind in ('exact','fixed')
         and o.deadline_date between $2::date and $3::date
         and ${preferenceMatchPredicate("o")}

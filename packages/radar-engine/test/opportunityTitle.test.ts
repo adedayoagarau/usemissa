@@ -195,6 +195,16 @@ test('flags tenders, admissions, and medical programs unless the title is about 
   }
 });
 
+test('flags a promotional artist interview even when it calls itself an open call', () => {
+  assert.deepEqual(assessOpportunityRelevance("Open Call — Artist's Interview With Al-tiba9"), { relevant: false, signals: ['promotional-interview'] });
+  for (const title of ['Open Call | Artist’s Interview With Al-Tiba9', 'Artist Interview Series', 'Call for Artists: Artists Interviews 2026']) {
+    assert.equal(assessOpportunityRelevance(title).relevant, false, title);
+  }
+  for (const title of ['Call for Interviews', 'Interview Submissions', 'Oral History Interview Fellowship', 'Call for Artists — Al-tiba9 Magazine Issue22']) {
+    assert.equal(assessOpportunityRelevance(title).relevant, true, title);
+  }
+});
+
 test('does not flag a call that mentions a blog, a subscription, or how to apply', () => {
   for (const title of ['Call for Blog Submissions', 'Free submission with subscription (or renewal)', 'How to Live Together?', 'How to Apply: Artist Residency']) {
     assert.equal(assessOpportunityRelevance(title).relevant, true, title);
