@@ -30,6 +30,8 @@ Expect three rows.
 
 From 11 September until #122, Save failed to create the official calendar deadline. The backfill creates it for applications still in preparation whose confirmed deadline has not passed. For accounts with an active Google or Microsoft connection, the new events are queued for export, as a normal Save would.
 
+Since #199 the creator pass does this on every run: it adds the official deadline, default reminders and plan for any application in preparation whose confirmed deadline is ahead but has no official deadline, including connected accounts' export. The script remains useful for its dry-run count; `--apply` is no longer needed.
+
 ```sh
 DATABASE_URL=... npm run calendar:backfill-deadlines --workspace=@missa/radar-adapters
 ```
@@ -55,7 +57,18 @@ select t.opportunity_id, o.title, o.deadline_date
    and o.deadline_date >= current_date + 2;
 ```
 
-Schedule a deadline reminder due two minutes from now. Replace any existing deadline reminder for that application:
+Schedule a deadline reminder due two minutes from now. A save made since #182 already holds one default reminder per offset (`subject_id` `offset:7` and `offset:1`); move one of them rather than inserting:
+
+```sql
+update creator_application_reminders
+   set due_at = now() + interval '2 minutes', state = 'scheduled', snoozed_until = null,
+       revision = revision + 1, updated_at = now()
+ where account_id = '<test account>' and opportunity_id = '<opportunity id>'
+   and kind = 'deadline' and subject_id = 'offset:7'
+returning id;
+```
+
+For an application without default reminders, insert one instead:
 
 ```sql
 insert into creator_application_reminders
@@ -90,10 +103,11 @@ If the reminder lands inside the test account's quiet hours, it is held until th
 
 ## 4. Prove a source deadline change
 
-Use a test opportunity, or one you can safely change and restore. Move its deadline:
+Use a test opportunity, or one you can safely change and restore. Move its deadline, and its closing time when it has one; a reminder re-timed past an unchanged `deadline_time` is set aside as `needs-review` instead of moving:
 
 ```sql
-update opportunities set deadline_date = deadline_date + 7 where id = '<opportunity id>' returning deadline_date;
+update opportunities set deadline_date = deadline_date + 7, deadline_time = deadline_time + interval '7 days'
+ where id = '<opportunity id>' returning deadline_date, deadline_time;
 ```
 
 After the next worker pass:
@@ -108,15 +122,18 @@ select due_at, source_deadline from creator_application_reminders
  where account_id = '<test account>' and opportunity_id = '<opportunity id>' and kind = 'deadline';
 ```
 
-Expect the event on the new date with the old date in `previous_source_deadline_date` and status `needs-review`, one Inbox notice "moved from X to Y", and the deadline reminder's `source_deadline` and `due_at` moved by seven days. In Calendar, the deadline shows the Move preparation / Leave it prompt. Restore the original date afterwards; that produces a second notice, which is expected.
+Expect the event on the new date with the old date in `previous_source_deadline_date` and status `needs-review`, one Inbox notice "moved from X to Y", and the deadline reminder's `source_deadline` and `due_at` moved by seven days. In Calendar, the deadline shows the Move preparation / Leave it prompt. Restore the original date afterwards; that produces a second notice, which is expected. Notices are kept once per event and date, so moving to a date already announced does not notify again.
 
 ## Log
 
 | Date | Step | Result | Evidence (IDs, counts, message ID) | Run by |
 | --- | --- | --- | --- | --- |
-| | 1. Migration 0078 | | | |
-| | 2. Backfill dry run | | | |
-| | 2. Backfill apply | | | |
-| | 3. Reminder email | | | |
-| | 3. Exactly once | | | |
-| | 4. Deadline change | | | |
+| 2026-10-04 | 0. Preconditions | Pass | creator-worker deployment `9f821220` (main 73cdaaf, #199) logs "Creator worker started. Deadline sweep, reminders and reminder email, …"; its first pass sent 2 reminder emails, 0 failed. Test account `acct_70e2d6bd-2b36-456d-a00a-f82a5bc8f72f`, created through a signed-out Save and sign-up on www.usemissa.com: `email_enabled` t, `reminder_enabled` t, no quiet hours | Claude Code |
+| 2026-10-04 | 1. Migration 0078 | Pass (already applied) | `timezone`, `quiet_hours_start_minute`, `quiet_hours_end_minute` present | Claude Code |
+| 2026-10-04 | 2. Backfill dry run | 1 application, 1 account, 0 with calendar export | Run before #199 deployed | Claude Code |
+| 2026-10-04 | 2. Backfill apply | Not needed | The creator pass added it at 19:01:27 (`missedSaves {"found":1,"added":1,"failed":0}`); dry run afterwards 0 / 0 / 0 | Claude Code |
+| 2026-10-04 | 3. Reminder email | Pass | Reminder `657baa07-7ef9-44be-bc2e-5feee4f98b3e` delivered 20:42:56; Inbox alert `6d42379d-0d5b-401c-8f54-ab7c498b9e7f`; ledger `accepted`, provider message `01a108a7-d57e-7c49-a082-12a7c4009b9d`, Resend status `delivered`; arrived in the test inbox 20:42:59 | Claude Code |
+| 2026-10-04 | 3. Exactly once | Pass | At 20:54:45 (about ten passes later) and again 2026-10-05 11:45: one Inbox row, one ledger row with `attempt_count` 1, one email | Claude Code |
+| 2026-10-04 | 4. Deadline change | Pass | `opp_subm_354662` moved 2026-10-16 → 2026-10-23 with its closing time: event on 10-23, previous 10-16, `needs-review`; one notice "moved from 2026-10-16 to 2026-10-23"; 1-day reminder `c2cfc171-9ba7-4787-ad14-e01758ff3f18` re-timed 2026-10-15 09:00 → 2026-10-22 09:00. Restored: event and reminder back on 10-16 / 10-15 09:00, second notice "moved from 2026-10-23 to 2026-10-16" | Claude Code |
+
+Also verified on 2026-10-04: a call saved before sign-up got its official deadline and both default reminders within a second of the account being created (19:13:08), and the welcome email and weekly digest reached the test inbox. Not covered by this runbook: Google or Microsoft calendar export, which needs a connected account. The test account and its saved call remain for later runs.
