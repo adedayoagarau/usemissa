@@ -4,7 +4,7 @@ import AxeBuilder from '@axe-core/playwright';
 async function createLibraryAccount(page: Page) {
   const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const signup = await page.request.post('/api/auth/signup', {
-    data: { email: `library-${suffix}@example.com`, password: 'correct-horse-battery', displayName: 'Library User' },
+    data: { email: `library-${suffix}@example.com`, password: 'correct-horse-battery', givenName: 'Library', familyName: 'User' },
   });
   expect(signup.status()).toBe(201);
   const sessionCookie = signup.headers()['set-cookie']?.match(/(?:^|,\s*)missa_session=([^;]+)/)?.[1];
@@ -138,7 +138,7 @@ test('Library Work detail is owner-scoped and signed-out view state survives log
     const { work } = await createLibraryAccount(ownerPage);
     const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const otherSignup = await otherPage.request.post('/api/auth/signup', {
-      data: { email: `library-${suffix}@example.com`, password: 'correct-horse-battery', displayName: 'Other Library User' },
+      data: { email: `library-${suffix}@example.com`, password: 'correct-horse-battery', givenName: 'Other', familyName: 'Library User' },
     });
     expect(otherSignup.status()).toBe(201);
     const forbidden = await otherPage.goto(`/library/works/${encodeURIComponent(work.id)}`);

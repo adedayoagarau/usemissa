@@ -10,13 +10,17 @@ import { CreatorShell } from "@/components/creator-shell";
 import {
   ProfileProduct,
   type ProfileProductData,
-  type ProfileSection,
 } from "@/components/profile-product";
+import { normalizeProfileSection } from "@/lib/profile-settings";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { getEngine } from "@/lib/engine";
 import { emailIntegrationFlags } from "@/lib/email-integrations";
 import { creatorShellOrganizations } from "@/lib/creatorShellOrganizations";
-import { getCreatorPreferenceRepository, getCreatorProfileRepository } from "@/lib/creatorRepositories";
+import {
+  getCreatorNotificationRepository,
+  getCreatorPreferenceRepository,
+  getCreatorProfileRepository,
+} from "@/lib/creatorRepositories";
 
 export const metadata = {
   title: "Your Missa profile",
@@ -25,22 +29,8 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-const PROFILE_SECTION_VALUES: readonly ProfileSection[] = [
-  "overview",
-  "identity",
-  "preferences",
-  "privacy",
-  "integrations",
-  "searches",
-  "following",
-  "data",
-];
-
-function sectionFrom(value: string | string[] | undefined): ProfileSection {
-  const candidate = Array.isArray(value) ? value[0] : value;
-  return PROFILE_SECTION_VALUES.includes(candidate as ProfileSection)
-    ? (candidate as ProfileSection)
-    : "overview";
+function sectionFrom(value: string | string[] | undefined) {
+  return normalizeProfileSection(Array.isArray(value) ? value[0] : value);
 }
 
 export default async function ProfilePage({
@@ -51,7 +41,7 @@ export default async function ProfilePage({
   const params = await searchParams;
   const initialSection = sectionFrom(params.section);
   const returnPath =
-    initialSection === "overview"
+    initialSection === "profile"
       ? "/profile"
       : `/profile?section=${encodeURIComponent(initialSection)}`;
   const cookieStore = await cookies();
@@ -64,18 +54,40 @@ export default async function ProfilePage({
   const relationalProfiles = getCreatorProfileRepository();
   const relationalPreferences = getCreatorPreferenceRepository();
   if (relationalProfiles && relationalPreferences) {
-    const [creator, preferenceBundle, savedSearches, following, portfolio] = await Promise.all([
+    const [
+      creator,
+      preferenceBundle,
+      savedSearches,
+      following,
+      portfolio,
+      notificationPreferences,
+    ] = await Promise.all([
       relationalProfiles.profile(session.account.id),
       relationalPreferences.preferenceBundle(session.account.id),
-      relationalPreferences.savedSearches(session.account.id, session.account.userId),
+      relationalPreferences.savedSearches(
+        session.account.id,
+        session.account.userId,
+      ),
       relationalPreferences.follows(session.account.id),
       relationalProfiles.portfolioState(session.account.id),
+      getCreatorNotificationRepository()
+        ?.preferences(session.account.id)
+        .catch(() => undefined),
     ]);
     if (!creator) notFound();
-    const handleNamespaceReady = await handleNamespaceAvailable(process.env.DATABASE_URL!).catch(() => false);
-    const currentHandle = handleNamespaceReady ? await readUserHandle(process.env.DATABASE_URL!, creator.userId).catch(() => null) : null;
+    const handleNamespaceReady = await handleNamespaceAvailable(
+      process.env.DATABASE_URL!,
+    ).catch(() => false);
+    const currentHandle = handleNamespaceReady
+      ? await readUserHandle(process.env.DATABASE_URL!, creator.userId).catch(
+          () => null,
+        )
+      : null;
     const claimingAccess = handleNamespaceReady
-      ? await waitlistClaimAccess({ connectionString: process.env.DATABASE_URL!, accountId: session.account.id }).catch(() => ({ allowed: false }))
+      ? await waitlistClaimAccess({
+          connectionString: process.env.DATABASE_URL!,
+          accountId: session.account.id,
+        }).catch(() => ({ allowed: false }))
       : { allowed: false };
     const profile: ProfileProductData = {
       id: creator.userId,
@@ -83,18 +95,45 @@ export default async function ProfilePage({
       ...(creator.bio ? { bio: creator.bio } : {}),
       revision: creator.revision,
       publicUrl: `/profile/${encodeURIComponent(creator.userId)}`,
-      handle: { namespaceAvailable: handleNamespaceReady, current: currentHandle, claimingOpen: claimingAccess.allowed, promptDismissed: false, published: Boolean(portfolio.publishedAt) },
-      privacy: { displayName: creator.privacy.displayName, bio: creator.privacy.bio },
+      handle: {
+        namespaceAvailable: handleNamespaceReady,
+        current: currentHandle,
+        claimingOpen: claimingAccess.allowed,
+        promptDismissed: false,
+        published: Boolean(portfolio.publishedAt),
+      },
+      privacy: {
+        displayName: creator.privacy.displayName,
+        bio: creator.privacy.bio,
+      },
       taxonomyPreferences: preferenceBundle?.taxonomyPreferences ?? [],
       preferencesRevision: preferenceBundle?.revision,
       opportunityPreferences: preferenceBundle?.opportunityPreferences ?? {
-        types: [], disciplines: [], genres: [], locations: [], careerStages: [], noFeeOnly: false, simultaneousRequired: false,
+        types: [],
+        disciplines: [],
+        genres: [],
+        locations: [],
+        careerStages: [],
+        noFeeOnly: false,
+        simultaneousRequired: false,
       },
     };
     const organizations = await creatorShellOrganizations(session.memberships);
     return (
-      <CreatorShell email={session.account.email} organizations={organizations} isAdmin={session.account.isAdmin}>
-        <ProfileProduct initialSection={initialSection} initialProfile={profile} savedSearches={savedSearches} following={following} integrations={emailIntegrationFlags()} />
+      <CreatorShell
+        email={session.account.email}
+        organizations={organizations}
+        isAdmin={session.account.isAdmin}
+      >
+        <ProfileProduct
+          initialSection={initialSection}
+          initialProfile={profile}
+          savedSearches={savedSearches}
+          following={following}
+          email={session.account.email}
+          notificationPreferences={notificationPreferences}
+          integrations={emailIntegrationFlags()}
+        />
       </CreatorShell>
     );
   }
@@ -168,6 +207,7 @@ export default async function ProfilePage({
         initialProfile={profile}
         savedSearches={savedSearches}
         following={following}
+        email={session.account.email}
         integrations={emailIntegrationFlags()}
       />
     </CreatorShell>

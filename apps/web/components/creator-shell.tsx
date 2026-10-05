@@ -8,6 +8,7 @@ import {
   Bell,
   Building2,
   CalendarDays,
+  House,
   CalendarRange,
   Inbox,
   ListOrdered,
@@ -33,6 +34,7 @@ import { rememberSignedIn } from "@/lib/signedInHint";
 import styles from "./creator-shell.module.css";
 
 const primary = [
+  { href: "/home", label: "Home", icon: House },
   { href: "/opportunities", label: "Opportunities", icon: Search },
   { href: "/following", label: "Following", icon: Bell },
   { href: "/tracker", label: "Tracker", icon: BookOpen },

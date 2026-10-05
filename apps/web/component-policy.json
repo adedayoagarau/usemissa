@@ -688,6 +688,13 @@
       "appearance": "right-side-sheet-full-width-below-640px-single-scroll-with-eyebrow-sections",
       "boundary": "The one Tracker sheet for a tracked application, opened by /tracker?item=<id> or /tracker?application=<id>&section=<progress|prepare|timing|materials|notes|history> from every surface. Deadline, stages and plan come from deadline management; the record sections add progress with the lifecycle Saved, Preparing, Ready, Submitted, In review, Outcome, where each reached step shows its recorded date and provenance (recorded by you, Missa-hosted submission, received from the organization, inferred from source information) and never an invented date. External navigation never records a submission. One Forest action per region. No AI wording."
     },
+    "composition.creator-home": {
+      "semantic": "CreatorHome",
+      "implementation": "apps/web/components/missa/creator-home.tsx",
+      "composition": ["Button", "Link", "Tabs", "Popover", "Checkbox", "Skeleton", "Empty", "Sonner", "ApplicationStateBadge", "ApplicationRunway", "StartByDate", "CountBadge"],
+      "appearance": "newsreader-greeting-with-situation-sentence-and-goal-pace-then-one-lead-move-with-runway-two-supporting-moves-week-tiles-and-tracker-tabs",
+      "boundary": "Derived entirely from Tracker state by lib/creator-home.ts. Names the week (busy, waiting, quiet, first run) in one generated sentence. This week's three ranks start-by passed or due, ready but unrecorded, closing this week, response check-ins, and Selected for you, one per application; the lead move carries the page's one Forest action. Home edits only through the record's own APIs: a lead preparation step is completed with PATCH /api/me/checklist-items/:id, and a due check-in is snoozed a week with PATCH /api/me/reminders/:id; every other row opens /tracker?application=<id>&section=<tab>. Goal pace compares an even spread from the goal's start with recorded submissions; preparing never counts as submitted. Replaces the former Your space at /workspace for creators."
+    },
     "composition.library-material": {
       "semantic": "LibraryMaterialSheet",
       "implementation": "apps/web/components/missa/library-material-sheet.tsx",
@@ -922,6 +929,19 @@
       "motion": "never",
       "boundary": "One circle per submission up to 24; numeric progressbar for larger targets. Preparation does not increment progress."
     },
+    "ApplicationStateBadge": {
+      "base": "Badge",
+      "implementation": "components/missa/application-state-badge.tsx",
+      "variants": ["warning", "information", "accent", "success", "outline"],
+      "motion": "never",
+      "boundary": "A creator's personal application state (Check-in due, On track, 1 day behind, Ready to record, Not selected). The label states the meaning; declined and withdrawn stay neutral."
+    },
+    "ApplicationRunway": {
+      "base": "custom",
+      "implementation": "components/missa/application-runway.tsx",
+      "motion": "never",
+      "boundary": "Time left against Missa's start-by estimate: Ochre slipped days or Lichen slack, then the Forest work window, with today marked and every part stated in text. Custom because Progress shows one value and the runway needs two segments plus a marker; inspected Progress, CircularProgress, Slider, and Studio progress families first."
+    },
     "EmailChoicePrompt": {
       "base": "Button",
       "implementation": "components/missa/email-choice-prompt.tsx",
@@ -1023,7 +1043,7 @@
       "DialogOrSheet",
       "ProcessFeedback"
     ],
-    "ProfileSettingsForm": ["Field", "FormControls", "InlineFeedback"],
+    "ProfileSettingsForm": ["Field", "FormControls", "RadioGroup", "Collapsible", "Switch", "AlertDialog", "InlineFeedback", "StickySaveBar"],
     "PortfolioIdentityHeader": [
       "EditorialTypography",
       "AvatarOrMedia",

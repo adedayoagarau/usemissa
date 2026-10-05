@@ -21,12 +21,13 @@ const projection = `select t.opportunity_id as "opportunityId", o.title,
  o.deadline_date::text as deadline,coalesce(o.deadline_kind,'unknown') as "deadlineKind",
  to_char(o.deadline_time at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"') as "deadlineTime",o.deadline_timezone as "deadlineTimezone",
  t.submitted_at as "submittedAt",t.updated_at as "updatedAt",w.title as "workTitle",t.work_id as "workId",t.notify,
- coalesce(prep.total,0)::int as "preparationTotal",coalesce(prep.done,0)::int as "preparationDone"
+ coalesce(prep.total,0)::int as "preparationTotal",coalesce(prep.done,0)::int as "preparationDone",coalesce(prep.items,'[]'::jsonb) as "preparationItems"
  from tracked_opportunities t join opportunities o on o.id=t.opportunity_id
  left join radar_organizations org on org.id=o.organization_id
  left join gary_profiles p on p.id=o.organization_id
  left join creator_library_works w on w.id=t.work_id and w.account_id=t.account_id
- left join lateral (select count(*) filter (where i.state<>'not-applicable') as total,count(*) filter (where i.state in ('complete','ready')) as done
+ left join lateral (select count(*) filter (where i.state<>'not-applicable') as total,count(*) filter (where i.state in ('complete','ready')) as done,
+   jsonb_agg(jsonb_build_object('label',i.label,'state',i.state,'linked',(i.work_id is not null or i.file_id is not null or i.saved_answer_id is not null)) order by i.position) filter (where i.state<>'not-applicable') as items
    from tracker_checklists c join tracker_checklist_items i on i.checklist_id=c.id and i.account_id=c.account_id
    where c.account_id=t.account_id and c.tracked_opportunity_id=t.id) prep on true`;
 

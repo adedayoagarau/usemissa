@@ -24,6 +24,14 @@ export type ApplicationSummary = {
   preparationTotal?: number;
   /** Checklist steps marked complete or ready. */
   preparationDone?: number;
+  /** Applicable checklist steps, used for Home's start-by estimates. */
+  preparationItems?: PreparationItemSummary[];
+};
+export type PreparationItemSummary = {
+  label: string;
+  state: "missing" | "ready" | "complete";
+  /** A Library Work, file, or saved answer is attached. */
+  linked: boolean;
 };
 export type ApplicationDetail = ApplicationSummary & {
   notes: string;

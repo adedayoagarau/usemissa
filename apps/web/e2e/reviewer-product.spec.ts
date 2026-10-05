@@ -14,7 +14,7 @@ async function reviewerFixture(page: Page, baseURL: string | undefined) {
 
   const submitter = await playwrightRequest.newContext({ baseURL });
   const submitterEmail = `review-submit-${suffix}@example.com`;
-  expect((await submitter.post('/api/auth/signup', { data: { email: submitterEmail, password: 'correct-horse-battery', displayName: `Private Submitter ${suffix}` } })).status()).toBe(201);
+  expect((await submitter.post('/api/auth/signup', { data: { email: submitterEmail, password: 'correct-horse-battery', givenName: `Private`, familyName: `Submitter ${suffix}` } })).status()).toBe(201);
   const submission = await (await submitter.post(`/api/submission-paths/${form.id}/submit`, { data: { works: [{ title: `Saltwater Evidence ${suffix}` }, { title: `Night Bus Evidence ${suffix}` }] }, headers: { 'Idempotency-Key': `review-${suffix}` } })).json() as { submission: { id: string } };
 
   const roundName = `Reader Round ${suffix}`;
@@ -59,7 +59,7 @@ test('A completed fixed-score review is shown as a read-only legacy record', asy
 test('A reviewer cannot discover an assignment owned by another account', async ({ page, baseURL }) => {
   const fixture = await reviewerFixture(page, baseURL);
   expect((await page.request.post('/api/auth/logout')).status()).toBe(200);
-  expect((await page.request.post('/api/auth/signup', { data: { email: `unassigned-${Date.now()}@example.com`, password: 'correct-horse-battery', displayName: 'Unassigned Reviewer' } })).status()).toBe(201);
+  expect((await page.request.post('/api/auth/signup', { data: { email: `unassigned-${Date.now()}@example.com`, password: 'correct-horse-battery', givenName: 'Unassigned', familyName: 'Reviewer' } })).status()).toBe(201);
   const response = await page.goto(`/reviews/${fixture.assignmentId}`);
   expect(response?.status()).toBe(404);
   await expect(page.locator('body')).not.toContainText(fixture.opportunityTitle);

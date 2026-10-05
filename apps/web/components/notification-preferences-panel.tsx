@@ -102,7 +102,7 @@ function DeadlinePreferences({ initial, features }: { initial: CreatorPlanningPr
   }
 
   return (
-    <section className="mt-6 border-t border-border pt-5" aria-labelledby="deadline-preferences-title">
+    <section className="border-t border-border pt-6" aria-labelledby="deadline-preferences-title">
       <h3 id="deadline-preferences-title" className="text-base font-semibold">Deadlines</h3>
       <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
         How Missa reminds you about the calls you save, and how much time you have to work on them.
@@ -230,133 +230,345 @@ function DeadlinePreferences({ initial, features }: { initial: CreatorPlanningPr
 }
 
 function timezoneOptions(selected?: string | null): string[] {
-  const zones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [];
+  const zones =
+    typeof Intl.supportedValuesOf === "function"
+      ? Intl.supportedValuesOf("timeZone")
+      : [];
   return selected && !zones.includes(selected) ? [selected, ...zones] : zones;
 }
 
+/** One labelled on/off setting with its explanation. */
+function SettingRow({
+  id,
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex min-h-16 items-center justify-between gap-6 border-b border-border py-3 last:border-b-0">
+      <label
+        htmlFor={id}
+        className="flex min-w-0 cursor-pointer flex-col gap-0.5"
+      >
+        <span className="text-sm font-semibold">{label}</span>
+        <span className="text-sm text-muted-foreground">{hint}</span>
+      </label>
+      <Switch id={id} checked={checked} onCheckedChange={onChange} />
+    </div>
+  );
+}
+
+/**
+ * Notification settings. `embedded` drops the card and heading so the panel
+ * can sit under a page's own section heading (Profile → Notifications).
+ */
 export function NotificationPreferencesPanel({
   initial,
+  embedded = false,
   initialPlanning,
   planFeatures = {},
 }: {
   initial: CreatorNotificationPreferences;
+  embedded?: boolean;
   /** Planning preferences loaded on the server; the Deadlines section is hidden without them. */
   initialPlanning?: CreatorPlanningPreferences | null;
   planFeatures?: DeadlinePlanFeatures;
 }) {
-  const request=useRef<{body:string;key:string}|null>(null);
+  const request = useRef<{ body: string; key: string } | null>(null);
   const [value, setValue] = useState(initial);
   const [saved, setSaved] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [stale, setStale] = useState(false);
   const dirty = JSON.stringify(value) !== JSON.stringify(saved);
-  const quietHoursOn = value.quietHoursStart != null && value.quietHoursEnd != null;
-  const toggle = (field: "inAppEnabled" | "emailEnabled" | "savedSearchEnabled" | "followEnabled" | "reminderEnabled", checked: boolean) =>
-    setValue((current) => ({ ...current, [field]: checked }));
+  const quietHoursOn =
+    value.quietHoursStart != null && value.quietHoursEnd != null;
+  const toggle = (
+    field:
+      | "inAppEnabled"
+      | "emailEnabled"
+      | "savedSearchEnabled"
+      | "followEnabled"
+      | "reminderEnabled",
+    checked: boolean,
+  ) => setValue((current) => ({ ...current, [field]: checked }));
   // Text settings save on their own; carry their result and the new revision
   // into both the draft and the saved copy so other unsaved edits survive.
   const applyTextSettings = (next: CreatorNotificationPreferences) => {
     const merge = (current: CreatorNotificationPreferences) => ({
       ...current,
-      smsEnabled: next.smsEnabled, smsPhone: next.smsPhone, smsPhoneVerifiedAt: next.smsPhoneVerifiedAt,
-      smsOptedOut: next.smsOptedOut, smsPlanEligible: next.smsPlanEligible, smsProviderState: next.smsProviderState,
+      smsEnabled: next.smsEnabled,
+      smsPhone: next.smsPhone,
+      smsPhoneVerifiedAt: next.smsPhoneVerifiedAt,
+      smsOptedOut: next.smsOptedOut,
+      smsPlanEligible: next.smsPlanEligible,
+      smsProviderState: next.smsProviderState,
       revision: next.revision,
     });
-    setValue(merge); setSaved(merge);
+    setValue(merge);
+    setSaved(merge);
   };
 
   async function save() {
-    setBusy(true); setMessage(""); setStale(false);
-    const body=JSON.stringify({ ...value, expectedRevision: saved.revision });
-    if(request.current?.body!==body)request.current={body,key:crypto.randomUUID()};
+    setBusy(true);
+    setMessage("");
+    setStale(false);
+    const body = JSON.stringify({ ...value, expectedRevision: saved.revision });
+    if (request.current?.body !== body)
+      request.current = { body, key: crypto.randomUUID() };
     try {
       const response = await fetch("/api/me/notification-preferences", {
         method: "PUT",
-        headers: { "content-type": "application/json", "Idempotency-Key": request.current.key },
+        headers: {
+          "content-type": "application/json",
+          "Idempotency-Key": request.current.key,
+        },
         body,
       });
-      const payload = await response.json().catch(() => ({})) as CreatorNotificationPreferences & { error?: string };
+      const payload = (await response
+        .json()
+        .catch(() => ({}))) as CreatorNotificationPreferences & {
+        error?: string;
+      };
       if (response.status === 409) {
         setStale(true);
-        throw new Error("These preferences changed in another session. Reload the latest settings before saving again.");
+        throw new Error(
+          "These preferences changed in another session. Reload the latest settings before saving again.",
+        );
       }
-      if (!response.ok) throw new Error(payload.error ?? "Preferences could not be saved");
-      request.current=null; setValue(payload); setSaved(payload); setMessage("Notification preferences saved.");
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Preferences could not be saved"); }
-    finally { setBusy(false); }
+      if (!response.ok)
+        throw new Error(payload.error ?? "Preferences could not be saved");
+      request.current = null;
+      setValue(payload);
+      setSaved(payload);
+      setMessage("Notification preferences saved.");
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Preferences could not be saved",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
 
-  return (
-    <section className="rounded-xl border border-border bg-card p-5" aria-labelledby="notification-preferences-title">
-      <div className="max-w-2xl">
-        <h2 id="notification-preferences-title" className="mt-1 text-lg font-semibold">Notification preferences</h2>
-        <p className="mt-1 text-sm leading-6 text-muted-foreground">Choose what you hear about and where it reaches you.</p>
-      </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        {([
-          ["inAppEnabled", "In-app updates"], ["emailEnabled", "Email delivery"],
-          ["savedSearchEnabled", "Saved-search matches"], ["followEnabled", "Organizations you follow"],
-          ["reminderEnabled", "Application and goal reminders"],
-        ] as const).map(([field, label]) => (
-          <label key={field} className="flex min-h-11 items-center gap-3 rounded-lg border border-border px-3 text-sm">
-            <Checkbox checked={value[field]} onCheckedChange={(checked) => toggle(field, checked === true)} />
-            {label}
-          </label>
+  const where = [
+    ["inAppEnabled", "In app", "Your Missa Inbox"],
+    ["emailEnabled", "Email", "Sent to your sign-in email"],
+  ] as const;
+  const what = [
+    [
+      "reminderEnabled",
+      "Application and goal reminders",
+      "Deadlines, start-by dates, check-ins, and goal pace",
+    ],
+    [
+      "savedSearchEnabled",
+      "Saved-search matches",
+      "New calls that fit a search you saved",
+    ],
+    [
+      "followEnabled",
+      "Organizations you follow",
+      "Their new calls and changes",
+    ],
+  ] as const;
+  const body = (
+    <div className="flex flex-col gap-8">
+      <section
+        aria-labelledby="notification-where-title"
+        className="flex flex-col"
+      >
+        <h3 id="notification-where-title" className="text-base font-semibold">
+          Where you hear
+        </h3>
+        {where.map(([field, label, hint]) => (
+          <SettingRow
+            key={field}
+            id={`notify-${field}`}
+            label={label}
+            hint={hint}
+            checked={value[field]}
+            onChange={(checked) => toggle(field, checked)}
+          />
         ))}
-        <label className="grid gap-1 text-sm">
-          <span className="font-medium">Weekly digest</span>
-          <NativeSelect value={value.digestCadence} onChange={(event) => setValue((current) => ({ ...current, digestCadence: event.target.value as CreatorNotificationPreferences["digestCadence"] }))}>
-            <option value="off">Off</option><option value="weekly">Sunday evening</option>
+      </section>
+      <section
+        aria-labelledby="notification-what-title"
+        className="flex flex-col"
+      >
+        <h3 id="notification-what-title" className="text-base font-semibold">
+          What you hear about
+        </h3>
+        {what.map(([field, label, hint]) => (
+          <SettingRow
+            key={field}
+            id={`notify-${field}`}
+            label={label}
+            hint={hint}
+            checked={value[field]}
+            onChange={(checked) => toggle(field, checked)}
+          />
+        ))}
+      </section>
+      <fieldset className="m-0 grid gap-4 border-0 p-0 sm:grid-cols-2">
+        <legend className="mb-2 text-base font-semibold">Timing</legend>
+        <label className="grid gap-2 text-sm">
+          <span className="font-semibold">Weekly digest</span>
+          <NativeSelect
+            value={value.digestCadence}
+            onChange={(event) =>
+              setValue((current) => ({
+                ...current,
+                digestCadence: event.target
+                  .value as CreatorNotificationPreferences["digestCadence"],
+              }))
+            }
+          >
+            <option value="off">Off</option>
+            <option value="weekly">Sunday evening</option>
           </NativeSelect>
         </label>
-      </div>
-      <fieldset className="mt-5 grid gap-3 sm:grid-cols-2">
-        <legend className="text-sm font-medium">Reminder timing</legend>
-        <label className="grid gap-1 text-sm sm:col-span-2">
-          <span>Timezone</span>
+        <label className="grid gap-2 text-sm">
+          <span className="font-semibold">Timezone</span>
           <NativeSelect
             value={value.timezone ?? ""}
-            onChange={(event) => setValue((current) => ({ ...current, timezone: event.target.value || null }))}
+            onChange={(event) =>
+              setValue((current) => ({
+                ...current,
+                timezone: event.target.value || null,
+              }))
+            }
           >
             <option value="">Use each reminder&apos;s own timezone</option>
-            {timezoneOptions(value.timezone).map((zone) => <option key={zone} value={zone}>{zone.replaceAll("_", " ")}</option>)}
+            {timezoneOptions(value.timezone).map((zone) => (
+              <option key={zone} value={zone}>
+                {zone.replaceAll("_", " ")}
+              </option>
+            ))}
           </NativeSelect>
         </label>
-        <label className="flex min-h-11 items-center gap-3 rounded-lg border border-border px-3 text-sm sm:col-span-2">
+        <label className="flex min-h-11 items-center gap-3 text-sm sm:col-span-2">
           <Checkbox
             checked={quietHoursOn}
             onCheckedChange={(checked) =>
-              setValue((current) => checked === true
-                ? { ...current, quietHoursStart: current.quietHoursStart ?? "21:00", quietHoursEnd: current.quietHoursEnd ?? "08:00" }
-                : { ...current, quietHoursStart: null, quietHoursEnd: null })}
+              setValue((current) =>
+                checked === true
+                  ? {
+                      ...current,
+                      quietHoursStart: current.quietHoursStart ?? "21:00",
+                      quietHoursEnd: current.quietHoursEnd ?? "08:00",
+                    }
+                  : { ...current, quietHoursStart: null, quietHoursEnd: null },
+              )
+            }
           />
           Hold reminders during quiet hours
         </label>
         {quietHoursOn ? (
           <>
-            <label className="grid gap-1 text-sm">
+            <label className="grid gap-2 text-sm">
               <span>Quiet from</span>
-              <Input type="time" value={value.quietHoursStart ?? ""} onChange={(event) => setValue((current) => ({ ...current, quietHoursStart: event.target.value || null }))} />
+              <Input
+                type="time"
+                value={value.quietHoursStart ?? ""}
+                onChange={(event) =>
+                  setValue((current) => ({
+                    ...current,
+                    quietHoursStart: event.target.value || null,
+                  }))
+                }
+              />
             </label>
-            <label className="grid gap-1 text-sm">
+            <label className="grid gap-2 text-sm">
               <span>Until</span>
-              <Input type="time" value={value.quietHoursEnd ?? ""} onChange={(event) => setValue((current) => ({ ...current, quietHoursEnd: event.target.value || null }))} />
+              <Input
+                type="time"
+                value={value.quietHoursEnd ?? ""}
+                onChange={(event) =>
+                  setValue((current) => ({
+                    ...current,
+                    quietHoursEnd: event.target.value || null,
+                  }))
+                }
+              />
             </label>
-            <p className="text-sm text-muted-foreground sm:col-span-2">Reminders due in this window arrive when it ends. A deadline reminder still arrives if the call would close first.</p>
+            <p className="text-sm text-muted-foreground sm:col-span-2">
+              Reminders due in this window arrive when it ends. A deadline
+              reminder still arrives if the call would close first.
+            </p>
           </>
         ) : null}
       </fieldset>
-      {value.providerState === "unavailable" && value.emailEnabled ? <p className="mt-3 text-sm text-muted-foreground">Email delivery is currently unavailable. Your in-app settings still apply.</p> : null}
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <Button type="button" disabled={!dirty || busy} onClick={() => void save()}>{busy ? "Saving…" : "Save notification preferences"}</Button>
-        {dirty ? <Button type="button" variant="ghost" onClick={() => setValue(saved)}>Discard changes</Button> : null}
-        <p role="status" aria-live="polite" className="text-sm text-muted-foreground">{message}</p>
-        {stale ? <Button type="button" variant="outline" onClick={() => window.location.reload()}>Reload latest preferences</Button> : null}
+      {value.providerState === "unavailable" && value.emailEnabled ? (
+        <p className="text-sm text-muted-foreground">
+          Email delivery is currently unavailable. Your in-app settings still
+          apply.
+        </p>
+      ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          disabled={!dirty || busy}
+          onClick={() => void save()}
+        >
+          {busy ? "Saving…" : "Save notification preferences"}
+        </Button>
+        {dirty ? (
+          <Button type="button" variant="ghost" onClick={() => setValue(saved)}>
+            Discard changes
+          </Button>
+        ) : null}
+        <p
+          role="status"
+          aria-live="polite"
+          className="text-sm text-muted-foreground"
+        >
+          {message}
+        </p>
+        {stale ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => window.location.reload()}
+          >
+            Reload latest preferences
+          </Button>
+        ) : null}
       </div>
-      {/* Saves on its own, so it sits after the form's save button. */}
+      {/* Text reminders and deadline settings save on their own, so they sit after the form's save button. */}
       <TextRemindersSettings preferences={value} onPreferencesChange={applyTextSettings} />
-      {initialPlanning ? <DeadlinePreferences initial={initialPlanning} features={planFeatures} /> : null}
+      {initialPlanning ? (
+        <DeadlinePreferences initial={initialPlanning} features={planFeatures} />
+      ) : null}
+    </div>
+  );
+  if (embedded) return body;
+  return (
+    <section
+      className="rounded-xl border border-border bg-card p-5"
+      aria-labelledby="notification-preferences-title"
+    >
+      <div className="mb-6 max-w-2xl">
+        <h2
+          id="notification-preferences-title"
+          className="mt-1 text-lg font-semibold"
+        >
+          Notification preferences
+        </h2>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">
+          Choose what you hear about and where it reaches you.
+        </p>
+      </div>
+      {body}
     </section>
   );
 }
