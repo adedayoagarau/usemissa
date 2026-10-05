@@ -16,8 +16,14 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { EmailReviewQueue } from "@/components/email-review-queue";
-import { NotificationPreferencesPanel } from "@/components/notification-preferences-panel";
-import type { CreatorNotificationPreferences } from "@missa/radar-adapters";
+import {
+  NotificationPreferencesPanel,
+  type DeadlinePlanFeatures,
+} from "@/components/notification-preferences-panel";
+import type {
+  CreatorNotificationPreferences,
+  CreatorPlanningPreferences,
+} from "@missa/radar-adapters";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -93,7 +99,16 @@ function iconFor(item: InboxProductItem) {
     return <CircleCheck aria-hidden="true" />;
   if (item.kind === "submission-receipt")
     return <FileCheck2 aria-hidden="true" />;
-  if (item.kind === "deadline-reminder" || item.kind === "closing-soon")
+  if (
+    [
+      "deadline-reminder",
+      "closing-soon",
+      "deadline-day",
+      "tier-ending",
+      "milestone-due",
+      "opens-soon",
+    ].includes(item.kind)
+  )
     return <CalendarClock aria-hidden="true" />;
   if (item.group === "changes") return <BellRing aria-hidden="true" />;
   if (item.group === "discovery") return <SearchCheck aria-hidden="true" />;
@@ -113,10 +128,16 @@ function dateLabel(value: string): string {
 export function InboxProduct({
   initialItems,
   initialPreferences,
+  initialPlanning,
+  planFeatures,
   initialView = "briefing",
 }: {
   initialItems: InboxProductItem[];
   initialPreferences?: CreatorNotificationPreferences;
+  /** Deadline settings for the preferences panel. */
+  initialPlanning?: CreatorPlanningPreferences | null;
+  /** Which plan features the creator has, for the Deadlines section. */
+  planFeatures?: DeadlinePlanFeatures;
   initialView?: InboxView;
 }) {
   const router = useRouter();
@@ -254,7 +275,11 @@ export function InboxProduct({
         </header>
         {initialPreferences ? (
           <CollapsibleContent className="pt-6">
-            <NotificationPreferencesPanel initial={initialPreferences} />
+            <NotificationPreferencesPanel
+              initial={initialPreferences}
+              initialPlanning={initialPlanning}
+              planFeatures={planFeatures}
+            />
           </CollapsibleContent>
         ) : null}
       </Collapsible>

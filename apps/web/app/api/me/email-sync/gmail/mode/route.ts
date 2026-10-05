@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getSessionAccount } from '@/lib/auth';
 import { getEngine, persistRadar } from '@/lib/engine';
+import { gmailSyncUnavailable } from '@/lib/email-integrations';
 
 function json(value: unknown, status = 200) { return NextResponse.json(value, { status, headers: { 'Cache-Control': 'private, no-store' } }); }
 
-export async function POST(request: Request) {
+export async function POST(request: Request) { const unavailable = gmailSyncUnavailable(); if (unavailable) return unavailable;
   const session = await getSessionAccount(request.headers.get('cookie'));
   if (!session?.account.userId) return json({ error: 'Not authenticated' }, 401);
   const body = await request.json().catch(() => ({}));

@@ -15,6 +15,7 @@ export const metadata = pageMetadata({
   description:
     "Create a free Missa account to save opportunities, track deadlines, and prepare applications with the official source in view.",
   path: "/signup",
+  noIndex: true,
 });
 
 export default async function SignupPage({
@@ -27,7 +28,10 @@ export default async function SignupPage({
     cookieStore.get(SESSION_COOKIE)?.value,
   );
   const { next, invite } = await searchParams;
-  const redirectTo = next ? safeAuthRedirect(next) : "/onboarding";
+  // New accounts continue to setup unless a task brought them here; anyone
+  // who switches to log in returns to the same task or to Opportunities.
+  const loginRedirectTo = safeAuthRedirect(next);
+  const redirectTo = next ? loginRedirectTo : "/onboarding";
   const firstSaveToken = cookieStore.get(FIRST_SAVE_INTENT_COOKIE)?.value;
   const firstSaveIntent = verifyFirstSaveIntent(firstSaveToken);
   if (session && !firstSaveIntent) redirect(redirectTo);
@@ -38,7 +42,8 @@ export default async function SignupPage({
   return (
     <AuthForm
       initialMode="signup"
-      redirectTo={redirectTo}
+      redirectTo={loginRedirectTo}
+      signupRedirectTo={redirectTo}
       firstSaveContext={
         firstSaveIntent ? firstSaveContext(firstSaveIntent) : undefined
       }

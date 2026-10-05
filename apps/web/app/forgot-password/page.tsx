@@ -1,121 +1,165 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useState, useTransition } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { MissaWordmark } from '@/components/missa-wordmark';
+import Link from "next/link";
+import { useState, useTransition } from "react";
+import { AlertCircle, ArrowLeft, MailCheck } from "lucide-react";
+import { AuthShell } from "@/components/auth-shell";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!/^\S+@\S+\.\S+$/u.test(email.trim())) {
+      setFieldError("Enter the email address you use for Missa.");
+      document.getElementById("email")?.focus();
+      return;
+    }
 
     setError(null);
+    setFieldError(null);
     startTransition(async () => {
       try {
-        const response = await fetch('/api/auth/forgot-password', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
+        const response = await fetch("/api/auth/forgot-password", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
           body: JSON.stringify({ email: email.trim() }),
         });
 
         if (!response.ok) {
-          const body = (await response.json().catch(() => ({}))) as { error?: string };
-          setError(body.error || 'Unable to process your request. Please try again.');
+          const body = (await response.json().catch(() => ({}))) as {
+            error?: string;
+          };
+          setError(
+            body.error || "We could not send the link. Please try again.",
+          );
           return;
         }
 
         setSubmitted(true);
       } catch {
-        setError('A network error occurred. Please check your connection.');
+        setError(
+          "A network error occurred. Check your connection and try again.",
+        );
       }
     });
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center mb-6">
-          <MissaWordmark className="h-6 w-auto text-foreground" />
-        </div>
-        <h1 className="text-center text-2xl font-serif font-medium text-foreground">
-          Reset your password
-        </h1>
-        <p className="mt-2 text-center text-sm text-muted-foreground max-w-xs mx-auto">
-          Enter your account email and we will send you a secure link to reset your password.
-        </p>
-      </div>
+    <AuthShell visual="recovery">
+      {submitted ? (
+        <section
+          aria-labelledby="recovery-heading"
+          className="animate-in duration-200 fade-in-0 motion-reduce:animate-none"
+        >
+          <span
+            aria-hidden="true"
+            className="mb-6 flex size-11 items-center justify-center rounded-full bg-accent-tint text-primary"
+          >
+            <MailCheck className="size-5" />
+          </span>
+          <h1
+            id="recovery-heading"
+            className="font-heading text-4xl leading-[1.05] tracking-tight text-balance text-foreground"
+          >
+            Check your inbox
+          </h1>
+          <p className="mt-3 text-base leading-relaxed text-muted-foreground">
+            If an account matches{" "}
+            <strong className="font-medium text-foreground">
+              {email.trim()}
+            </strong>
+            , you will receive a link to reset your password within a few
+            minutes.
+          </p>
+          <Link
+            href="/login"
+            className={buttonVariants({ size: "lg", className: "mt-8 w-full" })}
+          >
+            Return to log in
+          </Link>
+          <p className="mt-4 text-center text-sm text-muted-foreground">
+            No email?{" "}
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline"
+              onClick={() => setSubmitted(false)}
+            >
+              Try another address
+            </button>
+          </p>
+        </section>
+      ) : (
+        <section aria-labelledby="recovery-heading">
+          <h1
+            id="recovery-heading"
+            className="font-heading text-4xl leading-[1.05] tracking-tight text-balance text-foreground"
+          >
+            Reset your password
+          </h1>
+          <p className="mt-3 text-base leading-relaxed text-muted-foreground">
+            Enter your account email and we will send you a secure link.
+          </p>
+          <form onSubmit={handleSubmit} className="mt-8 grid gap-5" noValidate>
+            <Field data-invalid={Boolean(fieldError)}>
+              <FieldLabel htmlFor="email">Email address</FieldLabel>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                inputMode="email"
+                required
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setFieldError(null);
+                }}
+                placeholder="you@example.com"
+                aria-invalid={Boolean(fieldError)}
+                aria-describedby={fieldError ? "email-error" : undefined}
+              />
+              {fieldError ? (
+                <FieldError id="email-error">{fieldError}</FieldError>
+              ) : null}
+            </Field>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
-        <div className="bg-card py-8 px-6 sm:px-10 border border-border rounded-xl shadow-sm">
-          {submitted ? (
-            <div className="space-y-4 text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary mb-2">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <h2 className="text-lg font-medium text-foreground">Check your inbox</h2>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                If an account matches <span className="font-medium text-foreground">{email}</span>, you will receive an email with instructions to reset your password within the next few minutes.
-              </p>
-              <div className="pt-4">
-                <Link
-                  href="/login"
-                  className="inline-block w-full text-center py-2.5 px-4 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors"
-                >
-                  Return to log in
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {error && (
-                <div className="p-3 text-sm rounded-lg bg-destructive/10 border border-destructive/20 text-destructive">
-                  {error}
-                </div>
-              )}
+            {error ? (
+              <Alert variant="destructive">
+                <AlertCircle aria-hidden="true" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            ) : null}
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1.5">
-                  Email address
-                </label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="h-11"
-                />
-              </div>
-
-              <Button
-                type="submit"
-                disabled={isPending}
-                className="w-full"
-              >
-                {isPending ? 'Sending link…' : 'Send reset link'}
-              </Button>
-
-              <div className="text-center pt-2">
-                <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground">
-                  Remember your password? Log in
-                </Link>
-              </div>
-            </form>
-          )}
-        </div>
-      </div>
-    </div>
+            <Button
+              type="submit"
+              size="lg"
+              disabled={isPending}
+              aria-busy={isPending}
+              className="w-full"
+            >
+              {isPending ? <Spinner aria-hidden="true" /> : null}
+              {isPending ? "Sending link…" : "Send reset link"}
+            </Button>
+          </form>
+          <Link
+            href="/login"
+            className="mt-6 inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft aria-hidden="true" className="size-4" />
+            Back to log in
+          </Link>
+        </section>
+      )}
+    </AuthShell>
   );
 }

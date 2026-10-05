@@ -49,6 +49,51 @@ export function verifySessionToken(token: string, secret: string, now: Date): Se
   return payload;
 }
 
+/** Only the field revocation needs, so callers can pass any account shape. */
+export interface SessionRevocationState {
+  sessionsValidAfter?: string;
+}
+
+/**
+ * Earliest issue time (epoch ms) an account still accepts. 0 means sessions
+ * were never revoked. An unreadable boundary fails closed (no session is
+ * accepted) until the next revocation writes a valid one.
+ */
+export function sessionRevocationCutoff(account: SessionRevocationState): number {
+  if (!account.sessionsValidAfter) return 0;
+  const cutoff = Date.parse(account.sessionsValidAfter);
+  return Number.isFinite(cutoff) ? cutoff : Number.POSITIVE_INFINITY;
+}
+
+/**
+ * True when a session issued at `issuedAt` is not older than the account's
+ * revocation boundary. `issuedAt` accepts the session token's epoch-ms
+ * `issuedAt` as well as an auth provider's `createdAt` (Date or ISO string).
+ * Tokens issued before revocation existed carry `issuedAt` already, so they
+ * stay valid until the account's first revocation.
+ */
+export function isSessionIssuedAfterRevocation(issuedAt: unknown, account: SessionRevocationState): boolean {
+  const cutoff = sessionRevocationCutoff(account);
+  if (cutoff === 0) return true;
+  const issued =
+    typeof issuedAt === 'number' ? issuedAt
+      : issuedAt instanceof Date ? issuedAt.getTime()
+        : typeof issuedAt === 'string' ? Date.parse(issuedAt)
+          : Number.NaN;
+  return Number.isFinite(issued) && issued >= cutoff;
+}
+
+/**
+ * Moves the account's revocation boundary to `now` (never backwards), which
+ * invalidates every session issued earlier. Mutates and returns `account`.
+ */
+export function revokeAccountSessions<T extends SessionRevocationState>(account: T, now: Date): T {
+  const current = sessionRevocationCutoff(account);
+  const next = Number.isFinite(current) ? Math.max(current, now.getTime()) : now.getTime();
+  account.sessionsValidAfter = new Date(next).toISOString();
+  return account;
+}
+
 export interface FeedTokenPayload {
   userId: string;
 }

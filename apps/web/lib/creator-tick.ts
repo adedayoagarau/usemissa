@@ -1,26 +1,78 @@
-import { PostgresCreatorCalendarRepository, creatorPoolFor } from '@missa/radar-adapters';
+import { PostgresCreatorCalendarRepository, creatorPoolFor, recordWorkerTick } from '@missa/radar-adapters';
 import { tickCreatorReminders } from './creator-reminders';
 import { deliverCreatorReminderEmails } from './creator-reminder-email';
+import { deliverCreatorReminderTexts } from './creator-reminder-text';
 import { deliverWeeklyDigests } from './weekly-digest-delivery';
 import { tickGoals } from './goal-engine';
 import { deliverGoalCheckInEmails } from './goal-checkin-email';
 import { tickCreatorFollowing } from './creator-following';
+import { calendarSyncTickLimits, drainCalendarSyncJobs } from './calendar-sync';
+import { mirrorCalendarProviderTick } from './calendar-provider-mirror';
+import { recalculateObligationChains } from './deadline-planning';
+import { refreshCycleForecasts, tickOpeningAlerts } from './deadline-cycles';
+import { tickDeadlineReminders } from './deadline-reminders';
+import { recordDeadlineRiskFromEnv } from './creator-deadline-risk';
+import { completeMissedSaveFollowUps } from './tracker-save-hooks';
 
 /**
- * One creator scheduling pass, shared by the Vercel cron route and the Railway
- * creator worker so both run the same steps in the same order. Deadlines come
- * first so this pass's reminders are recalculated against the current source.
+ * One creator scheduling pass, shared by the /api/cron/creator route and the
+ * Railway creator worker so both run the same steps in the same order.
+ * Deadlines come first so this pass's reminders are recalculated against the
+ * current source; texts for Plus creators follow the reminder emails; calendar
+ * provider export runs last within its own bounded batch and time budget so a
+ * slow provider cannot delay reminder email.
+ *
+ * Every pass (successful or not) updates the `creator-worker` liveness row in
+ * radar_agent_runs, which readiness and the admin worker-lane table read.
  */
 export async function runCreatorTick(accountId?: string) {
-  const deadlines = process.env.DATABASE_URL
-    ? await new PostgresCreatorCalendarRepository(creatorPoolFor(process.env.DATABASE_URL)).reconcileOfficialDeadlines(accountId)
-    : undefined;
-  const reminders = await tickCreatorReminders(accountId);
-  const reminderEmails = await deliverCreatorReminderEmails();
-  // The digest covers every due account, so a single-account run (--account) skips it.
-  const weeklyDigests = accountId ? undefined : await deliverWeeklyDigests();
-  const goals = await tickGoals(accountId);
-  const goalEmails = await deliverGoalCheckInEmails();
-  const following = await tickCreatorFollowing(accountId);
-  return { deadlines, reminders, reminderEmails, weeklyDigests, goals, goalEmails, following };
+  const startedAt = new Date();
+  const pool = process.env.DATABASE_URL ? creatorPoolFor(process.env.DATABASE_URL) : undefined;
+  try {
+    const calendar = pool ? new PostgresCreatorCalendarRepository(pool) : undefined;
+    // Saves whose follow-up was interrupted get their official deadline and
+    // default reminders first, so the sweep below covers them too.
+    const missedSaves = calendar ? await completeMissedSaveFollowUps(calendar, accountId) : undefined;
+    const deadlines = calendar ? await calendar.reconcileOfficialDeadlines(accountId) : undefined;
+    // Obligations follow the deadlines the sweep just refreshed; forecasts and
+    // opening alerts come next; status-aware deadline reminders are scheduled
+    // before the reminder tick delivers whatever is due.
+    const chains = await recalculateObligationChains(accountId);
+    const forecasts = accountId ? undefined : await refreshCycleForecasts();
+    const openings = await tickOpeningAlerts(accountId);
+    const deadlineReminders = await tickDeadlineReminders(accountId);
+    const reminders = await tickCreatorReminders(accountId);
+    const reminderEmails = await deliverCreatorReminderEmails();
+    const reminderTexts = await deliverCreatorReminderTexts();
+    // The digest covers every due account, so a single-account run (--account) skips it.
+    const weeklyDigests = accountId ? undefined : await deliverWeeklyDigests();
+    const goals = await tickGoals(accountId);
+    const goalEmails = await deliverGoalCheckInEmails();
+    const following = await tickCreatorFollowing(accountId);
+    // Plan steps, stages, tier closes and forecasts are mirrored into calendar
+    // events for connected accounts just before the drain delivers them.
+    const calendarMirror = await mirrorCalendarProviderTick(pool, accountId);
+    const calendarSync = calendar
+      ? await drainCalendarSyncJobs(calendar, { accountId, ...calendarSyncTickLimits() })
+      : undefined;
+    // Shadow decisions only (scope `nudges`); skipped unless Jev may see creator data.
+    const deadlineRisk = pool ? await recordDeadlineRiskFromEnv(pool, accountId) : undefined;
+    const result = { missedSaves, deadlines, chains, forecasts, openings, deadlineReminders, reminders, reminderEmails, reminderTexts, weeklyDigests, goals, goalEmails, following, calendarMirror, calendarSync, ...(deadlineRisk ? { deadlineRisk } : {}) };
+    if (pool)
+      await recordWorkerTick(pool, 'creator-worker', {
+        status: 'completed',
+        startedAt,
+        inputCount: (reminders.processed ?? 0) + (goals.processed ?? 0) + (following.processed ?? 0) + (calendarSync ? calendarSync.processed + calendarSync.failed + calendarSync.reconnectRequired : 0),
+        outputCount: reminderEmails.sent + reminderTexts.sent + (calendarSync?.processed ?? 0),
+      });
+    return result;
+  } catch (error) {
+    if (pool)
+      await recordWorkerTick(pool, 'creator-worker', {
+        status: 'failed',
+        startedAt,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    throw error;
+  }
 }

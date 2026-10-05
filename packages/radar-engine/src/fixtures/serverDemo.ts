@@ -34,13 +34,43 @@ export interface ServerDemoWorld {
   };
 }
 
+export type DemoSeedEnv = Record<string, string | undefined>;
+
+/**
+ * The demo world signs up accounts with published passwords (including an
+ * admin), so it must never back a production deployment.
+ *
+ * Allowed: development, test, and unset NODE_ENV (local CLI, unit tests,
+ * Playwright's `next dev` server). Also allowed during `next build` outside a
+ * Vercel production deployment, because CI builds without a database, and when
+ * an operator sets MISSA_ALLOW_DEMO_WORLD=1 for a local `next start`. Never
+ * allowed when VERCEL_ENV is production.
+ */
+export function demoSeedAllowed(env: DemoSeedEnv = process.env): boolean {
+  if (env.VERCEL_ENV === 'production') return false;
+  if (env.NODE_ENV !== 'production') return true;
+  if (env.NEXT_PHASE === 'phase-production-build') return true;
+  return env.MISSA_ALLOW_DEMO_WORLD === '1';
+}
+
+export class DemoSeedRefusedError extends Error {
+  constructor() {
+    super(
+      'Refusing to build the demo world in production: it seeds accounts with published passwords. ' +
+        'Set DATABASE_URL so the app uses Postgres.',
+    );
+    this.name = 'DemoSeedRefusedError';
+  }
+}
+
 /**
  * Demo world for the live server: same cast as the test fixtures, but every
  * date is generated relative to "today" so the loop is always alive —
  * one call closing within the reminder ladder, one conflicted grant, one
  * suspicious contest, one festival, one call opening soon.
  */
-export function buildServerDemoWorld(clock: Clock = systemClock): ServerDemoWorld {
+export function buildServerDemoWorld(clock: Clock = systemClock, env: DemoSeedEnv = process.env): ServerDemoWorld {
+  if (!demoSeedAllowed(env)) throw new DemoSeedRefusedError();
   const today = isoDateOf(clock.now());
   const fetcher = new FixtureFetcher();
   const engine = new RadarEngine({ fetcher, clock });

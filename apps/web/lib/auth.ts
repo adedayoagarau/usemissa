@@ -1,8 +1,15 @@
-import { verifySessionToken, createSessionToken, membershipsFor, type Account } from '@missa/radar-engine';
+import {
+  verifySessionToken,
+  createSessionToken,
+  isSessionIssuedAfterRevocation,
+  membershipsFor,
+  type Account,
+} from '@missa/radar-engine';
 import { randomBytes } from 'node:crypto';
 import { getEngine } from './engine';
 import { getNeonSessionAccount } from './neon-auth/account';
 import { getCreatorAccountRepository } from './creatorRepositories';
+import { SIGNED_IN_HINT_COOKIE } from './signedInHint';
 
 export const SESSION_COOKIE = 'missa_session';
 export const SESSION_MAX_AGE_SECONDS = 30 * 24 * 3_600;
@@ -19,6 +26,25 @@ export function sessionCookieOptions(maxAge = SESSION_MAX_AGE_SECONDS) {
     path: '/',
     maxAge,
   };
+}
+
+type CookieWriter = {
+  cookies: { set(name: string, value: string, options: ReturnType<typeof sessionCookieOptions>): unknown };
+};
+
+/**
+ * Issue the session cookie together with its readable signed-in hint, which
+ * lets pages served from the CDN show the right header (lib/signedInHint.ts).
+ */
+export function setSessionCookie(response: CookieWriter, token: string): void {
+  response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
+  response.cookies.set(SIGNED_IN_HINT_COOKIE, '1', { ...sessionCookieOptions(), httpOnly: false });
+}
+
+/** Clear the session cookie and its signed-in hint. */
+export function clearSessionCookie(response: CookieWriter): void {
+  response.cookies.set(SESSION_COOKIE, '', sessionCookieOptions(0));
+  response.cookies.set(SIGNED_IN_HINT_COOKIE, '', { ...sessionCookieOptions(0), httpOnly: false });
 }
 
 /** Same cookie name/verification as packages/radar-engine/src/server/server.ts's
@@ -65,16 +91,18 @@ export async function getSessionAccountFromToken(token: string | undefined): Pro
     const payload = verifySessionToken(token, sessionSecret(), new Date());
     if (!payload) return getNeonSessionAccount();
 
+    // The account read below is the only per-request lookup; the revocation
+    // check reuses it rather than consulting a session store.
     const creatorAccounts = getCreatorAccountRepository();
     if (creatorAccounts) {
       const account = await creatorAccounts.account(payload.accountId);
-      if (!account || account.active === false) return getNeonSessionAccount();
+      if (!isUsableSessionAccount(account, payload.issuedAt)) return getNeonSessionAccount();
       return { account, memberships: await creatorAccounts.memberships(account.id) };
     }
 
     const engine = await getEngine();
     const account = engine.store.accounts.get(payload.accountId);
-    if (!account || account.active === false) return getNeonSessionAccount();
+    if (!isUsableSessionAccount(account, payload.issuedAt)) return getNeonSessionAccount();
 
     return { account, memberships: membershipsFor(engine.store, account.id) };
   } catch {
@@ -83,6 +111,12 @@ export async function getSessionAccountFromToken(token: string | undefined): Pro
     // request or an information-bearing error response.
     return getNeonSessionAccount();
   }
+}
+
+/** An account accepts a session only while it is active and the session was
+ * issued at or after its revocation boundary (Account.sessionsValidAfter). */
+export function isUsableSessionAccount(account: Account | undefined, issuedAt: unknown): account is Account {
+  return Boolean(account && account.active !== false && isSessionIssuedAfterRevocation(issuedAt, account));
 }
 
 /** Issues a new signed session token for an account -- used by the (minimal,

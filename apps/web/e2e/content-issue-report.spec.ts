@@ -15,7 +15,8 @@ test("a creator can send a journal correction to the review queue", async ({ pag
     data: {
       email: `content-report-${Date.now()}@example.com`,
       password: "correct-horse-battery",
-      displayName: "Correction Reporter",
+      givenName: "Correction",
+      familyName: "Reporter",
     },
   });
   expect(signup.status()).toBe(201);

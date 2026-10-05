@@ -7,19 +7,31 @@ import {
   Bot,
   BarChart3,
   Building2,
+  Contact,
   CreditCard,
   ChevronDown,
+  CircleDollarSign,
   FileText,
+  Filter,
+  Globe,
   FileClock,
+  HeartPulse,
   LayoutDashboard,
   LifeBuoy,
   ListChecks,
+  LogOut,
   Mail,
+  MailCheck,
   Menu,
   Radar,
   Settings2,
+  Share2,
   ShieldCheck,
+  Sparkles,
+  Table2,
   Tags,
+  TrendingUp,
+  UserPlus,
   Users,
 } from "lucide-react";
 import {
@@ -37,6 +49,8 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { MissaWordmark } from "@/components/missa-wordmark";
+import { rememberSignedIn } from "@/lib/signedInHint";
+import { AdminCommandPalette, type PaletteLink } from "@/components/admin-command-palette";
 
 type NavItem = {
   href: string;
@@ -48,53 +62,65 @@ type NavItem = {
 };
 
 const overviewLinks: NavItem[] = [
-  { href: "/admin", label: "Control Room", icon: LayoutDashboard, exact: true },
-  { href: "/admin/operations", label: "Operations", icon: ListChecks },
-  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/admin/operations", label: "Worklist", icon: ListChecks },
+  { href: "/admin/data", label: "Data", icon: Table2 },
 ];
 
-const sourceAutomationLinks: NavItem[] = [
-  { href: "/admin/radar", label: "Opportunity sources", icon: Radar },
-  { href: "/admin/ingestion-v2", label: "Ingestion v2", icon: Activity },
-  { href: "/admin/gary", label: "Gary", icon: Bot },
-  { href: "/admin/agents", label: "Agents", icon: Bot },
+const analyticsLinks: NavItem[] = [
+  { href: "/admin/traffic", label: "Traffic", icon: Globe },
+  { href: "/admin/growth", label: "Sign-ups & users", icon: TrendingUp },
+  { href: "/admin/funnels", label: "Funnels", icon: Filter },
+  { href: "/admin/revenue", label: "Revenue", icon: CircleDollarSign },
+  { href: "/admin/health", label: "Health", icon: HeartPulse },
+  { href: "/admin/metrics", label: "Share metrics", icon: Share2 },
+  { href: "/admin/analytics", label: "Product events", icon: BarChart3 },
 ];
 
-const contentTaxonomyLinks: NavItem[] = [
+const peopleLinks: NavItem[] = [
+  { href: "/admin/customers", label: "Customers", icon: Users },
+  { href: "/admin/organizations", label: "Organizations", icon: Building2 },
+  { href: "/admin/crm", label: "CRM", icon: Contact },
+  { href: "/admin/waitlist", label: "Waitlist", icon: UserPlus },
+  { href: "/admin/support", label: "Support", icon: LifeBuoy },
+  { href: "/admin/messaging", label: "Messaging", icon: Mail },
+];
+
+const contentLinks: NavItem[] = [
   { href: "/admin/content", label: "Content", icon: FileText },
+  { href: "/admin/radar", label: "Opportunity sources", icon: Radar },
   { href: "/admin/taxonomy", label: "Taxonomy", icon: Tags },
 ];
 
-const customerOrganizationLinks: NavItem[] = [
-  { href: "/admin/customers", label: "Customers", icon: Users },
-  { href: "/admin/organizations", label: "Organizations", icon: Building2 },
-  { href: "/admin/crm", label: "CRM", icon: Users },
-  { href: "/admin/waitlist", label: "Waitlist", icon: Mail },
+const automationLinks: NavItem[] = [
+  { href: "/admin/agents", label: "Agents", icon: Bot },
+  { href: "/admin/gary", label: "Gary", icon: Sparkles },
+  { href: "/admin/ingestion-v2", label: "Ingestion v2", icon: Activity },
 ];
 
-const communicationSupportLinks: NavItem[] = [
-  { href: "/admin/messaging", label: "Messaging", icon: Mail },
-  { href: "/admin/support", label: "Support", icon: LifeBuoy },
-  { href: "/admin/email-previews", label: "Email previews", icon: Mail },
-];
-
-const financeGovernanceLinks: NavItem[] = [
+const moneyLinks: NavItem[] = [
   { href: "/admin/billing", label: "Billing", icon: CreditCard },
-  { href: "/admin/governance", label: "Governance", icon: ShieldCheck },
 ];
 
-const diagnosticLinks: NavItem[] = [
+const advancedLinks: NavItem[] = [
+  { href: "/admin/email-previews", label: "Email previews", icon: MailCheck },
+  { href: "/admin/governance", label: "Governance", icon: ShieldCheck },
   { href: "/admin/system", label: "System", icon: Settings2 },
-  { href: "/admin/audit", label: "Audit", icon: FileClock },
+  { href: "/admin/audit", label: "Audit log", icon: FileClock },
 ];
 
 const navigationGroups: Array<{ label: string; items: NavItem[] }> = [
   { label: "Overview", items: overviewLinks },
-  { label: "Sources & automation", items: sourceAutomationLinks },
-  { label: "Content & taxonomy", items: contentTaxonomyLinks },
-  { label: "Customers & organizations", items: customerOrganizationLinks },
-  { label: "Communication & support", items: communicationSupportLinks },
-  { label: "Finance & governance", items: financeGovernanceLinks },
+  { label: "Analytics", items: analyticsLinks },
+  { label: "People", items: peopleLinks },
+  { label: "Content & sources", items: contentLinks },
+  { label: "Automation", items: automationLinks },
+  { label: "Money", items: moneyLinks },
+];
+
+const paletteLinks: PaletteLink[] = [
+  ...navigationGroups.flatMap((group) => group.items.map((item) => ({ href: item.href, label: item.label, group: group.label, icon: item.icon }))),
+  ...advancedLinks.map((item) => ({ href: item.href, label: item.label, group: "Advanced", icon: item.icon })),
 ];
 
 function isActive(pathname: string, search: string, item: NavItem): boolean {
@@ -126,7 +152,7 @@ function NavLink({
     <Link
       href={item.href}
       aria-current={active ? "page" : undefined}
-      className={`group flex min-h-10 items-center gap-3 border-l-2 px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${active ? "border-primary bg-accent font-medium text-primary" : "border-transparent text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground"}`}
+      className={`group flex min-h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${active ? "bg-primary/10 font-semibold text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
     >
       <Icon
         className="size-4 shrink-0"
@@ -142,26 +168,31 @@ function Navigation({
   pathname,
   search,
   email,
+  shortcut,
 }: {
   pathname: string;
   search: string;
   email: string;
+  shortcut: boolean;
 }) {
-  const diagnosticsActive = diagnosticLinks.some((item) =>
+  const advancedActive = advancedLinks.some((item) =>
     isActive(pathname, search, item),
   );
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex h-full min-h-full flex-col">
       <div className="border-b border-border px-5 py-5">
         <Link
           href="/admin"
           className="block focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
         >
-          <MissaWordmark href={null} size="compact" className="text-foreground" />
-          <span className="mt-0.5 block text-xs text-muted-foreground">
-            Platform Admin
+          <MissaWordmark href={null} size="app" className="text-foreground" />
+          <span className="mt-2 block font-heading text-base leading-none text-muted-foreground">
+            Admin
           </span>
         </Link>
+      </div>
+      <div className="px-3 pt-4">
+        <AdminCommandPalette links={paletteLinks} shortcut={shortcut} />
       </div>
       <nav
         aria-label="Platform admin navigation"
@@ -169,7 +200,7 @@ function Navigation({
       >
         {navigationGroups.map((group) => (
           <div key={group.label} className="space-y-1">
-            <p className="px-3 pb-1 text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase">
+            <p className="px-3 pb-1.5 text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
               {group.label}
             </p>
             {group.items.map((item) => (
@@ -182,18 +213,18 @@ function Navigation({
             ))}
           </div>
         ))}
-        <Collapsible defaultOpen={diagnosticsActive} className="space-y-1">
+        <Collapsible defaultOpen={advancedActive} className="space-y-1">
           <CollapsibleTrigger
             render={<Button type="button" variant="ghost" />}
           >
-            Diagnostics &amp; audit
+            Advanced
             <ChevronDown
               className="size-3.5 shrink-0 transition-transform in-data-open:rotate-180"
               aria-hidden="true"
             />
           </CollapsibleTrigger>
           <CollapsibleContent className="space-y-1">
-            {diagnosticLinks.map((item) => (
+            {advancedLinks.map((item) => (
               <NavLink
                 key={item.href}
                 item={item}
@@ -214,7 +245,7 @@ function Navigation({
           </span>
           <div className="min-w-0">
             <p className="truncate text-xs font-medium text-foreground">
-              Platform operator
+              Admin
             </p>
             <p className="truncate text-[11px] text-muted-foreground">
               {email}
@@ -226,12 +257,13 @@ function Navigation({
             type="button"
             onClick={() => {
               void fetch("/api/auth/logout", { method: "POST" }).then(() => {
+                rememberSignedIn(false);
                 window.location.assign("/login");
               });
             }}
             className="flex min-h-9 w-full items-center gap-2 text-left text-xs text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
-            <Activity className="size-3.5" aria-hidden="true" />
+            <LogOut className="size-3.5" aria-hidden="true" />
             Sign out
           </button>
         </div>
@@ -246,8 +278,8 @@ export function AdminShellNav({ email }: { email: string }) {
   const search = searchParams.toString();
   return (
     <>
-      <aside className="hidden min-h-screen w-56 shrink-0 border-r border-border bg-card lg:block">
-        <Navigation pathname={pathname} search={search} email={email} />
+      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 self-start overflow-hidden border-e border-border bg-card lg:block">
+        <Navigation pathname={pathname} search={search} email={email} shortcut />
       </aside>
       <div className="fixed inset-x-0 top-0 z-30 flex min-h-14 items-center justify-between border-b border-border bg-card px-4 lg:hidden">
         <Link
@@ -255,8 +287,8 @@ export function AdminShellNav({ email }: { email: string }) {
           className="focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
         >
           <MissaWordmark href={null} size="compact" className="text-foreground" />
-          <span className="ml-2 text-xs text-muted-foreground">
-            Platform Admin
+          <span className="ml-2 font-heading text-sm text-muted-foreground">
+            Admin
           </span>
         </Link>
         <Sheet>
@@ -281,10 +313,10 @@ export function AdminShellNav({ email }: { email: string }) {
                 Missa Platform Admin
               </SheetTitle>
               <SheetDescription>
-                Tenant-independent operational read model
+                Run and monitor Missa
               </SheetDescription>
             </SheetHeader>
-            <Navigation pathname={pathname} search={search} email={email} />
+            <Navigation pathname={pathname} search={search} email={email} shortcut={false} />
           </SheetContent>
         </Sheet>
       </div>

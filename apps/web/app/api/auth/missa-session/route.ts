@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   issueSessionToken,
-  sessionCookieOptions,
-  SESSION_COOKIE,
+  setSessionCookie,
 } from "@/lib/auth";
 import {
   NeonAuthAccountError,
@@ -11,6 +10,7 @@ import {
 } from "@/lib/neon-auth/account";
 import { isNeonAuthConfigured } from "@/lib/neon-auth/server";
 import { trackPlatformAnalytics } from "@/lib/platformAnalytics";
+import { recordSiteGoal } from "@/lib/siteTracking";
 import { deliverWelcomeEmail } from "@/emails/welcome";
 import { signupIdentity } from "@/lib/signupIdentity";
 
@@ -69,6 +69,7 @@ export async function POST(request: Request) {
       accountId: account.id,
       properties: { method: "neon-auth", linked: !created },
     });
+    if (created) void recordSiteGoal(request, "signup", "/signup");
     // Google-first accounts skip /api/auth/signup, so the bridge owns the same
     // welcome email. Delivery stays best-effort and idempotent per account.
     if (created) {
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
       },
       { headers: { "Cache-Control": "no-store" } },
     );
-    response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
+    setSessionCookie(response, token);
     return response;
   } catch (error) {
     if (error instanceof NeonAuthAccountError) {

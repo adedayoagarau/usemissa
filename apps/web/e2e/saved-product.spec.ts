@@ -3,7 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 
 async function savedAccount(page: Page) {
   const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  const signup = await page.request.post("/api/auth/signup", { data: { email: `saved-${suffix}@example.com`, password: "correct-horse-battery", displayName: "Saved Test User" } });
+  const signup = await page.request.post("/api/auth/signup", { data: { email: `saved-${suffix}@example.com`, password: "correct-horse-battery", givenName: "Saved", familyName: "Tester" } });
   expect(signup.status()).toBe(201);
   const sessionCookie = signup.headers()["set-cookie"]?.match(/(?:^|,\s*)missa_session=([^;]+)/)?.[1];
   expect(sessionCookie).toBeTruthy();
@@ -14,17 +14,23 @@ async function savedAccount(page: Page) {
   return opportunity;
 }
 
-test("Saved is a private shortlist in My applications", async ({ page }) => {
+test("Saved is a private shortlist", async ({ page }) => {
   const opportunity = await savedAccount(page);
   await page.setViewportSize({ width: 390, height: 844 });
   expect((await page.goto("/saved"))?.status()).toBe(200);
-  await expect(page.getByRole("heading", { level: 1, name: "My applications" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Saved" })).toBeVisible();
   await expect(page.getByRole("heading", { name: opportunity.title })).toBeVisible();
-  await expect(page.getByRole("tab", { name: /Saved/ })).toHaveAttribute("aria-selected", "true");
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBeFalsy();
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations.filter((violation) => ["critical", "serious"].includes(violation.impact ?? ""))).toEqual([]);
   await page.screenshot({ path: ".impeccable/review/saved-mobile.png", fullPage: true });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.screenshot({ path: ".impeccable/review/saved-desktop.png", fullPage: true });
+});
+
+test("The Tracker Saved view lists saved items", async ({ page }) => {
+  const opportunity = await savedAccount(page);
+  expect((await page.goto("/tracker?view=saved"))?.status()).toBe(200);
+  await expect(page.getByRole("navigation", { name: "Tracker views" }).getByRole("button", { name: "Saved", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("heading", { name: opportunity.title, exact: true })).toBeVisible();
 });

@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { Clock3 } from "lucide-react";
-import { formatDeadlineLabel } from "@/lib/deadlineLabel";
+import { describeDeadline } from "@/lib/deadline-moment";
 import styles from "./opportunity-detail.module.css";
 
 const emptySubscribe = () => () => {};
@@ -17,40 +17,45 @@ function localDayKey(now: Date): string {
   return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
 }
 
-// Cached per deadline date so getSnapshot returns a stable value between calls.
+// Cached per deadline so getSnapshot returns a stable value between calls.
 const snapshotCache = new Map<string, ClientDeadlineLabel>();
 
-function readClientLabel(date: string): ClientDeadlineLabel {
+function readClientLabel(date: string | undefined, time: string | undefined, timezone: string | undefined, kind: string | undefined): ClientDeadlineLabel {
+  const key = `${kind ?? ""}|${date ?? ""}|${time ?? ""}|${timezone ?? ""}`;
   const day = localDayKey(new Date());
-  const cached = snapshotCache.get(date);
+  const cached = snapshotCache.get(key);
   if (cached && cached.day === day) return cached;
-  const next = formatDeadlineLabel(date);
-  const value: ClientDeadlineLabel = {
-    day,
-    label: next?.label ?? "",
-    urgent: next?.urgent ?? false,
-  };
-  snapshotCache.set(date, value);
+  const moment = describeDeadline({ kind: kind ?? "exact", date, time, timezone });
+  const value: ClientDeadlineLabel = { day, label: moment.label, urgent: moment.urgent };
+  snapshotCache.set(key, value);
   return value;
 }
 
 /**
  * Renders the deadline chip from the server value first, then corrects it to
  * the viewer's local calendar day after hydration. The relative wording ("today",
- * "tomorrow") must follow the reader's day, not the server's UTC day.
+ * "tomorrow") must follow the reader's day, not the server's UTC day. With an
+ * exact close time, the countdown follows the close moment.
  */
 export function OpportunityDeadlineChip({
   date,
+  time,
+  timezone,
+  kind,
   fallbackLabel,
   fallbackUrgent,
 }: {
   date?: string;
+  /** ISO instant of the exact close, when the source states one. */
+  time?: string;
+  timezone?: string;
+  kind?: string;
   fallbackLabel: string;
   fallbackUrgent: boolean;
 }) {
   const client = useSyncExternalStore(
     emptySubscribe,
-    () => (date ? readClientLabel(date) : null),
+    () => (date || time ? readClientLabel(date, time, timezone, kind) : null),
     () => null,
   );
   const label = client?.label || fallbackLabel;

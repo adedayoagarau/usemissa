@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { DISCOVERY_BETA, isDiscoveryBetaPath } from "./lib/discoveryBeta";
+import { legacyProfileUserId } from "./lib/profileRedirectPath";
 
 const REQUEST_PATH_HEADER = "x-missa-request-path";
 
@@ -37,7 +38,7 @@ async function resolveHandleRedirect(
 ): Promise<NextResponse | undefined> {
   const { pathname, search } = request.nextUrl;
   const handle = pathname.startsWith("/@") ? pathname.slice(2) : null;
-  const userId = pathname.match(/^\/profile\/([^/]+)$/u)?.[1] ?? null;
+  const userId = legacyProfileUserId(pathname);
 
   if (!handle && !userId) return undefined;
 
@@ -79,6 +80,35 @@ function shouldRedirectToWaitlist(request: NextRequest): boolean {
   return false;
 }
 
+/**
+ * The proxy runs as a server function on every matched request, so it is
+ * limited to the paths that need it. Public pages skip it and can be served
+ * straight from the CDN cache. Matched paths are the handle and legacy profile
+ * redirects, and the signed-in sections whose layouts send people to
+ * /login?next=<this path> (see lib/serverAuthRedirect.ts).
+ */
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  matcher: [
+    "/@:handle",
+    "/profile/:userId",
+    "/ask/:path*",
+    "/calendar/:path*",
+    "/following/:path*",
+    "/home/:path*",
+    "/import/:path*",
+    "/inbox/:path*",
+    "/insights/:path*",
+    "/library/:path*",
+    "/messages/:path*",
+    "/my-submissions/:path*",
+    "/plan/:path*",
+    "/saved/:path*",
+    "/season/:path*",
+    "/tracker/:path*",
+    "/reviewer/:path*",
+    "/submissions/:path*",
+    "/workspace/:path*",
+    "/organization/:path*",
+    "/reviews/:path*",
+  ],
 };

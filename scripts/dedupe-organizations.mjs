@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { DECISION_SCOPE, createOrganizationDedupeDecider, loadDecisions } from './dedupe-organizations-decisions.mjs';
 
 const { Client } = pg;
 
@@ -38,6 +39,8 @@ const GENERIC_NAMES = new Set([
 
 async function run() {
   const isDryRun = process.argv.includes('--dry-run');
+  // Merge or purge only what Jev confidently confirms (live mode only).
+  const requireDecision = process.argv.includes('--require-decision');
 
   if (!process.env.DATABASE_URL) {
     console.error('❌ ERROR: DATABASE_URL not found.');
@@ -51,10 +54,34 @@ async function run() {
 
   await client.connect();
 
+  // Every merge pair and junk purge is recorded in data_decisions; see
+  // scripts/dedupe-organizations-decisions.mjs. Recording never blocks the
+  // cleanup unless --require-decision is set.
+  const decisions = await loadDecisions();
+  if (!decisions && requireDecision) {
+    console.error('❌ ERROR: --require-decision needs @missa/decisions to be built (npm run build --workspace=@missa/decisions).');
+    process.exit(1);
+  }
+  const decisionMode = decisions ? decisions.decisionModeFromEnv(DECISION_SCOPE) : 'shadow';
+  const decider = decisions
+    ? createOrganizationDedupeDecider({
+        decisions,
+        client: decisions.jevClientFromEnv(),
+        ledger: isDryRun ? undefined : decisions.createPostgresDecisionLedger(client),
+        mode: decisionMode,
+        requireDecision,
+      })
+    : null;
+  if (!decisions) console.warn('⚠ @missa/decisions is not built; merges and purges will not be recorded in data_decisions.');
+
   console.log('\n================================================================================');
   console.log('                 MISSA ORGANIZATION DEDUPLICATION & CLEANSER                   ');
   console.log('================================================================================');
-  console.log(`Mode: ${isDryRun ? 'DRY-RUN (Audit only)' : 'LIVE EXECUTION (Merging & Purging)'}\n`);
+  console.log(`Mode: ${isDryRun ? 'DRY-RUN (Audit only)' : 'LIVE EXECUTION (Merging & Purging)'}`);
+  if (requireDecision) {
+    console.log(`Require decision: merges and purges need a confident Jev answer (decision mode: ${decisionMode}${decisionMode === 'live' ? '' : ' — nothing will be merged or purged'})`);
+  }
+  console.log('');
 
   try {
     // 1. Ensure gary_profile_redirects table exists
@@ -176,6 +203,20 @@ async function run() {
     let mergedClustersCount = 0;
     let purgedProfilesCount = 0;
     let relinkedOpportunitiesCount = 0;
+    let skippedMergesCount = 0;
+
+    // Records each merge pair (outside any transaction, so a ledger failure
+    // cannot abort a batch) and returns the duplicates allowed to merge.
+    async function approvedDuplicates(cluster) {
+      if (!decider) return cluster.duplicates;
+      const approved = [];
+      for (const dupe of cluster.duplicates) {
+        const { merge } = await decider.mergePair(cluster.canonical, dupe);
+        if (merge) approved.push(dupe);
+        else skippedMergesCount++;
+      }
+      return approved;
+    }
 
     if (!isDryRun) {
       console.log('\n3. Merging duplicate clusters into canonical profiles in batches...');
@@ -184,12 +225,16 @@ async function run() {
       const BATCH_SIZE = 50;
       for (let i = 0; i < duplicateClusters.length; i += BATCH_SIZE) {
         const batch = duplicateClusters.slice(i, i + BATCH_SIZE);
+        const approvedByCluster = new Map();
+        for (const cluster of batch) approvedByCluster.set(cluster, await approvedDuplicates(cluster));
         await client.query('BEGIN');
         try {
           for (const cluster of batch) {
             const canonicalId = cluster.canonical.id;
+            const approved = approvedByCluster.get(cluster);
+            if (approved.length === 0) continue;
 
-            for (const dupe of cluster.duplicates) {
+            for (const dupe of approved) {
               const dupeId = dupe.id;
 
               // a. Re-link opportunity_profile_links
@@ -259,26 +304,44 @@ async function run() {
         }
       }
       console.log(`\n   ✔ Successfully merged ${mergedClustersCount} clusters (${purgedProfilesCount} redundant profile rows purged).`);
+      if (skippedMergesCount > 0) console.log(`   ⏭ Skipped ${skippedMergesCount} merges without a confident Jev confirmation.`);
+    } else if (requireDecision && decider) {
+      for (const cluster of duplicateClusters) await approvedDuplicates(cluster);
+      console.log(`\n   Would skip ${skippedMergesCount} merges without a confident Jev confirmation.`);
     }
 
     // 4. Clean up junk non-arts commercial scrapings with 0 opportunities
     console.log('\n4. Auditing junk non-arts commercial crawl artifacts...');
     const junkQuery = await client.query(`
-      SELECT p.id, p.name, p.profile_kind
+      SELECT p.id, p.name, p.profile_kind, p.website_url
       FROM gary_profiles p
       LEFT JOIN opportunity_profile_links l ON l.profile_id = p.id
       WHERE (
         lower(p.name) ~ 'plumbing|mechanical|hvac|roofing|air conditioning|auto repair|bail bonds|locksmith|pest control|towing service'
         OR lower(trim(p.name)) IN ('subscribers', 'www', 'contact us', 'privacy policy', 'terms of service', 'about us')
       )
-      GROUP BY p.id, p.name, p.profile_kind
+      GROUP BY p.id, p.name, p.profile_kind, p.website_url
       HAVING count(l.opportunity_id) = 0;
     `);
 
     console.log(`   Found ${junkQuery.rows.length} confirmed non-arts commercial junk profiles with 0 opportunities.`);
 
-    if (!isDryRun && junkQuery.rows.length > 0) {
-      const junkIds = junkQuery.rows.map(r => r.id);
+    // Record each purge as an is_arts_organization decision before deleting.
+    let junkRows = junkQuery.rows;
+    if (decider && (!isDryRun || requireDecision)) {
+      const allowed = [];
+      for (const row of junkQuery.rows) {
+        const { purge } = await decider.junkProfile(row);
+        if (purge) allowed.push(row);
+      }
+      if (allowed.length < junkRows.length) {
+        console.log(`   ${isDryRun ? 'Would skip' : '⏭ Skipped'} ${junkRows.length - allowed.length} purges without a confident Jev answer.`);
+      }
+      junkRows = allowed;
+    }
+
+    if (!isDryRun && junkRows.length > 0) {
+      const junkIds = junkRows.map(r => r.id);
       await client.query('DELETE FROM gary_profiles WHERE id = ANY($1::text[])', [junkIds]);
       console.log(`   ✔ Purged ${junkIds.length} non-arts commercial scrapings from database.`);
     }
@@ -292,7 +355,7 @@ async function run() {
     console.log(`  • Duplicate Clusters Merged:        ${isDryRun ? duplicateClusters.length : mergedClustersCount}`);
     console.log(`  • Redundant Rows Purged:            ${isDryRun ? duplicateClusters.reduce((acc, c) => acc + c.duplicates.length, 0) : purgedProfilesCount}`);
     console.log(`  • Opportunities Re-linked:          ${isDryRun ? 'Audit mode' : relinkedOpportunitiesCount}`);
-    console.log(`  • Spam/Junk Crawl Artifacts Purged: ${junkQuery.rows.length}`);
+    console.log(`  • Spam/Junk Crawl Artifacts Purged: ${junkRows.length}`);
     console.log(`  • Clean Unique Profiles:            ${finalCount.rows[0].count}`);
     console.log('================================================================================\n');
 

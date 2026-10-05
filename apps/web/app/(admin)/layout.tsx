@@ -12,5 +12,5 @@ export const dynamic = 'force-dynamic';
 
 export default async function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
   const session = await requirePlatformAdminPage();
-  return <div className="min-h-screen bg-card text-foreground"><div className="flex min-h-screen"><AdminShellNav email={session.account.email} /><div className="min-w-0 flex-1 pt-14 lg:pt-0">{children}</div></div></div>;
+  return <div className="min-h-screen bg-card text-foreground selection:bg-primary/20 selection:text-foreground"><div className="flex min-h-screen"><AdminShellNav email={session.account.email} /><div className="min-w-0 flex-1 pt-14 lg:pt-0">{children}</div></div></div>;
 }

@@ -50,7 +50,7 @@ export function MetricCard({ label, value, detail, href }: { label: string; valu
 }
 
 export function SectionHeading({ eyebrow, title, description, href, linkLabel }: { eyebrow?: string; title: string; description?: string; href?: string; linkLabel?: string }) {
-  return <header className="flex flex-wrap items-end justify-between gap-3"><div>{eyebrow && <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{eyebrow}</p>}<h2 className="mt-1 font-sans text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{title}</h2>{description && <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>}</div>{href && linkLabel && <Link href={href} className="text-sm font-medium text-accent-deep underline decoration-accent-tint underline-offset-4 hover:text-primary">{linkLabel}</Link>}</header>;
+  return <header className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="font-sans text-2xl font-semibold tracking-[-0.02em] text-foreground"><span className="sr-only">{eyebrow ? `${eyebrow}: ` : ''}</span>{title}</h2>{description && <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>}</div>{href && linkLabel && <Link href={href} className="text-sm font-medium text-accent-deep underline decoration-accent-tint underline-offset-4 hover:text-primary">{linkLabel}</Link>}</header>;
 }
 
 export function QueueCard({ label, value, detail, href, tone = 'neutral' }: { label: string; value: number; detail: string; href: string; tone?: 'neutral' | 'warning' }) {
@@ -129,7 +129,7 @@ export function NumberGrid({ items }: { items: Array<{ label: string; value: Rea
 }
 
 export function DataAreaHeader({ area, title, description }: { area: AdminArea<unknown>; title: string; description: string }) {
-  return <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Platform scope</p><h1 className="mt-2 font-sans text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">{title}</h1><p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p></div><ProvenanceNote area={area} /></div>;
+  return <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 border-b border-border pb-6"><div className="min-w-0"><h1 className="font-heading text-4xl font-medium tracking-[-0.02em] text-balance text-foreground sm:text-5xl">{title}</h1><p className="mt-3 max-w-3xl text-base leading-7 text-muted-foreground">{description}</p></div><ProvenanceNote area={area} /></div>;
 }
 
 export function WorkspaceSummary({ data }: { data: PlatformAdminWorkspaceData }) {

@@ -11,6 +11,8 @@ import {
 } from "./calendarCredentialCrypto.js";
 import { canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
 import { expectedResponse } from "./trackerResponseDates.js";
+import { creatorPlan, planIncludes, type CreatorPlan } from "./creatorEntitlements.js";
+import { recalculateObligationChainsIn, shiftObligationsWithDeadline } from "./creatorObligationMutations.js";
 
 export type CreatorCalendarTokenState = {
   active: boolean;
@@ -69,10 +71,13 @@ export type CalendarConnectionView = {
 };
 export type CalendarSyncLease = {
   jobId: string;
+  accountId: string;
   connectionId: string;
   provider: CalendarProvider;
   operation: "upsert" | "delete";
   eventId: string;
+  /** 1-based attempt number this lease represents. */
+  attempt: number;
   refreshToken: string;
   calendarId: string;
   providerEventId?: string;
@@ -85,6 +90,13 @@ const stateHash = (value: string) =>
   )
     .update(value)
     .digest("hex");
+
+/** Deliveries per job before it is terminally failed (about two hours of backoff). */
+export const CALENDAR_SYNC_MAX_ATTEMPTS = 8;
+/** A running job whose lease is older than this is presumed abandoned. */
+export const CALENDAR_SYNC_LEASE_SECONDS = 300;
+const calendarErrorCode = (value: string) =>
+  value.replace(/[^a-z0-9_-]/gi, "_").slice(0, 80) || "provider_failed";
 
 const hashToken = (token: string) =>
   createHash("sha256").update(token).digest("hex");
@@ -210,6 +222,12 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
       ],
     );
     const connectionId = connection.rows[0]!.id;
+    // Reconnecting after a lost connection gives exhausted and parked jobs a
+    // fresh set of attempts against the new credential.
+    await this.query(
+      `update calendar_sync_jobs set status='queued',attempt_count=0,lease_until=null,next_attempt_at=null,last_error_code=null,updated_at=now() where connection_id=$1 and (status in ('failed','queued') or (status='running' and (lease_until is null or lease_until<now())))`,
+      [connectionId],
+    );
     await this.query(
       `insert into calendar_sync_jobs(connection_id,event_id,operation,dedupe_key) select $1,id,'upsert','bootstrap:'||id||':'||revision from creator_calendar_events where account_id=$2 on conflict(connection_id,dedupe_key) do nothing`,
       [connectionId, accountId],
@@ -242,24 +260,52 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
     }
   }
 
+  /**
+   * Leases the next due provider sync job. Without an account it drains due
+   * work across every account (the scheduled creator tick); with one it only
+   * touches that creator's jobs (the in-app sync request).
+   *
+   * A job is due when it is queued, when a retryable failure's backoff has
+   * elapsed, or when a previous worker died mid-delivery and its lease has
+   * expired. Jobs that have used CALENDAR_SYNC_MAX_ATTEMPTS stay failed until
+   * the creator retries them or reconnects the provider.
+   */
   async leaseSyncJob(
-    accountId: string,
+    accountId?: string,
   ): Promise<CalendarSyncLease | undefined> {
     const client = await this.pool.connect();
     try {
       await client.query("begin");
+      // A killed worker can leave its last permitted attempt "running" for
+      // ever; close it out so the event shows a failure instead of "Syncing".
+      await client.query(
+        `update calendar_sync_jobs j set status='failed',lease_until=null,next_attempt_at=null,last_error_code='lease_expired',updated_at=now()
+           from calendar_provider_connections c
+          where c.id=j.connection_id and ($1::text is null or c.account_id=$1)
+            and j.status='running' and (j.lease_until is null or j.lease_until<now()) and j.attempt_count>=$2`,
+        [accountId ?? null, CALENDAR_SYNC_MAX_ATTEMPTS],
+      );
       const result = await client.query<{
         job_id: string;
+        account_id: string;
         connection_id: string;
         provider: CalendarProvider;
         operation: "upsert" | "delete";
         event_id: string;
+        attempt_count: number;
         refresh_token_ciphertext: string;
         calendar_id_ciphertext: string;
         provider_event_id_ciphertext: string | null;
       }>(
-        `select j.id job_id,c.id connection_id,c.provider,j.operation,j.event_id,c.refresh_token_ciphertext,c.calendar_id_ciphertext,p.provider_event_id_ciphertext from calendar_sync_jobs j join calendar_provider_connections c on c.id=j.connection_id left join calendar_event_projections p on p.connection_id=c.id and p.event_id=j.event_id where c.account_id=$1 and c.status='active' and j.status in ('queued','failed') and (j.next_attempt_at is null or j.next_attempt_at<=now()) order by j.created_at for update of j skip locked limit 1`,
-        [accountId],
+        `select j.id job_id,c.account_id,c.id connection_id,c.provider,j.operation,j.event_id,j.attempt_count,c.refresh_token_ciphertext,c.calendar_id_ciphertext,p.provider_event_id_ciphertext
+           from calendar_sync_jobs j
+           join calendar_provider_connections c on c.id=j.connection_id
+           left join calendar_event_projections p on p.connection_id=c.id and p.event_id=j.event_id and p.status<>'deleted'
+          where ($1::text is null or c.account_id=$1) and c.status='active' and j.attempt_count<$2
+            and ((j.status in ('queued','failed') and (j.next_attempt_at is null or j.next_attempt_at<=now()))
+              or (j.status='running' and (j.lease_until is null or j.lease_until<now())))
+          order by j.created_at for update of j skip locked limit 1`,
+        [accountId ?? null, CALENDAR_SYNC_MAX_ATTEMPTS],
       );
       const row = result.rows[0];
       if (!row) {
@@ -267,15 +313,15 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
         return undefined;
       }
       await client.query(
-        `update calendar_sync_jobs set status='running',attempt_count=attempt_count+1,lease_until=now()+interval '5 minutes',updated_at=now() where id=$1`,
-        [row.job_id],
+        `update calendar_sync_jobs set status='running',attempt_count=attempt_count+1,lease_until=now()+make_interval(secs => $2),updated_at=now() where id=$1`,
+        [row.job_id, CALENDAR_SYNC_LEASE_SECONDS],
       );
       await client.query("commit");
       const event =
         row.operation === "upsert"
           ? (
               await this.events(
-                accountId,
+                row.account_id,
                 new Date("1970-01-01"),
                 new Date("2100-01-01"),
               )
@@ -283,10 +329,12 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
           : undefined;
       return {
         jobId: row.job_id,
+        accountId: row.account_id,
         connectionId: row.connection_id,
         provider: row.provider,
         operation: row.operation,
         eventId: row.event_id,
+        attempt: row.attempt_count + 1,
         refreshToken: decryptCalendarCredential(row.refresh_token_ciphertext),
         calendarId: decryptCalendarCredential(row.calendar_id_ciphertext),
         ...(row.provider_event_id_ciphertext
@@ -327,7 +375,7 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
         );
       }
       await client.query(
-        `update calendar_sync_jobs set status='succeeded',lease_until=null,last_error_code=null,updated_at=now() where id=$1`,
+        `update calendar_sync_jobs set status='succeeded',lease_until=null,next_attempt_at=null,last_error_code=null,updated_at=now() where id=$1`,
         [lease.jobId],
       );
       await client.query(
@@ -342,17 +390,77 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
       client.release();
     }
   }
-  async failSyncJob(jobId: string, errorCode: string) {
-    await this.query(
-      `update calendar_sync_jobs set status='failed',lease_until=null,last_error_code=$2,next_attempt_at=now()+least(interval '1 hour',interval '30 seconds'*power(2,least(attempt_count,7))),updated_at=now() where id=$1`,
-      [jobId, errorCode.replace(/[^a-z0-9_-]/gi, "_").slice(0, 80)],
+  /**
+   * Records a failed delivery. Retries back off exponentially (one minute,
+   * doubling, capped at one hour); once the job has used CALENDAR_SYNC_MAX_ATTEMPTS it is
+   * terminally failed and the event shows "Sync failed" with a Retry action.
+   */
+  async failSyncJob(
+    jobId: string,
+    errorCode: string,
+  ): Promise<{ terminal: boolean }> {
+    const result = await this.query<{ terminal: boolean }>(
+      `update calendar_sync_jobs
+          set status='failed',lease_until=null,last_error_code=$2,
+              next_attempt_at=case when attempt_count>=$3 then null
+                else now()+least(interval '1 hour',interval '30 seconds'*power(2,least(attempt_count,7))) end,
+              updated_at=now()
+        where id=$1 and status='running'
+        returning attempt_count>=$3 as terminal`,
+      [jobId, calendarErrorCode(errorCode), CALENDAR_SYNC_MAX_ATTEMPTS],
     );
+    return { terminal: result.rows[0]?.terminal === true };
+  }
+
+  /**
+   * The provider rejected the stored refresh token (revoked consent, expired
+   * grant). Mark the connection as errored so the calendar shows "Connection
+   * lost" with Reconnect, and put the job back in the queue without spending
+   * an attempt: it runs again once the creator reconnects.
+   */
+  async requireCalendarReconnect(
+    lease: Pick<CalendarSyncLease, "jobId" | "connectionId">,
+    errorCode = "reconnect_required",
+  ) {
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      await client.query(
+        `update calendar_provider_connections set status='error',revision=revision+1,updated_at=now() where id=$1 and status='active'`,
+        [lease.connectionId],
+      );
+      await client.query(
+        `update calendar_sync_jobs set status='queued',lease_until=null,next_attempt_at=null,last_error_code=$2,attempt_count=greatest(attempt_count-1,0),updated_at=now() where id=$1 and status='running'`,
+        [lease.jobId, calendarErrorCode(errorCode)],
+      );
+      await client.query("commit");
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Persists a refresh token the provider rotated during an access-token
+   * refresh (Microsoft rotates on every refresh). Encrypted exactly like the
+   * token stored at connect time; a revoked connection is never resurrected.
+   */
+  async rotateCalendarRefreshToken(connectionId: string, refreshToken: string) {
+    if (!refreshToken) return { rotated: false };
+    const encrypted = encryptCalendarCredential(refreshToken);
+    const result = await this.query(
+      `update calendar_provider_connections set refresh_token_ciphertext=$2,token_key_version=$3,updated_at=now() where id=$1 and status<>'revoked'`,
+      [connectionId, encrypted.ciphertext, encrypted.keyVersion],
+    );
+    return { rotated: result.rowCount === 1 };
   }
 
   async retryCalendarSync(accountId: string, eventId: string) {
     const result = await this.query<{ id: string }>(
       `update calendar_sync_jobs j
-          set status='queued',lease_until=null,last_error_code=null,next_attempt_at=now(),updated_at=now()
+          set status='queued',lease_until=null,last_error_code=null,next_attempt_at=now(),attempt_count=0,updated_at=now()
         where j.id = (
           select j2.id
             from calendar_sync_jobs j2
@@ -366,10 +474,17 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
     return { queued: result.rowCount === 1 };
   }
 
+  /**
+   * Events overlapping the range. `excludePurposes` leaves out rows the
+   * caller shows from their own source, such as the provider export mirror
+   * (PROVIDER_MIRROR_PURPOSES), which the in-app Calendar reads from the
+   * obligation, stage, tier and forecast tables instead.
+   */
   async events(
     accountId: string,
     from: Date,
     to: Date,
+    options: { excludePurposes?: readonly string[] } = {},
   ): Promise<CreatorCalendarEvent[]> {
     const result = await this.query<{
       id: string;
@@ -396,8 +511,8 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
          sync.status as sync_status,sync.last_error_code as sync_error,sync.next_attempt_at as sync_next_attempt_at
        from creator_calendar_events e
        left join lateral (select j.status,j.last_error_code,j.next_attempt_at from calendar_sync_jobs j join calendar_provider_connections c on c.id=j.connection_id and c.account_id=e.account_id where j.event_id=e.id order by j.updated_at desc limit 1) sync on true
-       where e.account_id=$1 and e.start_at<$3 and e.end_at>$2 order by e.start_at,e.id`,
-      [accountId, from, to],
+       where e.account_id=$1 and e.start_at<$3 and e.end_at>$2 and not (e.purpose=any($4::text[])) order by e.start_at,e.id`,
+      [accountId, from, to, [...(options.excludePurposes ?? [])]],
     );
     return result.rows.map((row) => ({
       id: row.id,
@@ -470,6 +585,34 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
     }
   }
 
+  /**
+   * Applications in preparation whose confirmed deadline on a published call
+   * is still ahead but which have no official calendar deadline. Save adds
+   * that event after the save commits, so a failed write leaves the
+   * application here until the creator pass adds it. Official deadlines
+   * cannot be deleted by the creator, so a missing one is always a gap.
+   */
+  async missingOfficialDeadlines(accountId?: string, limit = 200) {
+    const result = await this.pool.query<{ account_id: string; opportunity_id: string }>(
+      `select t.account_id,t.opportunity_id
+         from tracked_opportunities t
+         join opportunities o on o.id=t.opportunity_id
+        where ($1::text is null or t.account_id=$1)
+          and t.status in (${PRE_SUBMISSION})
+          and o.publication_state='published'
+          and o.deadline_kind in ('exact','fixed')
+          and o.deadline_date >= current_date
+          and not exists (
+            select 1 from creator_calendar_events e
+             where e.account_id=t.account_id and e.opportunity_id=t.opportunity_id and e.purpose='official-deadline'
+          )
+        order by t.account_id,t.opportunity_id
+        limit $2`,
+      [accountId ?? null, limit],
+    );
+    return result.rows.map((row) => ({ accountId: row.account_id, opportunityId: row.opportunity_id }));
+  }
+
   async ensureGoalDate(accountId: string, goalId: string) {
     const client = await this.pool.connect();
     try {
@@ -514,9 +657,11 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
         opportunity_id: string | null;
         start_at: Date;
         previous_source_deadline_date: string | null;
+        source_deadline_date: string | null;
         deadline_reconciliation_status: string;
       }>(
-        `select opportunity_id,start_at,previous_source_deadline_date,deadline_reconciliation_status
+        `select opportunity_id,start_at,previous_source_deadline_date::text previous_source_deadline_date,
+                source_deadline_date::text source_deadline_date,deadline_reconciliation_status
            from creator_calendar_events
           where id=$1 and account_id=$2 and purpose='official-deadline' for update`,
         [eventId, accountId],
@@ -525,9 +670,10 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
       if (!row) throw new CreatorCalendarError("Calendar deadline not found.");
       if (row.deadline_reconciliation_status !== "needs-review" || !row.previous_source_deadline_date || !row.opportunity_id) {
         await client.query("commit");
-        return { status: "already-resolved" as const, moved: 0 };
+        return { status: "already-resolved" as const, moved: 0, obligationsMoved: 0 };
       }
       let moved = 0;
+      let obligationsMoved = 0;
       if (action === "move-preparation") {
         const shifted = await client.query<{ id: string; revision: number }>(
           `update creator_calendar_events preparation
@@ -544,6 +690,16 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
         );
         moved = shifted.rowCount ?? 0;
         for (const event of shifted.rows) await queueCalendarSync(client, accountId, event.id, "upsert", event.revision);
+        // One review covers both: planned steps that do not already follow
+        // the new deadline move by the same number of days.
+        if (row.source_deadline_date)
+          obligationsMoved = await shiftObligationsWithDeadline(
+            client,
+            accountId,
+            row.opportunity_id,
+            row.previous_source_deadline_date,
+            row.source_deadline_date,
+          );
       }
       await client.query(
         `update creator_calendar_events
@@ -552,7 +708,7 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
         [eventId, accountId],
       );
       await client.query("commit");
-      return { status: "resolved" as const, moved };
+      return { status: "resolved" as const, moved, obligationsMoved };
     } catch (error) {
       await client.query("rollback").catch(() => undefined);
       throw error;
@@ -577,12 +733,13 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
         id: string;
         account_id: string;
         opportunity_id: string;
+        tracked_id: string;
         title: string;
         previous: string | null;
         next: string;
         notify: boolean;
       }>(
-        `select e.id,e.account_id,e.opportunity_id,o.title,e.source_deadline_date::text previous,o.deadline_date::text next,
+        `select e.id,e.account_id,e.opportunity_id,t.id tracked_id,o.title,e.source_deadline_date::text previous,o.deadline_date::text next,
                 t.status in (${PRE_SUBMISSION}) notify
            from creator_calendar_events e
            join opportunities o on o.id=e.opportunity_id
@@ -593,6 +750,7 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
           order by e.id for update of e skip locked limit $2`,
         [accountId ?? null, limit],
       );
+      const plans = new Map<string, CreatorPlan>();
       for (const row of changed.rows) {
         const updated = await client.query<{ revision: number }>(
           `update creator_calendar_events
@@ -613,6 +771,12 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
               : `The official deadline is now ${row.next}. Your calendar and deadline reminders now use this date.`,
             dedupeKey: `deadline-changed:${row.id}:${row.next}`,
           });
+        // On plans with start-by planning the chain moves with the deadline
+        // now, by each step's buffer policy, with its own was/now notice.
+        // Other plans keep their steps until the creator reviews the change.
+        if (!plans.has(row.account_id)) plans.set(row.account_id, await creatorPlan(client, row.account_id));
+        if (planIncludes(plans.get(row.account_id)!, "startByPlanning"))
+          await recalculateObligationChainsIn(client, { accountId: row.account_id, trackedOpportunityId: row.tracked_id });
       }
 
       const unconfirmed = await client.query<{
@@ -739,12 +903,13 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
   ) {
     const value = calendarInput(input);
     return this.executeOwnerCommand(envelope, async (client) => {
-      const current = await client.query<{ revision: number }>(
-        `select revision from creator_calendar_events where id=$1 and account_id=$2 for update`,
+      const current = await client.query<{ revision: number; purpose: string }>(
+        `select revision,purpose from creator_calendar_events where id=$1 and account_id=$2 for update`,
         [id, envelope.accountId],
       );
       const row = current.rows[0];
       if (!row) throw new CreatorCalendarError("Calendar event not found.");
+      assertPersonalEvent(row.purpose);
       if (row.revision !== envelope.expectedRevision)
         throw new CreatorCalendarError(
           "This event changed in another session. Refresh and try again.",
@@ -789,12 +954,13 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
 
   async deleteEvent(envelope: CreatorCommandEnvelope, id: string) {
     return this.executeOwnerCommand(envelope, async (client) => {
-      const current = await client.query<{ revision: number }>(
-        `select revision from creator_calendar_events where id=$1 and account_id=$2 for update`,
+      const current = await client.query<{ revision: number; purpose: string }>(
+        `select revision,purpose from creator_calendar_events where id=$1 and account_id=$2 for update`,
         [id, envelope.accountId],
       );
       const row = current.rows[0];
       if (!row) throw new CreatorCalendarError("Calendar event not found.");
+      assertPersonalEvent(row.purpose);
       if (row.revision !== envelope.expectedRevision)
         throw new CreatorCalendarError(
           "This event changed in another session. Refresh and try again.",
@@ -1017,6 +1183,40 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
   }
 }
 
+/**
+ * Keep one 'personal-target' calendar event per tracked call in step with
+ * tracked_opportunities.personal_target_on: create or move it when a date is
+ * set, remove it when the target is cleared. Runs in the caller's transaction
+ * and queues the provider sync like any other event write.
+ */
+export async function mirrorPersonalTarget(
+  client: PoolClient,
+  target: { accountId: string; trackedOpportunityId: string; opportunityId: string; title: string; personalTargetOn: string | null },
+): Promise<{ status: "saved" | "removed" | "unchanged"; eventId: string }> {
+  const eventId = `personal-target:${target.trackedOpportunityId}`;
+  if (target.personalTargetOn === null) {
+    const removed = await client.query<{ revision: number }>(
+      "delete from creator_calendar_events where id=$1 and account_id=$2 returning revision",
+      [eventId, target.accountId],
+    );
+    if (!removed.rows[0]) return { status: "unchanged", eventId };
+    await queueCalendarSync(client, target.accountId, eventId, "delete", removed.rows[0].revision + 1);
+    return { status: "removed", eventId };
+  }
+  const saved = await client.query<{ revision: number }>(
+    `insert into creator_calendar_events
+       (id,account_id,title,description,start_at,end_at,all_day,color,opportunity_id,purpose)
+     values ($1,$2,$3,'Your own target date, ahead of the official deadline',$4::date,$4::date+interval '1 day',true,'sage',$5,'personal-target')
+     on conflict (id) do update set title=excluded.title,start_at=excluded.start_at,end_at=excluded.end_at,
+       revision=case when creator_calendar_events.start_at<>excluded.start_at or creator_calendar_events.title<>excluded.title then creator_calendar_events.revision+1 else creator_calendar_events.revision end,
+       updated_at=case when creator_calendar_events.start_at<>excluded.start_at or creator_calendar_events.title<>excluded.title then now() else creator_calendar_events.updated_at end
+     returning revision`,
+    [eventId, target.accountId, `Target: ${target.title}`.slice(0, 200), target.personalTargetOn, target.opportunityId],
+  );
+  await queueCalendarSync(client, target.accountId, eventId, "upsert", saved.rows[0]!.revision);
+  return { status: "saved", eventId };
+}
+
 const PRE_SUBMISSION = "'interested','saved','preparing','draft-started','ready-to-submit'";
 // A call that closes after its deadline passes is expected; only an early or
 // undated closure is news worth an Inbox notice.
@@ -1046,7 +1246,22 @@ async function insertDeadlineNotice(
   return inserted.rowCount ?? 0;
 }
 
-async function queueCalendarSync(
+/**
+ * Purposes of the rows mirrored for the Google and Microsoft export from plan
+ * steps, stages, fee-tier closes and forecasts (calendarProviderMirror.ts).
+ * They are owned by their source, never edited as personal events, and left
+ * out of the in-app Calendar, which shows the sources themselves.
+ */
+export const PROVIDER_MIRROR_PURPOSES = ["plan-step", "stage", "tier-close", "forecast"] as const;
+export type ProviderMirrorPurpose = (typeof PROVIDER_MIRROR_PURPOSES)[number];
+
+function assertPersonalEvent(purpose: string) {
+  if ((PROVIDER_MIRROR_PURPOSES as readonly string[]).includes(purpose))
+    throw new CreatorCalendarError("This date comes from your plan or the call. Change it in the Tracker.");
+}
+
+/** Queues provider sync for one event on each of the account's active connections. */
+export async function queueCalendarSync(
   client: PoolClient,
   accountId: string,
   eventId: string,

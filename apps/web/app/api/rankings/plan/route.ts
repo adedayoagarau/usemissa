@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getMagazineRankingRepository } from "@/lib/magazineRankingRepository";
 import { buildSubmissionPortfolioPlan, type StrategyCriteria, type RankingGenre, type SubmissionStrategyPreset } from "@missa/radar-engine";
+import { planningCandidate } from "@/lib/magazineFacts";
 
 export async function POST(request: Request) {
   try {
@@ -22,24 +23,16 @@ export async function POST(request: Request) {
 
     const repository = getMagazineRankingRepository();
     // Fetch all journals for this genre to run the strategy recommender
-    const page = await repository.listRankings({ genre, year: 2026, limit: 1000 });
+    const page = await repository.listRankings({ genre, limit: 1000 });
+    if (page.dataSource !== "database") {
+      // Never build a plan from seed rankings.
+      return NextResponse.json(
+        { error: "Submission plans are not available yet." },
+        { status: 503 },
+      );
+    }
 
-    const candidates = page.items.map((item) => ({
-      profileId: item.profileId,
-      name: item.name,
-      slug: item.slug,
-      websiteUrl: item.websiteUrl,
-      rankPosition: item.rankPosition,
-      totalScore: item.totalScore,
-      prestigeTier: item.prestigeTier,
-      medianResponseDays: item.medianResponseDays,
-      regularFeeCents: item.regularFeeCents,
-      contributorPayCents: item.contributorPayCents,
-      simultaneousPolicy: item.simultaneousPolicy,
-      formatEthicsScore: item.formatEthicsScore,
-      activeOpportunity: item.activeOpportunity,
-      schedule: item.schedule,
-    }));
+    const candidates = page.items.map(planningCandidate);
 
     const criteria: StrategyCriteria = {
       genre,

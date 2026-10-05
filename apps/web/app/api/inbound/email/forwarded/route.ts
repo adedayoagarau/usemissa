@@ -1,7 +1,9 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { EMAIL_MAX_ENVELOPE_BYTES, type InboundEmailEnvelope } from '@missa/radar-engine';
 import { getEngine, persistRadar } from '@/lib/engine';
+import { emailForwardingUnavailable } from '@/lib/email-integrations';
+import { emailDeciderFromEnv } from '@/lib/creator-decisions';
 
 const REPLAY_WINDOW_MS = 5 * 60_000;
 function secret(): string | undefined { return process.env.MISSA_INBOUND_EMAIL_SECRET || (process.env.NODE_ENV === 'production' ? undefined : 'local-inbound-secret-change-me'); }
@@ -13,7 +15,7 @@ function validSignature(body: string, timestamp: string | null, provided: string
   return actual.length === wanted.length && timingSafeEqual(actual, wanted);
 }
 
-export async function POST(request: Request) {
+export async function POST(request: Request) { const unavailable = emailForwardingUnavailable(); if (unavailable) return unavailable;
   const length = Number(request.headers.get('content-length') ?? '0');
   if (length > EMAIL_MAX_ENVELOPE_BYTES) return NextResponse.json({ accepted: false, reason: 'too-large' }, { status: 413 });
   const body = await request.text();
@@ -30,6 +32,12 @@ export async function POST(request: Request) {
   try {
     const engine = await getEngine();
     const result = engine.ingestInboundEmail(envelope);
+    // Jev may only narrow what the rules proposed (scopes email_status and
+    // email_match). In shadow it records after the response; live waits for
+    // a bounded verdict before persisting.
+    const decider = result.accepted && result.candidateId && result.reason !== 'duplicate' ? emailDeciderFromEnv() : null;
+    if (decider && decider.live) await engine.decideEmailCandidate(result.candidateId!, decider);
+    else if (decider) after(() => engine.decideEmailCandidate(result.candidateId!, decider).then(() => undefined));
     if (result.accepted) await persistRadar();
     return NextResponse.json(result.accepted ? { accepted: true, ...(result.candidateId ? { candidateId: result.candidateId } : {}) } : { accepted: false, reason: 'unavailable' }, { status: 202, headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {

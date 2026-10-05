@@ -44,7 +44,7 @@ test("profile link retirement binds every SQL placeholder", () => {
   const statement = profileLinkRetirementStatement("opp_1");
   const placeholders = [...statement.text.matchAll(/\$(\d+)/g)].map((match) => Number(match[1]));
   assert.equal(Math.max(...placeholders), statement.values.length);
-  assert.deepEqual(statement.values, ["opp_1", "profile-host-name-v4"]);
+  assert.deepEqual(statement.values, ["opp_1", "profile-host-name-v6"]);
 });
 
 test("confirms a direct organization match by organizationId", () => {
@@ -90,6 +90,39 @@ test("does not treat an aggregator host brand as the call identity", () => {
     NOW,
   );
   assert.equal(decisions[0]?.status, "pending");
+});
+
+test("does not confirm a profile that only shares a directory host with the listing", () => {
+  const directoryProfiles = [
+    profile({ profileId: "artist-residency", profileName: "Artist Residency", url: "https://www.artconnect.com/artist-residency-wmrr" }),
+    profile({ profileId: "art-in-places", profileName: "Art in Places", url: "https://www.artconnect.com/art-in-places-RQNENB" }),
+    profile({ profileId: "scrap-gallery", profileName: "S.C.R.A.P Gallery", url: "https://www.artconnect.com/s-c-r-a-p-gallery" }),
+    profile({ profileId: "glass-box", profileName: "Glass Box Studio", url: "https://www.artconnect.com/glass-box-studio" }),
+  ];
+  for (const title of ["Open Call — Artist's Interview With Al-tiba9", "Glass Box Studio Artist Residency"]) {
+    const decisions = matchOpportunityToProfiles(
+      opportunity({
+        title,
+        organizationName: null,
+        sourceUrl: "https://www.artconnect.com/opportunity/ZZ1QxMOueTmuYd7bOfG5K",
+        guidelinesUrl: "https://www.artconnect.com/opportunity/ZZ1QxMOueTmuYd7bOfG5K",
+      }),
+      directoryProfiles,
+      NOW,
+    );
+    assert.ok(decisions.every((decision) => decision.status === "pending"), title);
+  }
+
+  const ownPage = matchOpportunityToProfiles(
+    opportunity({
+      title: "Glass Box Studio Artist Residency",
+      organizationName: null,
+      sourceUrl: "https://www.artconnect.com/glass-box-studio/residency-2027",
+    }),
+    directoryProfiles,
+    NOW,
+  );
+  assert.ok(ownPage.some((decision) => decision.profileId === "glass-box" && decision.status === "confirmed"));
 });
 
 test("does not confirm aggregator navigation, feed, tag, or bare-host records", () => {
@@ -172,4 +205,13 @@ test("stale profile evidence cannot confirm an otherwise compatible identity", (
     NOW,
   );
   assert.equal(decisions[0]?.status, "pending");
+});
+
+test("a profile crawled within the last month still confirms a compatible identity", () => {
+  const decisions = matchOpportunityToProfiles(
+    opportunity(),
+    [profile({ profileCheckedAt: "2026-07-08T00:00:00.000Z" })],
+    NOW,
+  );
+  assert.equal(decisions[0]?.status, "confirmed");
 });

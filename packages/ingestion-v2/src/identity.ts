@@ -1,3 +1,15 @@
+import {
+  decide,
+  identityPairSubjectId,
+  jevClientFromEnv,
+  createPostgresDecisionLedger,
+  sameOpportunity,
+  sameOpportunityState,
+  type DecisionLedger,
+  type DecisionOutcome,
+  type JevClient,
+  type Queryable,
+} from "@missa/decisions";
 import type { ExtractionResult } from "./contracts.js";
 
 export interface OpportunityIdentity {
@@ -46,6 +58,51 @@ export function compareOpportunityIdentity(left: OpportunityIdentity, right: Opp
   if (keyPart(left.title) && keyPart(left.title) === keyPart(right.title) && keyPart(left.organization) === keyPart(right.organization)) return "same";
   if (keyPart(left.title) === keyPart(right.title) || (left.deadline && left.deadline === right.deadline)) return "review";
   return "different";
+}
+
+/**
+ * Records a Jev same_opportunity decision for a pair the deterministic
+ * comparison left in "review". Shadow only: the answer is written to
+ * data_decisions and never changes the deterministic decision. Failures are
+ * logged and swallowed.
+ */
+export type OpportunityIdentityShadow = (
+  left: OpportunityIdentity,
+  right: OpportunityIdentity,
+) => Promise<DecisionOutcome | null>;
+
+export function createOpportunityIdentityShadow(deps: {
+  client: JevClient;
+  ledger?: DecisionLedger;
+  logger?: Pick<Console, "warn">;
+}): OpportunityIdentityShadow {
+  const logger = deps.logger ?? console;
+  return async (left, right) => {
+    try {
+      const facts = (identity: OpportunityIdentity) => ({ title: identity.title, organization: identity.organization, urls: [identity.canonicalUrl], deadline: identity.deadline });
+      const result = await decide({
+        client: deps.client,
+        ledger: deps.ledger,
+        mode: "shadow",
+        subjectId: identityPairSubjectId(left.key, right.key),
+        state: sameOpportunityState(facts(left), facts(right)),
+        questions: [sameOpportunity],
+        evidenceUrl: right.canonicalUrl ?? left.canonicalUrl,
+      });
+      if (result.error) logger.warn(`[missa-ingestion-v2] identity shadow decision: ${result.error}`);
+      return result.outcomes[sameOpportunity.key] ?? null;
+    } catch (error) {
+      logger.warn(`[missa-ingestion-v2] identity shadow decision failed: ${error instanceof Error ? error.message : String(error)}`);
+      return null;
+    }
+  };
+}
+
+/** Undefined unless JEV_API_KEY is set, so an unconfigured worker does no extra work. */
+export function opportunityIdentityShadowFromEnv(db: Queryable, env: Record<string, string | undefined> = process.env): OpportunityIdentityShadow | undefined {
+  const client = jevClientFromEnv(env);
+  if (!client.available) return undefined;
+  return createOpportunityIdentityShadow({ client, ledger: createPostgresDecisionLedger(db) });
 }
 
 /** Aggregator indexes are discovery evidence, never a single opportunity. */

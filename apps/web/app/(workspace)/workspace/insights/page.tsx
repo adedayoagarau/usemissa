@@ -1,7 +1,7 @@
 import { getWorkspacePageAccess } from '@/lib/workspacePage';
 
 export default async function WorkspaceInsightsPage({ searchParams }: { searchParams: Promise<{ organizationId?: string }> }) {
-  const access = await getWorkspacePageAccess(searchParams, 'workspace/insights');
+  const access = await getWorkspacePageAccess(searchParams, 'workspace/insights', 'insights.read');
   if (!access.organizationId)
     return (
       <main className="mx-auto max-w-2xl px-6 py-12">

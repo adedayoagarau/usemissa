@@ -8,6 +8,8 @@ import {
   Bell,
   Building2,
   CalendarDays,
+  House,
+  CalendarRange,
   Inbox,
   ListOrdered,
   Menu,
@@ -27,16 +29,19 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { rememberSignedIn } from "@/lib/signedInHint";
 import styles from "./creator-shell.module.css";
 
 const primary = [
+  { href: "/home", label: "Home", icon: House },
   { href: "/opportunities", label: "Opportunities", icon: Search },
   { href: "/following", label: "Following", icon: Bell },
   { href: "/tracker", label: "Tracker", icon: BookOpen },
   { href: "/goals", label: "Goals", icon: Target },
   { href: "/library", label: "Library", icon: Archive },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/season", label: "Season", icon: CalendarRange },
 ] as const;
 
 export type CreatorOrganization = { id: string; name: string };
@@ -63,6 +68,11 @@ export function CreatorShell({
       window.localStorage.getItem("missa-creator-nav") === "collapsed",
   );
   const [logoutError, setLogoutError] = useState(false);
+
+  // Only signed-in people reach this shell. Recording it lets public pages,
+  // which are served from the CDN, show their account in the site header.
+  useEffect(() => rememberSignedIn(true), []);
+
   const links = [
     ...(applicationsPreview
       ? [
@@ -157,6 +167,7 @@ export function CreatorShell({
       setLogoutError(true);
       return;
     }
+    rememberSignedIn(false);
     router.push("/login");
     router.refresh();
   }
@@ -198,13 +209,23 @@ export function CreatorShell({
               {applicationsPreview ? "Sample account navigation" : email}
             </small>
           </div>
-          <button
-            type="button"
-            disabled={applicationsPreview}
-            onClick={() => void signOut()}
-          >
-            {applicationsPreview ? "Preview only" : "Log out"}
-          </button>
+          <div className={styles.accountActions}>
+            {applicationsPreview ? null : (
+              <Link
+                href="/plan"
+                aria-current={pathname === "/plan" ? "page" : undefined}
+              >
+                Plan
+              </Link>
+            )}
+            <button
+              type="button"
+              disabled={applicationsPreview}
+              onClick={() => void signOut()}
+            >
+              {applicationsPreview ? "Preview only" : "Log out"}
+            </button>
+          </div>
           {logoutError ? (
             <p role="alert">Could not log out. Try again.</p>
           ) : null}
@@ -232,6 +253,16 @@ export function CreatorShell({
             <SheetDescription>Navigate your creator tools.</SheetDescription>
           </SheetHeader>
           {navigation}
+          {applicationsPreview ? null : (
+            <Link
+              href="/plan"
+              className={styles.mobilePlan}
+              aria-current={pathname === "/plan" ? "page" : undefined}
+              onClick={() => setOpen(false)}
+            >
+              Plan
+            </Link>
+          )}
           <button
             className={styles.mobileLogout}
             disabled={applicationsPreview}

@@ -20,6 +20,18 @@ export type ApplicationSummary = {
   workTitle: string | null;
   workId: string | null;
   notify: boolean;
+  /** Applicable preparation checklist steps; 0 when no checklist exists yet. */
+  preparationTotal?: number;
+  /** Checklist steps marked complete or ready. */
+  preparationDone?: number;
+  /** Applicable checklist steps, used for Home's start-by estimates. */
+  preparationItems?: PreparationItemSummary[];
+};
+export type PreparationItemSummary = {
+  label: string;
+  state: "missing" | "ready" | "complete";
+  /** A Library Work, file, or saved answer is attached. */
+  linked: boolean;
 };
 export type ApplicationDetail = ApplicationSummary & {
   notes: string;
@@ -37,3 +49,19 @@ export function applicationDate(value: string | null): string {
   if (!value) return "Date not recorded";
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(value.length === 10 ? `${value}T12:00:00Z` : value));
 }
+
+/** Calendar delivery state for one application, read by the Tracker record. */
+export type ApplicationCalendarDelivery = {
+  /** The private deadline feed (iCal subscription) is active. */
+  feedActive: boolean;
+  connections: { provider: "google" | "microsoft"; status: "active" | "reconnect-required"; lastSyncAt?: string }[];
+  events: {
+    id: string;
+    title: string;
+    startAt: string;
+    allDay: boolean;
+    syncStatus?: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+    /** The deadline this event was planned around has since changed. */
+    deadlineChanged?: boolean;
+  }[];
+};

@@ -2,6 +2,9 @@ export * from './domain/types.js';
 export * from './ports.js';
 export * from './opportunityPorts.js';
 export * from './content/opportunityContent.js';
+export * from './editorial/opportunityTitle.js';
+export * from './editorial/intermediaries.js';
+export * from './editorial/publicOpportunity.js';
 export { DEFAULT_PROFILE_PRIVACY, RadarEngine, ProfilePrivacyValidationError, ProfileValidationError, type TickReport, type RadarStats, type RadarEngineOptions } from './engine.js';
 export { createStore, cloneStore, loadStore, saveStore, changesFor, versionsFor, membershipKey, type RadarStore } from './store/store.js';
 export { LibraryValidationError, LibraryConflictError, libraryForUser, libraryWorkReferences, libraryFileReferences, savedAnswerReferences, createLibraryWork, updateLibraryWork, deleteLibraryWork, createLibraryFile, deleteLibraryFile, createSavedAnswer, updateSavedAnswer, deleteSavedAnswer, type LibraryReferenceCounts } from './library/library.js';
@@ -30,7 +33,7 @@ export { validateCandidate, hasFatalIssues, looksLikeOpportunity } from './extra
 export { parseDate, daysBetween, addDays, isoDateOf, isPlausibleOpportunityDate } from './extraction/dates.js';
 export { extractFee } from './extraction/fees.js';
 export { OPENING_SIGNALS, CLOSING_SIGNALS, CLOSED_SIGNALS, SUSPICIOUS_SIGNALS, findSignals } from './extraction/signals.js';
-export { findCanonical, titleSimilarity, normalizeName, type DedupMatch } from './dedup/dedup.js';
+export { findCanonical, findDedupNearMisses, titleSimilarity, normalizeName, type DedupIdentityDecider, type DedupMatch, type DedupNearMiss } from './dedup/dedup.js';
 export {
   EMAIL_CANDIDATE_RETENTION_DAYS,
   EMAIL_MAX_BODY_CHARS,
@@ -51,6 +54,16 @@ export {
   type EmailReviewMutation,
   type IngestResult,
 } from './email/emailForwarding.js';
+export {
+  EMAIL_DECISION_MAX_CALLS,
+  applyEmailDecisionVerdict,
+  decideEmailCandidate,
+  emailCandidateDecidable,
+  emailDecisionRequest,
+  type EmailDecider,
+  type EmailDecisionRequest,
+  type EmailDecisionVerdict,
+} from './email/emailDecisions.js';
 export {
   GMAIL_READONLY_SCOPE,
   GMAIL_DEFAULT_WINDOW_DAYS,
@@ -134,6 +147,7 @@ export { RadarServer, type RadarServerOptions } from './server/server.js';
 export { AuthError, DEFAULT_SEAT_LIMITS, membershipsFor, isOrgMember, organizationSeatLimit, organizationSeatUsage, provisionOrgAccount, revokeOrgMembership } from './auth/accounts.js';
 export {
   hashPassword, verifyPassword, createSessionToken, verifySessionToken, type SessionPayload,
+  isSessionIssuedAfterRevocation, revokeAccountSessions, sessionRevocationCutoff, type SessionRevocationState,
   createFeedToken, verifyFeedToken, type FeedTokenPayload,
 } from './auth/crypto.js';
 export { buildIcsFeed } from './tracker/calendarFeed.js';
@@ -163,7 +177,14 @@ export {
   type TrackerImportTaxonomyReview,
   type TrackerImportResult,
 } from './import/trackerImport.js';
-export { buildServerDemoWorld, type ServerDemoWorld, type DemoCredential } from './fixtures/serverDemo.js';
+export {
+  buildServerDemoWorld,
+  demoSeedAllowed,
+  DemoSeedRefusedError,
+  type DemoSeedEnv,
+  type ServerDemoWorld,
+  type DemoCredential,
+} from './fixtures/serverDemo.js';
 export { buildDemoWorld, ManualClock } from './fixtures/seed.js';
 export {
   DIRECTORY_IDENTITY_CONFIDENCE_THRESHOLD,
@@ -244,6 +265,9 @@ export type { RegistryTaxonomyAudit, RegistryVerticalCompatibility } from './reg
 export {
   OpportunitySearchEngine,
   searchOpportunities,
+  searchOpportunitiesWithConfirmedFacts,
+  parseFinancialsAndFacilities,
+  paymentAmountsInText,
   detectOpportunityDomain,
   matchesDomain,
   VISUAL_ARTS_MEDIUMS,
@@ -253,7 +277,15 @@ export {
   type OpportunitySearchOptions,
   type OpportunitySearchHit,
   type OpportunitySearchResult,
+  type OpportunitySearchEngineOptions,
+  type OpportunityFinancials,
 } from './search/opportunitySearchEngine.js';
+export {
+  loadConfirmedFacts,
+  type ConfirmedFactsProvider,
+  type ConfirmedOpportunityFacts,
+} from './search/confirmedFacts.js';
 
 export * from './ranking/magazineRankingEngine.js';
+export * from './ranking/residencyRankingEngine.js';
 

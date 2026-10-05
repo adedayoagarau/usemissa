@@ -19,6 +19,14 @@ const badgeVariants = cva(
         ghost:
           "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
         link: "text-primary underline-offset-4 hover:underline",
+        // Time-sensitive state; product code reaches it only through UrgencyBadge.
+        warning: "border-warning bg-warning-subtle text-ochre-deep",
+        // Neutral information (check-ins, opens soon); reached through Missa wrappers.
+        information: "bg-mineral-blue-tint text-mineral-blue",
+        // Genuinely positive state (on track, accepted, free to submit).
+        success: "bg-lichen-tint text-green",
+        // Quiet Forest for open, start-by, and ready states.
+        accent: "bg-accent-tint text-accent-deep",
       },
       size: {
         default: "h-5 px-2 py-0.5 text-xs",

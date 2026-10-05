@@ -57,6 +57,21 @@
       "appearance": "white-editorial-with-refractive-forest-scene",
       "boundary": "Optional /welcome entry; finite gesture-driven artwork; real /onboarding and /opportunities links; does not alter account onboarding state."
     },
+    "composition.admin-publication-review": {
+      "semantic": "PlatformAdminPublicationReview",
+      "implementation": "apps/web/components/platform-admin-publication-review.tsx",
+      "composition": [
+        "Button",
+        "Field",
+        "Input",
+        "Textarea",
+        "AlertDialog",
+        "Alert",
+        "Empty",
+        "Sonner"
+      ],
+      "boundary": "Platform-admin decision queue for review-agent holds. Approve publishes through the database publication gates; block suppresses. Hold reasons are plain text, not badges."
+    },
     "composition.application-tracker-preview": {
       "semantic": "ApplicationTrackerPreview",
       "composition": ["Button", "Field", "Input", "Textarea", "NativeSelect"],
@@ -88,47 +103,89 @@
       "appearance": "asynchronous-directory-search-with-manual-name-fallback"
     },
     "choice.creator-theme": {
-      "semantic": "CreatorPortfolioStudio",
+      "semantic": "ProfileStudio",
       "base": "Button",
       "appearance": "single-pressed-curated-theme-card"
     },
     "composition.creator-profile-editor": {
-      "semantic": "CreatorPortfolioStudio",
+      "semantic": "ProfileStudio",
+      "implementation": "components/creator-profile/studio/profile-studio.tsx",
       "composition": [
         "Button",
         "Input",
         "Textarea",
-        "Combobox",
+        "NativeSelect",
+        "Switch",
         "Dialog",
-        "PortfolioLinkPreview"
+        "Combobox",
+        "PortfolioLinkPreview",
+        "PortfolioHandleField",
+        "ProvenanceBadge"
       ],
-      "appearance": "full-page-independent-sections-with-live-preview",
-      "mediaSelection": "labelled-button-trigger-with-replace-remove-and-preview"
+      "appearance": "section-rail-focused-editor-and-device-scaled-live-preview",
+      "mediaSelection": "labelled-button-trigger-with-replace-remove-and-preview",
+      "reorder": "explicit-move-up-down-buttons"
     },
     "composition.creator-portfolio": {
-      "semantic": "CreatorPortfolioStudio",
+      "semantic": "PublicCreatorProfile",
+      "implementation": "components/creator-profile/public-profile.tsx",
       "composition": [
         "Button",
-        "Input",
-        "Textarea",
         "Dialog",
-        "InstitutionSocialLinks"
+        "ProvenanceBadge",
+        "AvailabilityChip",
+        "ProfileConnect"
       ],
-      "appearance": "split-cover-asymmetric-archive-with-unified-project-viewer-and-separate-owner-settings",
-      "variants": ["public-profile", "embedded-marketing-sample"],
-      "embeddedBoundary": "Optional embedded sample removes nested main/h1 and contact/credit modules; retains actual work filters and reading/image disclosures. No ownerId, account loading or writes. Explicit fictional sample label remains visible."
+      "appearance": "craft-lens-composition-with-portrait-plate-or-type-hero",
+      "variants": ["page", "preview", "embedded"],
+      "lenses": [
+        "mixed",
+        "writing",
+        "visual",
+        "sound",
+        "stage",
+        "film",
+        "design"
+      ],
+      "embeddedBoundary": "Embedded samples show identity and selected work only, keep the fictional sample label, and disable contact actions."
+    },
+    "composition.creator-profile-inbox": {
+      "semantic": "ProfileInbox",
+      "implementation": "components/creator-profile/profile-inbox.tsx",
+      "composition": ["Tabs", "Button", "Empty", "Link"],
+      "appearance": "tabbed-messages-invitations-followers-following-with-archive",
+      "boundary": "Senders never see the creator's address unless the creator replies by email; organizations are not told when an invitation is declined."
+    },
+    "composition.auth-shell": {
+      "semantic": "AuthShell",
+      "implementation": "apps/web/components/auth-shell.tsx",
+      "composition": ["MissaWordmark", "Link", "Image"],
+      "appearance": "white-form-column-with-inset-campaign-photograph-and-editorial-caption",
+      "usedBy": [
+        "AuthForm (/login, /signup)",
+        "/forgot-password",
+        "/reset-password"
+      ],
+      "boundary": "Frame only: owns the main landmark, wordmark, legal links, and decorative photograph (hidden below 1024px and from assistive technology). Authentication, verification, and first-save logic stay in AuthForm. Form controls use Field, Input, InputOTP, Alert, Spinner, and Button; the Google action uses SocialAuthButton."
     },
     "composition.creator-onboarding": {
       "semantic": "CreatorOnboarding",
+      "implementation": "apps/web/components/creator-onboarding.tsx",
       "composition": [
         "Button",
         "Checkbox",
+        "RadioGroup",
+        "Switch",
+        "Combobox",
+        "Field",
         "Input",
-        "NativeSelect",
+        "InputGroup",
+        "Alert",
+        "Spinner",
         "Link"
       ],
-      "appearance": "editorial-onboarding-with-practices-interests-private-location-and-confirmed-profile-address",
-      "boundary": "Given and family names are supplied by the person and remain distinct from the normalized public handle. Country, city, timezone, career stage, travel willingness, and fee preference are private matching inputs."
+      "appearance": "focused-single-question-onboarding-with-studio-choice-imagery-live-match-count-address-claim-and-matched-welcome",
+      "boundary": "Given and family names are supplied by the person and remain distinct from the normalized public handle. Country, city, timezone, career stage, travel willingness, and fee preference are private matching inputs. Country and time zone use searchable Combobox lists; time zones are validated on the server. Finish later saves the current choices and marks setup skipped; only a completed setup opens on the summary. The live match count and the welcome list read the public browse API: kinds of work widen the set (taxonomyMatch=any) while opportunity types, country eligibility, and the fee preference narrow it. They show open calls, never eligibility, and hide when the API is unavailable. When handle claiming is open, finishing waits for a confirmed available address."
     },
     "composition.creator-workspace": {
       "semantic": "CreatorWorkspace",
@@ -137,7 +194,7 @@
       "boundary": "Never infer an external application status or submission from a link open."
     },
     "filter.creator-work-format": {
-      "semantic": "CreatorPortfolioStudio",
+      "semantic": "PublicCreatorProfile",
       "base": "Button",
       "variant": "ghost",
       "appearance": "pressed-format-filter"
@@ -179,9 +236,9 @@
     "composition.manuscript-match": {
       "semantic": "ManuscriptMatchWizard",
       "implementation": "apps/web/components/discover/manuscript-match-wizard.tsx",
-      "composition": ["Button", "Card", "Field", "NativeSelect"],
-      "appearance": "editorial-submission-brief-with-index-style-filters-and-evidence-led-match-cards",
-      "boundary": "Fit is a deterministic comparison aid, not eligibility or a submission claim. Journal destinations remain source-linked and external."
+      "composition": ["FieldSet", "RadioGroup", "InputGroup", "Slider", "Collapsible", "Textarea", "Combobox", "FilterChip", "Switch", "NativeSelect", "Button", "Select", "Sheet", "Tabs", "Empty", "Skeleton", "Spinner", "CountBadge", "MatchExplanationTrigger", "RankingTierBadge", "PlanTierBadge"],
+      "appearance": "submission-brief-beside-a-deterministic-submission-plan-and-searchable-sortable-ranked-lists-of-evidence-led-matches-with-a-browser-saved-shortlist",
+      "boundary": "Fit, odds, payoff and cost are deterministic scores from recorded facts, versioned with the decision model; the plan is guidance, not eligibility or a submission claim. Journal destinations remain source-linked and external."
     },
     "action.primary": {
       "primitive": "Button",
@@ -596,7 +653,7 @@
         "TableRow",
         "TableHead",
         "TableCell",
-        "CreatorPortfolioStudio",
+        "PublicCreatorProfile",
         "GoalSubmissionProgress",
         "Switch",
         "Button",
@@ -607,23 +664,36 @@
       ],
       "boundary": "Interactive public feature explorer with original fictional campaign photography. The homepage uses a one-work portfolio teaser; real public catalogue deadlines, local notification switches, and clearly labelled resettable sample submissions remain interactive. No private API write, delivery or publication. Existing app destinations retained. User-triggered motion with reduced-motion equivalent. Homepage preview starts with the White theme; five local theme choices remain interactive. Approved marketing-only forest, citron and sky surfaces use the scoped palette token chain."
     },
-    "composition.applications-workspace": {
-      "semantic": "ApplicationsWorkspace",
-      "implementation": "apps/web/components/missa/applications-workspace.tsx",
+    "composition.application-record": {
+      "semantic": "TrackerItemSheet",
+      "implementation": "apps/web/components/missa/tracker-item-sheet.tsx",
+      "sections": "apps/web/components/missa/application-record.tsx",
       "composition": [
+        "Sheet",
         "Button",
-        "Tabs",
         "Dialog",
-        "Collapsible",
         "Field",
         "Input",
         "Textarea",
         "NativeSelect",
-        "ApplicationLabels",
+        "Alert",
         "Skeleton",
-        "ApplicationPreparation"
+        "Separator",
+        "UrgencyBadge",
+        "PrepareChecklist",
+        "ApplicationReminders",
+        "ApplicationCalendarDelivery",
+        "ApplicationEmailEvidence"
       ],
-      "boundary": "Account-owned canonical applications and preparation; explicit recorded events, no submission on external navigation."
+      "appearance": "right-side-sheet-full-width-below-640px-single-scroll-with-eyebrow-sections",
+      "boundary": "The one Tracker sheet for a tracked application, opened by /tracker?item=<id> or /tracker?application=<id>&section=<progress|prepare|timing|materials|notes|history> from every surface. Deadline, stages and plan come from deadline management; the record sections add progress with the lifecycle Saved, Preparing, Ready, Submitted, In review, Outcome, where each reached step shows its recorded date and provenance (recorded by you, Missa-hosted submission, received from the organization, inferred from source information) and never an invented date. External navigation never records a submission. One Forest action per region. No AI wording."
+    },
+    "composition.creator-home": {
+      "semantic": "CreatorHome",
+      "implementation": "apps/web/components/missa/creator-home.tsx",
+      "composition": ["Button", "Link", "Tabs", "Popover", "Checkbox", "Skeleton", "Empty", "Sonner", "ApplicationStateBadge", "ApplicationRunway", "StartByDate", "CountBadge"],
+      "appearance": "newsreader-greeting-with-situation-sentence-and-goal-pace-then-one-lead-move-with-runway-two-supporting-moves-week-tiles-and-tracker-tabs",
+      "boundary": "Derived entirely from Tracker state by lib/creator-home.ts. Names the week (busy, waiting, quiet, first run) in one generated sentence. This week's three ranks start-by passed or due, ready but unrecorded, closing this week, response check-ins, and Selected for you, one per application; the lead move carries the page's one Forest action. Home edits only through the record's own APIs: a lead preparation step is completed with PATCH /api/me/checklist-items/:id, and a due check-in is snoozed a week with PATCH /api/me/reminders/:id; every other row opens /tracker?application=<id>&section=<tab>. Goal pace compares an even spread from the goal's start with recorded submissions; preparing never counts as submitted. Replaces the former Your space at /workspace for creators."
     },
     "composition.library-material": {
       "semantic": "LibraryMaterialSheet",
@@ -747,12 +817,16 @@
     "UrgencyBadge": {
       "base": "Badge",
       "studioCandidates": ["badge-05", "badge-10"],
-      "motion": "never"
+      "motion": "never",
+      "implementation": "components/missa/deadline-badges.tsx",
+      "boundary": "Time pressure only: ochre within seven days of a close, a calm neutral otherwise. Text is customer language such as 'Closes in 6 days'. Never pulses."
     },
     "FeeBadge": {
       "base": "Badge",
       "studioCandidates": ["badge-02", "badge-04"],
-      "motion": "never"
+      "motion": "never",
+      "implementation": "components/missa/deadline-badges.tsx",
+      "boundary": "An entry fee or 'No fee'. Renders nothing when the fee is unknown."
     },
     "AuthorityBadge": {
       "base": "Badge",
@@ -762,7 +836,9 @@
     "MatchExplanationTrigger": {
       "base": "Button",
       "disclosure": "Popover",
-      "motion": "popover-transition-only"
+      "motion": "popover-transition-only",
+      "implementation": "components/missa/match-explanation-trigger.tsx",
+      "boundary": "Shows a percentage only when recorded evidence or watchouts exist; otherwise reads Limited data. The popover states its reasons, watchouts, and that fit is not eligibility."
     },
     "PublicationStateBadge": {
       "base": "Badge",
@@ -772,7 +848,9 @@
     "ProcessBadge": {
       "base": "Badge",
       "studioCandidates": ["badge-16", "badge-17", "badge-20", "badge-21"],
-      "motion": "indicator-while-confirmed-active"
+      "motion": "indicator-while-confirmed-active",
+      "implementation": "components/missa/deadline-badges.tsx",
+      "boundary": "Background process state (syncing, synced, waiting, not synced). A failed state is always paired with a recovery action."
     },
     "CountBadge": {
       "base": "Badge",
@@ -780,10 +858,18 @@
       "motion": "finite-entrance-when-becoming-nonzero",
       "implementation": "components/missa/count-badge.tsx"
     },
+    "PlanTierBadge": {
+      "base": "Badge",
+      "motion": "never",
+      "implementation": "components/missa/plan-tier-badge.tsx",
+      "boundary": "Labels a magazine's place in a submission plan from its recorded odds score: Long shot, Good fit or Likely. Guidance from recorded facts, never a prediction of acceptance."
+    },
     "FilterChip": {
       "base": "Button",
       "studioReferences": ["badge-12", "badge-13"],
-      "motion": "never"
+      "motion": "never",
+      "implementation": "components/missa/filter-chip.tsx",
+      "boundary": "Toggle choice announced with aria-pressed and shown with a check mark plus Forest outline; never a filled primary action."
     },
     "SaveAction": {
       "base": "Button",
@@ -813,11 +899,48 @@
       "motion": "never",
       "boundary": "Opportunity type plus at most one personal status or availability label"
     },
+    "ApplicationCalendarDelivery": {
+      "base": "Button",
+      "implementation": "components/missa/application-calendar-delivery.tsx",
+      "motion": "indicator-while-confirmed-active",
+      "boundary": "Read-only delivery state for one application: private feed on/off, each provider connection (synced or reconnect), and planned sessions with Syncing…, Synced, Sync failed + Retry. Synced only after the provider queue reports success; the spinner shows only while a job is queued or running."
+    },
+    "ApplicationEmailEvidence": {
+      "base": "Button",
+      "implementation": "components/missa/application-email-evidence.tsx",
+      "motion": "never",
+      "boundary": "Email forwarding or Gmail evidence only suggests a status. Nothing changes until the creator confirms; confirming records the event with source=email and closes the suggestion in one transaction. Shown only when an email integration is enabled."
+    },
+    "SimilarOpportunities": {
+      "base": "Button",
+      "implementation": "components/missa/similar-opportunities.tsx",
+      "motion": "never",
+      "boundary": "Recovery after a decline, a withdrawal, or a missed deadline. Deterministic matches (lib/similar-opportunities.ts) from shared taxonomy, genres, kind of call, fee, and preparation time; each match lists its plain reasons. Never labelled AI or smart. Excludes tracked calls, the anchor, calls closing within 7 days, and calls hidden for this application; at most two per organization. Save to Tracker or Not for me."
+    },
+    "PreSubmitCheck": {
+      "base": "Button",
+      "implementation": "components/missa/pre-submit-check.tsx",
+      "motion": "never",
+      "boundary": "Before you submit: required materials, word limit against saved text, page limit, anonymous-review name check across titles, file names, and saved text, and file types. Each row is Passed, Needs attention, or Check manually with the status written beside its icon; anything Missa cannot read (file contents, page counts, document properties, unrecorded file types) is Check manually, never Passed."
+    },
     "GoalSubmissionProgress": {
       "base": "Progress",
       "implementation": "components/missa/goal-submission-progress.tsx",
       "motion": "never",
       "boundary": "One circle per submission up to 24; numeric progressbar for larger targets. Preparation does not increment progress."
+    },
+    "ApplicationStateBadge": {
+      "base": "Badge",
+      "implementation": "components/missa/application-state-badge.tsx",
+      "variants": ["warning", "information", "accent", "success", "outline"],
+      "motion": "never",
+      "boundary": "A creator's personal application state (Check-in due, On track, 1 day behind, Ready to record, Not selected). The label states the meaning; declined and withdrawn stay neutral."
+    },
+    "ApplicationRunway": {
+      "base": "custom",
+      "implementation": "components/missa/application-runway.tsx",
+      "motion": "never",
+      "boundary": "Time left against Missa's start-by estimate: Ochre slipped days or Lichen slack, then the Forest work window, with today marked and every part stated in text. Custom because Progress shows one value and the runway needs two segments plus a marker; inspected Progress, CircularProgress, Slider, and Studio progress families first."
     },
     "EmailChoicePrompt": {
       "base": "Button",
@@ -825,11 +948,52 @@
       "motion": "never",
       "boundary": "Non-urgent permission question rendered above workspace content, not modal. The installed Alert is not used because it hard-codes role=alert; only the save failure uses role=alert."
     },
+    "PlanProduct": {
+      "base": "Button",
+      "implementation": "components/missa/plan-product.tsx",
+      "motion": "never",
+      "boundary": "The creator's plan page: current plan and Free allowance, the Plus offer with prices read from Stripe, and one action (upgrade, or manage in Stripe). Status messages use role=status; only a failed checkout or portal request uses role=alert."
+    },
+    "TextRemindersSettings": {
+      "base": "Switch",
+      "implementation": "components/missa/text-reminders-settings.tsx",
+      "motion": "never",
+      "composition": ["Field", "PhoneInput", "InputOTP", "Switch", "Button"],
+      "boundary": "Plus-only text (SMS) reminder settings inside notification preferences: Free creators see what Plus adds and a link to /plan; Plus creators add a number with PhoneInput, confirm it with a six-digit InputOTP code, then use one Switch to turn texts on or off, change or remove the number. Every change saves immediately through /api/me/sms; the plan is plain text, not a Badge. Always states 'Reply STOP to end. Msg & data rates may apply.' Status uses role=status; only failures use role=alert."
+    },
     "CookieConsent": {
       "base": "Button",
       "implementation": "components/missa/cookie-consent.tsx",
       "motion": "never",
       "boundary": "Permission question for optional analytics. Non-modal region above the page, one decision per visitor, no analytics client or first-party event ledger runs before an explicit Accept. The installed Alert is not used because it hard-codes role=alert."
+    },
+    "ProvenanceBadge": {
+      "base": "Badge",
+      "disclosure": "Popover",
+      "implementation": "components/missa/provenance-badge.tsx",
+      "states": ["confirmed", "linked", "added"],
+      "rule": "Confirmed only when the server matched a Missa acceptance; the popover always explains the source in plain language.",
+      "motion": "popover-transition-only"
+    },
+    "AvailabilityChip": {
+      "base": "Badge",
+      "implementation": "components/missa/availability-chip.tsx",
+      "states": ["open", "from", "booked"],
+      "rule": "A 'from' entry whose date has passed reads as open; meaning never depends on colour alone.",
+      "motion": "never"
+    },
+    "DateConfidenceBadge": {
+      "base": "Badge",
+      "studioCandidates": ["badge-05", "badge-10"],
+      "motion": "never",
+      "implementation": "components/missa/deadline-badges.tsx",
+      "boundary": "Whether a date is confirmed by the organization's source, predicted by Missa from past cycles (dotted underline, never presented as the organization's), changed since first recorded, or needs checking. The title carries the plain-language explanation."
+    },
+    "UpgradeHint": {
+      "base": "Button",
+      "implementation": "components/missa/upgrade-hint.tsx",
+      "motion": "never",
+      "boundary": "One calm line naming what a plan adds and a link to /plan. Says what the creator gets, never what they lose; no alarm colour, no modal."
     }
   },
   "productCompositions": {
@@ -879,7 +1043,7 @@
       "DialogOrSheet",
       "ProcessFeedback"
     ],
-    "ProfileSettingsForm": ["Field", "FormControls", "InlineFeedback"],
+    "ProfileSettingsForm": ["Field", "FormControls", "RadioGroup", "Collapsible", "Switch", "AlertDialog", "InlineFeedback", "StickySaveBar"],
     "PortfolioIdentityHeader": [
       "EditorialTypography",
       "AvatarOrMedia",
@@ -896,7 +1060,10 @@
       "WorkflowBadge",
       "RowActions",
       "ResponsiveLabelledRows"
-    ]
+    ],
+    "CreatorCv": ["EditorialTypography", "PrintStyles", "ProvenanceMark"],
+    "ProfileConnect": ["Button", "Dialog", "Field", "Input", "NativeSelect", "Textarea"],
+    "ProfileInbox": ["Tabs", "Button", "Empty", "Link"]
   },
   "motion": {
     "requiresChangingState": true,

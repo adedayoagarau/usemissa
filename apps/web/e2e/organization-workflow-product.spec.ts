@@ -17,7 +17,7 @@ async function workflowFixture(page: Page, baseURL: string | undefined) {
   expect((await page.request.post(`/api/orgs/${organizationId}/open-calls/${opportunity.id}/publish`)).status()).toBe(200);
   const submitter = await playwrightRequest.newContext({ baseURL });
   const email = `workflow-${suffix}@example.com`;
-  expect((await submitter.post('/api/auth/signup', { data: { email, password: 'correct-horse-battery', displayName: 'Workflow Submitter' } })).status()).toBe(201);
+  expect((await submitter.post('/api/auth/signup', { data: { email, password: 'correct-horse-battery', givenName: 'Workflow', familyName: 'Submitter' } })).status()).toBe(201);
   const submissionResponse = await submitter.post(`/api/submission-paths/${form.id}/submit`, { data: { category: 'Poetry', answers: { [form.fields[0]!.id]: 'A short project note.' }, works: [{ title: `River Maps ${suffix}` }, { title: `Returning City ${suffix}` }] }, headers: { 'Idempotency-Key': `workflow-${suffix}` } });
   expect(submissionResponse.status()).toBe(201);
   const submitted = await submissionResponse.json() as { submission: { id: string }; works: Array<{ id: string; title: string }> };

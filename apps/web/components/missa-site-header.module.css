@@ -247,3 +247,9 @@
     color: var(--primary-foreground);
   }
 }
+
+/* This device signed in recently and the session is still loading; see
+   lib/signedInHint.ts. Keep the space so nothing shifts when it resolves. */
+:global(:root[data-signed-in]) .authActions {
+  visibility: hidden;
+}

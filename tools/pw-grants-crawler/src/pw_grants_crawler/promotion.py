@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 from datetime import date
@@ -33,7 +34,27 @@ def opportunity_type(candidate: ReviewCandidate) -> str:
     return "contest"
 
 
+_ORGANIZER_SEPARATORS = re.compile(r"[:|/()\[\]\u2013\u2014]| - ")
+
+
+def organizer_name(candidate: ReviewCandidate) -> str | None:
+    """Gary's organizer field is often the call title itself; pass it on only when it reads like a name."""
+    organizer = " ".join((candidate.organizer or "").split())
+    title = " ".join((candidate.title or "").split())
+    if not organizer or len(organizer.split()) > 8 or _ORGANIZER_SEPARATORS.search(organizer):
+        return None
+    if title and title.casefold() in organizer.casefold():
+        return None
+    return organizer
+
+
 def publish_opportunity(database_url: str, candidate: ReviewCandidate) -> str:
+    """Hand a Gary-approved call to the Missa review agent.
+
+    New calls land as `reviewable`; the review agent cleans the title, waits for
+    the write-up and publishes. Gary's identity check counts as organization
+    confirmation. A call already published or suppressed keeps its state and title.
+    """
     if not candidate.deadline:
         raise ValueError("Publication policy requires a deadline")
     deadline = date.fromisoformat(candidate.deadline[:10])
@@ -58,14 +79,16 @@ def publish_opportunity(database_url: str, candidate: ReviewCandidate) -> str:
                   submission_state, search_document, source_checked_at,
                   processing_succeeded_at, last_changed_at, created_at, updated_at
                 ) VALUES(
-                  %s, %s, %s, NULL, %s, %s, 'published', %s, %s, %s, %s,
+                  %s, %s, %s, NULL, %s, %s, 'reviewable', %s, %s, %s, %s,
                   'fixed', %s, %s, 'USD', %s, %s, %s, %s, %s, %s, now(),
                   now(), now(), now(), now()
                 )
                 ON CONFLICT (id) DO UPDATE SET
-                  slug = excluded.slug, title = excluded.title,
+                  slug = CASE WHEN opportunities.publication_state = 'reviewable'
+                    THEN excluded.slug ELSE opportunities.slug END,
+                  title = CASE WHEN opportunities.publication_state = 'reviewable'
+                    THEN excluded.title ELSE opportunities.title END,
                   source_id = excluded.source_id, status = excluded.status,
-                  publication_state = excluded.publication_state,
                   type = excluded.type, discipline = excluded.discipline,
                   genres = excluded.genres, deadline_date = excluded.deadline_date,
                   fee_status = excluded.fee_status, fee_cents = excluded.fee_cents,
@@ -103,14 +126,24 @@ def publish_opportunity(database_url: str, candidate: ReviewCandidate) -> str:
                 """
                 INSERT INTO opportunity_source_evidence(
                   id, opportunity_id, source_id, kind, name, url, checked_at,
-                  processing_succeeded_at, organization_confirmed, verified_until
+                  processing_succeeded_at, organization_confirmed,
+                  destination_reconciled, destination_reconciliation, verified_until
                 ) VALUES(%s, %s, %s, 'directory', 'Poets & Writers Contests', %s,
-                         now(), now(), false, NULL)
+                         now(), now(), true, true, %s::jsonb, NULL)
                 ON CONFLICT (id) DO UPDATE SET url = excluded.url,
                   checked_at = excluded.checked_at,
-                  processing_succeeded_at = excluded.processing_succeeded_at
+                  processing_succeeded_at = excluded.processing_succeeded_at,
+                  organization_confirmed = excluded.organization_confirmed,
+                  destination_reconciled = excluded.destination_reconciled,
+                  destination_reconciliation = excluded.destination_reconciliation
                 """,
-                (evidence_id, candidate.opportunity_id, source_id, candidate.source_detail_url),
+                (
+                    evidence_id,
+                    candidate.opportunity_id,
+                    source_id,
+                    candidate.source_detail_url,
+                    json.dumps({"source": "gary", "organizerName": organizer_name(candidate), "officialWebsite": official}),
+                ),
             )
             connection.execute(
                 """UPDATE opportunity_sources

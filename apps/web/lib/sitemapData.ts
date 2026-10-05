@@ -1,5 +1,5 @@
 import { Pool } from "pg";
-import { canonicalPublicOpportunityPredicate } from "@missa/radar-adapters";
+import { canonicalListedOpportunityPredicate } from "@missa/radar-adapters";
 import { catalogueReadDatabaseUrl } from "./catalogueDatabase";
 
 /**
@@ -58,7 +58,7 @@ export async function listOpportunitySitemapEntries(): Promise<SitemapEntry[]> {
              '/opportunities/' || coalesce(nullif(btrim(o.slug), ''), o.id) as path,
              coalesce(o.updated_at, o.created_at) as updated_at
       from opportunities o
-      where ${canonicalPublicOpportunityPredicate("o")}
+      where ${canonicalListedOpportunityPredicate("o")}
         and o.status = any($1::text[])
       order by coalesce(nullif(btrim(o.slug), ''), o.id), coalesce(o.updated_at, o.created_at) desc`,
     values: [PUBLIC_OPPORTUNITY_STATUSES],

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { billingEventType, recordPlatformBillingEvent } from '@missa/radar-adapters';
+import { applyCreatorSubscription, billingEventType, creatorPoolFor, recordPlatformBillingEvent } from '@missa/radar-adapters';
 import { verifyStripeSignature } from '@/lib/billing';
+import { applyCreatorBillingEvent } from '@/lib/creatorBilling';
 import { stripeReceiptReferences } from '@/lib/governedOperationRoutes';
 
 export async function POST(request: Request) {
@@ -13,6 +14,21 @@ export async function POST(request: Request) {
   try { event = JSON.parse(payload) as typeof event; } catch { return NextResponse.json({ error: 'Invalid webhook payload' }, { status: 400 }); }
   if (!event.id || !event.type || !event.data?.object) return NextResponse.json({ error: 'Invalid webhook payload' }, { status: 400 });
   const object = event.data.object;
+  // A creator's Plus subscription updates their plan before the event is
+  // recorded; a failure returns 503 so Stripe retries it. Retries and
+  // redeliveries are safe: the plan keeps the newest event time it applied and
+  // ignores older events, so a late event never undoes a newer one.
+  try {
+    const pool = creatorPoolFor(process.env.DATABASE_URL);
+    const outcome = await applyCreatorBillingEvent({ type: event.type, created: event.created, object }, (update) => applyCreatorSubscription(pool, update));
+    if (outcome.handled && !outcome.result.applied && outcome.result.reason === 'other-subscription') {
+      // A second Plus subscription for an account already paying through another
+      // one: the creator may be charged twice. Logged for a manual refund.
+      console.warn(JSON.stringify({ level: 'warn', message: 'creator.billing.duplicate_subscription', eventId: event.id, eventType: event.type, objectId: typeof object.id === 'string' ? object.id : null }));
+    }
+  } catch {
+    return NextResponse.json({ error: 'Plan update failed; Stripe should retry this event.' }, { status: 503 });
+  }
   const metadata = object.metadata && typeof object.metadata === 'object' ? object.metadata as Record<string, unknown> : {};
   const organizationId = typeof metadata.organization_id === 'string' ? metadata.organization_id : typeof object.client_reference_id === 'string' ? object.client_reference_id : undefined;
   const amount = [object.amount_total, object.amount_paid, object.amount, object.amount_refunded].find((candidate) => typeof candidate === 'number' && candidate >= 0) as number | undefined;

@@ -208,7 +208,7 @@ test.describe("Save-to-Tracker authentication return", () => {
       `/login?next=${encodeURIComponent("https://example.com")}&intent=${encodeURIComponent("save://example.com")}`,
     );
     await expect(
-      page.getByRole("heading", { name: "Welcome back." }),
+      page.getByRole("heading", { name: "Welcome back" }),
     ).toBeVisible();
     await expect(page.getByText("Private Save")).toHaveCount(0);
     expect(new URL(page.url()).searchParams.get("intent")).toBe(

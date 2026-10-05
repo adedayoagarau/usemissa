@@ -132,18 +132,23 @@ function parseDate(text: string): string | undefined {
   const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
   return date.getUTCFullYear() === Number(match[1]) && date.getUTCMonth() === Number(match[2]) - 1 && date.getUTCDate() === Number(match[3]) ? date.toISOString().slice(0, 10) : undefined;
 }
+const STATUS_CHECKS: Array<[RegExp, MyStatus, EmailConfidence, string, boolean]> = [
+  [/revise and resubmit/i, 'revision-requested', 'high', 'The message says revise and resubmit.', true],
+  [/\b(shortlisted|short list)\b/i, 'shortlisted', 'high', 'The message mentions a shortlist.', true],
+  [/\b(longlisted|long list)\b/i, 'longlisted', 'high', 'The message mentions a longlist.', true],
+  [/\b(finalist)\b/i, 'finalist', 'possible', 'The message mentions finalist status.', true],
+  [/\b(congratulations|selected)\b/i, 'accepted', 'possible', 'The message contains a selection signal.', true],
+  [/\b(we regret|not selected|declined)\b/i, 'declined', 'possible', 'The message contains a decline signal.', true],
+  [/\b(now under review|currently reviewing|in review)\b/i, 'in-review', 'high', 'The message says the submission is under review.', false],
+  // A portal confirming that the creator sent something proposes Submitted;
+  // the creator still confirms it, and Gmail autopilot never applies it.
+  [/(your (application|submission|entry) (has been|was) (successfully )?submitted|submission confirmation|application confirmation|you('ve| have) (successfully )?submitted)/i, 'submitted', 'high', 'The message confirms your submission was sent.', false],
+  [/(thank you for your submission|submission received|we received)/i, 'received', 'high', 'The message confirms receipt.', false],
+];
+/** The evidence reasons the status rules write, so a later step can tell them from match reasons. */
+export const EMAIL_STATUS_REASONS: ReadonlySet<string> = new Set(STATUS_CHECKS.map((check) => check[3]));
 function extractStatus(text: string): { status?: MyStatus; confidence: EmailConfidence; reason?: string; sensitive: boolean } {
-  const checks: Array<[RegExp, MyStatus, EmailConfidence, string, boolean]> = [
-    [/revise and resubmit/i, 'revision-requested', 'high', 'The message says revise and resubmit.', true],
-    [/\b(shortlisted|short list)\b/i, 'shortlisted', 'high', 'The message mentions a shortlist.', true],
-    [/\b(longlisted|long list)\b/i, 'longlisted', 'high', 'The message mentions a longlist.', true],
-    [/\b(finalist)\b/i, 'finalist', 'possible', 'The message mentions finalist status.', true],
-    [/\b(congratulations|selected)\b/i, 'accepted', 'possible', 'The message contains a selection signal.', true],
-    [/\b(we regret|not selected|declined)\b/i, 'declined', 'possible', 'The message contains a decline signal.', true],
-    [/\b(now under review|currently reviewing|in review)\b/i, 'in-review', 'high', 'The message says the submission is under review.', false],
-    [/(thank you for your submission|submission received|we received)/i, 'received', 'high', 'The message confirms receipt.', false],
-  ];
-  for (const [pattern, status, confidence, reason, sensitive] of checks) if (pattern.test(text)) return { status, confidence, reason, sensitive };
+  for (const [pattern, status, confidence, reason, sensitive] of STATUS_CHECKS) if (pattern.test(text)) return { status, confidence, reason, sensitive };
   return { confidence: 'unknown', sensitive: false };
 }
 

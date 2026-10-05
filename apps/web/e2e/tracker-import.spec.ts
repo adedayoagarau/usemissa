@@ -3,7 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 
 async function account(page: Page) {
   const email = `import-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`;
-  expect((await page.request.post('/api/auth/signup', { data: { email, password: 'correct-horse-battery', displayName: 'Import User' } })).status()).toBe(201);
+  expect((await page.request.post('/api/auth/signup', { data: { email, password: 'correct-horse-battery', givenName: 'Import', familyName: 'User' } })).status()).toBe(201);
   const profile = await page.request.get('/api/me/profile');
   return (await profile.json()) as { id: string };
 }

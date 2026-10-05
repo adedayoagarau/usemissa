@@ -10,8 +10,9 @@
  * corrected in one place instead of across the footer, 404, privacy, terms,
  * and Organization pages.
  *
- * Set NEXT_PUBLIC_MISSA_CONTACT_EMAIL, NEXT_PUBLIC_MISSA_LEGAL_ENTITY, and
- * NEXT_PUBLIC_MISSA_LEGAL_ADDRESS to publish them.
+ * Set NEXT_PUBLIC_MISSA_CONTACT_EMAIL, NEXT_PUBLIC_MISSA_LEGAL_ENTITY,
+ * NEXT_PUBLIC_MISSA_LEGAL_ADDRESS, and NEXT_PUBLIC_MISSA_GOVERNING_LAW (for
+ * example "the laws of the State of Delaware") to publish them.
  */
 
 export const LEGAL_CONTACT_EMAIL =
@@ -20,7 +21,10 @@ export const LEGAL_CONTACT_EMAIL =
 const entity = process.env.NEXT_PUBLIC_MISSA_LEGAL_ENTITY?.trim() ?? "";
 const postalAddress = process.env.NEXT_PUBLIC_MISSA_LEGAL_ADDRESS?.trim() ?? "";
 
+const governingLaw = process.env.NEXT_PUBLIC_MISSA_GOVERNING_LAW?.trim() ?? "";
+
 export const LEGAL_ENTITY_NAME = entity;
+export const LEGAL_GOVERNING_LAW = governingLaw;
 export const LEGAL_POSTAL_ADDRESS = postalAddress;
 
 export function hasPostalAddress(): boolean {
