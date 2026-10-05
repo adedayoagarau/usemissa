@@ -1,0 +1,7 @@
+node_modules/
+out/
+# Synced from apps/web and landing by scripts/sync-assets.mjs
+public/fonts/
+public/media/*
+!public/media/creator-filmmaker.webp*
+!public/media/creator-musician.webp*
