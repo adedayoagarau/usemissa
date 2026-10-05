@@ -38,6 +38,8 @@
     "residency:rankings": "npm run build --workspace=@missa/radar-engine && npm run build --workspace=@missa/radar-adapters && node scripts/recompute-residency-rankings.mjs",
     "magazine:schedules": "npm run build --workspace=@missa/radar-engine && node scripts/backfill-magazine-schedules.mjs",
     "magazine:schedules:dry-run": "npm run build --workspace=@missa/radar-engine && node scripts/backfill-magazine-schedules.mjs --dry-run",
+    "trust:sweep": "npm run build --workspace=@missa/decisions && node scripts/jev-trust-sweep.mjs",
+    "test:trust-sweep": "npm run build --workspace=@missa/decisions && node --test scripts/tests/jev-trust-sweep.test.mjs",
     "jev:read": "npm run build --workspace=@missa/decisions && npm run build --workspace=@missa/radar-engine && npm run build --workspace=@missa/radar-adapters && node scripts/jev-read-opportunities.mjs",
     "jev:evaluate-reading": "npm run build --workspace=@missa/decisions && npm run build --workspace=@missa/radar-engine && npm run build --workspace=@missa/radar-adapters && node scripts/jev-evaluate-reading.mjs",
     "jev:propose-backfills": "npm run build --workspace=@missa/contracts && npm run build --workspace=@missa/taxonomy && npm run build --workspace=@missa/decisions && node scripts/jev-propose-backfills.mjs",

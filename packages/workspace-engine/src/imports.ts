@@ -1,5 +1,6 @@
 import type { OpenCall, OpenCallStatus, SubmissionField } from './domain/types.js';
 import type { WorkspaceEngine } from './engine.js';
+import { OPEN_CALL_IMPORT_TARGETS, resolveTargetIndexes, type ImportColumnMapping } from './importColumns.js';
 
 export const OPEN_CALL_IMPORT_MAX_BYTES = 2_000_000;
 export const OPEN_CALL_IMPORT_MAX_ROWS = 1_000;
@@ -46,8 +47,7 @@ function key(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
-function value(cells: string[], headers: string[], ...names: string[]): string {
-  const index = names.map(key).map((name) => headers.indexOf(name)).find((candidate) => candidate >= 0);
+function value(cells: string[], index: number | undefined): string {
   return index === undefined ? '' : cells[index] ?? '';
 }
 
@@ -58,23 +58,29 @@ function status(valueToNormalize: string): OpenCallStatus {
   return 'draft';
 }
 
-export function planOpenCallImport(csv: string, engine: WorkspaceEngine, organizationId: string, source: ImportSource = 'generic'): OpenCallImportPlan {
+export interface OpenCallImportOptions {
+  /** Normalized header → field or "ignore", confirmed by the organization. Overrides the alias rules. */
+  columnMapping?: ImportColumnMapping;
+}
+
+export function planOpenCallImport(csv: string, engine: WorkspaceEngine, organizationId: string, source: ImportSource = 'generic', options: OpenCallImportOptions = {}): OpenCallImportPlan {
   if (Buffer.byteLength(csv, 'utf8') > OPEN_CALL_IMPORT_MAX_BYTES) throw new Error('CSV is larger than the 2 MB import limit');
   const lines = csv.replace(/^\uFEFF/, '').split(/\r?\n/).filter((line) => line.trim());
   if (lines.length < 2) throw new Error('CSV must include a header row and at least one data row');
   const headers = parseLine(lines[0]).map(key);
+  const at = resolveTargetIndexes(headers, OPEN_CALL_IMPORT_TARGETS, options.columnMapping);
   const rows: OpenCallImportRow[] = [];
   const seen = new Set<string>();
   const entities = engine.entitiesForOrganization(organizationId);
   for (const [offset, line] of lines.slice(1, OPEN_CALL_IMPORT_MAX_ROWS + 1).entries()) {
     const cells = parseLine(line);
-    const title = value(cells, headers, 'title', 'open call', 'opportunity', 'open call title', 'name');
-    const team = value(cells, headers, 'team', 'entity', 'department', 'team / department') || 'Imported team';
-    const program = value(cells, headers, 'program', 'imprint', 'category', 'program / category') || 'Imported program';
+    const title = value(cells, at.title);
+    const team = value(cells, at.team) || 'Imported team';
+    const program = value(cells, at.program) || 'Imported program';
     const row: OpenCallImportRow = {
       row: offset + 2, title, team, program,
-      status: status(value(cells, headers, 'status', 'state')),
-      radarOpportunityId: value(cells, headers, 'radar opportunity id', 'opportunity id') || undefined,
+      status: status(value(cells, at.status)),
+      radarOpportunityId: value(cells, at.radarOpportunityId) || undefined,
       errors: [], warnings: [],
     };
     if (!title) row.errors.push('Title is required');

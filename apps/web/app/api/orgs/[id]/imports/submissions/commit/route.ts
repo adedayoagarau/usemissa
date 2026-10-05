@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { commitSubmissionImport, planSubmissionImport } from '@missa/workspace-engine';
 import { persistOrganizationMutation, requireOrganizationAccess } from '@/lib/organizationAccess';
+import { resolveImportColumnMapping } from '@/lib/jevDecisions';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -11,7 +12,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const accountByEmail = (email: string) => [...result.access.radar.store.accounts.values()].find((account) => account.email === email);
   try {
     const source = ['submittable', 'google-forms', 'airtable', 'generic'].includes(body.source) ? body.source : 'generic';
-    const plan = planSubmissionImport(body.csv, result.access.workspace, id, accountByEmail, source);
+    const { columnMapping, columns } = await resolveImportColumnMapping({ kind: 'submission', csv: body.csv, organizationId: id, requestedMapping: body.columnMapping, recordInShadow: false });
+    const plan = planSubmissionImport(body.csv, result.access.workspace, id, accountByEmail, source, columns ? { columnMapping } : undefined);
     if (plan.invalidRows > 0) return NextResponse.json({ error: 'Fix invalid rows before committing', plan }, { status: 422 });
     const imported = commitSubmissionImport(plan, result.access.workspace, id, accountByEmail);
     await persistOrganizationMutation(result.access, { action: 'submission.import', targetType: 'organization', targetId: id, detail: { created: imported.created.length, skipped: imported.skipped } });
