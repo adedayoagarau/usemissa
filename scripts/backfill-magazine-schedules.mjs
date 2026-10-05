@@ -1,30 +1,11 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import pg from 'pg';
 import { resolveMagazineSchedule } from '../packages/radar-engine/dist/src/index.js';
 
 const { Client } = pg;
 
-// Load DATABASE_URL from .env files if not already in process.env
 if (!process.env.DATABASE_URL) {
-  const possibleEnvFiles = [
-    '/Volumes/Crucial X10/usemissa/.env.local',
-    path.resolve('.env.local'),
-    path.resolve('../.env.local'),
-  ];
-  for (const envFile of possibleEnvFiles) {
-    if (fs.existsSync(envFile)) {
-      const envContent = fs.readFileSync(envFile, 'utf8');
-      for (const line of envContent.split('\n')) {
-        const match = line.match(/^DATABASE_URL\s*=\s*(.*)$/);
-        if (match) {
-          process.env.DATABASE_URL = match[1].trim().replace(/^["']|["']$/g, '');
-          break;
-        }
-      }
-      if (process.env.DATABASE_URL) break;
-    }
-  }
+  console.error('DATABASE_URL is required. Set it in the environment (or pass --env-file=.env.local).');
+  process.exit(1);
 }
 
 function slugify(text) {
@@ -39,12 +20,6 @@ function slugify(text) {
 
 async function run() {
   const isDryRun = process.argv.includes('--dry-run');
-
-  if (!process.env.DATABASE_URL) {
-    console.log('\n[MAGAZINE SCHEDULE] Notice: DATABASE_URL is not set.');
-    console.log('[MAGAZINE SCHEDULE] Usage: node scripts/backfill-magazine-schedules.mjs [--dry-run]');
-    return;
-  }
 
   const client = new Client({
     connectionString: process.env.DATABASE_URL,

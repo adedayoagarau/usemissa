@@ -1,28 +1,11 @@
-import fs from "node:fs";
-import path from "node:path";
 import pg from "pg";
 
 const { Client } = pg;
 
 export async function runFastPipeline() {
-  const possibleEnvFiles = [
-    "/Volumes/Crucial X10/usemissa/.env.local",
-    path.resolve(".env.local"),
-    path.resolve("../../.env.local"),
-  ];
-  let connStr: string | undefined = process.env.DATABASE_URL;
-  for (const envFile of possibleEnvFiles) {
-    if (fs.existsSync(envFile)) {
-      const envContent = fs.readFileSync(envFile, "utf8");
-      for (const line of envContent.split("\n")) {
-        const match = line.match(/^DATABASE_URL\s*=\s*(.*)$/);
-        if (match) {
-          connStr = match[1].trim().replace(/^["']|["']$/g, "");
-          break;
-        }
-      }
-      if (connStr) break;
-    }
+  const connStr = process.env.DATABASE_URL;
+  if (!connStr) {
+    throw new Error("DATABASE_URL is required. Set it in the environment (or pass --env-file=.env.local).");
   }
 
   const client = new Client({ connectionString: connStr });

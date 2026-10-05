@@ -1,7 +1,8 @@
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 import type { OtmGrant } from "./otmParser.js";
 
-const dataFile = "/Volumes/Crucial X10/usemissa/packages/radar-adapters/data/otm_grants.json";
+const dataFile = fileURLToPath(new URL("../../data/otm_grants.json", import.meta.url));
 
 if (!fs.existsSync(dataFile)) {
   console.log(`\n❌ No data file found at ${dataFile}`);

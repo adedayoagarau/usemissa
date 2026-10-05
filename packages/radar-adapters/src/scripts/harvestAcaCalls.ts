@@ -1,8 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseAcaCallPage, type AcaOpenCall } from "./acaParser.js";
 
-const dataDir = "/Volumes/Crucial X10/usemissa/packages/radar-adapters/data";
+const dataDir = fileURLToPath(new URL("../../data", import.meta.url));
 const outputFile = path.join(dataDir, "aca_opencalls.json");
 
 fs.mkdirSync(dataDir, { recursive: true });

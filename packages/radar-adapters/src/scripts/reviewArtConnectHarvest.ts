@@ -1,8 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ArtConnectProfile } from "./artConnectParser.js";
 
-const dataFile = "/Volumes/Crucial X10/usemissa/packages/radar-adapters/data/artconnect_organizations.json";
+const dataFile = fileURLToPath(new URL("../../data/artconnect_organizations.json", import.meta.url));
 
 if (!fs.existsSync(dataFile)) {
   console.log(`\n❌ No data file found at ${dataFile}`);

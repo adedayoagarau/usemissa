@@ -2,40 +2,17 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
+import { fileURLToPath } from "node:url";
 import pg from "pg";
 import type { ResidencyProfile } from "./resArtisParser.js";
 import { firstOwnUrl } from "@missa/radar-engine";
 
-// Load DATABASE_URL
-const possibleEnvFiles = [
-  "/Volumes/Crucial X10/usemissa/.env.local",
-  path.resolve(".env.local"),
-  path.resolve("../../.env.local")
-];
-
-for (const envFile of possibleEnvFiles) {
-  if (fs.existsSync(envFile)) {
-    const envContent = fs.readFileSync(envFile, "utf8");
-    for (const line of envContent.split("\n")) {
-      const match = line.match(/^DATABASE_URL\s*=\s*(.*)$/);
-      if (match) {
-        process.env.DATABASE_URL = match[1].trim().replace(/^["']|["']$/g, "");
-        break;
-      }
-    }
-    if (process.env.DATABASE_URL) {
-      console.log(`🔑 Loaded DATABASE_URL from ${envFile}`);
-      break;
-    }
-  }
-}
-
 if (!process.env.DATABASE_URL) {
-  console.error("❌ ERROR: DATABASE_URL could not be found in .env.local");
+  console.error("DATABASE_URL is required. Set it in the environment (or pass --env-file=.env.local).");
   process.exit(1);
 }
 
-const dataDir = "/Volumes/Crucial X10/usemissa/packages/radar-adapters/data";
+const dataDir = fileURLToPath(new URL("../../data", import.meta.url));
 const dataFile = path.join(dataDir, "resartis_organizations.json");
 const downloadsFile = path.join(os.homedir(), "Downloads", "resartis_organizations.json");
 
