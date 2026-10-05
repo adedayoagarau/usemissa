@@ -1,5 +1,6 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { Pool, type QueryResultRow } from "pg";
+import { normalizePostgresConnectionString } from "@missa/db";
 
 /**
  * First-party, cookieless site observability.
@@ -97,7 +98,7 @@ const pools = new Map<string, Pool>();
 function sharedPool(connectionString: string): Pool {
   let pool = pools.get(connectionString);
   if (!pool) {
-    pool = new Pool({ connectionString, max: 3, connectionTimeoutMillis: 3_000, idleTimeoutMillis: 10_000 });
+    pool = new Pool({ connectionString: normalizePostgresConnectionString(connectionString), max: 3, connectionTimeoutMillis: 3_000, idleTimeoutMillis: 10_000 });
     pool.on("error", () => undefined);
     pools.set(connectionString, pool);
   }

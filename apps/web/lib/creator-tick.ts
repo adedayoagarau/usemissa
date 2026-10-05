@@ -12,6 +12,7 @@ import { recalculateObligationChains } from './deadline-planning';
 import { refreshCycleForecasts, tickOpeningAlerts } from './deadline-cycles';
 import { tickDeadlineReminders } from './deadline-reminders';
 import { recordDeadlineRiskFromEnv } from './creator-deadline-risk';
+import { completeMissedSaveFollowUps } from './tracker-save-hooks';
 
 /**
  * One creator scheduling pass, shared by the /api/cron/creator route and the
@@ -29,6 +30,9 @@ export async function runCreatorTick(accountId?: string) {
   const pool = process.env.DATABASE_URL ? creatorPoolFor(process.env.DATABASE_URL) : undefined;
   try {
     const calendar = pool ? new PostgresCreatorCalendarRepository(pool) : undefined;
+    // Saves whose follow-up was interrupted get their official deadline and
+    // default reminders first, so the sweep below covers them too.
+    const missedSaves = calendar ? await completeMissedSaveFollowUps(calendar, accountId) : undefined;
     const deadlines = calendar ? await calendar.reconcileOfficialDeadlines(accountId) : undefined;
     // Obligations follow the deadlines the sweep just refreshed; forecasts and
     // opening alerts come next; status-aware deadline reminders are scheduled
@@ -53,7 +57,7 @@ export async function runCreatorTick(accountId?: string) {
       : undefined;
     // Shadow decisions only (scope `nudges`); skipped unless Jev may see creator data.
     const deadlineRisk = pool ? await recordDeadlineRiskFromEnv(pool, accountId) : undefined;
-    const result = { deadlines, chains, forecasts, openings, deadlineReminders, reminders, reminderEmails, reminderTexts, weeklyDigests, goals, goalEmails, following, calendarMirror, calendarSync, ...(deadlineRisk ? { deadlineRisk } : {}) };
+    const result = { missedSaves, deadlines, chains, forecasts, openings, deadlineReminders, reminders, reminderEmails, reminderTexts, weeklyDigests, goals, goalEmails, following, calendarMirror, calendarSync, ...(deadlineRisk ? { deadlineRisk } : {}) };
     if (pool)
       await recordWorkerTick(pool, 'creator-worker', {
         status: 'completed',

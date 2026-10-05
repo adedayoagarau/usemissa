@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionAccount } from '@/lib/auth';
+import { recordReviewConsistency, WORKSPACE_DECISION_SCOPES } from '@missa/workspace-engine';
+import { recordDecisionsAfterResponse, workspaceDecisionContext } from '@/lib/jevDecisions';
 import { getRelationalWorkspace, getWorkspaceEngine, persistWorkspace, workspaceCommandEnvelope, workspaceMutationError, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
 /** Story 7.3: fixed small rubric (score + notes), not a rubric builder --
@@ -27,6 +29,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ass
       const payload = { assignmentId, score, notes };
       const command = workspaceCommandEnvelope(request, { actorAccountId: session.account.id, organizationId, commandType: 'review.complete', payload, expectedRevision: body.expectedRevision });
       const review = await workspace.completeReview(command, assignmentId, { score, notes });
+      if (!review.replayed) recordReviewConsistencyAfterResponse(assignmentId, score, notes);
       return NextResponse.json({ reviewAssignmentId: assignmentId, score, notes, revision: review.revision, receiptId: review.receiptId, idempotent: review.replayed });
     } catch (error) {
       const mapped = workspaceMutationError(error);
@@ -43,5 +46,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ ass
 
   const recommendation = engine.recordReview(assignmentId, score, notes);
   await persistWorkspace();
+  recordReviewConsistencyAfterResponse(assignmentId, score, notes);
   return NextResponse.json(recommendation);
+}
+
+/** Scope `review_consistency`: records whether the notes contradict the score, for chairs. Advisory only. */
+function recordReviewConsistencyAfterResponse(assignmentId: string, score: number | undefined, notes: string | undefined) {
+  const scope = WORKSPACE_DECISION_SCOPES.reviewConsistency;
+  recordDecisionsAfterResponse(scope, () => recordReviewConsistency(workspaceDecisionContext(scope), assignmentId, { score, notes, scale: { min: 0, max: 100 } }));
 }

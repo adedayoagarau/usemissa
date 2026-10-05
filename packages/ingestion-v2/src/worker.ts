@@ -6,6 +6,8 @@ import { JsonApiAdapter } from "./adapters/json.js";
 import { ChillSubsNextAdapter } from "./adapters/chillSubs.js";
 import { assertIngestionV2SchemaReady, claimDueIngestionV2Schedules, createIngestionV2Pool, PostgresShadowRunStore, syncIngestionV2Schedules } from "./persistence.js";
 import { createPipelineWorker } from "./execution.js";
+import { opportunityIdentityShadowFromEnv } from "./identity.js";
+import { publisherDecisionContextFromEnv } from "./publisher.js";
 import { createQueueBundle, V2_QUEUE_PREFIX } from "./queues.js";
 import { assertIngestionV2DatabaseRole } from "./safety.js";
 import { createWorkerSources, type WorkerSourceSet } from "./catalog.js";
@@ -22,7 +24,7 @@ const adapterId = useDeepSeek ? "deepseek-html-v2" : "generic-html-v2";
 const sourceSet: WorkerSourceSet = process.env.MISSA_INGESTION_V2_SOURCE_SET === "all-registry" ? "all-registry" : "first-tranche";
 const workerSources = [...createWorkerSources(adapterId, sourceSet), ...createBenchmarkSources(adapterId)];
 await syncIngestionV2Schedules(pool, workerSources);
-const worker = createPipelineWorker(queues, registry, workerSources, store, { promotionPool: pool });
+const worker = createPipelineWorker(queues, registry, workerSources, store, { promotionPool: pool, identityShadow: opportunityIdentityShadowFromEnv(pool), decisions: publisherDecisionContextFromEnv(pool) });
 
 const sourceById = new Map(workerSources.map((source) => [source.id, source]));
 let scheduling = false;

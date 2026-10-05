@@ -67,7 +67,7 @@ import { dueSources, nextCheckAt } from "./ingestion/scheduler.js";
 import { contentHash } from "./ingestion/snapshot.js";
 import { DeterministicExtractor } from "./extraction/extractor.js";
 import { hasFatalIssues, looksLikeOpportunity } from "./extraction/validate.js";
-import { findCanonical } from "./dedup/dedup.js";
+import { findCanonical, findDedupNearMisses, type DedupIdentityDecider } from "./dedup/dedup.js";
 import {
   computeTrustSignals,
   confidenceScore,
@@ -566,6 +566,8 @@ export interface RadarEngineOptions {
   extractionGate?: ExtractionGate;
   clock?: Clock;
   ids?: IdGenerator;
+  /** Shadow-only identity port: told about dedup near misses, never changes a match. */
+  dedupIdentityDecider?: DedupIdentityDecider;
 }
 
 function* idsInStore(store: RadarStore): Iterable<string> {
@@ -609,6 +611,7 @@ export class RadarEngine {
   private readonly extractionGate?: ExtractionGate;
   private readonly clock: Clock;
   private readonly ids: IdGenerator;
+  private readonly dedupIdentityDecider?: DedupIdentityDecider;
 
   constructor(opts: RadarEngineOptions) {
     this.store = opts.store ?? createStore();
@@ -616,6 +619,7 @@ export class RadarEngine {
     this.clock = opts.clock ?? systemClock;
     this.ids = opts.ids ?? sequentialIds(idsInStore(this.store));
     this.extractor = opts.extractor ?? new DeterministicExtractor(this.clock);
+    this.dedupIdentityDecider = opts.dedupIdentityDecider;
     this.extractionGate = opts.extractionGate;
   }
 
@@ -1736,6 +1740,20 @@ export class RadarEngine {
           candidate,
           this.store.opportunities.values(),
         );
+        if (this.dedupIdentityDecider) {
+          const nearMisses = findDedupNearMisses(
+            candidate,
+            this.store.opportunities.values(),
+            match,
+          );
+          if (nearMisses.length > 0) {
+            try {
+              await this.dedupIdentityDecider(candidate, nearMisses);
+            } catch {
+              // Shadow only: an identity-model failure never affects dedup.
+            }
+          }
+        }
         if (match.kind === "same-page") {
           const changes = this.applyUpdate(match.opportunity, candidate, now);
           report.changes.push(...changes);

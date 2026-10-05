@@ -544,6 +544,11 @@ An AI-generated component that duplicates an approved item fails review.
 | Add to Tracker                 | `TrackerAction`               | `Button`, optional `DropdownMenu` for stage, `Sonner` or inline recovery                       |
 | Filter on mobile               | `OpportunityFilterSheet`      | same filter model as desktop, `Sheet`, `Field`, selection controls, result count               |
 | Track applications             | `TrackerBoard` / `TrackerRow` | `Kanban` or `Table` by view, `Badge` semantics, menus and dialogs                              |
+| Work on one application        | `TrackerItemSheet`            | `Sheet`, eyebrow sections, lifecycle with dated provenance, `Dialog` for recorded events       |
+| See calendar delivery          | `ApplicationCalendarDelivery` | Feed, provider and session rows; `Spinner` only while syncing; Retry and Reconnect actions     |
+| Confirm email evidence         | `ApplicationEmailEvidence`    | Suggestion panel; creator confirms; never changes state on its own                             |
+| Recover after a decline        | `SimilarOpportunities`        | Explained matches with plain reasons, Save to Tracker, Not for me; never labelled AI           |
+| Check before submitting        | `PreSubmitCheck`              | Passed / Needs attention / Check manually, written out; unverifiable checks are never Passed   |
 | Edit a Work                    | `WorkEditor`                  | `Field`, form controls, `Sortable`, media blocks, `Dialog`/`Sheet`, process feedback           |
 | Manage calendar                | `OpportunityCalendar`         | `Calendar`, labelled events, `Popover` or side panel, provider sync status                     |
 | Configure Profile              | `ProfileSettingsForm`         | `Tabs` only for same-route peer sections, `Field`, form controls, inline feedback              |
