@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { getWorkspacePageAccess } from '@/lib/workspacePage';
 
 export default async function WorkspaceDeliveryPage({ searchParams }: { searchParams: Promise<{ organizationId?: string }> }) {
-  const access = await getWorkspacePageAccess(searchParams, 'workspace/delivery');
+  const access = await getWorkspacePageAccess(searchParams, 'workspace/delivery', 'delivery.read');
   if (!access.organizationId)
     return (
       <main className="mx-auto max-w-2xl px-6 py-12">

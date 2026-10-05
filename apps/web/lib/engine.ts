@@ -2,6 +2,7 @@ import {
   RadarEngine,
   buildServerDemoWorld,
   cloneStore,
+  demoSeedAllowed,
   planTrackerImport,
   type ImportMapping,
   type ImportRowDecision,
@@ -98,12 +99,34 @@ function getProductionEngine(): Promise<ProductionEngine> {
   return globalThis.__missaProductionEnginePromise;
 }
 
+export class MissingDatabaseConfigurationError extends Error {
+  constructor() {
+    super(
+      'DATABASE_URL is not set. Production refuses to fall back to the in-memory demo world, ' +
+        'which seeds accounts with published passwords.',
+    );
+    this.name = 'MissingDatabaseConfigurationError';
+  }
+}
+
+/**
+ * Throws when the process would otherwise serve the demo world in production.
+ * Playwright and local development run `next dev` (NODE_ENV=development), unit
+ * tests leave NODE_ENV unset, and CI's `next build` sets NEXT_PHASE, so none of
+ * them trip this guard. See demoSeedAllowed for the full rule.
+ */
+export function assertDemoWorldAllowed(env: Record<string, string | undefined> = process.env): void {
+  if (env.DATABASE_URL) return;
+  if (!demoSeedAllowed(env)) throw new MissingDatabaseConfigurationError();
+}
+
 export async function getEngine(): Promise<RadarEngine> {
   const creatorAuthority = creatorRelationalAuthorityHealth(process.env);
   if (creatorAuthority.mode === 'relational' && !creatorAuthority.ready) {
     throw new Error('Creator relational authority is unavailable');
   }
   if (process.env.DATABASE_URL) return (await getProductionEngine()).engine;
+  assertDemoWorldAllowed();
   return (await getDemoWorld()).engine;
 }
 

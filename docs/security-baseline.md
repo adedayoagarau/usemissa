@@ -16,6 +16,14 @@ claim of ISO 27001, SOC 2, or HIPAA compliance.
 - Production responses include HSTS, `nosniff`, frame denial, a restrictive
   referrer policy, a minimal Permissions Policy, disabled DNS prefetch, and no
   cross-domain policy.
+- Session revocation: each account carries a `sessionsValidAfter` boundary
+  (stored in `radar_accounts.data`, no migration). Missa session cookies and
+  linked Neon Auth sessions issued before it are rejected on the next request,
+  using the account read every authenticated request already performs. Password
+  reset, account closure, and Profile → Data → "Sign out of all devices"
+  (`POST /api/auth/logout-all`) move the boundary; plain logout clears only the
+  current cookie. Tokens issued before this control existed stay valid until the
+  account's first revocation.
 - Existing controls include salted `scrypt` password hashes, signed session
   cookies, server-side organization/platform-admin authorization, verified
   inbound webhook signatures, private object storage for user files, and
@@ -54,8 +62,8 @@ The local fallback is not evidence of a multi-instance production control.
 Define the data inventory and retention/deletion rules; verify database, object
 storage, backups, restore testing, and access-review procedures; establish
 incident response and breach-notification procedures; add dependency and
-secret scanning; review every API route and integration boundary; verify MFA,
-session revocation, and recovery controls; and map evidence to the chosen
+secret scanning; review every API route and integration boundary; verify MFA
+and recovery controls and exercise session revocation against the deployed host; and map evidence to the chosen
 framework. HIPAA would additionally require an actual healthcare use case,
 appropriate contractual coverage, and a scoped assessment rather than a badge
 on the product.

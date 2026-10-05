@@ -1,9 +1,14 @@
 @import "tailwindcss";
+/* Prototype routes and the Studio catalogue are not shipped pages; their
+   utilities live in app/design-system/design-system.css instead of the
+   render-blocking stylesheet every visitor downloads. */
+@source not "../components/shadcn-studio";
+@source not "./design-system";
 @import "../components/design-system/collection-palette.css";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+@import "./tailwind-theme.css";
 
 /*
  * Design tokens per _bmad-output/planning-artifacts/ux-design-specification.md
@@ -225,99 +230,6 @@ body {
 .missa-wordmark:focus-visible {
   outline: 2px solid var(--brand-accent);
   outline-offset: 4px;
-}
-
-@theme inline {
-  /* --font-heading/--font-sans/--font-mono are set by next/font/local in
-     app/layout.tsx (Newsreader/Instrument Sans/Fragment Mono). */
-  --font-heading: var(--font-heading), Georgia, serif;
-  --font-sans: var(--font-sans), system-ui, sans-serif;
-  --font-mono: var(--font-mono), ui-monospace, monospace;
-  /* Semantic spacing utilities: gap-group, space-y-row, p-inset, etc. */
-  --spacing-row: var(--space-row);
-  --spacing-group: var(--space-group);
-  --spacing-section: var(--space-section);
-  --spacing-inset: var(--space-inset);
-  --spacing-gap: var(--space-gap);
-  --spacing-gutter: var(--space-gutter);
-  --spacing-section-major: var(--space-section-major);
-  --spacing-label-control: var(--space-label-control);
-  --spacing-helper: var(--space-helper);
-  --spacing-control-inline-bordered: var(--space-control-inline-bordered);
-  --spacing-control-inline-borderless: var(--space-control-inline-borderless);
-  --spacing-control-group: var(--space-control-group);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-destructive-subtle: var(--destructive-subtle);
-  --color-success: var(--success);
-  --color-success-subtle: var(--success-subtle);
-  --color-warning: var(--warning);
-  --color-warning-subtle: var(--warning-subtle);
-  --color-information: var(--information);
-  --color-information-subtle: var(--information-subtle);
-  --color-accent-tint: var(--accent-tint);
-  --color-accent-deep: var(--accent-deep);
-  --color-green: var(--green);
-  --color-lichen-tint: var(--lichen-tint);
-  --color-ochre: var(--ochre);
-  --color-ochre-deep: var(--ochre-deep);
-  --color-ochre-tint: var(--ochre-tint);
-  --color-mineral-blue: var(--mineral-blue);
-  --color-mineral-blue-tint: var(--mineral-blue-tint);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
-  --color-background: var(--background);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
-  --animate-gradient-flow: gradient-flow 4s linear infinite;
-  --animate-progress-bar-stripes: progress-bar-stripes 1s linear infinite;
-  @keyframes gradient-flow {
-    0% {
-      background-position: 100% 0%;
-    }
-    100% {
-      background-position: -100% 0%;
-    }
-  }
-  @keyframes progress-bar-stripes {
-    from {
-      background-position-x: 0.75rem;
-    }
-    to {
-      background-position-x: 0;
-    }
-  }
 }
 
 .dark {

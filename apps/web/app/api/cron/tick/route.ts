@@ -1,36 +1,54 @@
 import { tickGoals } from '@/lib/goal-engine';
 import { NextResponse } from 'next/server';
-import { radarWorkerBatchSize, runRadarWorkerTick, runCoverageWorkerTick, runTaxonomyDiscoveryWorkerTick } from '@missa/radar-adapters';
+import { createProductionEngine, radarWorkerBatchSize, runRadarWorkerTick, runCoverageWorkerTick, runTaxonomyDiscoveryWorkerTick } from '@missa/radar-adapters';
 import { deliverPendingAlertEmails, deliverPendingDeadlineEmails } from '@/lib/alert-delivery';
+import { cronAuthorization } from '@/lib/cron-auth';
+
+// Not 300: Vercel bundles routes with the same configuration into one
+// function, and with the default this route shared Fluid instances with
+// public pages. Its full-store load ran out of memory (SIGABRT) and stalled
+// the page requests beside it. A value of its own gives it its own function.
+export const maxDuration = 290;
 
 /**
- * Vercel Cron target (Story 1.5) -- replaces the manual "Check for updates"
- * button as the production ingestion trigger. The button stays functional
- * for local/admin manual triggering (packages/radar-engine/src/server/ui.ts);
- * this route is what a production deployment actually schedules.
+ * Vercel Cron target (Story 1.5). Configured in apps/web/vercel.json's
+ * "crons" array (every 15 minutes).
  *
- * Configured in apps/web/vercel.json's "crons" array (every 15 minutes).
- *
- * The route uses the same bounded worker tick as the self-hosted process. The
- * Postgres advisory lock means this fallback can safely overlap a hosted
- * worker while the latter is being rolled out; it will simply return skipped.
+ * Radar ingestion belongs to the Railway radar-worker
+ * (docs/railway-topology.md, "Operational rules" 1). It runs here only when
+ * MISSA_VERCEL_RADAR_INGESTION=1 is set as an explicit fallback; Railway runs
+ * without the advisory lock, so the two would otherwise overlap. By default
+ * this route delivers the engine alert emails, which no Railway lane sends
+ * yet, and runs the coverage and taxonomy passes, which feed the
+ * taxonomy-discovery-worker's queue.
  */
 export async function GET(request: Request) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
+  const auth = cronAuthorization(request);
+  if (auth === 'unconfigured') {
     return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 503 });
   }
-
-  const auth = request.headers.get('authorization');
-  const provided = new URL(request.url).searchParams.get('secret');
-  const isAuthorized = auth === `Bearer ${cronSecret}` || provided === cronSecret;
-  if (!isAuthorized) {
+  if (auth !== 'authorized') {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
   const goals = await tickGoals();
   let emailDelivery: Awaited<ReturnType<typeof deliverPendingAlertEmails>> | undefined;
   let deadlineDelivery: Awaited<ReturnType<typeof deliverPendingDeadlineEmails>> | undefined;
+
+  if (process.env.MISSA_VERCEL_RADAR_INGESTION !== '1') {
+    const production = await createProductionEngine();
+    try {
+      emailDelivery = await deliverPendingAlertEmails(production.engine);
+      deadlineDelivery = await deliverPendingDeadlineEmails(production.engine);
+      await production.persist();
+    } finally {
+      await production.close();
+    }
+    const coverage = await runCoverageWorkerTick({ logger: console });
+    const discovery = await runTaxonomyDiscoveryWorkerTick({ logger: console });
+    return NextResponse.json({ status: 'alerts-only', goals, emailDelivery, deadlineDelivery, coverage, discovery });
+  }
+
   const result = await runRadarWorkerTick({
     maxSources: radarWorkerBatchSize(),
     afterTick: async (engine) => {

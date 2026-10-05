@@ -9,6 +9,7 @@ import {
   FREE_ACTIVE_TRACKED_LIMIT,
   saveCanonicalOpportunityToTracker,
   TrackingLimitReachedError,
+  updateCanonicalTrackerStatus,
 } from "../src/index.js";
 
 /**
@@ -80,6 +81,21 @@ test(
 
       await pool.query("update tracked_opportunities set status='submitted' where account_id=$1 and opportunity_id=$2", [account, calls[1]]);
       assert.equal((await save(calls[limit]!))?.status, "created", "submitting one frees a place");
+
+      // Moving a submitted call back into progress takes a place, like a save.
+      const move = (id: string, status: "preparing" | "submitted" | "draft-started") =>
+        updateCanonicalTrackerStatus(databaseUrl!, account, id, status);
+      await assert.rejects(move(calls[1]!, "preparing"), (error: unknown) =>
+        error instanceof TrackingLimitReachedError && error.limit === limit && error.active === limit);
+      assert.equal(
+        (await pool.query("select status from tracked_opportunities where account_id=$1 and opportunity_id=$2", [account, calls[1]])).rows[0]!.status,
+        "submitted",
+        "a refused move leaves the call where it was",
+      );
+      assert.equal((await move(calls[0]!, "draft-started"))?.status, "updated", "moving between in-progress statuses is always allowed");
+      assert.equal((await move(calls[2]!, "submitted"))?.status, "updated");
+      assert.equal((await move(calls[1]!, "preparing"))?.status, "updated", "with a place free, a call can move back into progress");
+      assert.equal((await creatorEntitlements(pool, account)).activeTracked, limit);
 
       const extra = await publish("extra", 30);
       await assert.rejects(save(extra), TrackingLimitReachedError);

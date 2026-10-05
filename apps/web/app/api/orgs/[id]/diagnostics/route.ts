@@ -4,7 +4,7 @@ import { getRelationalWorkspace, workspaceRelationalAuthorityEnabled } from '@/l
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
   if (!workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: 'Diagnostics are not available yet' }, { status: 503 });
   const workspace = await getRelationalWorkspace();

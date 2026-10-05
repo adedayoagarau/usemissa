@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { creatorBillingAccount, creatorPoolFor } from '@missa/radar-adapters';
 import { getSessionAccount } from '@/lib/auth';
 import { requestCountry, startPlusCheckout, type PlusInterval } from '@/lib/creatorBilling';
+import { recordSiteGoal } from '@/lib/siteTracking';
 
 const headers = { 'Cache-Control': 'private, no-store' };
 
@@ -23,8 +24,10 @@ export async function POST(request: Request) {
       interval: interval as PlusInterval,
       country: requestCountry(request.headers),
       origin,
-      idempotencyKey: request.headers.get('Idempotency-Key')?.trim().slice(0, 200) || undefined,
+      // Duplicate requests (double click, retry, a second tab) are collapsed by
+      // a server-side idempotency key in startPlusCheckout, not the client's.
     });
+    await recordSiteGoal(request, 'checkout_started', '/plan');
     return NextResponse.json({ url }, { headers });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Checkout could not start.' }, { status: 503, headers });

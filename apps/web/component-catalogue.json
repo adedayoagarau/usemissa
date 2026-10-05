@@ -17,7 +17,7 @@
     ],
     "variants": {
       "AvatarFallback": ["organization"],
-      "Badge": ["compact"],
+      "Badge": ["compact", "information", "success", "accent"],
       "Button": ["account", "accentOutline", "choice"],
       "Card": ["empty"],
       "Collapsible": ["section", "sectionSpacious", "divided"],
@@ -30,7 +30,7 @@
       "SheetHeader": ["section", "muted"],
       "TableCell": ["muted"],
       "TableRow": ["static"],
-      "TabsList": ["responsive", "section"],
+      "TabsList": ["responsive", "section", "tiles", "auto"],
       "TabsTrigger": ["touch"]
     },
     "adaptation": "Missa-owned semantic component APIs for authenticated navigation, quiet sorting, empty states, drawer surfaces, choice tiles, compact data controls, and coarse-pointer targets. Product-wide shadcn/no-restyle enforcement is enabled; layout and title-typography contracts remain deliberately narrow. Existing theme tokens, focus states, and reduced-motion behavior remain authoritative.",
@@ -1639,6 +1639,37 @@
     "source": "Installed Progress and Lucide Check; decorative circles accompany numeric data",
     "evidence": "docs/my-applications/connected-goal-journey.md"
   },
+  "creatorHome": {
+    "status": "approved",
+    "implementation": "apps/web/components/missa/creator-home.tsx",
+    "route": "/home",
+    "composition": ["Tabs (line, tiles)", "Popover", "Checkbox", "Skeleton", "Empty", "Sonner", "Button", "ApplicationStateBadge", "ApplicationRunway", "StartByDate", "CountBadge"],
+    "source": "Installed shadcn/Base UI primitives; no new registry install. Mobbin references for the greeting band, single lead tile, grouped status lists, and week strip (HoneyBook, Copilot, Deel, Wrike, Ditto, Amie, Motion).",
+    "adaptation": "Badge information/success/accent and TabsList tiles/auto variants added to the primitives so feature code stays inside shadcn/no-restyle. Links styled as buttons merge classes with cn() so the outline border is not overridden by the base transparent border.",
+    "states": ["busy", "waiting", "quiet", "first-run", "nothing-pressing", "checklist-loading", "checklist-error", "step-saving", "check-in-snoozing", "empty-day", "empty-tab", "no-goal", "goal-without-start"],
+    "evidence": "lib/creator-home.test.ts; e2e/creator-home.spec.ts; e2e/beta-workspace-recovery.spec.ts; desktop 1280 and 390px captures without horizontal overflow",
+    "boundary": "Edits only through the record's checklist-item and reminder APIs; every other action opens the application record."
+  },
+  "profileSettings": {
+    "status": "approved",
+    "implementation": "apps/web/components/profile-product.tsx",
+    "route": "/profile",
+    "composition": ["RadioGroup (Public / Only you per field)", "Collapsible (divided)", "Switch", "NativeSelect", "Checkbox", "AlertDialog", "ApplicationStateBadge", "HandleClaimCard", "NotificationPreferencesPanel (embedded)"],
+    "source": "Installed shadcn/Base UI primitives; no new registry install. Mobbin references for grouped settings navigation, field-level visibility, and sticky save (Vercel, Supabase, Mintlify, Flodesk).",
+    "adaptation": "Identity and Privacy merge into Public profile with visibility beside each field and a live preview; Preferences becomes Matching with a plain-language summary (lib/profile-settings.ts) and collapsible groups; Notifications moves in from Inbox; old ?section= links resolve to the new sections.",
+    "states": ["clean", "dirty-save-bar", "saving", "saved", "validation-error", "leave-with-unsaved-changes", "nothing-matched-yet", "exclusion-confirmation", "preference-conflict", "notifications-unavailable", "integrations-off"],
+    "evidence": "lib/profile-settings.test.ts; e2e/profile.spec.ts; e2e/profile-privacy.spec.ts; e2e/profile-export.spec.ts; axe clean on every section at 1280px; no overflow at 1280px, 640px (200% zoom), and 390px"
+  },
+  "applicationStateBadge": {
+    "implementation": "apps/web/components/missa/application-state-badge.tsx",
+    "source": "Installed Badge with warning, information, accent, success, and outline variants",
+    "evidence": "Creator Home moves, week events, and Tracker tabs"
+  },
+  "applicationRunway": {
+    "implementation": "apps/web/components/missa/application-runway.tsx",
+    "source": "Custom; Progress cannot show two segments and a marker",
+    "evidence": "Creator Home lead and supporting moves"
+  },
   "emailChoicePrompt": {
     "implementation": "apps/web/components/missa/email-choice-prompt.tsx",
     "routes": ["(passport) workspace layout"],
@@ -1667,26 +1698,15 @@
     "adaptation": "Photographic feature stories beside interactive product views. Original fictional campaign artwork, distinct existing palette tokens and large editorial titles. The portfolio view is a compact one-work teaser with theme and format controls; actual public deadlines, local notification switches and resettable sample submission goals remain interactive. No account writes or notification delivery. Approved full-width marketing colour bands; shared operational cards unchanged. White is the initial local portfolio preview theme.",
     "evidence": "docs/homepage-cinematic-2026-09-07/19-homepage-colour-and-painting.md"
   },
-  "ApplicationsWorkspace": {
+  "ApplicationRecord": {
     "status": "approved-adapt",
-    "implementation": "apps/web/components/missa/applications-workspace.tsx",
-    "route": "/tracker",
-    "composition": [
-      "Button",
-      "Tabs",
-      "Dialog",
-      "Collapsible",
-      "Field",
-      "Input",
-      "Textarea",
-      "NativeSelect",
-      "ApplicationLabels",
-      "Skeleton",
-      "ApplicationPreparation"
-    ],
-    "source": "Installed Base UI components and Missa ApplicationLabels",
-    "evidence": "docs/my-applications/creator-build-1-7.md",
-    "boundary": "Real API data; materials captured on explicit submission. Validation in progress."
+    "implementation": "apps/web/components/missa/application-record.tsx",
+    "container": "apps/web/components/missa/tracker-item-sheet.tsx",
+    "route": "/tracker?application=<opportunityId>&section=<section>",
+    "composition": ["Button", "Dialog", "Field", "Input", "Textarea", "NativeSelect", "Alert", "Skeleton", "ApplicationEmailEvidence"],
+    "source": "Installed Base UI Dialog, Field family, Alert and Skeleton. Sections hosted by the deadline-management TrackerItemSheet; absorbs the former route-less ApplicationsWorkspace panel.",
+    "adaptation": "Progress, Materials, Notes and History sections with the sheet's eyebrow and Newsreader headings; Missa lifecycle and provenance; Fragment Mono dates; a single Forest action for the next step.",
+    "boundary": "Real API data; materials captured on explicit submission; email evidence only suggests a status."
   },
   "ApplicationPreparation": {
     "status": "approved-adapt",
@@ -1764,6 +1784,26 @@
     "policy": "composition.creator-recommendations",
     "states": "Loading, empty, error/retry, contextual selection, collapsed/expanded reasons, feedback saving/error/hidden/restored, current calls and programs between rounds.",
     "validation": "Database ownership, goal constraints, work snapshots, edit/retry/correction tests passed. Browser create/edit/reload, real cards, failed feedback retry, hide/restore, plan-ahead, 390px, 200% text and serious/critical axe checks passed; reduced motion enabled."
+  },
+  "PlatformAdminPublicationReview": {
+    "status": "approved-adapt",
+    "implementation": "apps/web/components/platform-admin-publication-review.tsx",
+    "route": "/admin/radar",
+    "policy": "composition.admin-publication-review",
+    "composition": [
+      "Button",
+      "Field",
+      "Input",
+      "Textarea",
+      "AlertDialog",
+      "Alert",
+      "Empty",
+      "Sonner"
+    ],
+    "source": "Installed Base UI primitives and the existing platform-admin SectionHeading and NumberGrid; no registry installation required.",
+    "adaptation": "Structured decision list instead of a table so the editable title, note and actions stay readable at 390px. Hold reasons are plain text, not badges.",
+    "states": "Unavailable, empty, default, editable title, busy (aria-busy, disabled actions), confirmation, inline error per record, success toast and record removal.",
+    "validation": "Typecheck, lint, unauthenticated API test, and design-system check passed. Browser, 390px, keyboard, 200% zoom and reduced-motion checks not yet run against a live queue."
   },
   "calendarPlanning": {
     "implementation": "apps/web/components/calendar-workspace.tsx",

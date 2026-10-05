@@ -10,6 +10,7 @@ import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
 import { getProfileRepository } from "@/lib/profileRepository";
 import { PublicSiteShell } from "@/components/public-site-shell";
+import { headerSessionFor } from "@/lib/headerSession";
 import { InstitutionProfileView } from "@/components/institution-profile-view";
 import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
@@ -74,7 +75,7 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
     opportunityActions[item.id] = <SaveToTrackerButton opportunityId={item.id} tracked={Boolean(detail.personal?.tracked)} signedIn={Boolean(session)} returnTo={`/journal/${encodeURIComponent(profile.slug)}#profile-opportunities`} opportunityTitle={item.title} />;
   }));
   return (
-    <PublicSiteShell current="Directory">
+    <PublicSiteShell current="Directory" session={headerSessionFor(session)}>
       <InstitutionProfileView profile={displayProfile} opportunityActions={opportunityActions}
         rankingSummary={primary ? <div className="flex flex-wrap items-center gap-3 py-3 text-sm">
           <Link href="#profile-rankings">#{primary.rankPosition} {primary.genre === "overall" ? "Overall" : primary.genre} · {primary.totalScore} pts</Link>

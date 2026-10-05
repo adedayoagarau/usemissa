@@ -5,6 +5,11 @@
   color: var(--foreground);
 }
 
+/* A stored choice is known before first paint; see consentAnsweredScript. */
+:global(:root[data-analytics-consent]) .banner {
+  display: none;
+}
+
 .inner {
   display: flex;
   flex-wrap: wrap;

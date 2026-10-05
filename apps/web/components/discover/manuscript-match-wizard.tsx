@@ -1,63 +1,126 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import Link from "next/link";
 import {
-  Sparkles,
-  Send,
-  Layers,
-  Flame,
-  Clock,
-  CheckCircle2,
-  ExternalLink,
-  Check,
-} from "lucide-react";
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
+import Link from "next/link";
+import { Link2, Search, SlidersHorizontal, X } from "lucide-react";
 import type {
-  ManuscriptMatchInput,
-  ManuscriptMatchResponse,
   ManuscriptMatchCard,
+  ManuscriptMatchResponse,
 } from "@missa/radar-adapters";
-import { RankingTierBadge } from "@/components/missa/ranking-indicators";
-import { EditorialIntelligenceDrawer } from "@/components/rankings/editorial-intelligence-drawer";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Field, FieldLabel } from "@/components/ui/field";
-import { NativeSelect } from "@/components/ui/native-select";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Spinner } from "@/components/ui/spinner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import dropdownStyles from "@/components/opportunity-dropdown.module.css";
 import { toast } from "sonner";
+import { BriefForm } from "./manuscript-brief-form";
+import {
+  DEFAULT_MANUSCRIPT_BRIEF,
+  briefFromSearchParams,
+  briefSummary,
+  briefToSearchParams,
+  manuscriptMatchPayload,
+  type ManuscriptBrief,
+} from "./manuscript-match-brief";
+import {
+  ResultList,
+  ResultsSkeleton,
+  SORT_LABELS,
+  mergedResults,
+  sortResults,
+  type ResultSort,
+  type ShortlistControls,
+} from "./manuscript-match-results";
+import { ShortlistSheet, useShortlist } from "./manuscript-shortlist";
+import { SubmissionPlanView } from "./submission-plan";
+import styles from "./manuscript-match-wizard.module.css";
 
-const PRESET_STYLES = [
-  "fabulist",
-  "surrealist",
-  "lyric",
-  "realist",
-  "dark",
-  "experimental",
-  "personal",
-  "minimalist",
-  "prose-poetry",
-  "ghazal",
-  "hybrid",
-  "humorous",
+type LaneKey =
+  "plan" | "all" | "prizeTrack" | "dreamReach" | "debutChampions" | "rapidPro";
+
+const LANES: Array<{ key: LaneKey; label: string; description?: string }> = [
+  { key: "plan", label: "Plan" },
+  { key: "all", label: "All" },
+  {
+    key: "prizeTrack",
+    label: "Prize record",
+    description:
+      "Magazines whose published work has been picked for Pushcart Prizes, prize anthologies or major prizes.",
+  },
+  {
+    key: "dreamReach",
+    label: "Reach",
+    description:
+      "Top-tier magazines. The odds are long, so send your strongest work.",
+  },
+  {
+    key: "debutChampions",
+    label: "Open to new writers",
+    description:
+      "Magazines with a record of publishing writers for the first time.",
+  },
+  {
+    key: "rapidPro",
+    label: "Fast or well paid",
+    description: "Professional rates, or a typical reply within 30 days.",
+  },
 ];
 
-const PRESET_COMPS = [
-  "Ocean Vuong",
-  "Carmen Maria Machado",
-  "Kelly Link",
-  "Lydia Davis",
-  "George Saunders",
-  "Maggie Nelson",
-  "Ben Lerner",
-  "Ada Limón",
-  "Kaveh Akbar",
-  "Lorrie Moore",
-];
+const SEARCH_MIN_LENGTH = 2;
+const SEARCH_DELAY_MS = 300;
+
+type SearchState =
+  | { status: "loading"; query: string }
+  | { status: "done"; query: string; cards: ManuscriptMatchCard[] }
+  | { status: "error"; query: string };
+
+async function requestMatch(
+  brief: ManuscriptBrief,
+  query?: string,
+  signal?: AbortSignal,
+): Promise<ManuscriptMatchResponse> {
+  const res = await fetch("/api/discover/match", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(manuscriptMatchPayload(brief, query)),
+    signal,
+  });
+  if (!res.ok) throw new Error("Match computation failed");
+  return (await res.json()) as ManuscriptMatchResponse;
+}
 
 interface ManuscriptMatchWizardProps {
   initialData?: ManuscriptMatchResponse;
@@ -66,486 +129,441 @@ interface ManuscriptMatchWizardProps {
 export function ManuscriptMatchWizard({
   initialData,
 }: ManuscriptMatchWizardProps) {
-  const [genre, setGenre] =
-    useState<ManuscriptMatchInput["genre"]>("fiction");
-  const [wordCount, setWordCount] = useState<number>(3500);
-  const [poemCount, setPoemCount] = useState<number>(3);
-  const [selectedStyles, setSelectedStyles] = useState<string[]>([
-    "fabulist",
-    "lyric",
-  ]);
-  const [selectedComps, setSelectedComps] = useState<string[]>([
-    "Carmen Maria Machado",
-  ]);
-  const [isDebutAuthor, setIsDebutAuthor] = useState<boolean>(true);
-  const [feeTolerance, setFeeTolerance] =
-    useState<ManuscriptMatchInput["feeTolerance"]>("free_only");
-  const [minPayRate, setMinPayRate] =
-    useState<ManuscriptMatchInput["minPayRate"]>("all");
-  const [allowSimultaneous, setAllowSimultaneous] = useState<boolean>(true);
-
+  const [brief, setBrief] = useState<ManuscriptBrief>(DEFAULT_MANUSCRIPT_BRIEF);
+  const [submittedBrief, setSubmittedBrief] = useState<ManuscriptBrief>(
+    DEFAULT_MANUSCRIPT_BRIEF,
+  );
   const [results, setResults] = useState<ManuscriptMatchResponse | null>(
     initialData ?? null,
   );
-  const [activeTab, setActiveTab] = useState<
-    "dream_reach" | "debut_champions" | "rapid_pro" | "packet_builder"
-  >("debut_champions");
-
+  const [lane, setLane] = useState<LaneKey>("plan");
+  const [sort, setSort] = useState<ResultSort>("fit");
+  const [query, setQuery] = useState("");
+  const [search, setSearch] = useState<SearchState | null>(null);
+  const [announcement, setAnnouncement] = useState("");
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
+  const shortlist = useShortlist();
+  const ids = useId();
 
-  const toggleStyle = (style: string) => {
-    setSelectedStyles((prev) =>
-      prev.includes(style) ? prev.filter((s) => s !== style) : [...prev, style],
+  const update = (patch: Partial<ManuscriptBrief>) =>
+    setBrief((current) => ({ ...current, ...patch }));
+
+  const briefChanged = JSON.stringify(brief) !== JSON.stringify(submittedBrief);
+  const trimmedQuery = query.trim();
+  const searching = trimmedQuery.length >= SEARCH_MIN_LENGTH;
+
+  const lanes = useMemo(() => {
+    if (!results || results.status !== "available") return null;
+    const planIds = (results.plan?.rounds ?? []).flatMap((round) =>
+      round.picks.map((pick) => pick.profileId),
     );
-  };
-
-  const toggleComp = (comp: string) => {
-    setSelectedComps((prev) =>
-      prev.includes(comp) ? prev.filter((c) => c !== comp) : [...prev, comp],
+    const planCards = (results.planCards ?? []).filter((card) =>
+      planIds.includes(card.profileId),
     );
-  };
+    const cards: Record<LaneKey, ManuscriptMatchCard[]> = {
+      plan: planCards,
+      all: mergedResults(results),
+      dreamReach: results.dreamReach,
+      debutChampions: results.debutChampions,
+      rapidPro: results.rapidPro,
+      prizeTrack: results.prizeTrack ?? [],
+    };
+    // The plan tab stays when it has nothing to send: it still explains why
+    // and lists magazines opening later or ruled out.
+    return LANES.filter((entry) =>
+      entry.key === "plan"
+        ? Boolean(results.plan)
+        : cards[entry.key].length > 0,
+    ).map((entry) => ({ ...entry, cards: cards[entry.key] }));
+  }, [results]);
+  const activeLane = lanes?.some((entry) => entry.key === lane)
+    ? lane
+    : (lanes?.[0]?.key ?? "all");
 
-  const handleRunMatch = () => {
+  const runMatch = useCallback((sent: ManuscriptBrief, updateUrl: boolean) => {
     startTransition(async () => {
       try {
-        const payload: ManuscriptMatchInput = {
-          genre,
-          wordCount: genre === "poetry" ? undefined : wordCount,
-          poemCount: genre === "poetry" ? poemCount : undefined,
-          aestheticTags: selectedStyles,
-          compAuthors: selectedComps,
-          isDebutAuthor,
-          feeTolerance,
-          minPayRate,
-          allowSimultaneous,
-        };
-
-        const res = await fetch("/api/discover/match", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-
-        if (!res.ok) throw new Error("Match computation failed");
-        const data = (await res.json()) as ManuscriptMatchResponse;
+        const data = await requestMatch(sent);
         setResults(data);
-        if (data.status === "available" && data.matchedCount > 0) {
-          toast.success(`Compared ${data.totalAnalyzed.toLocaleString()} publications.`);
+        setSubmittedBrief(sent);
+        setLane("plan");
+        if (updateUrl) {
+          window.history.replaceState(
+            null,
+            "",
+            `${window.location.pathname}?${briefToSearchParams(sent)}`,
+          );
         }
+        const found =
+          data.status === "available" ? mergedResults(data).length : 0;
+        setAnnouncement(
+          data.status === "available"
+            ? `${found} ${found === 1 ? "magazine" : "magazines"} to consider.`
+            : "Matching is unavailable.",
+        );
+        const heading = resultsHeadingRef.current;
+        const top = heading?.getBoundingClientRect().top ?? 0;
+        if (heading && (top < 0 || top > window.innerHeight)) heading.focus();
       } catch {
-        toast.error("We could not compare publications. Try again.");
+        toast.error("We couldn't compare magazines. Try again.");
       }
     });
+  }, []);
+
+  // A shared link carries the brief in its URL: restore it and match once.
+  useEffect(() => {
+    const shared = briefFromSearchParams(
+      new URLSearchParams(window.location.search),
+    );
+    if (!shared) return;
+    startTransition(() => setBrief(shared));
+    runMatch(shared, false);
+  }, [runMatch]);
+
+  // Name search across the whole index, scored against the submitted brief.
+  useEffect(() => {
+    if (!searching) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setSearch({ status: "loading", query: trimmedQuery });
+      try {
+        const data = await requestMatch(
+          submittedBrief,
+          trimmedQuery,
+          controller.signal,
+        );
+        if (data.status !== "available") throw new Error("Index unavailable");
+        setSearch({
+          status: "done",
+          query: trimmedQuery,
+          cards: data.searchResults ?? [],
+        });
+      } catch {
+        if (!controller.signal.aborted) {
+          setSearch({ status: "error", query: trimmedQuery });
+        }
+      }
+    }, SEARCH_DELAY_MS);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [searching, trimmedQuery, submittedBrief]);
+
+  const findMagazines = (event: React.FormEvent) => {
+    event.preventDefault();
+    setSheetOpen(false);
+    runMatch(brief, true);
   };
 
-  const currentCards: ManuscriptMatchCard[] = results
-    ? activeTab === "dream_reach"
-      ? results.dreamReach
-      : activeTab === "debut_champions"
-        ? results.debutChampions
-        : activeTab === "rapid_pro"
-          ? results.rapidPro
-          : results.simultaneousPackets
-    : [];
+  const copyLink = () => {
+    const url = `${window.location.origin}${window.location.pathname}?${briefToSearchParams(submittedBrief)}`;
+    navigator.clipboard?.writeText(url).then(
+      () => toast.success("Link copied."),
+      () => toast.error("Copy failed."),
+    );
+  };
+
+  const formProps = { brief, update, isPending, onSubmit: findMagazines };
+  const searchCurrent = search?.query === trimmedQuery ? search : null;
 
   return (
-    <div className="space-y-10">
-      <section className="border border-border bg-card p-5 shadow-sm sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border-subtle)] pb-5">
-          <div>
-            <div className="flex items-center gap-2">
-              <Sparkles className="size-5 text-[var(--text-primary)]" />
-              <h2 className="font-serif text-xl font-medium text-[var(--text-primary)]">
-                Manuscript Strategy & Submission Matcher
-              </h2>
-            </div>
-            <p className="mt-1 text-sm text-[var(--text-secondary)]">
-              Input your piece specs and style markers to calculate fit scores across the Missa magazine index.
-            </p>
-          </div>
+    <div className={styles.layout}>
+      <div className={styles.briefPanel}>
+        <BriefForm {...formProps} />
+      </div>
 
-          <Button
-            type="button"
-            onClick={handleRunMatch}
-            disabled={isPending}
-          >
-            {isPending ? (
-              <Clock className="size-4 animate-spin" />
-            ) : (
-              <Send className="size-4" />
-            )}
-            {isPending ? "Calculating fit..." : "Find Matching Journals"}
-          </Button>
+      <section
+        className={styles.results}
+        aria-labelledby={`${ids}-results`}
+        aria-busy={isPending}
+      >
+        <div className={styles.briefSummary}>
+          <div className={styles.briefSummaryText}>
+            <p className={styles.briefSummaryLabel}>Your piece</p>
+            <p>{briefSummary(submittedBrief)}</p>
+          </div>
+          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+            <SheetTrigger
+              render={
+                <Button type="button" variant="outline">
+                  <SlidersHorizontal aria-hidden="true" />
+                  Edit
+                </Button>
+              }
+            />
+            <SheetContent
+              side="right"
+              surface="canvas"
+              className={styles.sheet}
+            >
+              <SheetTitle className="sr-only">Your piece</SheetTitle>
+              <BriefForm {...formProps} inSheet />
+            </SheetContent>
+          </Sheet>
         </div>
 
-        <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* Genre & Specs */}
-          <div className="space-y-4">
-            <div>
-              <p className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                Genre / Form
-              </p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {(
-                  ["fiction", "poetry", "nonfiction", "flash", "hybrid"] as const
-                ).map((g) => (
-                  <Button
-                    key={g}
-                    type="button"
-                    onClick={() => setGenre(g)}
-                    variant={genre === g ? "default" : "outline"}
-                    size="xs"
-                    aria-pressed={genre === g}
-                  >
-                    <span className="capitalize">{g}</span>
-                  </Button>
+        <header className={styles.resultsHeader}>
+          <h2
+            id={`${ids}-results`}
+            ref={resultsHeadingRef}
+            tabIndex={-1}
+            className={styles.resultsTitle}
+          >
+            Magazines to consider
+          </h2>
+          {results?.status === "available" && results.totalAnalyzed > 0 ? (
+            <p className={styles.resultsMeta}>
+              Compared with{" "}
+              <data value={results.totalAnalyzed} className="font-mono">
+                {results.totalAnalyzed.toLocaleString()}
+              </data>{" "}
+              magazines in the Missa index.
+            </p>
+          ) : null}
+          <p className="sr-only" role="status">
+            {announcement}
+          </p>
+          <p className={styles.changed} role="status">
+            {briefChanged && !isPending && !sheetOpen
+              ? "Your brief has changed. Find magazines again to update this list."
+              : ""}
+          </p>
+        </header>
+
+        <div className={styles.toolbar}>
+          <InputGroup className={styles.search}>
+            <InputGroupAddon>
+              <Search aria-hidden="true" />
+            </InputGroupAddon>
+            <InputGroupInput
+              type="search"
+              aria-label="Search any magazine by name"
+              placeholder="Search any magazine"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            {query ? (
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  size="icon-xs"
+                  aria-label="Clear search"
+                  onClick={() => setQuery("")}
+                >
+                  <X aria-hidden="true" />
+                </InputGroupButton>
+              </InputGroupAddon>
+            ) : null}
+          </InputGroup>
+          <div className={styles.toolbarActions}>
+            <Select
+              value={sort}
+              onValueChange={(value) => {
+                if (value) setSort(value as ResultSort);
+              }}
+            >
+              <SelectTrigger
+                aria-label="Sort magazines"
+                variant="quiet"
+                size="touch"
+              >
+                <SelectValue>
+                  {(value: ResultSort) => SORT_LABELS[value]}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent
+                align="end"
+                alignItemWithTrigger={false}
+                sideOffset={4}
+                className="w-48"
+              >
+                <SelectGroup className={dropdownStyles.list}>
+                  {(Object.keys(SORT_LABELS) as ResultSort[]).map((key) => (
+                    <SelectItem
+                      key={key}
+                      value={key}
+                      className={dropdownStyles.option}
+                    >
+                      {SORT_LABELS[key]}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <ShortlistSheet
+              list={shortlist.list}
+              onRemove={shortlist.remove}
+              onClear={shortlist.clear}
+            />
+            <Button type="button" variant="ghost" onClick={copyLink}>
+              <Link2 aria-hidden="true" />
+              Copy link
+            </Button>
+          </div>
+        </div>
+
+        {searching ? (
+          <SearchResults
+            query={trimmedQuery}
+            state={searchCurrent}
+            sort={sort}
+            brief={submittedBrief}
+            shortlist={shortlist.controls}
+          />
+        ) : isPending ? (
+          <ResultsSkeleton />
+        ) : results?.status === "unavailable" ? (
+          <Empty variant="bordered" role="status">
+            <EmptyHeader>
+              <EmptyTitle>Matching is unavailable</EmptyTitle>
+              <EmptyDescription>
+                The magazine index couldn&apos;t be read, so there are no
+                matches to show. Try again later, or browse the directory.
+              </EmptyDescription>
+            </EmptyHeader>
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<Link href="/directory" />}
+            >
+              Browse the directory
+            </Button>
+          </Empty>
+        ) : !lanes || lanes.length === 0 ? (
+          <Empty variant="bordered" role="status">
+            <EmptyHeader>
+              <EmptyTitle>No magazines match this brief</EmptyTitle>
+              <EmptyDescription>
+                Try a different length, fewer styles, or a broader payment
+                choice.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <Tabs
+            value={activeLane}
+            onValueChange={(value) => setLane(value as LaneKey)}
+          >
+            {lanes.length > 1 ? (
+              <TabsList
+                variant="line"
+                size="responsive"
+                className={styles.lanes}
+              >
+                {lanes.map((entry) => (
+                  <TabsTrigger key={entry.key} value={entry.key} size="touch">
+                    {entry.label}
+                    <span className={`${styles.laneCount} font-mono`}>
+                      {entry.cards.length}
+                    </span>
+                  </TabsTrigger>
                 ))}
-              </div>
-            </div>
-
-            {genre === "poetry" ? (
-              <div>
-                <label className="block font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                  Poem Count in Submission ({poemCount} poems)
-                </label>
-                <input
-                  type="range"
-                  min={1}
-                  max={8}
-                  step={1}
-                  value={poemCount}
-                  onChange={(e) => setPoemCount(Number(e.target.value))}
-                  aria-label="Poem count in submission"
-                  className="mt-2 w-full accent-[var(--text-primary)]"
-                />
-              </div>
-            ) : (
-              <div>
-                <div className="flex items-center justify-between">
-                  <label className="block font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                    Word Count
-                  </label>
-                  <span className="font-mono text-xs font-medium text-[var(--text-primary)]">
-                    {wordCount.toLocaleString()} words
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={500}
-                  max={12000}
-                  step={250}
-                  value={wordCount}
-                  onChange={(e) => setWordCount(Number(e.target.value))}
-                  aria-label="Manuscript word count"
-                  className="mt-2 w-full accent-[var(--text-primary)]"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Aesthetic Styles & Forms */}
-          <div className="space-y-4">
-            <p className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-              Aesthetic Tone & Markers
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {PRESET_STYLES.map((style) => {
-                const isSelected = selectedStyles.includes(style);
-                return (
-                  <Button
-                    key={style}
-                    type="button"
-                    onClick={() => toggleStyle(style)}
-                    variant={isSelected ? "default" : "outline"}
-                    size="xs"
-                    aria-pressed={isSelected}
-                  >
-                    #{style}
-                  </Button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Author Comps */}
-          <div className="space-y-4">
-            <p className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-              Comp Author Influences
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {PRESET_COMPS.map((comp) => {
-                const isSelected = selectedComps.includes(comp);
-                return (
-                  <Button
-                    key={comp}
-                    type="button"
-                    onClick={() => toggleComp(comp)}
-                    variant={isSelected ? "secondary" : "outline"}
-                    size="xs"
-                    aria-pressed={isSelected}
-                  >
-                    {isSelected && <Check className="size-3" />}
-                    {comp}
-                  </Button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Filters & Toggles */}
-        <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-[var(--border-subtle)] pt-4 text-xs">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isDebutAuthor}
-              onChange={(e) => setIsDebutAuthor(e.target.checked)}
-              className="rounded accent-[var(--text-primary)]"
-            />
-            <span className="font-medium text-[var(--text-primary)]">
-              I am a debut / first-time author
-            </span>
-          </label>
-
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={allowSimultaneous}
-              onChange={(e) => setAllowSimultaneous(e.target.checked)}
-              className="rounded accent-[var(--text-primary)]"
-            />
-            <span className="text-[var(--text-secondary)]">
-              Allows simultaneous submissions
-            </span>
-          </label>
-
-          <Field className="min-w-56 gap-1">
-            <FieldLabel htmlFor="match-fee-policy">Fee policy</FieldLabel>
-            <NativeSelect
-              id="match-fee-policy"
-              value={feeTolerance}
-              onChange={(e) =>
-                setFeeTolerance(
-                  e.target.value as ManuscriptMatchInput["feeTolerance"],
-                )
-              }
-            >
-              <option value="free_only">No fee / Fee-waiver required</option>
-              <option value="fee_ok_with_waivers">Fee OK with waivers</option>
-              <option value="any">Any fee policy</option>
-            </NativeSelect>
-          </Field>
-
-          <Field className="min-w-52 gap-1">
-            <FieldLabel htmlFor="match-pay-rate">Contributor pay</FieldLabel>
-            <NativeSelect
-              id="match-pay-rate"
-              value={minPayRate}
-              onChange={(e) =>
-                setMinPayRate(
-                  e.target.value as ManuscriptMatchInput["minPayRate"],
-                )
-              }
-            >
-              <option value="all">All magazines</option>
-              <option value="any_paying">Paying contributors only</option>
-              <option value="pro_rates_only">Pro Rates Only (≥ $0.08/w)</option>
-            </NativeSelect>
-          </Field>
-        </div>
-      </section>
-
-      {/* 2. Results Section & Strategy Tiers */}
-      {results?.status === "unavailable" && (
-        <Empty variant="bordered" role="status">
-          <EmptyHeader>
-            <EmptyTitle>Publication matching is unavailable</EmptyTitle>
-            <EmptyDescription>
-              The magazine index could not be read, so no matches are shown.
-              Try again later, or browse the directory.
-            </EmptyDescription>
-          </EmptyHeader>
-          <Button
-            variant="outline"
-            nativeButton={false}
-            render={<Link href="/directory" />}
-          >
-            Browse the directory
-          </Button>
-        </Empty>
-      )}
-
-      {results?.status === "available" && results.matchedCount === 0 && (
-        <Empty variant="bordered" role="status">
-          <EmptyHeader>
-            <EmptyTitle>No matching publications</EmptyTitle>
-            <EmptyDescription>
-              Change the word count, styles, or pay filter and compare again.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      )}
-
-      {results && results.status === "available" && results.matchedCount > 0 && (
-        <section className="space-y-6">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border-subtle)] pb-4">
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                onClick={() => setActiveTab("debut_champions")}
-                variant={activeTab === "debut_champions" ? "default" : "ghost"}
-                size="sm"
-                aria-pressed={activeTab === "debut_champions"}
+              </TabsList>
+            ) : null}
+            {lanes.map((entry) => (
+              <TabsContent
+                key={entry.key}
+                value={entry.key}
+                className={styles.panel}
               >
-                <Flame className="size-3.5" />
-                Debut & Slush Champions ({results.debutChampions.length})
-              </Button>
-
-              <Button
-                type="button"
-                onClick={() => setActiveTab("dream_reach")}
-                variant={activeTab === "dream_reach" ? "default" : "ghost"}
-                size="sm"
-                aria-pressed={activeTab === "dream_reach"}
-              >
-                <Sparkles className="size-3.5" />
-                Prestige / Dream Reach ({results.dreamReach.length})
-              </Button>
-
-              <Button
-                type="button"
-                onClick={() => setActiveTab("rapid_pro")}
-                variant={activeTab === "rapid_pro" ? "default" : "ghost"}
-                size="sm"
-                aria-pressed={activeTab === "rapid_pro"}
-              >
-                <Clock className="size-3.5" />
-                Rapid Response & Pro Pay ({results.rapidPro.length})
-              </Button>
-
-              <Button
-                type="button"
-                onClick={() => setActiveTab("packet_builder")}
-                variant={activeTab === "packet_builder" ? "default" : "ghost"}
-                size="sm"
-                aria-pressed={activeTab === "packet_builder"}
-              >
-                <Layers className="size-3.5" />
-                Simultaneous Packets ({results.simultaneousPackets.length})
-              </Button>
-            </div>
-
-            <p className="text-xs text-[var(--text-muted)]">
-              Ranked from {results.totalAnalyzed.toLocaleString()} publications
-            </p>
-          </div>
-
-          {/* Cards Grid */}
-          <div className="grid gap-4 md:grid-cols-2">
-            {currentCards.map((card) => (
-              <Card
-                key={card.profileId}
-                className="justify-between"
-              >
-                <CardContent>
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h3 className="font-serif text-lg font-medium text-[var(--text-primary)]">
-                        {card.name}
-                      </h3>
-                      {card.aesthetic.editorialMotto && (
-                        <p className="mt-1 font-serif text-xs italic text-[var(--text-secondary)] line-clamp-1">
-                          &ldquo;{card.aesthetic.editorialMotto}&rdquo;
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <span className="font-mono text-sm font-semibold text-[var(--text-primary)]">
-                        {card.matchScore}% Fit
-                      </span>
-                      <RankingTierBadge tier={card.prestigeTier} />
-                    </div>
-                  </div>
-
-                  {/* Compatibility Reasons */}
-                  <div className="mt-3 space-y-1">
-                    {card.reasons.slice(0, 3).map((reason, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]"
-                      >
-                        <CheckCircle2 className="size-3 text-[var(--text-primary)] shrink-0" />
-                        <span>{reason}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Stats Bar */}
-                  <div className="mt-4 grid grid-cols-3 gap-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)]/40 p-2 text-center text-xs">
-                    <div>
-                      <span className="font-mono font-medium text-[var(--text-primary)]">
-                        {card.telemetry.medianResponseDays === null
-                          ? "Not recorded"
-                          : `${card.telemetry.medianResponseDays}d`}
-                      </span>
-                      <p className="text-[10px] text-[var(--text-muted)]">
-                        Median Turnaround
-                      </p>
-                    </div>
-                    <div>
-                      <span className="font-mono font-medium text-[var(--text-primary)]">
-                        {card.aesthetic.unsolicitedSlushRatioPercent === null
-                          ? "Not recorded"
-                          : `${card.aesthetic.unsolicitedSlushRatioPercent}%`}
-                      </span>
-                      <p className="text-[10px] text-[var(--text-muted)]">
-                        Slush Ratio
-                      </p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-[var(--text-primary)]">
-                        {card.compensation.isProRate
-                          ? "Pro Rate"
-                          : card.compensation.paysContributors === null
-                            ? "Not recorded"
-                            : card.compensation.paysContributors
-                              ? "Paid"
-                              : "Unpaid"}
-                      </span>
-                      <p className="text-[10px] text-[var(--text-muted)]">
-                        Contributor Pay
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-
-                <CardFooter className="mt-5 justify-between pt-3 text-xs">
-                  <EditorialIntelligenceDrawer
-                    profileId={card.profileId}
-                    magazineName={card.name}
-                    magazineSlug={card.slug}
-                    trigger={
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-1 font-medium text-[var(--text-primary)] hover:underline"
-                      >
-                        Explore Dossier & DNA →
-                      </button>
-                    }
+                {entry.description ? (
+                  <p className={styles.laneDescription}>{entry.description}</p>
+                ) : null}
+                {entry.key === "plan" ? (
+                  <SubmissionPlanView
+                    results={results!}
+                    brief={submittedBrief}
+                    shortlist={shortlist.controls}
                   />
-
-                  <Link
-                    href={`/journal/${card.slug}`}
-                    className="inline-flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                  >
-                    View Journal <ExternalLink className="size-3" />
-                  </Link>
-                </CardFooter>
-              </Card>
+                ) : (
+                  <ResultList
+                    cards={sortResults(entry.cards, sort)}
+                    brief={submittedBrief}
+                    shortlist={shortlist.controls}
+                  />
+                )}
+              </TabsContent>
             ))}
-          </div>
-        </section>
-      )}
+          </Tabs>
+        )}
+
+        <p className={styles.footnote}>
+          Scores and plans come from what Missa has recorded, not an eligibility
+          check. Read each magazine&apos;s current guidelines before you submit.{" "}
+          <Link href="/methodology">How Missa ranks magazines</Link>
+        </p>
+      </section>
+    </div>
+  );
+}
+
+function SearchResults({
+  query,
+  state,
+  sort,
+  brief,
+  shortlist,
+}: {
+  query: string;
+  state: SearchState | null;
+  sort: ResultSort;
+  brief: ManuscriptBrief;
+  shortlist: ShortlistControls;
+}) {
+  if (!state || state.status === "loading") {
+    return (
+      <p className={styles.searchStatus} role="status">
+        <Spinner aria-hidden="true" />
+        Searching the index for &ldquo;{query}&rdquo;…
+      </p>
+    );
+  }
+  if (state.status === "error") {
+    return (
+      <Empty variant="bordered" role="status">
+        <EmptyHeader>
+          <EmptyTitle>Search is unavailable</EmptyTitle>
+          <EmptyDescription>
+            The magazine index couldn&apos;t be searched. Try again in a moment.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+  if (state.cards.length === 0) {
+    return (
+      <Empty variant="bordered" role="status">
+        <EmptyHeader>
+          <EmptyTitle>No magazine matches &ldquo;{query}&rdquo;</EmptyTitle>
+          <EmptyDescription>
+            Check the spelling, or browse the full directory.
+          </EmptyDescription>
+        </EmptyHeader>
+        <Button
+          variant="outline"
+          nativeButton={false}
+          render={<Link href="/directory" />}
+        >
+          Browse the directory
+        </Button>
+      </Empty>
+    );
+  }
+  return (
+    <div className={styles.panel}>
+      <p className={styles.laneDescription} role="status">
+        {state.cards.length === 1
+          ? "1 magazine matches"
+          : `${state.cards.length} magazines match`}{" "}
+        &ldquo;{query}&rdquo;, scored against your piece.
+      </p>
+      <ResultList
+        cards={sortResults(state.cards, sort)}
+        brief={brief}
+        shortlist={shortlist}
+      />
     </div>
   );
 }

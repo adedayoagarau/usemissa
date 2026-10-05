@@ -1,7 +1,28 @@
 import { createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
+import {
+  createPostgresDecisionLedger,
+  decide,
+  decisionModeFromEnv,
+  hostRelation,
+  jevClientFromEnv,
+  orgHostsOpportunity,
+  profileOpportunityLinkState,
+  type DecisionLedger,
+  type DecisionMode,
+  type DecisionOutcome,
+  type JevClient,
+  type Queryable,
+} from "@missa/decisions";
 
-export const PROFILE_IDENTITY_MATCHER_VERSION = "profile-host-name-v4";
+export const PROFILE_IDENTITY_MATCHER_VERSION = "profile-host-name-v6";
+
+/**
+ * How recently a profile must have been crawled to confirm an identity. The
+ * profile workers revisit each profile roughly monthly, and an organization's
+ * website rarely changes, so 60 days keeps confirmations flowing without a person.
+ */
+export const PROFILE_FRESHNESS_DAYS = 60;
 
 const NAME_STOP_WORDS = new Set([
   "a", "an", "and", "award", "awards", "call", "contest", "for", "from",
@@ -33,7 +54,8 @@ export type ProfileIdentityDecision = {
   profileId: string;
   opportunityId: string;
   relation: "host" | "submission";
-  status: "pending" | "confirmed";
+  /** "rejected" only comes from a live Jev decision on a pending link. */
+  status: "pending" | "confirmed" | "rejected";
   confidence: number;
   matchedHost: string;
   opportunityUrl: string;
@@ -43,6 +65,8 @@ export type ProfileIdentityDecision = {
   identityBasis: "call-name" | "exact-url";
   profileCheckedAt: string | null;
   opportunityCheckedAt: string | null;
+  /** Set when a live Jev decision changed a pending link's status. */
+  decidedBy?: string;
 };
 
 type NameEvidence = { score: number; matchedTokens: string[] };
@@ -117,6 +141,21 @@ function normalizedIdentityUrl(value: string): string | null {
     return `${host}${pathname}${query ? `?${query}` : ""}`;
   } catch {
     return null;
+  }
+}
+
+/** True when the page is the profile's own URL or sits beneath its path. */
+function isAtOrUnderProfileUrl(pageUrl: string, profileUrl: string): boolean {
+  try {
+    const page = new URL(pageUrl.includes("://") ? pageUrl : `https://${pageUrl}`);
+    const profile = new URL(profileUrl.includes("://") ? profileUrl : `https://${profileUrl}`);
+    const profilePath = profile.pathname.replace(/\/+$/, "").toLowerCase();
+    // A bare host is the shared platform itself, not one of its profiles.
+    if (!profilePath) return false;
+    const pagePath = page.pathname.replace(/\/+$/, "").toLowerCase();
+    return pagePath === profilePath || pagePath.startsWith(`${profilePath}/`);
+  } catch {
+    return false;
   }
 }
 
@@ -202,12 +241,19 @@ export function matchOpportunityToProfiles(
   for (const candidateUrl of opportunityUrls(opportunity)) {
     const host = normalizeHost(candidateUrl.url);
     if (!host) continue;
-    const scored = (byHost.get(host) ?? []).map((profile) => {
+    const hostProfiles = byHost.get(host) ?? [];
+    // Many profiles share a directory or social host (every ArtConnect profile
+    // without its own website is stored as its artconnect.com page). There the
+    // host says nothing about who owns a page, so only a page at or under a
+    // profile's own URL can identify that profile.
+    const isMultiTenantHost = new Set(hostProfiles.map((profile) => profile.profileId)).size > 3;
+    const scored = hostProfiles.map((profile) => {
       const callName = profileNameEvidence(profile.profileName, context, host, false);
       const hostName = profileNameEvidence(profile.profileName, [], host, true);
       const exactUrl = normalizedIdentityUrl(candidateUrl.url) === normalizedIdentityUrl(profile.url);
       const strongCallName = isStrongCallNameEvidence(callName);
       const isNavigationRecord = isNavigationOrListingRecord(opportunity.title, candidateUrl.url);
+      const ownsPage = !isMultiTenantHost || isAtOrUnderProfileUrl(candidateUrl.url, profile.url);
       const identityBasis: ProfileIdentityDecision["identityBasis"] =
         strongCallName ? "call-name" : "exact-url";
       return {
@@ -215,18 +261,23 @@ export function matchOpportunityToProfiles(
         score: Math.max(callName.score, exactUrl ? hostName.score : 0),
         matchedTokens: strongCallName ? callName.matchedTokens : hostName.matchedTokens,
         identityBasis,
-        hasCompatibleIdentity: !isNavigationRecord && (strongCallName || (exactUrl && hostName.score >= 0.75)),
+        ownsPage,
+        hasCompatibleIdentity: !isNavigationRecord && ownsPage && (strongCallName || (exactUrl && hostName.score >= 0.75)),
       };
     });
     const bestByProfile = new Map<string, (typeof scored)[number]>();
     for (const candidate of scored) {
       const current = bestByProfile.get(candidate.profile.profileId);
-      if (!current || candidate.score > current.score) bestByProfile.set(candidate.profile.profileId, candidate);
+      if (!current || (candidate.ownsPage && !current.ownsPage) ||
+        (candidate.ownsPage === current.ownsPage && candidate.score > current.score)) {
+        bestByProfile.set(candidate.profile.profileId, candidate);
+      }
     }
     const unique = [...bestByProfile.values()].sort((left, right) => right.score - left.score);
-    const best = unique[0];
-    const runnerUp = unique[1];
-    const isMultiTenantHost = unique.length > 3;
+    // A profile that does not own the page is no rival for one that does.
+    const rivals = unique.filter((candidate) => candidate.ownsPage);
+    const best = rivals[0];
+    const runnerUp = rivals[1];
 
     for (const candidate of unique) {
       const isDirectOrgMatch = Boolean(opportunity.organizationId && opportunity.organizationId === candidate.profile.profileId);
@@ -234,7 +285,7 @@ export function matchOpportunityToProfiles(
         continue;
       }
       const freshOpportunity = !opportunity.sourceCheckedAt || isFresh(opportunity.sourceCheckedAt, 30, now);
-      const freshProfile = isFresh(candidate.profile.profileCheckedAt, 14, now);
+      const freshProfile = isFresh(candidate.profile.profileCheckedAt, PROFILE_FRESHNESS_DAYS, now);
       const isUnambiguousBest = isDirectOrgMatch || (candidate === best && candidate.hasCompatibleIdentity &&
         (!runnerUp || candidate.score - runnerUp.score >= 0.15) && freshOpportunity && freshProfile);
       const key = `${candidate.profile.profileId}:${candidateUrl.relation}`;
@@ -297,12 +348,10 @@ async function persistDecisions(client: PoolClient, opportunityId: string, decis
           profile_checked_at, opportunity_checked_at, verified_at, verified_until)
        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
          jsonb_build_object('matcherVersion', $12::text, 'rule', 'exact-host-plus-call-identity',
-           'identityBasis', $13::text),
+           'identityBasis', $13::text)
+           || case when $16::text is null then '{}'::jsonb else jsonb_build_object('decidedBy', $16::text) end,
          $14, $15, now(), now() + interval '7 days')
-       on conflict (id) do update set
-         profile_id = excluded.profile_id,
-         opportunity_id = excluded.opportunity_id,
-         relation = excluded.relation,
+       on conflict (profile_id, opportunity_id, relation) do update set
          status = excluded.status,
          confidence = excluded.confidence,
          matched_host = excluded.matched_host,
@@ -323,11 +372,15 @@ async function persistDecisions(client: PoolClient, opportunityId: string, decis
         decision.profileUrl, decision.nameScore, decision.matchedNameTokens,
         PROFILE_IDENTITY_MATCHER_VERSION, decision.identityBasis,
         decision.profileCheckedAt, decision.opportunityCheckedAt,
+        decision.decidedBy ?? null,
       ],
     );
   }
   const confirmedCount = decisions.filter((decision) => decision.status === "confirmed").length;
-  const status = confirmedCount > 0 ? "confirmed" : decisions.length > 0 ? "pending" : "no-match";
+  // Only live Jev decisions reject a link; without them every decision is
+  // pending or confirmed and this matches the matcher's original status rule.
+  const pendingCount = decisions.filter((decision) => decision.status === "pending").length;
+  const status = confirmedCount > 0 ? "confirmed" : pendingCount > 0 ? "pending" : "no-match";
   await client.query(
     `insert into opportunity_profile_identity_checks
        (opportunity_id, matcher_version, status, candidate_count, confirmed_count,
@@ -347,6 +400,7 @@ async function persistDecisions(client: PoolClient, opportunityId: string, decis
 export async function syncProfileOpportunityLinks(
   pool: Pool,
   limit = 100,
+  options: { jev?: ProfileIdentityJevOptions } = {},
 ): Promise<{ opportunities: number; decisions: number; confirmed: number; pending: number }> {
   const [opportunityResult, profileResult] = await Promise.all([
     pool.query<OpportunityIdentityInput>(
@@ -384,11 +438,22 @@ export async function syncProfileOpportunityLinks(
   let decisionCount = 0;
   let confirmed = 0;
   let pending = 0;
+  // Jev runs before the transaction so no connection is held across network calls.
+  const matched: Array<{ opportunity: OpportunityIdentityInput; decisions: ProfileIdentityDecision[] }> = [];
+  let jevBudget = options.jev?.maxDecisions ?? 50;
+  for (const opportunity of opportunityResult.rows) {
+    let decisions = matchOpportunityToProfiles(opportunity, profileResult.rows);
+    if (options.jev && jevBudget > 0 && decisions.some((decision) => decision.status === "pending")) {
+      const adjudicated = await adjudicatePendingProfileLinks(opportunity, decisions, profileResult.rows, { ...options.jev, maxDecisions: jevBudget });
+      jevBudget -= adjudicated.asked;
+      decisions = adjudicated.decisions;
+    }
+    matched.push({ opportunity, decisions });
+  }
   const client = await pool.connect();
   try {
     await client.query("begin");
-    for (const opportunity of opportunityResult.rows) {
-      const decisions = matchOpportunityToProfiles(opportunity, profileResult.rows);
+    for (const { opportunity, decisions } of matched) {
       await persistDecisions(client, opportunity.opportunityId, decisions);
       decisionCount += decisions.length;
       confirmed += decisions.filter((decision) => decision.status === "confirmed").length;
@@ -402,4 +467,122 @@ export async function syncProfileOpportunityLinks(
     client.release();
   }
   return { opportunities: opportunityResult.rows.length, decisions: decisionCount, confirmed, pending };
+}
+
+// ── Jev adjudication of pending links ─────────────────────────────────
+
+export interface ProfileIdentityJevOptions {
+  client: JevClient;
+  ledger?: DecisionLedger;
+  /** DECISIONS_MODE_PROFILE_IDENTITY; live lets confident answers confirm or reject pending links. */
+  mode: DecisionMode;
+  /** Upper bound on Jev calls per sync; one call per pending link. */
+  maxDecisions?: number;
+  logger?: Pick<Console, "warn">;
+}
+
+const COMPATIBLE_ROLES: Record<ProfileIdentityDecision["relation"], readonly string[]> = {
+  host: ["organizer", "host"],
+  submission: ["organizer", "host", "submission-platform"],
+};
+
+/** What a pair of Jev answers means for one pending link; only actionable (live) answers count. */
+export function profileLinkActionFromJev(
+  relation: ProfileIdentityDecision["relation"],
+  hosts: DecisionOutcome | undefined,
+  role: DecisionOutcome | undefined,
+): "confirm" | "reject" | "keep" {
+  const roleAnswer = role?.actionable === true && role.route === "apply" ? role.answer : null;
+  const compatibleRole = roleAnswer !== null && COMPATIBLE_ROLES[relation].includes(roleAnswer);
+  const hostsConfirmed = hosts?.actionable === true && hosts.route === "apply";
+  const hostsRejected = hosts?.actionable === true && hosts.route === "reject";
+  // A submission platform is not expected to host the call, so its role answer stands alone.
+  if (compatibleRole && (hostsConfirmed || (relation === "submission" && roleAnswer === "submission-platform"))) return "confirm";
+  if ((roleAnswer !== null && !compatibleRole) || (relation === "host" && hostsRejected)) return "reject";
+  return "keep";
+}
+
+/**
+ * Asks Jev org_hosts_opportunity and host_relation about each pending link of
+ * one opportunity (highest confidence first, at most maxDecisions) and records
+ * the answers. In live mode a confident answer may confirm or reject a pending
+ * link. Links the matcher already confirmed are never touched, and when Jev
+ * would confirm more than one profile for the same relation, or a relation
+ * already has a confirmed link, the candidates stay pending for a person.
+ */
+export async function adjudicatePendingProfileLinks(
+  opportunity: OpportunityIdentityInput,
+  decisions: ProfileIdentityDecision[],
+  profileUrls: ProfileUrlEvidence[],
+  options: ProfileIdentityJevOptions,
+): Promise<{ decisions: ProfileIdentityDecision[]; asked: number }> {
+  const logger = options.logger ?? console;
+  const profileNames = new Map(profileUrls.map((profile) => [profile.profileId, profile.profileName]));
+  const pending = decisions
+    .filter((decision) => decision.status === "pending")
+    .sort((left, right) => right.confidence - left.confidence)
+    .slice(0, Math.max(0, options.maxDecisions ?? 50));
+  const actions = new Map<ProfileIdentityDecision, "confirm" | "reject" | "keep">();
+  for (const decision of pending) {
+    const otherProfiles = decisions
+      .filter((other) => other.matchedHost === decision.matchedHost && other.profileId !== decision.profileId)
+      .map((other) => profileNames.get(other.profileId));
+    try {
+      const result = await decide({
+        client: options.client,
+        ledger: options.ledger,
+        mode: options.mode,
+        subjectId: `${decision.opportunityId}~${decision.profileId}~${decision.relation}`,
+        state: profileOpportunityLinkState({
+          profile: { name: profileNames.get(decision.profileId) ?? null, url: decision.profileUrl },
+          opportunity: {
+            title: opportunity.title,
+            organization: opportunity.organizationName,
+            sourceUrl: opportunity.sourceUrl,
+            guidelinesUrl: opportunity.guidelinesUrl,
+            submissionUrl: opportunity.submissionUrl,
+          },
+          matchedHost: decision.matchedHost,
+          otherProfiles,
+        }),
+        questions: [orgHostsOpportunity, hostRelation],
+        evidenceUrl: decision.opportunityUrl,
+      });
+      if (result.error) logger.warn(`[profile-identity] Jev decision for ${decision.opportunityId}: ${result.error}`);
+      actions.set(decision, profileLinkActionFromJev(decision.relation, result.outcomes[orgHostsOpportunity.key], result.outcomes[hostRelation.key]));
+    } catch (error) {
+      logger.warn(`[profile-identity] Jev decision failed for ${decision.opportunityId}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  const confirmations = new Map<string, number>();
+  for (const [decision, action] of actions) {
+    if (action === "confirm") confirmations.set(decision.relation, (confirmations.get(decision.relation) ?? 0) + 1);
+  }
+  const alreadyConfirmed = new Set(decisions.filter((decision) => decision.status === "confirmed").map((decision) => decision.relation));
+  const next = decisions.map((decision): ProfileIdentityDecision => {
+    const action = actions.get(decision);
+    if (action === "reject") return { ...decision, status: "rejected", decidedBy: `jev:${orgHostsOpportunity.key}` };
+    if (action === "confirm" && confirmations.get(decision.relation) === 1 && !alreadyConfirmed.has(decision.relation)) {
+      return { ...decision, status: "confirmed", decidedBy: `jev:${orgHostsOpportunity.key}` };
+    }
+    return decision;
+  });
+  return { decisions: next, asked: pending.length };
+}
+
+/** Undefined unless JEV_API_KEY is set. Scope: DECISIONS_MODE_PROFILE_IDENTITY. */
+export function profileIdentityJevFromEnv(
+  db: Queryable,
+  env: Record<string, string | undefined> = process.env,
+): ProfileIdentityJevOptions | undefined {
+  const client = jevClientFromEnv(env);
+  if (!client.available) return undefined;
+  const max = Number(env.JEV_PROFILE_IDENTITY_MAX_PER_SYNC);
+  return {
+    client,
+    ledger: createPostgresDecisionLedger(db),
+    mode: decisionModeFromEnv("profile_identity", env),
+    maxDecisions: env.JEV_PROFILE_IDENTITY_MAX_PER_SYNC && Number.isFinite(max) && max >= 0 ? max : 50,
+  };
 }

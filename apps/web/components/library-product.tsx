@@ -33,6 +33,12 @@ import styles from "./library-product.module.css";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { NativeSelect } from "@/components/ui/native-select";
 import {
+  LIBRARY_FILE_ACCEPT,
+  LIBRARY_FILE_TYPES_LABEL,
+  LIBRARY_MAX_FILE_BYTES,
+  LIBRARY_MAX_FILE_LABEL,
+} from "@/lib/library-file-limits";
+import {
   LibraryMaterialSheet,
   type LibrarySelection,
 } from "@/components/missa/library-material-sheet";
@@ -294,6 +300,10 @@ export function LibraryProduct({
           body: JSON.stringify({ name: answerName, body: answerBody }),
         });
       } else {
+        if (uploadFile && uploadFile.size > LIBRARY_MAX_FILE_BYTES)
+          throw new Error(
+            `Files can be up to ${LIBRARY_MAX_FILE_LABEL}. Choose a smaller file.`,
+          );
         const data = new FormData();
         if (uploadFile) data.append("file", uploadFile);
         response = await fetch("/api/me/library/files", {
@@ -745,7 +755,7 @@ export function LibraryProduct({
                 {view === "works"
                   ? "Add your work. You can link files and describe it now or later."
                   : view === "files"
-                    ? "Upload one private file up to 100 MiB."
+                    ? `Upload one private file up to ${LIBRARY_MAX_FILE_LABEL}.`
                     : "A bio, a statement or any text you use in applications."}
               </DialogDescription>
             </DialogHeader>
@@ -818,13 +828,14 @@ export function LibraryProduct({
                   <Input
                     id="library-file"
                     type="file"
+                    accept={LIBRARY_FILE_ACCEPT}
                     disabled={!storageReady || busy}
                     onChange={(event) => setUploadFile(event.target.files?.[0])}
                     required
                   />
                   <p>
                     {storageReady
-                      ? "1 byte to 100 MiB. Preview support depends on file type."
+                      ? `${LIBRARY_FILE_TYPES_LABEL}. Up to ${LIBRARY_MAX_FILE_LABEL}.`
                       : "Private file storage is unavailable in this environment."}
                   </p>
                 </div>

@@ -643,6 +643,13 @@ export interface Account {
    */
   verifiedEmailDomain?: string;
   active?: boolean;
+  /**
+   * Session revocation boundary. Session tokens (and linked auth-provider
+   * sessions) issued before this instant are rejected. Set by password reset,
+   * account closure, and "sign out of all devices"; absent means every
+   * unexpired session remains valid, which keeps pre-existing tokens working.
+   */
+  sessionsValidAfter?: IsoDateTime;
 }
 
 /** Organization roles. `member` remains the compatibility role for existing workspaces. */

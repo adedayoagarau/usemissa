@@ -109,6 +109,19 @@ const migrationFiles = [
   '0079_notification_email_defaults.sql',
   '0080_creator_plans.sql',
   '0081_creator_billing.sql',
+  '0082_creator_billing_event_order.sql',
+  '0083_missa_ranking_provenance.sql',
+  '0084_site_observability.sql',
+  '0085_editorial_intelligence_sources.sql',
+  '0086_missa_residency_provenance.sql',
+  '0087_sms_reminders.sql',
+  '0088_deadline_management.sql',
+  '0089_creator_profile_connections.sql',
+  '0090_decision_ledger.sql',
+  '0091_honest_defaults.sql',
+  '0092_opportunity_program_identity.sql',
+  '0093_misattributed_artconnect_host.sql',
+  '0094_intermediary_publication_hold.sql',
 ];
 
 

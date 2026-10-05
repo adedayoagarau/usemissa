@@ -1,23 +1,16 @@
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
+import { organizationRoleCan } from '@/lib/organizationProduct';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
 import { getWorkspaceEngine } from '@/lib/workspaceEngine';
-import { getCreatorPreferenceRepository, getCreatorLibraryRepository } from '@/lib/creatorRepositories';
-import { creatorRelationalAuthorityEnabled, listCanonicalTrackedOpportunities } from '@missa/radar-adapters';
 import { CreateTeamForm, CreateProgramForm, CreateOpenCallForm, PublishButton } from '@/components/workspace-forms';
 import { FormBuilder } from '@/components/form-builder';
 import { OrganizationSeats } from '@/components/organization-seats';
 import { OrganizationBilling } from '@/components/organization-billing';
 import { OpenCallControls } from '@/components/open-call-controls';
-import { CreatorWorkspace } from '@/components/creator-workspace';
-import type { TrackerProductItem } from '@/components/tracker-product';
 import { loginRedirectForCurrentRequest } from '@/lib/serverAuthRedirect';
-import {
-  mapOpportunityTypesToInterestLabels,
-  mapTaxonomyToPracticeLabels,
-} from '@/lib/creatorOnboardingTaxonomy';
 
 export default async function WorkspacePage({ searchParams }: { searchParams: Promise<{ organizationId?: string }> }) {
   const cookieStore = await cookies();
@@ -29,6 +22,10 @@ export default async function WorkspacePage({ searchParams }: { searchParams: Pr
 
   // If scoped to a valid organization membership, render organization admin workspace
   if (requestedOrganizationId && targetOrg) {
+    // This legacy surface is the Organization builder (structure, forms,
+    // seats, billing), so it needs the same capability as those mutations.
+    // Other roles use their projected /organization/[id] destinations.
+    if (!organizationRoleCan(targetOrg.role, 'organization.manage')) notFound();
     const organizationId = targetOrg.organizationId;
     const membership = targetOrg;
     const radarEngine = await getEngine();
@@ -111,91 +108,9 @@ export default async function WorkspacePage({ searchParams }: { searchParams: Pr
     );
   }
 
-  // Otherwise, render the Creator's personal workspace: "Your space"
-  const preferenceRepo = getCreatorPreferenceRepository();
-  const radarEngine = await getEngine();
-  const libraryRepo = getCreatorLibraryRepository();
-
-  let practices: string[] = [];
-  let refinements: string[] = [];
-  let interests: string[] = [];
-  let onboardingStatus: "not_started" | "in_progress" | "completed" | "skipped" = "not_started";
-
-  if (preferenceRepo) {
-    const pState = await preferenceRepo.productState(session.account.id);
-    if (pState) onboardingStatus = pState.onboardingStatus;
-    const taxPrefs = await preferenceRepo.taxonomyPreferences(session.account.id);
-    const oppPrefs = await preferenceRepo.opportunityPreferences(session.account.id);
-    const mapping = mapTaxonomyToPracticeLabels(taxPrefs.map((t) => t.termId));
-    practices = mapping.practices;
-    refinements = mapping.refinements;
-    if (oppPrefs?.types) {
-      interests = mapOpportunityTypesToInterestLabels(oppPrefs.types);
-    }
-  } else if (session.account.userId) {
-    const user = radarEngine.store.users.get(session.account.userId);
-    if (user?.taxonomyPreferences) {
-      const mapping = mapTaxonomyToPracticeLabels(user.taxonomyPreferences.map((t) => t.termId));
-      practices = mapping.practices;
-      refinements = mapping.refinements;
-    }
-    if (user?.opportunityPreferences?.types) {
-      interests = mapOpportunityTypesToInterestLabels(user.opportunityPreferences.types);
-    }
-    if (practices.length > 0) onboardingStatus = "completed";
-  }
-
-  const relational = creatorRelationalAuthorityEnabled(process.env) && Boolean(process.env.DATABASE_URL);
-  const savedOpportunities: TrackerProductItem[] = relational && process.env.DATABASE_URL
-    ? (await listCanonicalTrackedOpportunities(process.env.DATABASE_URL, session.account.id)).filter(
-        (i) => ["interested", "saved", "preparing"].includes(i.myStatus)
-      )
-    : session.account.userId
-    ? Object.values(radarEngine.getTracker(session.account.userId).pipeline)
-        .flat()
-        .filter((i) => ["interested", "saved", "preparing"].includes(i.myStatus))
-        .map((i) => ({
-          opportunityId: i.opportunityId,
-          title: i.title,
-          organizationName: i.organizationName,
-          type: i.type,
-          opportunityStatus: i.opportunityStatus,
-          myStatus: i.myStatus,
-          deadline: i.deadline,
-          deadlineKind: i.deadlineKind,
-          daysToDeadline: i.daysToDeadline,
-          expectedResponseBy: i.expectedResponseBy,
-          daysOverdue: i.daysOverdue,
-          isManual: i.isManual,
-          manualId: i.manualId,
-          notes: i.notes,
-          workId: i.workId,
-          workTitle: i.workTitle,
-          importId: i.importId,
-        }))
-    : [];
-
-  let libraryWorksCount = 0;
-  if (libraryRepo && session.account.userId) {
-    const lib = await libraryRepo.library(session.account.id, session.account.userId);
-    libraryWorksCount = lib.works.length;
-  }
-
-  const organizations = session.memberships.map((membership) => ({
-    id: membership.organizationId,
-    name: radarEngine.store.organizations.get(membership.organizationId)?.name ?? membership.organizationId,
-  }));
-
-  return (
-    <CreatorWorkspace
-      displayName={session.account.displayName || "Creative Practitioner"}
-      onboardingStatus={onboardingStatus}
-      practices={practices}
-      refinements={refinements}
-      interests={interests}
-      savedOpportunities={savedOpportunities}
-      libraryCount={{ works: libraryWorksCount, books: 0 }}
-      organizations={organizations}
-    />
-  );
+  // "/workspace" is the Organization entry. Members who can manage an
+  // organization land on its builder; creators land on Home.
+  const managed = session.memberships.find((membership) => organizationRoleCan(membership.role, 'organization.manage'));
+  if (managed) redirect(`/workspace?organizationId=${encodeURIComponent(managed.organizationId)}`);
+  redirect('/home');
 }

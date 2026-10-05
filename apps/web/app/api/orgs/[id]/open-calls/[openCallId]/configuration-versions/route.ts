@@ -7,7 +7,7 @@ type Params = { id: string; openCallId: string };
 
 export async function GET(request: Request, { params }: { params: Promise<Params> }) {
   const { id, openCallId } = await params;
-  const access = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const access = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   if (!workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: 'Relational Workspace authority is required' }, { status: 503 });
   return NextResponse.json(await (await getRelationalWorkspace()).opportunityConfigurationVersionsForOpenCall(id, openCallId));
@@ -15,7 +15,7 @@ export async function GET(request: Request, { params }: { params: Promise<Params
 
 export async function POST(request: Request, { params }: { params: Promise<Params> }) {
   const { id, openCallId } = await params;
-  const access = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const access = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   if (!workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: 'Relational Workspace authority is required' }, { status: 503 });
   const parsed = opportunityConfigurationSchema.safeParse((await request.json()).configuration);

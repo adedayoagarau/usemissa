@@ -1,6 +1,7 @@
 import { evaluateEligibility } from "./eligibility.js";
 import { buildFeatureContributions } from "./features.js";
 import { deriveExplanation } from "./explain.js";
+import type { CreatorFitLevel } from "./creatorFit.js";
 import { rerankCandidates } from "./rerank.js";
 import { buildReplayReport, type ReplayReport } from "./replay.js";
 import { calculateRelevanceScore, calculateScoreConfidence } from "./score.js";
@@ -94,13 +95,15 @@ export function recommendFeed(input: {
   executionState?: RecommendationExecutionState;
   baselineOpportunityIds: string[];
   config?: RecommendationPolicyConfig;
+  /** Confident creator-fit levels; reorders eligible candidates only (scope creator_fit). */
+  creatorFit?: ReadonlyMap<string, CreatorFitLevel>;
 }): RecommendationFeedResult {
   const generatedAt = input.generatedAt ?? input.context.now;
   const ttlMs = input.ttlMs ?? 15 * 60_000;
   const config = input.config ?? DEFAULT_RECOMMENDATION_POLICY_CONFIG;
   try {
     const results = input.opportunities.map((opportunity) => evaluateCandidate(input.context, opportunity, config));
-    const ordered = rerankCandidates(results, config);
+    const ordered = rerankCandidates(results, config, input.creatorFit);
     const orderedOpportunityIds = ordered.map((result) => result.opportunityId);
     return {
       policyVersion: config.policyVersion,

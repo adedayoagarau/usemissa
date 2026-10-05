@@ -1,4 +1,4 @@
-node_modules/
+node_modules
 dist/
 *.log
 *.tsbuildinfo
@@ -18,3 +18,8 @@ apps/web/e2e/storage-state.json
 test-results/
 .impeccable/
 *.impeccable/
+.claude/settings.local.json
+
+# Written by next dev (Next 16.3+) on every start
+apps/web/AGENTS.md
+apps/web/CLAUDE.md

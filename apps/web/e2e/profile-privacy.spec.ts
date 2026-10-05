@@ -18,16 +18,17 @@ async function createAccount(page: Page) {
 
 test('owner can save privacy settings and public profile honors them', async ({ page }) => {
   const { email, password, id } = await createAccount(page);
+  // The old Privacy link lands on Public profile, where visibility sits beside each field.
   await page.goto('/profile?section=privacy');
-  await expect(page.getByRole('heading', { name: 'Privacy', exact: true })).toBeVisible();
-  await expect(page.getByText('Public', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Public profile' })).toBeVisible();
+  const bioVisibility = page.getByRole('radiogroup', { name: 'Who can see your bio' });
+  await expect(bioVisibility.getByRole('radio', { name: 'Public' })).toBeChecked();
 
-  const bioSwitch = page.getByRole('switch', { name: 'Make short bio private' });
-  await bioSwitch.focus();
-  await page.keyboard.press('Space');
-  await expect(page.getByText('Private', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Save privacy settings' }).click();
-  await expect(page.locator('p[role="status"]')).toHaveText('Privacy settings saved');
+  await bioVisibility.getByRole('radio', { name: 'Public' }).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(bioVisibility.getByRole('radio', { name: 'Only you' })).toBeChecked();
+  await page.getByRole('region', { name: 'Unsaved changes' }).getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.locator('p[role="status"]')).toHaveText('Saved. Your public profile is up to date.');
 
   const persisted = await page.request.get('/api/me/profile/privacy');
   expect(persisted.ok()).toBeTruthy();
@@ -79,14 +80,15 @@ test('private display name has no identifying fallback on the public page', asyn
 test.describe('mobile privacy controls', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
-  test('privacy switches remain keyboard reachable without horizontal overflow', async ({ page }) => {
+  test('visibility choices remain keyboard reachable without horizontal overflow', async ({ page }) => {
     await createAccount(page);
     await page.goto('/profile?section=privacy');
     expect(await page.locator('body').evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-    const switches = page.getByRole('switch');
-    await expect(switches).toHaveCount(2);
-    await switches.first().focus();
-    await page.keyboard.press('Space');
-    await expect(switches.first()).toBeFocused();
+    await expect(page.getByRole('radiogroup')).toHaveCount(2);
+    const nameVisibility = page.getByRole('radiogroup', { name: 'Who can see your name' });
+    await nameVisibility.getByRole('radio', { name: 'Public' }).focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(nameVisibility.getByRole('radio', { name: 'Only you' })).toBeFocused();
+    await expect(nameVisibility.getByRole('radio', { name: 'Only you' })).toBeChecked();
   });
 });

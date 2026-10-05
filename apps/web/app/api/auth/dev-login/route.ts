@@ -3,8 +3,7 @@ import { getCreatorAccountRepository } from "@/lib/creatorRepositories";
 import { getEngine } from "@/lib/engine";
 import {
   issueSessionToken,
-  sessionCookieOptions,
-  SESSION_COOKIE,
+  setSessionCookie,
 } from "@/lib/auth";
 
 const DEV_ADMIN_EMAIL = "admin@missa.dev";
@@ -41,11 +40,7 @@ export async function GET(request: Request) {
       303,
     );
     response.headers.set("Cache-Control", "no-store");
-    response.cookies.set(
-      SESSION_COOKIE,
-      issueSessionToken(account.id),
-      sessionCookieOptions(),
-    );
+    setSessionCookie(response, issueSessionToken(account.id));
     return response;
   } catch {
     return NextResponse.json(

@@ -350,7 +350,7 @@ only boundary. Bordered or filled children use the ladder value.
 | ------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------- |
 | Public / marketing | Spacious    | `/`, `/guides`, `/guides/*`, `/about`, `/methodology`, `/discover/*`                                             |
 | Public record      | Comfortable | `/opportunities`, `/opportunities/*`, `/journals/*`, `/@handle`, `/profile/*`                                    |
-| Creator product    | Comfortable | `/profile`, `/settings/*`, `/tracker`, `/library/*`, `/inbox`, `/calendar`                                       |
+| Creator product    | Comfortable | `/home`, `/profile`, `/settings/*`, `/tracker`, `/library/*`, `/inbox`, `/calendar`                                       |
 | Organization       | Compact     | Organization workspace, builder, submissions, reviews, decisions, messages, delivery, insights, people, settings |
 | Reviewer           | Compact     | Reviewer queue and work surfaces                                                                                 |
 | Platform Admin     | Compact     | All admin routes                                                                                                 |
@@ -544,9 +544,16 @@ An AI-generated component that duplicates an approved item fails review.
 | Add to Tracker                 | `TrackerAction`               | `Button`, optional `DropdownMenu` for stage, `Sonner` or inline recovery                       |
 | Filter on mobile               | `OpportunityFilterSheet`      | same filter model as desktop, `Sheet`, `Field`, selection controls, result count               |
 | Track applications             | `TrackerBoard` / `TrackerRow` | `Kanban` or `Table` by view, `Badge` semantics, menus and dialogs                              |
+| Work on one application        | `TrackerItemSheet`            | `Sheet`, eyebrow sections, lifecycle with dated provenance, `Dialog` for recorded events       |
+| Know when to start             | `StartByDate`                 | `Button` + `Popover` reasoning; estimate wording; Ochre only when today or passed              |
+| See calendar delivery          | `ApplicationCalendarDelivery` | Feed, provider and session rows; `Spinner` only while syncing; Retry and Reconnect actions     |
+| Confirm email evidence         | `ApplicationEmailEvidence`    | Suggestion panel; creator confirms; never changes state on its own                             |
+| Start the creator's week       | `CreatorHome`                 | Situation sentence, one lead move with `ApplicationRunway` and next steps, week `Tabs`, Tracker `Tabs`, goal pace |
+| Recover after a decline        | `SimilarOpportunities`        | Explained matches with plain reasons, Save to Tracker, Not for me; never labelled AI           |
+| Check before submitting        | `PreSubmitCheck`              | Passed / Needs attention / Check manually, written out; unverifiable checks are never Passed   |
 | Edit a Work                    | `WorkEditor`                  | `Field`, form controls, `Sortable`, media blocks, `Dialog`/`Sheet`, process feedback           |
 | Manage calendar                | `OpportunityCalendar`         | `Calendar`, labelled events, `Popover` or side panel, provider sync status                     |
-| Configure Profile              | `ProfileSettingsForm`         | `Tabs` only for same-route peer sections, `Field`, form controls, inline feedback              |
+| Configure Profile              | `ProfileSettingsForm`         | Grouped section navigation; visibility `RadioGroup` beside each public field with a live preview; `Collapsible` groups; one sticky save bar per section |
 | Present an artist              | `PortfolioIdentityHeader`     | editorial typography, `Avatar`/media, restrained actions; no dashboard chrome                  |
 | Present portfolio work         | `PortfolioWorkCard`           | media with aspect ratio, editorial title, credits, accessible captions                         |
 | Operate submissions            | `SubmissionTable`             | `Table`, semantic workflow states, row actions, responsive labelled records                    |
@@ -670,6 +677,7 @@ than selecting the primitive variant or color directly.
 | Opens soon                     | `OpportunityStatusBadge state="opening-soon"` | Mineral information                                 | Never                                          |
 | Open or always open            | `OpportunityStatusBadge state="open"`         | Quiet Forest; explicit label                        | Never                                          |
 | Closing soon                   | `UrgencyBadge`                                | Ochre warning; exact date or days remaining         | Never                                          |
+| Personal application state     | `ApplicationStateBadge`                       | Tone by meaning; declined and withdrawn neutral     | Never                                          |
 | Closed or archived             | `OpportunityStatusBadge state="closed"`       | Neutral muted                                       | Never                                          |
 | Free to submit                 | `FeeBadge amount={0}`                         | Quiet Lichen when scan value warrants it            | Never                                          |
 | Confirmed organization         | `AuthorityBadge`                              | Forest or Mineral with scoped text                  | Never                                          |
@@ -862,7 +870,7 @@ Discovery implementation and extension guide: [Discovery design system](docs/dis
 
 ## Creator portfolio appearance (2026-09-04)
 
-The full-page owner editor remains in the standard Missa interface. The portfolio preview may use a creator-selected palette from `apps/web/components/design-system/creator-palette.css`: Sage studio maps to accent-tint, Paper to ochre-tint with ochre-deep actions, Mineral to mineral-blue-tint with mineral-blue actions, and After hours to ink with surface text and pale forest actions. These are semantic mappings of the existing palette, not new raw colors. Typography and layout remain fixed across themes. User-uploaded backgrounds are not part of this approved variant.
+The full-page owner editor remains in the standard Missa interface. The portfolio preview may use a creator-selected palette from `apps/web/components/design-system/creator-palette.css`: Sage studio maps to accent-tint, Mineral to mineral-blue-tint with mineral-blue actions, and After hours to ink with surface text and pale forest actions. These are semantic mappings of the existing palette, not new raw colors. Typography and layout remain fixed across themes. User-uploaded backgrounds are not part of this approved variant. The Paper theme (ochre-tint canvas) was retired in October 2026 because a cream canvas conflicts with the PRODUCT.md anti-reference; stored Paper drafts and snapshots render as Sage.
 
 Theme selection uses explicit labelled pressed cards; it never relies on color alone. Themes are persisted with the private draft and applied only to the portfolio surface, preserving familiar editor controls. Test both text contrast and actual computed background colors, not just the selected theme attribute.
 

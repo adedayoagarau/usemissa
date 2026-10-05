@@ -28,7 +28,6 @@ async function createAccount(page: Page, email: string) {
   await page.getByLabel("Family name").fill("Save Creator");
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByLabel("Confirm password").fill(password);
   const signupResponse = page.waitForResponse((response) =>
     response.url().endsWith("/api/auth/signup") && response.request().method() === "POST"
   );

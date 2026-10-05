@@ -3,11 +3,23 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable, Mapping
 
 import httpx
 
 from .harness import DEFAULT_MODEL, POLICY_VERSION, PROMPT_VERSION, ReviewCandidate
+from .jev import (
+    GARY_PUBLICATION_ROUTE,
+    DecideResult,
+    DecisionRecord,
+    JevClient,
+    PostgresDecisionLedger,
+    canonical_json,
+    decide,
+    decision_mode_from_env,
+    input_hash,
+    jev_client_from_env,
+)
 
 
 SYSTEM_PROMPT = """You are Gary's evidence reviewer for creative opportunities.
@@ -130,7 +142,7 @@ class DeepSeekReviewer:
                     "messages": messages,
                     "response_format": {"type": "json_object"},
                     "temperature": 0,
-                    "max_tokens": 700,
+                    "max_tokens": 2000,
                 },
                 timeout=self.timeout,
             )
@@ -176,3 +188,125 @@ class DeepSeekReviewer:
             output_tokens=output_tokens or None,
             estimated_cost_usd=cost,
         )
+
+
+# ── Jev publication route ─────────────────────────────────────────────
+
+GARY_REVIEW_SCOPE = "gary_review"  # DECISIONS_MODE_GARY_REVIEW=live lets confident Jev answers skip DeepSeek
+
+
+def publication_state(candidate: ReviewCandidate, checks: dict[str, Any]) -> dict[str, Any]:
+    """The facts DeepSeek reviews, without its prompt: scraped public evidence only."""
+
+    return {"deterministic_checks": checks, "candidate": candidate.model_payload()}
+
+
+class JevPublicationRouter:
+    """Asks Jev gary.publication_route before DeepSeek and records both verdicts.
+
+    Shadow (default): Jev is recorded and DeepSeek runs exactly as before; the
+    DeepSeek verdict is also recorded as an `llm` row for comparison. Live: a
+    confident Jev publish or reject is used instead of DeepSeek; anything else
+    still goes to DeepSeek. Callers only ask when no deterministic blocker
+    applies, so blockers always win.
+    """
+
+    def __init__(self, client: JevClient, ledger: Any | None, mode: str, *, log: Callable[[str], None] = print):
+        self.client = client
+        self.ledger = ledger
+        self.mode = mode
+        self.log = log
+
+    def route(self, candidate: ReviewCandidate, checks: dict[str, Any]) -> DecideResult | None:
+        try:
+            result = decide(
+                client=self.client, ledger=self.ledger, mode=self.mode,
+                subject_id=candidate.opportunity_id, state=publication_state(candidate, checks),
+                questions=[GARY_PUBLICATION_ROUTE], evidence_url=candidate.source_detail_url or None,
+            )
+        except Exception as error:  # noqa: BLE001 - Jev must never break review
+            self.log(f"[gary-reviewer] Jev publication route failed for {candidate.opportunity_id}: {error}")
+            return None
+        if result.error:
+            self.log(f"[gary-reviewer] Jev publication route for {candidate.opportunity_id}: {result.error}")
+        return result
+
+    @staticmethod
+    def confident(result: DecideResult | None, publish_threshold: float) -> bool:
+        """True only for a live, actionable publish (at or above Gary's threshold) or reject."""
+
+        outcome = result.outcomes.get(GARY_PUBLICATION_ROUTE.key) if result else None
+        if outcome is None or not outcome.actionable:
+            return False
+        if outcome.answer == "reject":
+            return True
+        return outcome.answer == "publish" and (outcome.probability or 0) >= publish_threshold
+
+    @staticmethod
+    def review_result(result: DecideResult, checks: dict[str, Any]) -> ReviewResult:
+        outcome = result.outcomes[GARY_PUBLICATION_ROUTE.key]
+        probability = outcome.probability or 0.0
+        raw = {**outcome.as_dict(), "model": result.model}
+        return ReviewResult(
+            recommendation=str(outcome.answer),
+            confidence=probability,
+            reasons=[f"Jev {GARY_PUBLICATION_ROUTE.key}@{GARY_PUBLICATION_ROUTE.version}: {outcome.answer} at probability {probability:.3f}"],
+            checks={**checks, "jev": {"route": outcome.route, "distribution": outcome.distribution, "model": result.model}},
+            raw=raw,
+            input_hash=result.input_hash,
+            output_hash=hashlib.sha256(canonical_json(raw).encode("utf-8")).hexdigest(),
+        )
+
+    def record_llm(
+        self,
+        candidate: ReviewCandidate,
+        checks: dict[str, Any],
+        review: ReviewResult,
+        *,
+        model: str,
+        publish_threshold: float,
+    ) -> None:
+        """Records DeepSeek's verdict on the same input so it can be compared with Jev."""
+
+        if self.ledger is None:
+            return
+        state = publication_state(candidate, checks)
+        acted = review.recommendation == "reject" or (
+            review.recommendation == "publish" and review.confidence >= publish_threshold
+        )
+        record = DecisionRecord(
+            subject_type=GARY_PUBLICATION_ROUTE.subject_type,
+            subject_id=candidate.opportunity_id,
+            question_key=GARY_PUBLICATION_ROUTE.key,
+            question_version=GARY_PUBLICATION_ROUTE.version,
+            question_kind=GARY_PUBLICATION_ROUTE.kind,
+            options=GARY_PUBLICATION_ROUTE.options(),
+            input_hash=input_hash(state),
+            evidence_url=candidate.source_detail_url or None,
+            answer=review.recommendation,
+            # DeepSeek reports its own confidence; it is not a calibrated probability.
+            probability=review.confidence,
+            confidence=review.confidence,
+            distribution={review.recommendation: review.confidence},
+            route="apply" if acted else "review",
+            # DeepSeek's verdict is what Gary acts on today.
+            mode="live",
+            decider_kind="llm",
+            decider="deepseek",
+            decider_version=model,
+            policy_version=f"{PROMPT_VERSION}+{POLICY_VERSION}",
+            usage={"input_tokens": review.input_tokens, "output_tokens": review.output_tokens} if review.input_tokens or review.output_tokens else None,
+        )
+        try:
+            self.ledger.record([record])
+        except Exception as error:  # noqa: BLE001
+            self.log(f"[gary-reviewer] could not record the DeepSeek decision for {candidate.opportunity_id}: {error}")
+
+
+def jev_publication_router_from_env(database_url: str, env: Mapping[str, str] | None = None) -> JevPublicationRouter | None:
+    """None unless JEV_API_KEY is set, so an unconfigured reviewer does no extra work."""
+
+    client = jev_client_from_env(env)
+    if not client.available:
+        return None
+    return JevPublicationRouter(client, PostgresDecisionLedger(database_url), decision_mode_from_env(GARY_REVIEW_SCOPE, env))

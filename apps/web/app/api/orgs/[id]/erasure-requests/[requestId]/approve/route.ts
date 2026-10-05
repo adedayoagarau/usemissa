@@ -4,7 +4,7 @@ import { getRelationalWorkspace, workspaceCommandEnvelope, workspaceMutationErro
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string; requestId: string }> }) {
   const { id, requestId } = await params;
-  const result = await requireOrganizationAccess(request, id, { roles: ['owner'] });
+  const result = await requireOrganizationAccess(request, id, { capability: 'organization.own' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
   if (!workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: 'Erasure approvals are not available yet' }, { status: 503 });
   const body = await request.json().catch(() => ({}));

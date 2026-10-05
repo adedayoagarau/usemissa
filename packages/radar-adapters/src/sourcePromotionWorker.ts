@@ -13,6 +13,16 @@ import type { Source, SourceKind } from "@missa/radar-engine";
 import { robotsAllowsPath } from "./sourcePolicy.js";
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from "./workerTelemetry.js";
 import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
+import {
+  askOperations,
+  OperationsUsage,
+  searchResultIsSource,
+  searchResultState,
+  sourcePromotion,
+  sourcePromotionState,
+  wouldAct,
+} from "@missa/decisions";
+import { logOperationsUsage, radarOperationsDecider, type OperationsDecider } from "./operationsDecisions.js";
 
 const USER_AGENT = "MissaRadar/1.0 (+https://www.usemissa.com; source-verification; evidence-only)";
 const DEFAULT_BATCH_SIZE = 50;
@@ -87,6 +97,7 @@ interface CandidateRow {
   url: string;
   normalized_url: string;
   title: string | null;
+  snippet?: string | null;
   proposed_kind: string | null;
   score: number;
 }
@@ -330,6 +341,65 @@ export async function verifySourceCandidate(
   return { decision: "accepted", evidence };
 }
 
+/**
+ * Wraps verification with Jev (scope `source_discovery`). Before any fetch,
+ * a live, confident "not-a-source" for the search result rejects the
+ * candidate without fetching its page, robots.txt or terms. After
+ * verification, a live, confident "reject" may only turn a needs-human
+ * result into a rejection; Jev never accepts a source. Without a decider
+ * this is exactly `verify(candidate)`.
+ */
+export async function verifySourceCandidateWithDecisions(
+  candidate: Pick<CandidateRow, "id" | "url" | "title" | "snippet" | "proposed_kind">,
+  decider: OperationsDecider | undefined,
+  options: { usage?: OperationsUsage; verify?: (candidate: Pick<CandidateRow, "url" | "title">) => Promise<SourceVerificationResult>; now?: Date } = {},
+): Promise<SourceVerificationResult> {
+  const verify = options.verify ?? ((item: Pick<CandidateRow, "url" | "title">) => verifySourceCandidate(item));
+  if (!decider) return verify(candidate);
+  const usage = options.usage;
+  const scope = "source_discovery" as const;
+
+  usage?.asked(scope);
+  const screen = (await askOperations(decider, scope, {
+    subjectId: candidate.id,
+    evidenceUrl: candidate.url,
+    state: searchResultState({ url: candidate.url, title: candidate.title, snippet: candidate.snippet, proposedKind: candidate.proposed_kind }),
+    questions: [searchResultIsSource],
+  }))?.[searchResultIsSource.key];
+  const notASource = screen?.answer === "not-a-source";
+  if (notASource && screen?.actionable) {
+    usage?.skipped(scope);
+    return {
+      decision: "rejected",
+      evidence: {
+        candidateUrl: candidate.url,
+        ...(candidate.title ? { title: candidate.title } : {}),
+        robots: "review",
+        terms: "review",
+        callSignals: [],
+        reason: "search result does not describe an opportunity source; verification fetches were skipped",
+        checkedAt: (options.now ?? new Date()).toISOString(),
+      },
+    };
+  }
+  usage?.made(scope, notASource && wouldAct(screen, "apply"));
+
+  const result = await verify(candidate);
+  // Asked for every verified candidate so the ledger can be compared with the
+  // checker; only a needs-human result may change.
+  usage?.asked(scope);
+  const verdict = (await askOperations(decider, scope, {
+    subjectId: candidate.id,
+    evidenceUrl: candidate.url,
+    state: sourcePromotionState(result.evidence),
+    questions: [sourcePromotion],
+  }))?.[sourcePromotion.key];
+  if (result.decision === "needs-human" && verdict?.actionable && verdict.answer === "reject") {
+    return { ...result, decision: "rejected", evidence: { ...result.evidence, reason: `${result.evidence.reason}; rejected on a confident source-promotion decision` } };
+  }
+  return result;
+}
+
 function sourceIdFor(url: string): string {
   return `source_${createHash("sha256").update(normalizeUrl(url)).digest("hex").slice(0, 32)}`;
 }
@@ -360,7 +430,7 @@ async function claimCandidates(client: PoolClient, limit: number): Promise<Candi
       update source_discovery_candidates c
       set status = 'reviewing', updated_at = now()
       from due where c.id = due.id returning c.*
-    ) select id, url, normalized_url, title, proposed_kind, score from claimed`, [limit]);
+    ) select id, url, normalized_url, title, snippet, proposed_kind, score from claimed`, [limit]);
   return result.rows;
 }
 
@@ -446,8 +516,11 @@ export async function runSourcePromotionWorkerTick(options: Omit<SourcePromotion
     const candidates = await claimCandidates(connectedClient, sourcePromotionBatchSize(options.maxCandidates));
     await connectedClient.query("commit");
 
+    // Undefined without JEV_API_KEY: every candidate is verified exactly as before.
+    const decider = radarOperationsDecider(pool);
+    const usage = decider ? new OperationsUsage() : undefined;
     const results = await mapConcurrent(candidates, sourcePromotionConcurrency(options.concurrency), async (candidate) => {
-      try { return { candidate, result: await verifySourceCandidate(candidate) }; }
+      try { return { candidate, result: await verifySourceCandidateWithDecisions(candidate, decider, { usage }) }; }
       catch (error) {
         return { candidate, result: { decision: "needs-human" as const, evidence: { candidateUrl: candidate.url, robots: "review" as const, terms: "review" as const, callSignals: [], reason: error instanceof Error ? error.message : "verification failed", checkedAt: new Date().toISOString() } } };
       }
@@ -468,6 +541,7 @@ export async function runSourcePromotionWorkerTick(options: Omit<SourcePromotion
       }
     }
     logger.info(`[missa-source-promotion] claimed=${candidates.length} accepted=${counts.accepted} rejected=${counts.rejected} needs-human=${counts.needsHuman} promoted=${counts.promoted} failures=${counts.failures} mode=${options.promotionMode ?? "review"}`);
+    logOperationsUsage(usage, logger);
     return { status: "completed", candidatesClaimed: candidates.length, ...counts };
   } finally {
     if (client) {

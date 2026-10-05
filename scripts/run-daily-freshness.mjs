@@ -52,15 +52,66 @@ try {
   let verifiedCount = 0;
   let closedDeadCount = 0;
 
+  // Optional Jev check (scope `link_check`) for HEAD failures that the rules
+  // below leave open. Without JEV_API_KEY nothing here runs or is fetched;
+  // with it in shadow mode the decision is only recorded. In live mode a link
+  // closes only on a confident "gone" while its HEAD request is failing now.
+  let linkCheck = null;
+  if (process.env.JEV_API_KEY) {
+    try {
+      const decisions = await import("@missa/decisions");
+      const decider = decisions.operationsDeciderFromEnv({ ledger: decisions.createPostgresDecisionLedger(client) });
+      if (decider) linkCheck = { decisions, decider, usage: new decisions.OperationsUsage() };
+    } catch (err) {
+      console.warn("   ⚠️ Jev link check unavailable:", err.message);
+    }
+  }
+  async function jevSaysClose(opp, status, redirectTarget) {
+    if (!linkCheck) return false;
+    let snippet = "";
+    try {
+      const page = await fetch(opp.guidelines_url, {
+        headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" },
+        signal: AbortSignal.timeout(3000)
+      });
+      snippet = linkCheck.decisions.visibleText((await page.text()).slice(0, 20_000)).slice(0, 600);
+    } catch {
+      // No snippet; the status alone is the evidence.
+    }
+    return linkCheck.decisions.linkShouldCloseNow(linkCheck.decider, {
+      subjectId: opp.id,
+      url: opp.guidelines_url,
+      status,
+      redirectTarget,
+      snippet
+    }, linkCheck.usage);
+  }
+  async function closeDeadLink(opp) {
+    await client.query(`
+      UPDATE opportunities
+      SET status = 'closed',
+          source_checked_at = now(),
+          last_changed_at = now(),
+          updated_at = now()
+      WHERE id = $1;
+    `, [opp.id]);
+    closedDeadCount++;
+  }
+
   for (const opp of staleBatch.rows) {
+    let headSettled = false;
     try {
       const res = await fetch(opp.guidelines_url, {
         method: "HEAD",
         headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" },
         signal: AbortSignal.timeout(3000)
       });
+      headSettled = true;
 
-      if (res.ok || res.status === 403 || res.status === 405) {
+      if (linkCheck && !res.ok && res.status !== 404 && res.status !== 410 && await jevSaysClose(opp, res.status, res.url)) {
+        console.log(`   ⚠️ Destination gone per Jev link check (HTTP ${res.status}, auto-closing): ${opp.title} -> ${opp.guidelines_url}`);
+        await closeDeadLink(opp);
+      } else if (res.ok || res.status === 403 || res.status === 405) {
         // Source URL is alive
         await client.query(`
           UPDATE opportunities 
@@ -83,9 +134,20 @@ try {
       }
     } catch {
       // Network hiccup; ignore politely
+      if (linkCheck && !headSettled) {
+        try {
+          if (await jevSaysClose(opp, "network-error", null)) {
+            console.log(`   ⚠️ Destination unreachable and gone per Jev link check (auto-closing): ${opp.title} -> ${opp.guidelines_url}`);
+            await closeDeadLink(opp);
+          }
+        } catch {
+          // The Jev check never blocks the freshness run.
+        }
+      }
     }
     await new Promise(r => setTimeout(r, 40));
   }
+  if (linkCheck) for (const line of linkCheck.usage.summary()) console.log(`   ${line}`);
 
   console.log(`   ✔ Verified source freshness for ${verifiedCount} opportunities.`);
   if (closedDeadCount > 0) {
@@ -106,6 +168,29 @@ try {
   }
 
   let deltaPublished = 0;
+  let deltaHeld = 0;
+
+  // Jev confirming decisions for each new row: recorded in shadow by default.
+  // With MISSA_DIRECT_PUBLISH_GATE=decision a confident "not one opportunity"
+  // inserts the row as 'reviewable' for the review worker instead of 'published'.
+  let directPublishState = async () => "published";
+  try {
+    const confirming = await import("../packages/radar-adapters/dist/src/confirmingDecisions.js");
+    const directPublishContext = confirming.directPublishContextFromEnv(client);
+    directPublishState = async (opportunityId, record) => {
+      try {
+        return await confirming.confirmDirectPublish(directPublishContext, { opportunityId, record, evidenceUrl: record.sourceUrl ?? null });
+      } catch {
+        return "published";
+      }
+    };
+  } catch {
+    // Decisions are optional; publish exactly as before.
+  }
+  function reportHeld(label, title) {
+    console.log(`     ⏸ [${label}] Held for review, not one opportunity: "${title}"`);
+    deltaHeld++;
+  }
 
   // 3A. SUBMITTABLE DISCOVER API DELTA (Pages 1-3)
   console.log("   [Submittable API] Polling recent open calls...");
@@ -132,6 +217,7 @@ try {
               ? `https://${item.organization.subdomain}.submittable.com/submit/${item.id}`
               : `https://manager.submittable.com/opportunities/discover/${item.id}`;
             const searchDoc = `${title} ${orgName} creative writing submissions grants fellowships art call submittable`;
+            const publicationState = await directPublishState(oppId, { title, organizationName: orgName, sourceUrl: subUrl, submissionUrl: subUrl, deadlineDate: deadline, origin: "submittable-discover-api" });
 
             await client.query(`
               INSERT INTO opportunities (
@@ -139,7 +225,7 @@ try {
                 deadline_date, deadline_kind, fee_status, guidelines_url, submission_url,
                 submission_state, search_document, created_at, updated_at
               ) VALUES (
-                $1, $2, $3, 'src_submittable_directory', 'open', 'published', 'call', 'multidisciplinary',
+                $1, $2, $3, 'src_submittable_directory', 'open', $8, 'call', 'multidisciplinary',
                 ARRAY['Writing', 'Visual Art', 'Fellowship', 'Grant']::text[],
                 $4::date, $5, 'unknown', $6, $6,
                 'available', $7, now(), now()
@@ -151,10 +237,13 @@ try {
               deadline,
               deadline ? 'exact' : 'rolling',
               subUrl,
-              searchDoc
+              searchDoc,
+              publicationState
             ]);
-            console.log(`     ✨ [Submittable] Auto-published new call: "${title}" (${orgName})`);
-            deltaPublished++;
+            if (publicationState === "published") {
+              console.log(`     ✨ [Submittable] Auto-published new call: "${title}" (${orgName})`);
+              deltaPublished++;
+            } else reportHeld("Submittable", title);
           }
         }
       }
@@ -182,6 +271,7 @@ try {
           const title = `${titleName} Residency Program`;
           const url = `https://resartis.org/listings/${slug}/`;
           const searchDoc = `${title} international artist residency studio housing visual arts multidisciplinary res artis`;
+          const publicationState = await directPublishState(oppId, { title, sourceUrl: url, origin: "res-artis-listings" });
 
           await client.query(`
             INSERT INTO opportunities (
@@ -189,7 +279,7 @@ try {
               deadline_kind, fee_status, guidelines_url, submission_url,
               submission_state, search_document, created_at, updated_at
             ) VALUES (
-              $1, $2, $3, 'src_res_artis_open_calls', 'open', 'published', 'residency', 'residency',
+              $1, $2, $3, 'src_res_artis_open_calls', 'open', $6, 'residency', 'residency',
               ARRAY['Residency', 'Visual Art', 'Studio', 'International']::text[],
               'rolling', 'no-fee', $4, $4,
               'available', $5, now(), now()
@@ -199,10 +289,13 @@ try {
             `${cleanSlug(slug)}-residency`.slice(0, 140),
             title,
             url,
-            searchDoc
+            searchDoc,
+            publicationState
           ]);
-          console.log(`     ✨ [Res Artis] Auto-published new residency: "${title}"`);
-          deltaPublished++;
+          if (publicationState === "published") {
+            console.log(`     ✨ [Res Artis] Auto-published new residency: "${title}"`);
+            deltaPublished++;
+          } else reportHeld("Res Artis", title);
         }
       }
     }
@@ -228,6 +321,7 @@ try {
           const title = `${titleName} Open Call`;
           const url = `https://rivet.es/calls/${slug}/`;
           const searchDoc = `${title} rivet artist residency international call studio grant`;
+          const publicationState = await directPublishState(oppId, { title, sourceUrl: url, origin: "rivet-calls" });
 
           await client.query(`
             INSERT INTO opportunities (
@@ -235,7 +329,7 @@ try {
               deadline_kind, fee_status, guidelines_url, submission_url,
               submission_state, search_document, created_at, updated_at
             ) VALUES (
-              $1, $2, $3, 'src_rivet_directory', 'open', 'published', 'residency', 'residency',
+              $1, $2, $3, 'src_rivet_directory', 'open', $6, 'residency', 'residency',
               ARRAY['Residency', 'Visual Art', 'Studio', 'International']::text[],
               'rolling', 'no-fee', $4, $4,
               'available', $5, now(), now()
@@ -245,10 +339,13 @@ try {
             `${cleanSlug(slug)}-rivet`.slice(0, 140),
             title,
             url,
-            searchDoc
+            searchDoc,
+            publicationState
           ]);
-          console.log(`     ✨ [Rivet] Auto-published new call: "${title}"`);
-          deltaPublished++;
+          if (publicationState === "published") {
+            console.log(`     ✨ [Rivet] Auto-published new call: "${title}"`);
+            deltaPublished++;
+          } else reportHeld("Rivet", title);
         }
       }
     }
@@ -278,6 +375,7 @@ try {
             const title = `${rawName} Residency`;
             const url = `https://www.transartists.org/en/air/${slug}`;
             const searchDoc = `${title} transartists dutchculture artist in residence international program`;
+            const publicationState = await directPublishState(oppId, { title, sourceUrl: url, origin: "transartists-deadlines" });
 
             await client.query(`
               INSERT INTO opportunities (
@@ -285,7 +383,7 @@ try {
                 deadline_kind, fee_status, guidelines_url, submission_url,
                 submission_state, search_document, created_at, updated_at
               ) VALUES (
-                $1, $2, $3, 'src_transartists_directory', 'open', 'published', 'residency', 'residency',
+                $1, $2, $3, 'src_transartists_directory', 'open', $6, 'residency', 'residency',
                 ARRAY['Residency', 'Visual Art', 'AIR', 'International']::text[],
                 'rolling', 'no-fee', $4, $4,
                 'available', $5, now(), now()
@@ -295,10 +393,13 @@ try {
               `${cleanSlug(slug)}-air`.slice(0, 140),
               title,
               url,
-              searchDoc
+              searchDoc,
+              publicationState
             ]);
-            console.log(`     ✨ [TransArtists] Auto-published new AIR call: "${title}"`);
-            deltaPublished++;
+            if (publicationState === "published") {
+              console.log(`     ✨ [TransArtists] Auto-published new AIR call: "${title}"`);
+              deltaPublished++;
+            } else reportHeld("TransArtists", title);
           }
         }
       }
@@ -325,6 +426,7 @@ try {
           const title = `${titleName}`;
           const url = `https://www.curatorspace.com/opportunities/detail/${slug}`;
           const searchDoc = `${title} curatorspace exhibition open call visual arts gallery commission`;
+          const publicationState = await directPublishState(oppId, { title, sourceUrl: url, origin: "curatorspace-opportunities" });
 
           await client.query(`
             INSERT INTO opportunities (
@@ -332,7 +434,7 @@ try {
               deadline_kind, fee_status, guidelines_url, submission_url,
               submission_state, search_document, created_at, updated_at
             ) VALUES (
-              $1, $2, $3, 'src_curatorspace_directory', 'open', 'published', 'exhibition', 'visual_arts',
+              $1, $2, $3, 'src_curatorspace_directory', 'open', $6, 'exhibition', 'visual_arts',
               ARRAY['Exhibition', 'Visual Art', 'Gallery', 'Open Call']::text[],
               'rolling', 'no-fee', $4, $4,
               'available', $5, now(), now()
@@ -342,10 +444,13 @@ try {
             `${cleanSlug(slug)}-cs`.slice(0, 140),
             title,
             url,
-            searchDoc
+            searchDoc,
+            publicationState
           ]);
-          console.log(`     ✨ [CuratorSpace] Auto-published new exhibition call: "${title}"`);
-          deltaPublished++;
+          if (publicationState === "published") {
+            console.log(`     ✨ [CuratorSpace] Auto-published new exhibition call: "${title}"`);
+            deltaPublished++;
+          } else reportHeld("CuratorSpace", title);
         }
       }
     }
@@ -354,6 +459,7 @@ try {
   }
 
   console.log(`   ✔ Multi-portal delta pass complete (${deltaPublished} newly discovered opportunities auto-published).`);
+  if (deltaHeld > 0) console.log(`   ✔ ${deltaHeld} newly discovered rows held as reviewable by the direct-publish decision gate.`);
 
   // 4. RECONCILE MAGAZINE & PRESS SUBMISSION SCHEDULES & AUTO-MATERIALIZE
   console.log("\n4. Reconciling literary magazine and press submission schedules...");

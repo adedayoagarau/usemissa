@@ -99,16 +99,16 @@ test("password signup verifies the email before opening a Missa session", async 
   });
 
   await page.goto("/signup?next=/opportunities");
-  await page.getByLabel("Your name").fill("Alex Morgan");
+  await page.getByLabel("Given name").fill("Alex");
+  await page.getByLabel("Family name").fill("Morgan");
   await page.getByLabel("Email address").fill(email);
   await page
     .getByLabel("Password", { exact: true })
     .fill("correct-horse-battery");
-  await page.getByLabel("Confirm password").fill("correct-horse-battery");
   await page.getByRole("button", { name: "Create account" }).click();
 
   await expect(
-    page.getByRole("heading", { name: "Check your email." }),
+    page.getByRole("heading", { name: "Check your email" }),
   ).toBeVisible();
   await expect(page.getByText(email, { exact: false })).toBeVisible();
   await expect(page.getByLabel("Verification code")).toBeFocused();

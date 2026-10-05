@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import pg from "pg";
 import type { TransArtistsProgram } from "./transartistsParser.js";
 import { runFastPipeline } from "./runPlatformOpportunityPipelineFast.js";
+import { firstOwnUrl } from "@missa/radar-engine";
 
 if (!process.env.DATABASE_URL) {
   console.error("DATABASE_URL is required. Set it in the environment (or pass --env-file=.env.local).");
@@ -90,9 +91,10 @@ try {
       orgId = `org_trans_${cleanOrgKey}`;
       createdOrgs++;
 
-      const websiteUrl = p.website || `https://www.transartists.org/en/air/${p.slug}`;
+      // The directory's page is never recorded as the organization's website.
+      const websiteUrl = firstOwnUrl(p.website) ?? null;
       let normWebsite = "";
-      try { normWebsite = new URL(websiteUrl).hostname.replace(/^www\./, ""); } catch {}
+      try { if (websiteUrl) normWebsite = new URL(websiteUrl).hostname.replace(/^www\./, ""); } catch {}
 
       // Insert into radar_organizations
       await client.query(`

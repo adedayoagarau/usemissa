@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { publicIndexLayoutStyles as catalogueStyles } from "@/components/missa/public-index-layout";
 import type { Metadata } from "next";
+import { listingMetadata } from "@/lib/seo";
 import { cookies } from "next/headers";
 import { PublicSiteShell } from "@/components/public-site-shell";
+import { headerSessionFor } from "@/lib/headerSession";
 import { MagazineRankingsInteractive } from "@/components/rankings/magazine-rankings-interactive";
 import {
   Empty,
@@ -17,18 +19,27 @@ import { unstable_cache } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Missa Literary Magazine Index (2026)",
-  description:
-    "The independent literary magazine rankings evaluated across anthology accolades, contributor compensation, turnaround speed, and submission access.",
-};
+export function generateMetadata({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
+  return listingMetadata(
+    {
+      title: "Missa Literary Magazine Index",
+      description:
+        "The independent literary magazine rankings evaluated across anthology accolades, contributor compensation, turnaround speed, and submission access.",
+      path: "/rankings/magazines",
+    },
+    searchParams,
+  );
+}
 
 const getCachedMagazineRankings = unstable_cache(
   async (genre: RankingGenre) =>
     getMagazineRankingRepository().listRankings({
       genre,
-      year: 2026,
-      limit: 100,
+      limit: 1000,
     }),
   ["public-magazine-rankings-v1"],
   { revalidate: 300, tags: ["magazine-rankings"] },
@@ -57,13 +68,13 @@ export default async function MagazineRankingsPage({
   );
 
   return (
-    <PublicSiteShell current="Magazine rankings">
+    <PublicSiteShell current="Magazine rankings" session={headerSessionFor(session)}>
       <main
         id="main-content"
         className={catalogueStyles.main}
       >
         <header className={`${catalogueStyles.pageIntro} mb-8`}>
-          <p className={catalogueStyles.eyebrow}>Rankings · 2026</p>
+          <p className={catalogueStyles.eyebrow}>Rankings · {page.year}</p>
           <div className={catalogueStyles.introRow}>
             <div className={catalogueStyles.introCopy}>
               <h1>Magazine rankings</h1>
@@ -87,7 +98,7 @@ export default async function MagazineRankingsPage({
             <EmptyHeader>
               <EmptyTitle>Magazine rankings are not available yet</EmptyTitle>
               <EmptyDescription>
-                The 2026 index has not been published. Browse magazines in the
+                The index has not been published. Browse magazines in the
                 directory in the meantime.
               </EmptyDescription>
             </EmptyHeader>
@@ -104,7 +115,6 @@ export default async function MagazineRankingsPage({
             preview={page.dataSource === "seed"}
             initialItems={page.items}
             currentGenre={genre}
-            total={page.total}
             signedIn={Boolean(session)}
           />
         )}

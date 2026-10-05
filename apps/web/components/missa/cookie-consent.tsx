@@ -16,9 +16,11 @@ import styles from "./cookie-consent.module.css";
 /**
  * Analytics consent banner.
  *
- * Intent: ask a permission question once, then get out of the way. It renders
- * nothing until the stored choice is known, so visitors who already answered
- * never see a flash of the banner.
+ * Intent: ask a permission question once, then get out of the way. The banner
+ * is part of the server HTML so first-time visitors see it with the page
+ * rather than seconds later, after hydration, as the largest late paint.
+ * Visitors who already answered never see it: `consentAnsweredScript` marks
+ * them before first paint, the stylesheet hides it, and hydration removes it.
  *
  * Composition note: shadcn ships no consent component, and the installed
  * `Alert` hard-codes role="alert", which is wrong for a non-urgent permission
@@ -31,7 +33,8 @@ export function CookieConsent() {
     getConsentSnapshot,
     getConsentServerSnapshot,
   );
-  const visible = consent === "none";
+  // "unknown" is the server and hydration render; see the note above.
+  const visible = consent === "none" || consent === "unknown";
 
   if (!visible) return null;
 

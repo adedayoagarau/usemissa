@@ -6,14 +6,93 @@ export type CreatorPlan = "free" | "plus" | "pro";
  * What each creator plan allows. This is the one place limits live; product
  * code asks for an entitlement instead of checking plan names. Discovery,
  * Opportunity pages, official sources and email reminders are never limited.
+ * Text (SMS) reminders cost Missa per message, so they come with Plus.
  */
 export const CREATOR_PLAN_LIMITS = {
-  free: { activeTrackedLimit: 10 },
-  plus: { activeTrackedLimit: null },
-  pro: { activeTrackedLimit: null },
-} as const satisfies Record<CreatorPlan, { activeTrackedLimit: number | null }>;
+  free: {
+    activeTrackedLimit: 10,
+    smsReminders: false,
+    startByPlanning: false,
+    deadlineDayAlarm: false,
+    feeTierAlerts: false,
+    openingAlerts: false,
+    capacityPlanning: false,
+    seasonPlan: false,
+  },
+  plus: {
+    activeTrackedLimit: null,
+    smsReminders: true,
+    startByPlanning: true,
+    deadlineDayAlarm: true,
+    feeTierAlerts: true,
+    openingAlerts: true,
+    capacityPlanning: false,
+    seasonPlan: false,
+  },
+  pro: {
+    activeTrackedLimit: null,
+    smsReminders: true,
+    startByPlanning: true,
+    deadlineDayAlarm: true,
+    feeTierAlerts: true,
+    openingAlerts: true,
+    capacityPlanning: true,
+    seasonPlan: true,
+  },
+} as const satisfies Record<CreatorPlan, CreatorPlanLimits>;
+
+/**
+ * Deadline accuracy is never limited by plan: confirmed, predicted and changed
+ * labels, local close times, stages and tiers, calendar feed alarms, default
+ * reminders, the response clock and carry-to-next-cycle are on every plan.
+ * Plus adds planning and the extra alerts; Pro adds capacity and the season plan.
+ */
+export type CreatorPlanLimits = {
+  activeTrackedLimit: number | null;
+  smsReminders: boolean;
+  /** Start-by dates and lead-time sub-deadlines that move with the deadline. */
+  startByPlanning: boolean;
+  /** A morning-of alarm for calls not yet submitted. */
+  deadlineDayAlarm: boolean;
+  /** Reminders before an early-bird or other cheaper tier closes. */
+  feeTierAlerts: boolean;
+  /** Opens-soon and it-opened alerts for followed and recurring calls. */
+  openingAlerts: boolean;
+  /** Planned hours against available time across tracked calls. */
+  capacityPlanning: boolean;
+  /** The full season view; every plan sees this week's actions. */
+  seasonPlan: boolean;
+};
+
+export type CreatorFeature = Exclude<keyof CreatorPlanLimits, "activeTrackedLimit">;
+
+/** Whether a plan includes a feature. Product code asks this rather than checking plan names. */
+export function planIncludes(plan: CreatorPlan, feature: CreatorFeature): boolean {
+  return CREATOR_PLAN_LIMITS[plan][feature];
+}
+
+/** Plans that include a feature, for SQL that filters accounts by plan. */
+export function plansIncluding(feature: CreatorFeature): CreatorPlan[] {
+  return (Object.keys(CREATOR_PLAN_LIMITS) as CreatorPlan[]).filter((plan) => CREATOR_PLAN_LIMITS[plan][feature]);
+}
 
 export const FREE_ACTIVE_TRACKED_LIMIT = CREATOR_PLAN_LIMITS.free.activeTrackedLimit;
+
+/** Plans that include text reminders, for SQL that filters recipients by plan. */
+export const SMS_REMINDER_PLANS = (Object.keys(CREATOR_PLAN_LIMITS) as CreatorPlan[]).filter(
+  (plan) => CREATOR_PLAN_LIMITS[plan].smsReminders,
+);
+
+export function planIncludesSmsReminders(plan: CreatorPlan): boolean {
+  return CREATOR_PLAN_LIMITS[plan].smsReminders;
+}
+
+/** Tracker statuses that count towards the Free limit while the call is open. */
+export const ACTIVE_TRACKED_STATUSES = ["interested", "saved", "preparing", "draft-started", "ready-to-submit"] as const;
+
+export function isActiveTrackedStatus(status: string): boolean {
+  return (ACTIVE_TRACKED_STATUSES as readonly string[]).includes(status);
+}
 
 /**
  * Calls a creator is still working towards: not yet submitted, and either
@@ -25,7 +104,7 @@ const ACTIVE_TRACKED_SQL = `
     from tracked_opportunities t
     join opportunities o on o.id = t.opportunity_id
    where t.account_id = $1
-     and t.status in ('interested','saved','preparing','draft-started','ready-to-submit')
+     and t.status in (${ACTIVE_TRACKED_STATUSES.map((status) => `'${status}'`).join(",")})
      and (o.deadline_date is null or o.deadline_date >= current_date)`;
 
 export class TrackingLimitReachedError extends Error {
@@ -41,6 +120,12 @@ export type CreatorEntitlements = Readonly<{
   activeTrackedLimit: number | null;
   activeTracked: number;
 }>;
+
+/** The features the account's plan includes, keyed by feature. */
+export function creatorFeatures(plan: CreatorPlan): Record<CreatorFeature, boolean> {
+  const { activeTrackedLimit: _limit, ...features } = CREATOR_PLAN_LIMITS[plan];
+  return features;
+}
 
 type Queryable = Pick<PoolClient, "query">;
 
@@ -70,7 +155,15 @@ export async function assertTrackingAllowance(client: PoolClient, accountId: str
   const existing = await client.query("select 1 from tracked_opportunities where account_id=$1 and opportunity_id=$2", [accountId, opportunityId]);
   if (existing.rows[0]) return;
   await client.query("select pg_advisory_xact_lock(hashtext($1))", [`tracking-allowance:${accountId}`]);
-  const entitlements = await creatorEntitlements(client, accountId);
+  assertRoomForActiveCall(await creatorEntitlements(client, accountId));
+}
+
+/**
+ * The limit check itself, for callers that count calls in progress some other
+ * way (the legacy Radar store): refuses one more call in progress when the plan
+ * is already at its limit.
+ */
+export function assertRoomForActiveCall(entitlements: Pick<CreatorEntitlements, "activeTrackedLimit" | "activeTracked">): void {
   if (entitlements.activeTrackedLimit !== null && entitlements.activeTracked >= entitlements.activeTrackedLimit) {
     throw new TrackingLimitReachedError(entitlements.activeTrackedLimit, entitlements.activeTracked);
   }

@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { OpportunityDetailStickyActions } from "@/components/opportunity-detail-sticky-actions";
 import { OpportunityDeadlineChip } from "@/components/opportunity-deadline-chip";
+import {
+  DeadlineFactSummary,
+  OpportunityDeadlineFactsSection,
+} from "@/components/opportunity-deadline-facts";
+import { describeDeadline } from "@/lib/deadline-moment";
 import { AddOpportunityToCalendarButton } from "@/components/add-opportunity-to-calendar-button";
 import {
   ArrowLeft,
@@ -59,55 +64,6 @@ function typeLabel(type: string): string {
   return type
     .replace(/[-_]/gu, " ")
     .replace(/^./u, (character) => character.toUpperCase());
-}
-
-function getDeadlineUrgency(
-  deadline: OpportunityDetailProjection["deadline"],
-): {
-  label: string;
-  urgent: boolean;
-} {
-  if (!deadline.date) {
-    if (deadline.kind === "rolling")
-      return { label: "Rolling deadline", urgent: false };
-    if (deadline.kind === "until-filled")
-      return { label: "Until filled", urgent: false };
-    return { label: "Deadline not listed", urgent: false };
-  }
-
-  const target = new Date(`${deadline.date}T00:00:00`);
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const diffMs = target.getTime() - now.getTime();
-  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-
-  const formattedDate = new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-  }).format(target);
-
-  if (diffDays < 0) {
-    return { label: `Closed ${formattedDate}`, urgent: false };
-  }
-  if (diffDays === 0) {
-    return { label: "Closes today", urgent: true };
-  }
-  if (diffDays === 1) {
-    return { label: "Closes tomorrow", urgent: true };
-  }
-  if (diffDays <= 7) {
-    return {
-      label: `Closes ${formattedDate} · ${diffDays} days left`,
-      urgent: true,
-    };
-  }
-  if (diffDays <= 30) {
-    return {
-      label: `Closes ${formattedDate} · ${diffDays} days left`,
-      urgent: false,
-    };
-  }
-  return { label: `Closes ${formattedDate}`, urgent: false };
 }
 
 function getFeeBadge(opportunity: OpportunityDetailProjection): {
@@ -230,11 +186,14 @@ export function OpportunityDetailView({
 }) {
   const tracked = Boolean(opportunity.personal?.tracked);
   const canonicalPath = `/opportunities/${opportunity.slug}`;
+  // Only the organization's own pages: an intermediary's link (Submittable,
+  // ArtConnect, …) never stands in for them, and neither does the page Missa
+  // discovered the call on.
   const officialHref = opportunity.guidelinesUrl ?? opportunity.submissionUrl;
-  const destinationHref = officialHref ?? opportunity.source.url;
+  const destinationHref = officialHref ?? opportunity.organizationWebsiteUrl;
   const destinationLabel = officialHref
     ? "Open Official Application"
-    : "Open Original Listing";
+    : "Open organization website";
 
   const call = opportunity.callProfile;
 
@@ -282,7 +241,12 @@ export function OpportunityDetailView({
 
   const dossierHeading = "What you’ll need";
 
-  const deadlineUrgency = getDeadlineUrgency(opportunity.deadline);
+  const deadlineUrgency = describeDeadline({
+    kind: opportunity.deadline.kind,
+    date: opportunity.deadline.date,
+    time: opportunity.deadline.time,
+    timezone: opportunity.deadline.timezone,
+  });
   const feeBadge = getFeeBadge(opportunity);
   if (feeBadge.isFree && isGrant) feeBadge.label = "No application fee";
   const prizeBadge = getPrizeBadge(opportunity);
@@ -434,6 +398,9 @@ export function OpportunityDetailView({
                 {/* 3. Deadline Countdown */}
                 <OpportunityDeadlineChip
                   date={opportunity.deadline.date}
+                  time={opportunity.deadline.time}
+                  timezone={opportunity.deadline.timezone}
+                  kind={opportunity.deadline.kind}
                   fallbackLabel={deadlineUrgency.label}
                   fallbackUrgent={deadlineUrgency.urgent}
                 />
@@ -513,14 +480,16 @@ export function OpportunityDetailView({
                 opportunityTitle={cleanTitle}
               />
             )}
-            <a
-              className={styles.sourceButton}
-              href={destinationHref}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {destinationLabel} <ExternalLink aria-hidden="true" />
-            </a>
+            {destinationHref ? (
+              <a
+                className={styles.sourceButton}
+                href={destinationHref}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {destinationLabel} <ExternalLink aria-hidden="true" />
+              </a>
+            ) : null}
             <AddOpportunityToCalendarButton
               item={opportunity}
               signedIn={signedIn}
@@ -662,6 +631,16 @@ export function OpportunityDetailView({
               </div>
             </section>
 
+            <OpportunityDeadlineFactsSection
+              deadline={opportunity.deadline}
+              facts={opportunity.deadlineFacts}
+              correctionHref={
+                signedIn
+                  ? "#application-title"
+                  : `/login?next=${encodeURIComponent(canonicalPath)}`
+              }
+            />
+
             <section
               className={styles.applicationSection}
               aria-labelledby="application-title"
@@ -673,14 +652,16 @@ export function OpportunityDetailView({
                 Review the organization’s current instructions and submit
                 through its official website.
               </p>
-              <a
-                className={styles.sourceButton}
-                href={destinationHref}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {destinationLabel} <ExternalLink aria-hidden="true" />
-              </a>
+              {destinationHref ? (
+                <a
+                  className={styles.sourceButton}
+                  href={destinationHref}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {destinationLabel} <ExternalLink aria-hidden="true" />
+                </a>
+              ) : null}
               {signedIn ? (
                 <OpportunityIssueReport
                   opportunityId={opportunity.id}
@@ -734,19 +715,10 @@ export function OpportunityDetailView({
                     Deadline
                   </dt>
                   <dd className={styles.factDefinition}>
-                    {opportunity.deadline.date
-                      ? new Intl.DateTimeFormat("en", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        }).format(
-                          new Date(`${opportunity.deadline.date}T12:00:00`),
-                        )
-                      : opportunity.deadline.kind === "rolling"
-                        ? "Rolling"
-                        : opportunity.deadline.kind === "until-filled"
-                          ? "Until filled"
-                          : "Not listed"}
+                    <DeadlineFactSummary
+                      deadline={opportunity.deadline}
+                      facts={opportunity.deadlineFacts}
+                    />
                   </dd>
                 </div>
                 <div className={styles.factRow}>
@@ -944,15 +916,17 @@ export function OpportunityDetailView({
               opportunityTitle={cleanTitle}
             />
           )}
-          <OfficialDestinationLink
-            className={styles.sourceButton}
-            href={destinationHref}
-            opportunityId={opportunity.id}
-            surface="detail-sticky"
-          >
-            {destinationLabel}
-            <ExternalLink aria-hidden="true" />
-          </OfficialDestinationLink>
+          {destinationHref ? (
+            <OfficialDestinationLink
+              className={styles.sourceButton}
+              href={destinationHref}
+              opportunityId={opportunity.id}
+              surface="detail-sticky"
+            >
+              {destinationLabel}
+              <ExternalLink aria-hidden="true" />
+            </OfficialDestinationLink>
+          ) : null}
         </OpportunityDetailStickyActions>
 
         {/* Mobile Sticky Action Bar */}
@@ -973,13 +947,16 @@ export function OpportunityDetailView({
               opportunityTitle={cleanTitle}
             />
           )}
-          <OfficialDestinationLink
-            href={destinationHref}
-            opportunityId={opportunity.id}
-            surface="mobile-dock"
-          >
-            Open official site <ExternalLink aria-hidden="true" />
-          </OfficialDestinationLink>
+          {destinationHref ? (
+            <OfficialDestinationLink
+              href={destinationHref}
+              opportunityId={opportunity.id}
+              surface="mobile-dock"
+            >
+              {officialHref ? "Open official site" : "Open organization website"}{" "}
+              <ExternalLink aria-hidden="true" />
+            </OfficialDestinationLink>
+          ) : null}
         </MobileActionDock>
       </article>
     </main>

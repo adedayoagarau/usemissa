@@ -14,7 +14,9 @@ import type {
   OpportunityCallProfile,
   OpportunityContent,
 } from "@missa/radar-engine";
-import { canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
+import { firstOwnUrl, isIntermediaryUrl, toPublicOpportunity } from "@missa/radar-engine";
+import { canonicalListedOpportunityPredicate } from "./canonicalOpportunityProjection.js";
+import { loadDeadlineFacts } from "./deadlineFacts.js";
 import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 import {
   cleanCrawledText,
@@ -27,12 +29,32 @@ export interface SqlQuery {
   values: unknown[];
 }
 
+/**
+ * Browse query with the "confirmed dates only" discovery filter. Kept beside
+ * the port type until `OpportunityRepositoryQuery` carries it directly.
+ */
+export type OpportunityRepositoryQueryWithDeadlineFacts = OpportunityRepositoryQuery & {
+  /** Exclude records whose deadline would be labelled needs-checking or predicted. */
+  confirmedDatesOnly?: boolean;
+};
+
+/**
+ * Rows whose deadline provenance is confirmed or changed: a published date
+ * (or a declared open-ended window) that is neither inferred nor conflicting,
+ * on a record that is not marked uncertain. Mirrors `deadlineProvenance`.
+ */
+export const CONFIRMED_DATES_PREDICATE =
+  "(o.deadline_kind not in ('inferred', 'conflicting', 'unknown') and coalesce(o.status, '') <> 'uncertain' and (o.deadline_date is not null or o.deadline_kind in ('rolling', 'year-round', 'seasonal', 'until-filled')))";
+
 interface OpportunityRow extends QueryResultRow {
   id: string;
   slug: string;
   title: string;
   organization_id: string | null;
   organization_name: string | null;
+  organization_profile_website_url: string | null;
+  official_site_url?: string | null;
+  organization_data_website_url: string | null;
   organization_verified: string | null;
   identity_asset_url: string | null;
   identity_asset_alt: string | null;
@@ -254,6 +276,8 @@ function normalizeDeadlineKind(
     case "inferred":
     case "rolling":
     case "until-filled":
+    case "year-round":
+    case "seasonal":
     case "conflicting":
     case "unknown":
       return value;
@@ -375,6 +399,11 @@ function baseSelect(
     o.organization_id,
     coalesce(org.data->>'name', o.organization_id) as organization_name,
     org.data->>'verified' as organization_verified,
+    org_profile.website_url as organization_profile_website_url,
+    (select e.url from opportunity_source_evidence e
+      where e.opportunity_id = o.id and e.kind = 'official-site'
+      order by e.checked_at desc limit 1) as official_site_url,
+    coalesce(org.data->>'website_url', org.data->>'websiteUrl', org.data->>'website') as organization_data_website_url,
     asset.url as identity_asset_url,
     asset.alt as identity_asset_alt,
     o.status,
@@ -453,6 +482,7 @@ function baseFrom(
     from opportunities o
     join opportunity_sources source on source.id = o.source_id
     left join radar_organizations org on org.id = o.organization_id
+    left join gary_profiles org_profile on org_profile.id = o.organization_id
     left join lateral (
       select asset_candidate.url, asset_candidate.alt
       from (
@@ -718,7 +748,7 @@ export function buildOpportunityBrowseQuery(
   const garyVisualsReads = options.garyVisualsReads ?? garyVisualsReadsEnabled();
   const values: unknown[] = [];
   const conditions: string[] = [
-    canonicalPublicOpportunityPredicate("o"),
+    canonicalListedOpportunityPredicate("o"),
     query.openNow
       ? `(o.status = any($${values.length + 1}::text[]) and (o.deadline_date is null or o.deadline_date >= current_date))`
       : "true",
@@ -765,7 +795,37 @@ export function buildOpportunityBrowseQuery(
       );
     }
   }
-  if (query.taxonomyTermIds?.length) {
+  if (query.taxonomyTermIds?.length && query.taxonomyMatch === "any") {
+    if (taxonomyReads) {
+      // At least one requested term (or, with descendants, one of its narrower
+      // terms) is assigned to the opportunity.
+      const anyPredicate = query.taxonomyIncludeDescendants
+        ? `with recursive expanded(term_id) as (
+            select unnest($VALUE::text[])
+            union
+            select relation.subject_term_id
+            from taxonomy_term_relations relation
+            join expanded on relation.object_term_id = expanded.term_id
+            where relation.relation_type = 'broader'
+          )
+          select 1 from expanded
+          join opportunity_taxonomy_terms taxonomy_filter on taxonomy_filter.term_id = expanded.term_id
+          where taxonomy_filter.opportunity_id = o.id
+            and taxonomy_filter.certainty <> 'rejected'`
+        : `select 1 from opportunity_taxonomy_terms taxonomy_filter
+          where taxonomy_filter.opportunity_id = o.id
+            and taxonomy_filter.term_id = any($VALUE::text[])
+            and taxonomy_filter.certainty <> 'rejected'`;
+      addCondition(
+        conditions,
+        values,
+        `exists (${anyPredicate})`,
+        query.taxonomyTermIds,
+      );
+    } else {
+      conditions.push("false");
+    }
+  } else if (query.taxonomyTermIds?.length) {
     if (taxonomyReads) {
       const taxonomyPredicate = query.taxonomyIncludeDescendants
         ? `with recursive requested(term_id) as (select unnest($VALUE::text[])), expanded(root_id, term_id) as (
@@ -862,6 +922,9 @@ export function buildOpportunityBrowseQuery(
   }
   if (query.deadlineKind === "rolling") {
     conditions.push("o.deadline_kind in ('rolling', 'year-round', 'until-filled')");
+  }
+  if ((query as OpportunityRepositoryQueryWithDeadlineFacts).confirmedDatesOnly) {
+    conditions.push(CONFIRMED_DATES_PREDICATE);
   }
   if (query.simultaneousRequired !== undefined) {
     addCondition(
@@ -1167,6 +1230,7 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
     organizationId: row.organization_id ? (row.organization_id.includes("_") ? row.organization_id : `org_${row.organization_id}`) : undefined,
     organizationName: row.organization_name ? cleanTitleOrLabel(row.organization_name) : undefined,
     organizationVerified: row.organization_verified === "true",
+    organizationWebsiteUrl: firstOwnUrl(row.organization_profile_website_url, row.organization_data_website_url),
     identityAssetUrl: row.identity_asset_url ?? undefined,
     identityAssetAlt: row.identity_asset_alt ? cleanTitleOrLabel(row.identity_asset_alt) : undefined,
     status: row.status,
@@ -1201,7 +1265,7 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
     location: row.location ? cleanTitleOrLabel(row.location) : undefined,
     simultaneousAllowed: row.simultaneous_allowed ?? undefined,
     submissionAvailable:
-      row.submission_state === "available" && Boolean(row.submission_url),
+      row.submission_state === "available" && Boolean(row.submission_url) && !isIntermediaryUrl(row.submission_url),
     source: {
       kind: (VALID_SOURCE_KINDS.has(row.source_kind as OpportunityRepositorySource["kind"]) ? row.source_kind as OpportunityRepositorySource["kind"] : "organization-website"),
 
@@ -1285,6 +1349,30 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
     return this.taxonomyReadsReady;
   }
 
+  /**
+   * Attach tiers, stages, provenance and forecast in one batch. Facts are an
+   * enrichment: before migration 0088, or if the read fails, items are
+   * returned unchanged rather than failing the page.
+   */
+  private async withDeadlineFacts<T extends OpportunityBrowseProjection>(
+    rows: ReadonlyArray<{ id: string }>,
+    items: T[],
+  ): Promise<T[]> {
+    if (items.length === 0) return items;
+    try {
+      // Projected ids may be display-prefixed, so look facts up by the stored row id.
+      const facts = await loadDeadlineFacts(this.pool as Pool, rows.map((row) => row.id));
+      if (facts.size === 0) return items;
+      return items.map((item, index) => {
+        const rowId = rows[index]?.id;
+        const itemFacts = rowId ? facts.get(rowId) : undefined;
+        return itemFacts ? { ...item, deadlineFacts: itemFacts } : item;
+      });
+    } catch {
+      return items;
+    }
+  }
+
   async browse(
     query: OpportunityRepositoryQuery,
     context?: OpportunityRepositoryContext,
@@ -1317,7 +1405,8 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
     const rows = result.rows;
     const hasNext = rows.length > query.limit;
     const visibleRows = hasNext ? rows.slice(0, query.limit) : rows;
-    const items = visibleRows.map(mapRow);
+    const items = (await this.withDeadlineFacts(visibleRows, visibleRows.map(mapRow)))
+      .map((item) => toPublicOpportunity(item, listingPageUrl(item.slug)));
     return {
       items,
       nextCursor:
@@ -1461,8 +1550,9 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
       ? row.detail_related_ids
       : [];
 
-    return {
-      ...mapRow(row),
+    const [projected] = await this.withDeadlineFacts([row], [mapRow(row)]);
+    return toPublicOpportunity({
+      ...projected!,
       openDate: row.open_date ?? undefined,
       eligibility: eligibility.map((item) => ({
         key: item.rule_key,
@@ -1476,7 +1566,9 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
         required: item.required,
         limit: item.limit ?? undefined,
       })),
-      guidelinesUrl: row.guidelines_url ?? undefined,
+      // The page on the organization's site that names the call (official-site
+      // resolver) stands in when the stored guidelines are a platform's page.
+      guidelinesUrl: firstOwnUrl(row.guidelines_url, row.official_site_url) ?? row.guidelines_url ?? undefined,
       submissionUrl: row.submission_url ?? undefined,
       simultaneousAllowed: row.simultaneous_allowed ?? undefined,
       changes: changes.map((item) => ({
@@ -1490,8 +1582,15 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
       ...(row.head_material_fingerprint
         ? { materialFingerprint: row.head_material_fingerprint }
         : {}),
-    };
+    }, listingPageUrl(projected!.slug));
   }
+}
+
+/** Missa's own page for a listing, used where a link is required and the organization has none. */
+function listingPageUrl(slug: string): string {
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim() || process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim() || "https://www.usemissa.com";
+  const origin = new URL(/^https?:\/\//i.test(configured) ? configured : `https://${configured}`).origin;
+  return `${origin}/opportunities/${encodeURIComponent(slug)}`;
 }
 
 export function createPostgresOpportunityRepository(
@@ -1507,5 +1606,6 @@ export function createPostgresOpportunityRepository(
 export function createPostgresOpportunityRepositoryFromUrl(
   connectionString: string,
 ): OpportunityRepository {
-  return new PostgresOpportunityRepository(createMissaPostgresPool(connectionString, "catalogue"));
+  // query_timeout applies on Vercel only (see @missa/db pool policy).
+  return new PostgresOpportunityRepository(createMissaPostgresPool(connectionString, "catalogue", { query_timeout: 20_000 }));
 }

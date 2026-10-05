@@ -25,12 +25,13 @@ test('owner can complete a profile and visitors only see the public projection',
   const { email, profile } = await createAccount(page);
 
   await page.goto('/profile');
-  await expect(page.getByRole('heading', { name: 'Profile', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Identity', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 2, name: 'Public profile' })).toBeVisible();
   await page.getByLabel('Display name').fill('  Rowan Example  ');
   await page.getByLabel('Short bio').fill('A writer working across poetry and criticism.');
-  await page.getByRole('button', { name: 'Save changes' }).click();
-  await expect(page.getByRole('status')).toHaveText('Identity saved');
+  // The live preview follows the form before anything is saved.
+  await expect(page.getByRole('complementary', { name: 'Live preview' })).toContainText('A writer working across poetry and criticism.');
+  await page.getByRole('region', { name: 'Unsaved changes' }).getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.locator('p[role="status"]')).toHaveText('Saved. Your public profile is up to date.');
 
   const saved = await page.request.get('/api/me/profile');
   expect(saved.ok()).toBeTruthy();
@@ -59,15 +60,17 @@ test('owner can complete a profile and visitors only see the public projection',
 
 test('profile validation preserves recovery and owner route redirects without a session', async ({ page }) => {
   const { profile } = await createAccount(page);
+  // The old Identity link still lands on the merged Public profile section.
   await page.goto('/profile?section=identity');
+  await expect(page.getByRole('heading', { level: 2, name: 'Public profile' })).toBeVisible();
   await page.getByLabel('Display name').fill('');
   await page.getByRole('button', { name: 'Save changes' }).click();
-  await expect(page.locator('p[role="alert"]')).toHaveText('Display name must be between 1 and 120 characters.');
+  await expect(page.locator('p[role="alert"]')).toHaveText('Your display name needs 1 to 120 characters.');
 
   await page.getByLabel('Display name').fill('Still here');
   await page.getByLabel('Short bio').fill('x'.repeat(1001));
   await page.getByRole('button', { name: 'Save changes' }).click();
-  await expect(page.locator('p[role="alert"]')).toHaveText('Bio must be 1,000 characters or fewer.');
+  await expect(page.locator('p[role="alert"]')).toHaveText('Your bio can be up to 1,000 characters.');
 
   const ownerAfterInvalid = await page.request.get('/api/me/profile');
   const ownerBody = await ownerAfterInvalid.json();
@@ -97,31 +100,32 @@ test('a signed-in creator keeps their private opportunity state and can open the
   expect(session.ok()).toBeTruthy();
 });
 
-test('Profile ledger keeps section URLs and exposes the full facet model progressively', async ({ page }) => {
+test('Profile settings keep old section URLs and expose the full facet model progressively', async ({ page }) => {
   await createAccount(page, 'Cross-disciplinary Creator');
   await page.goto('/profile?section=preferences');
 
-  await expect(page.getByRole('heading', { name: 'Preferences', exact: true })).toBeVisible();
-  expect(new URL(page.url()).searchParams.get('section')).toBe('preferences');
-  await expect(page.getByText('12-facet model')).toBeVisible();
-  const facet = page.getByLabel('Facet');
+  // The old Preferences link opens Matching; with nothing saved, Fields and forms starts open.
+  await expect(page.getByRole('heading', { level: 2, name: 'Matching' })).toBeVisible();
+  await expect(page.getByText('Everything open.', { exact: false })).toBeVisible();
+  const facet = page.getByLabel('Kind', { exact: true });
   await expect(facet.locator('option')).toHaveCount(12);
   await expect(facet.locator('option')).toContainText(['Practice family', 'Discipline', 'Form', 'Genre', 'Subgenre', 'Medium', 'Technique or process', 'Mode or approach', 'Role', 'Theme or subject', 'Audience', 'Language']);
   await expect(page.getByText(/scheme\s+\d/i)).toHaveCount(0);
   await expect(page.getByText(/profile completeness|tracked opportunities|fit score|eligibility score/i)).toHaveCount(0);
-  await expect(page.getByText('Request for proposals', { exact: true })).toBeVisible();
-  await page.getByLabel('Find a term in Role').fill('screenwriter');
+  await page.getByLabel('Find a role').fill('screenwriter');
   await expect(page.getByRole('button', { name: 'Screenwriter' })).toBeVisible();
+  await page.getByRole('button', { name: /Kinds of call/ }).click();
+  await expect(page.getByText('Request for proposals', { exact: true })).toBeVisible();
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);
   await page.screenshot({ path: 'outputs/profile-product-desktop.png', fullPage: true });
 
-  await page.getByRole('button', { name: 'Identity', exact: true }).click();
-  await page.getByLabel('Display name').fill('Unsaved name');
-  await page.getByRole('button', { name: 'Privacy', exact: true }).click();
+  await page.getByText('Residency', { exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Unsaved changes' })).toBeVisible();
+  await page.getByRole('button', { name: 'Notifications', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Leave with unsaved changes?' })).toBeVisible();
   await page.getByRole('button', { name: 'Keep editing' }).click();
-  await expect(page.getByRole('heading', { name: 'Identity', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Matching' })).toBeVisible();
 });
 
 test.describe('mobile profile', () => {
@@ -130,10 +134,11 @@ test.describe('mobile profile', () => {
   test('stays within the viewport and keeps form controls reachable', async ({ page }) => {
     await createAccount(page, 'Mobile Profile User');
     await page.goto('/profile?section=identity');
-    await expect(page.getByRole('heading', { name: 'Profile', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'Public profile' })).toBeVisible();
     expect(await page.locator('body').evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     const inputBox = await page.getByLabel('Display name').boundingBox();
     expect(inputBox?.height).toBeGreaterThanOrEqual(44);
+    await page.getByLabel('Display name').fill('Mobile Profile User Edited');
     await expect(page.getByRole('button', { name: 'Save changes' })).toBeVisible();
     const accessibility = await new AxeBuilder({ page }).analyze();
     expect(accessibility.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);

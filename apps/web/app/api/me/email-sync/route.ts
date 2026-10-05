@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getSessionAccount } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
+import { emailIntegrationsUnavailable } from '@/lib/email-integrations';
 
 function json(value: unknown, status = 200) {
   return NextResponse.json(value, { status, headers: { 'Cache-Control': 'private, no-store' } });
 }
 
-export async function GET(request: Request) {
+export async function GET(request: Request) { const unavailable = emailIntegrationsUnavailable(); if (unavailable) return unavailable;
   const session = await getSessionAccount(request.headers.get('cookie'));
   if (!session) return json({ error: 'Not authenticated' }, 401);
   if (!session.account.userId) return json({ error: 'Profile not found' }, 404);

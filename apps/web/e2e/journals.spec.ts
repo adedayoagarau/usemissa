@@ -273,7 +273,8 @@ test("completes the profile to opportunity detail to Tracker path", async ({
     data: {
       email: `journals-path-${suffix}@example.com`,
       password: "correct-horse-battery",
-      displayName: "Journals path test",
+      givenName: "Journals",
+      familyName: "Path Test",
     },
   });
   expect(signup.status()).toBe(201);

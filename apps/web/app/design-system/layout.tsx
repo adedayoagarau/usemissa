@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { designSystemRoutesPublic } from "@/lib/designSystemAccess";
+import "./design-system.css";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },

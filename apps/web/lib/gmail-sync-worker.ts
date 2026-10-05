@@ -1,8 +1,13 @@
 import type { RadarEngine } from '@missa/radar-engine';
-import { decryptGmailRefreshToken, encryptGmailRefreshToken, type GmailProviderPort } from '@missa/radar-engine';
+import { decryptGmailRefreshToken, encryptGmailRefreshToken, type EmailDecider, type GmailProviderPort } from '@missa/radar-engine';
+import { emailDeciderFromEnv } from './creator-decisions';
 
-export async function processGmailSyncJobs(engine: RadarEngine, provider: GmailProviderPort, maxJobs = 5) {
+/** Time per run that Jev may spend on new emails before the rules stand alone. */
+const DECISION_BUDGET_MS = 60_000;
+
+export async function processGmailSyncJobs(engine: RadarEngine, provider: GmailProviderPort, maxJobs = 5, decider: EmailDecider | null = emailDeciderFromEnv()) {
   const now = Date.now();
+  const decisionDeadline = now + DECISION_BUDGET_MS;
   // Cron is also the polling fallback when Pub/Sub is delayed. Enqueue one
   // bounded job per due connection; leases below serialize concurrent runs.
   for (const connection of engine.store.gmailConnections) {
@@ -52,6 +57,9 @@ export async function processGmailSyncJobs(engine: RadarEngine, provider: GmailP
         if (result.reason === 'duplicate') summary.duplicates += 1;
         else if (result.candidateId) {
           summary.candidates += 1;
+          // Jev may only narrow the rules' proposal, and anything it narrows
+          // loses high confidence, so it can block Autopilot but never enable it.
+          if (decider && Date.now() < decisionDeadline) await engine.decideEmailCandidate(result.candidateId, decider);
           if (connection.mode === 'autopilot') {
             const gate = engine.gmailAutopilotGate(result.candidateId);
             if (gate.allowed) { engine.applyGmailAutopilotCandidate(result.candidateId); }

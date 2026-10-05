@@ -109,12 +109,17 @@ class NeonStore:
         *,
         connect_factory: ConnectionFactory = psycopg.connect,
         schema_path: Path = SCHEMA_PATH,
+        identity_shadow: Callable[[IdentityInput, str, IdentityRecord], Any] | None = None,
     ):
         if not database_url:
             raise ValueError("A Neon/Postgres database URL is required")
         self.database_url = database_url
         self.connect_factory = connect_factory
         self.schema_path = schema_path
+        # Optional shadow-only Jev same_opportunity check for "review" pairs.
+        # It runs after the ingest transaction commits and never changes it.
+        self.identity_shadow = identity_shadow
+        self._pending_identity_reviews: list[tuple[IdentityInput, str, IdentityRecord]] = []
 
     def ensure_schema(self) -> None:
         schema = self.schema_path.read_text(encoding="utf-8")
@@ -306,6 +311,7 @@ class NeonStore:
         run_id = stable_run_id(source_id, digest)
         index_url = manifest["index"]["requested_url"]
 
+        self._pending_identity_reviews = []
         with self.connect_factory(self.database_url) as connection:
             with connection.transaction():
                 self.upsert_source(
@@ -360,7 +366,18 @@ class NeonStore:
                     """,
                     (mode, source_id),
                 )
+        self._flush_identity_reviews()
         return run_id
+
+    def _flush_identity_reviews(self) -> None:
+        pending, self._pending_identity_reviews = self._pending_identity_reviews, []
+        if self.identity_shadow is None:
+            return
+        for incoming, incoming_id, record in pending:
+            try:
+                self.identity_shadow(incoming, incoming_id, record)
+            except Exception as error:  # noqa: BLE001 - shadow decisions never affect ingestion
+                print(f"[gary-identity] shadow decision failed for {incoming_id}: {error}")
 
     def ingest_profile_manifest(
         self,
@@ -647,7 +664,8 @@ class NeonStore:
             detail_url=detail_url,
             official_url=official_url,
         )
-        resolution = resolve_identity(incoming, self._existing_records(connection, incoming))
+        existing_records = self._existing_records(connection, incoming)
+        resolution = resolve_identity(incoming, existing_records)
         if resolution.action == "attach" and resolution.matched_id:
             opportunity_id = resolution.matched_id
             connection.execute(
@@ -704,6 +722,12 @@ class NeonStore:
                     resolution.confidence if resolution.action == "review" else 0.5,
                 ),
             )
+            if self.identity_shadow is not None:
+                self._pending_identity_reviews.extend(
+                    (incoming, opportunity_id, record)
+                    for record in existing_records
+                    if record.id in resolution.candidate_ids
+                )
             for candidate_id in resolution.candidate_ids:
                 connection.execute(
                     """

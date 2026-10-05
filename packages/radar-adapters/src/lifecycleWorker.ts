@@ -1,12 +1,17 @@
 #!/usr/bin/env node
 import { Pool } from "pg";
 import { runLifecycleReconcilerBatch } from "./lifecycleReconciler.js";
+import { runOfficialSiteResolverBatch } from "./officialSiteResolver.js";
 import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
+import { radarOperationsDecider } from "./operationsDecisions.js";
 
 if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required");
 const pool = createMissaPostgresPool(process.env.DATABASE_URL, "worker", { max: 4 });
 const batchSize = Number(process.env.MISSA_LIFECYCLE_BATCH_SIZE ?? 25);
 const intervalMs = Math.max(60_000, Number(process.env.MISSA_LIFECYCLE_INTERVAL_MINUTES ?? 5) * 60_000);
+// Undefined without JEV_API_KEY: intervals and retries stay exactly as today.
+const decisions = radarOperationsDecider(pool);
+const officialSiteBatch = Number(process.env.MISSA_OFFICIAL_SITE_BATCH_SIZE ?? 10);
 
 try {
   do {
@@ -27,7 +32,14 @@ try {
     }
 
     // 2. Run source classifier batch
-    await runLifecycleReconcilerBatch(pool, { batchSize, logger: console });
+    await runLifecycleReconcilerBatch(pool, { batchSize, logger: console, decisions });
+
+    // 3. Find the organization's own site for calls known only from a listing site
+    try {
+      await runOfficialSiteResolverBatch(pool, { limit: officialSiteBatch, logger: console });
+    } catch (e: any) {
+      console.warn("[LIFECYCLE] Official site resolver warning:", e.message);
+    }
     if (process.env.MISSA_LIFECYCLE_RUN_ONCE === "1") break;
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   } while (true);

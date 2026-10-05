@@ -105,6 +105,52 @@ test("updatePassword updates hash and records audit event in transaction", async
   assert.deepEqual(statements.slice(-2), ["COMMIT", "RELEASE"]);
 });
 
+function accountTransaction(account: Record<string, unknown>) {
+  const statements: string[] = [];
+  const writes: Array<Record<string, unknown>> = [];
+  const client = {
+    query: async (text: string, values?: unknown[]) => {
+      const statement = text.replace(/\s+/g, " ").trim();
+      statements.push(statement);
+      if (statement.startsWith("select id, email, data from radar_accounts")) {
+        return { rows: [{ id: account.id, email: account.email, data: account }] };
+      }
+      if (statement.startsWith("update radar_accounts set data")) writes.push(JSON.parse(String(values?.[1])));
+      return { rows: [] };
+    },
+    release: () => statements.push("RELEASE"),
+  };
+  return { statements, writes, pool: { connect: async () => client } as unknown as Pool };
+}
+
+function legacyAccount(overrides: Record<string, unknown> = {}) {
+  return { id: "acct-one", email: "ada@example.com", passwordHash: hashPassword("old-pass"), userId: "user-one", isAdmin: false, createdAt: new Date(0).toISOString(), active: true, ...overrides };
+}
+
+test("password reset, account closure, and sign-out-everywhere each move the session boundary", async () => {
+  for (const action of ["updatePassword", "closeAccount", "revokeSessions"] as const) {
+    const { writes, statements, pool } = accountTransaction(legacyAccount());
+    const repository = new PostgresCreatorAccountRepository(pool);
+    const before = Date.now();
+    const ok = action === "updatePassword" ? await repository.updatePassword("acct-one", "new-secret-password") : await repository[action]("acct-one");
+    assert.equal(ok, true, action);
+    assert.equal(writes.length, 1, action);
+    const boundary = Date.parse(String(writes[0]?.sessionsValidAfter));
+    assert.ok(boundary >= before && boundary <= Date.now(), `${action} writes a current boundary`);
+    assert.deepEqual(statements.slice(-2), ["COMMIT", "RELEASE"]);
+  }
+});
+
+test("sign-out-everywhere records an audit event and refuses closed accounts", async () => {
+  const open = accountTransaction(legacyAccount());
+  assert.equal(await new PostgresCreatorAccountRepository(open.pool).revokeSessions("acct-one"), true);
+  assert.ok(open.statements.some((s) => s.includes("account.sessions_revoked")));
+
+  const closed = accountTransaction(legacyAccount({ active: false }));
+  assert.equal(await new PostgresCreatorAccountRepository(closed.pool).revokeSessions("acct-one"), false);
+  assert.equal(closed.writes.length, 0);
+});
+
 test("onboarding profile data updates the private account identity and location together", async () => {
   const account = { id: "acct-one", email: "ada@example.com", passwordHash: "hash", userId: "user-one", isAdmin: false, createdAt: new Date(0).toISOString(), active: true };
   const statements: string[] = [];
