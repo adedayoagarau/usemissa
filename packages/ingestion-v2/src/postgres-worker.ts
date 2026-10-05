@@ -19,6 +19,7 @@ import {
   runDuePostgresShadowBatch,
   type ScheduledSourceStore,
 } from "./postgresRunner.js";
+import { drainDuePostgresShadowBatches } from "./postgresWorkerCycle.js";
 import { AdapterRegistry } from "./registry.js";
 import { opportunityIdentityShadowFromEnv } from "./identity.js";
 import { publisherDecisionContextFromEnv } from "./publisher.js";
@@ -87,55 +88,71 @@ const batchLimit = Math.min(
   Math.max(Number(process.env.MISSA_INGESTION_V2_BATCH_LIMIT ?? 5) || 5, 1),
   10,
 );
+const runOnce = process.env.MISSA_INGESTION_V2_RUN_ONCE === "1";
+const defaultMaxBatches = runOnce ? Math.ceil(sources.length / batchLimit) : 1;
+const maxBatchesPerCycle = Math.min(
+  Math.max(
+    Number(
+      process.env.MISSA_INGESTION_V2_MAX_BATCHES_PER_CYCLE ??
+        defaultMaxBatches,
+    ) || defaultMaxBatches,
+    1,
+  ),
+  25,
+);
 let running = false;
 
 async function runDueBatch(): Promise<void> {
   if (running) return;
   running = true;
   try {
-    const result = await runDuePostgresShadowBatch({
-      registry,
-      sources,
-      runStore,
-      scheduleStore,
-      decisions,
-      limit: batchLimit,
-      reviewSourceIds,
-      identityShadow,
-      afterArtifact: async (source, artifact) => {
-        if (!reviewSourceIds.has(source.id) || artifact.unchanged) return;
-        const history = await readRecentCandidateArtifacts(pool, source.id, 2);
-        const gate = evaluateCandidateReplayGate(history, [source.id], 2);
-        const sourceGate = gate.sources[0];
-        if (!sourceGate?.eligible) {
-          console.log(`[missa-ingestion-v2] review gate closed source=${source.id} reasons=${JSON.stringify(sourceGate?.reasons ?? ["missing replay evidence"])}`);
-          return;
-        }
-        const latest = history.at(-1);
-        if (!latest?.publisher?.candidateReviews?.length) return;
-        const canonicalHandoffs = [];
-        const canonicalHandoffFailures = [];
-        for (const candidate of latest.publisher.candidateReviews) {
-          const candidateKey = candidate.candidate.stableId ?? candidate.candidate.canonicalUrl ?? candidate.candidate.url;
-          try {
-            const handoff = await handoffApprovedCandidate(pool, source, latest, candidate);
-            canonicalHandoffs.push({ candidateKey, ...handoff });
-          } catch (error) {
-            canonicalHandoffFailures.push({
-              candidateKey,
-              error: error instanceof Error ? error.message : String(error),
-            });
-          }
-        }
-        latest.publisher.canonicalHandoffs = canonicalHandoffs;
-        latest.publisher.canonicalHandoffFailures = canonicalHandoffFailures;
-        await runStore.save(latest);
-        console.log(`[missa-ingestion-v2] review handoff source=${source.id} results=${JSON.stringify(canonicalHandoffs)} failures=${JSON.stringify(canonicalHandoffFailures)}`);
-      },
-    });
+    const result = await drainDuePostgresShadowBatches(
+      () =>
+        runDuePostgresShadowBatch({
+          registry,
+          sources,
+          runStore,
+          scheduleStore,
+          decisions,
+          limit: batchLimit,
+          reviewSourceIds,
+          identityShadow,
+          afterArtifact: async (source, artifact) => {
+            if (!reviewSourceIds.has(source.id) || artifact.unchanged) return;
+            const history = await readRecentCandidateArtifacts(pool, source.id, 2);
+            const gate = evaluateCandidateReplayGate(history, [source.id], 2);
+            const sourceGate = gate.sources[0];
+            if (!sourceGate?.eligible) {
+              console.log(`[missa-ingestion-v2] review gate closed source=${source.id} reasons=${JSON.stringify(sourceGate?.reasons ?? ["missing replay evidence"])}`);
+              return;
+            }
+            const latest = history.at(-1);
+            if (!latest?.publisher?.candidateReviews?.length) return;
+            const canonicalHandoffs = [];
+            const canonicalHandoffFailures = [];
+            for (const candidate of latest.publisher.candidateReviews) {
+              const candidateKey = candidate.candidate.stableId ?? candidate.candidate.canonicalUrl ?? candidate.candidate.url;
+              try {
+                const handoff = await handoffApprovedCandidate(pool, source, latest, candidate);
+                canonicalHandoffs.push({ candidateKey, ...handoff });
+              } catch (error) {
+                canonicalHandoffFailures.push({
+                  candidateKey,
+                  error: error instanceof Error ? error.message : String(error),
+                });
+              }
+            }
+            latest.publisher.canonicalHandoffs = canonicalHandoffs;
+            latest.publisher.canonicalHandoffFailures = canonicalHandoffFailures;
+            await runStore.save(latest);
+            console.log(`[missa-ingestion-v2] review handoff source=${source.id} results=${JSON.stringify(canonicalHandoffs)} failures=${JSON.stringify(canonicalHandoffFailures)}`);
+          },
+        }),
+      { batchLimit, maxBatches: maxBatchesPerCycle },
+    );
     if (result.claimed)
       console.log(
-        `[missa-ingestion-v2] postgres batch claimed=${result.claimed} completed=${result.completed} unchanged=${result.unchanged} failed=${result.failed} skipped=${result.skipped}`,
+        `[missa-ingestion-v2] postgres cycle batches=${result.batches} claimed=${result.claimed} completed=${result.completed} unchanged=${result.unchanged} failed=${result.failed} skipped=${result.skipped}`,
       );
     if (extractionGate) {
       for (const line of extractionGate.usage.summary()) console.log(line);
@@ -157,25 +174,36 @@ async function runDueBatch(): Promise<void> {
   }
 }
 
-await runDueBatch();
-const scheduleTimer = setInterval(
-  () =>
-    void runDueBatch().catch((error) =>
-      console.error("[missa-ingestion-v2] postgres scheduler error", error),
-    ),
-  5 * 60 * 1000,
-);
+if (runOnce) {
+  try {
+    await runDueBatch();
+    console.log(
+      `missa-ingestion-v2 postgres one-shot complete; adapter=${adapterId}; sourceSet=first-tranche; sources=${sources.length}; reviewSources=${reviewSourceIds.size}; batchLimit=${batchLimit}; maxBatches=${maxBatchesPerCycle}`,
+    );
+  } finally {
+    await pool.end();
+  }
+} else {
+  await runDueBatch();
+  const scheduleTimer = setInterval(
+    () =>
+      void runDueBatch().catch((error) =>
+        console.error("[missa-ingestion-v2] postgres scheduler error", error),
+      ),
+    5 * 60 * 1000,
+  );
 
-console.log(
-  `missa-ingestion-v2 postgres worker listening; adapter=${adapterId}; sourceSet=first-tranche; sources=${sources.length}; reviewSources=${reviewSourceIds.size}; batchLimit=${batchLimit}`,
-);
+  console.log(
+    `missa-ingestion-v2 postgres worker listening; adapter=${adapterId}; sourceSet=first-tranche; sources=${sources.length}; reviewSources=${reviewSourceIds.size}; batchLimit=${batchLimit}; maxBatches=${maxBatchesPerCycle}`,
+  );
 
-async function shutdown(signal: string): Promise<void> {
-  console.log(`missa-ingestion-v2 received ${signal}; shutting down`);
-  clearInterval(scheduleTimer);
-  await pool.end();
-  process.exit(0);
+  async function shutdown(signal: string): Promise<void> {
+    console.log(`missa-ingestion-v2 received ${signal}; shutting down`);
+    clearInterval(scheduleTimer);
+    await pool.end();
+    process.exit(0);
+  }
+
+  process.once("SIGTERM", () => void shutdown("SIGTERM"));
+  process.once("SIGINT", () => void shutdown("SIGINT"));
 }
-
-process.once("SIGTERM", () => void shutdown("SIGTERM"));
-process.once("SIGINT", () => void shutdown("SIGINT"));

@@ -18,6 +18,7 @@ export * from "./deepseekWriter.js";
 export * from "./catalog.js";
 export * from "./sourceManifest.js";
 export * from "./postgresRunner.js";
+export * from "./postgresWorkerCycle.js";
 export * from "./candidateGate.js";
 export * from "./deadline.js";
 export * from "./deadlineDetails.js";

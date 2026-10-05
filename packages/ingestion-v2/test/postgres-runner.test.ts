@@ -11,12 +11,42 @@ import {
   createFirstTrancheSources,
   createIngestionCatalog,
   createWorkerSources,
+  drainDuePostgresShadowBatches,
   executeShadowPipeline,
   readIngestionV2SourceRefreshHistory,
   runDuePostgresShadowBatch,
   shadowJob,
   validateSourceManifest,
 } from "../src/index.js";
+
+test("drains a daily one-shot cycle in bounded batches", async () => {
+  const claims = [5, 5, 5, 2];
+  let batch = 0;
+  const result = await drainDuePostgresShadowBatches(
+    async () => {
+      const claimed = claims[batch++] ?? 0;
+      return {
+        claimed,
+        completed: claimed,
+        unchanged: 0,
+        failed: 0,
+        skipped: 0,
+        runs: [],
+      };
+    },
+    { batchLimit: 5, maxBatches: 4 },
+  );
+
+  assert.deepEqual(result, {
+    batches: 4,
+    claimed: 17,
+    completed: 17,
+    unchanged: 0,
+    failed: 0,
+    skipped: 0,
+  });
+  assert.equal(batch, 4);
+});
 
 test("runs only the bounded first tranche by default and keeps publication authority closed", () => {
   assert.deepEqual(validateSourceManifest(), []);

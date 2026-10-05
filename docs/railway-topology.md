@@ -26,7 +26,7 @@ Gary's crawler and AI reviewer are specified in [gary-agent-harness.md](./gary-a
 | `review-agent` | Scores reviewable opportunities, applies the deterministic title editorial pass, records explainable decisions, and publishes records that pass every gate with no person in the loop, suppresses probable non-opportunities, and leaves the rest unpublished until enrichment or repair changes them. `RADAR_REVIEW_PUBLISH_MODE=queue` is an opt-in oversight mode that holds gate-passing records for approval. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=review`, `RADAR_REVIEW_INTERVAL_MINUTES`, `RADAR_REVIEW_BATCH_SIZE`, `RADAR_REVIEW_PUBLISH_MODE` |
 | `content-worker` *(implemented; provision after migration rehearsal)* | Builds source-linked Opportunity Intelligence briefs, persists them, then reviews the exact built content for provenance, bounded claims, and completeness. Approved content is exposed; the worker never mutates canonical opportunity facts. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=content`, `RADAR_CONTENT_INTERVAL_MINUTES`, `RADAR_CONTENT_BATCH_SIZE` |
 | `creator-worker` | Creator scheduling: official-deadline sweep, application reminders and reminder email, weekly digests, goal check-ins and email, followed-program notices, and Google/Microsoft calendar export (drains `calendar_sync_jobs` across all accounts). See [Creator worker](#creator-worker). | Every 60 seconds after the previous pass finishes; calendar export up to 50 jobs or 30 seconds per pass | `MISSA_WORKER_MODE=creator`, `DATABASE_URL`, `MISSA_SESSION_SECRET`, `MISSA_CALENDAR_TOKEN_KEY`, `MISSA_CALENDAR_TOKEN_KEY_VERSION`, `GOOGLE_CALENDAR_CLIENT_ID`/`_SECRET`/`_REDIRECT_URI`, `MICROSOFT_CALENDAR_CLIENT_ID`/`_SECRET`/`_REDIRECT_URI`, `RESEND_API_KEY`, `RESEND_FROM`, optional `MISSA_CALENDAR_SYNC_BATCH_SIZE`, `MISSA_CALENDAR_SYNC_TIME_BUDGET_MS`, `MISSA_CALENDAR_MIRROR_ACCOUNTS`, `MISSA_CALENDAR_MIRROR_TIME_BUDGET_MS` |
-| `ingestion-v2-worker` *(shadow; provision against staging only)* | Runs the BullMQ-backed Gary/Radar replacement benchmark. It stores source snapshots, extraction candidates, failures, and comparison artifacts in additive v2 tables; it never publishes to Radar. | Operator-triggered during benchmark | `INGESTION_V2_DATABASE_ROLE=staging`, staging `DATABASE_URL`, Upstash `REDIS_URL`, optional `DEEPSEEK_API_KEY` |
+| `ingestion-v2-worker` *(shadow; provision against staging only)* | Runs the Postgres-backed Gary/Radar replacement benchmark. It stores source snapshots, extraction candidates, failures, and comparison artifacts in additive v2 tables; it never publishes to Radar. | Daily Railway cron; one bounded run that closes its database pool and exits | `INGESTION_V2_DATABASE_ROLE=staging`, staging `DATABASE_URL`, `MISSA_INGESTION_V2_RUN_ONCE=1`, optional `DEEPSEEK_API_KEY` |
 
 The research and radar services receive the same Neon URL. Discovery uses a
 short transaction-scoped lock (`1984/728`); canonical Radar runs as one
@@ -283,8 +283,10 @@ before queueing a job.
   lanes, which remain serialized by Postgres advisory locks. Ingestion v2 has
   its own staging-only BullMQ/Upstash queue for the shadow benchmark.
 - **Second Postgres instance:** not needed. Neon is the source of truth.
-- **Always-on staging workers:** not enabled. Vercel preview plus an isolated
-  Neon branch is safer than two unattended workers writing to production.
+- **Always-on staging workers:** not enabled. The ingestion-v2 benchmark is a
+  once-daily Railway cron that exits after draining the bounded source set;
+  Vercel preview plus an isolated Neon branch remains safer than unattended
+  staging workers writing continuously.
 
 ## Operational rules
 
