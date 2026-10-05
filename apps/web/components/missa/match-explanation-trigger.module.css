@@ -1,0 +1,56 @@
+.trigger {
+  gap: 4px;
+  color: var(--muted-foreground);
+}
+
+.trigger[data-scored] {
+  border-color: var(--primary);
+  color: var(--accent-deep);
+}
+
+.score {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.popover {
+  width: min(320px, calc(100vw - 32px));
+  gap: 12px;
+  padding: 16px;
+}
+
+.list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list li {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 8px;
+  align-items: start;
+  line-height: 1.4;
+}
+
+.list svg {
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+}
+
+.list svg[data-tone="reason"] {
+  color: var(--success);
+}
+
+.list svg[data-tone="watchout"] {
+  color: var(--warning);
+}
+
+@media (pointer: coarse) {
+  .trigger {
+    min-height: var(--touch-target-min);
+  }
+}

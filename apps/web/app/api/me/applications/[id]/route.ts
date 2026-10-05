@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { creatorCommandEnvelope, CreatorConflictError, CreatorIdempotencyConflictError, CreatorCommandValidationError } from "@missa/radar-adapters";
 import { getSessionAccount } from "@/lib/auth";
-import { ApplicationWorkspaceRepository, applicationCommand } from "@/lib/application-workspace";
+import { ApplicationEvidenceError, ApplicationWorkspaceRepository, applicationCommand } from "@/lib/application-workspace";
 import type { AnalyticsEventName } from "@/lib/analytics-contract";
 import { trackPlatformAnalytics } from "@/lib/platformAnalytics";
 const headers={"Cache-Control":"private, no-store"};
@@ -57,6 +57,7 @@ export async function PATCH(request:Request,{params}:{params:Promise<{id:string}
     }
     return NextResponse.json({receipt},{headers});
   } catch(error) {
+    if(error instanceof ApplicationEvidenceError)return NextResponse.json({error:error.message},{status:409,headers});
     if(error instanceof CreatorConflictError || error instanceof CreatorIdempotencyConflictError)return NextResponse.json({error:"This application changed. Refresh it before saving again."},{status:409,headers});
     if(error instanceof CreatorCommandValidationError || (error instanceof Error && error.message==='A recorded update cannot be in the future.'))return NextResponse.json({error:error.message},{status:400,headers});
     return NextResponse.json({error:"Your update could not be saved. Please try again."},{status:503,headers});

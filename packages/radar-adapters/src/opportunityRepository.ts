@@ -1585,5 +1585,6 @@ export function createPostgresOpportunityRepository(
 export function createPostgresOpportunityRepositoryFromUrl(
   connectionString: string,
 ): OpportunityRepository {
-  return new PostgresOpportunityRepository(createMissaPostgresPool(connectionString, "catalogue"));
+  // query_timeout applies on Vercel only (see @missa/db pool policy).
+  return new PostgresOpportunityRepository(createMissaPostgresPool(connectionString, "catalogue", { query_timeout: 20_000 }));
 }

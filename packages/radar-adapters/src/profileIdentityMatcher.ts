@@ -15,7 +15,14 @@ import {
   type Queryable,
 } from "@missa/decisions";
 
-export const PROFILE_IDENTITY_MATCHER_VERSION = "profile-host-name-v4";
+export const PROFILE_IDENTITY_MATCHER_VERSION = "profile-host-name-v5";
+
+/**
+ * How recently a profile must have been crawled to confirm an identity. The
+ * profile workers revisit each profile roughly monthly, and an organization's
+ * website rarely changes, so 60 days keeps confirmations flowing without a person.
+ */
+export const PROFILE_FRESHNESS_DAYS = 60;
 
 const NAME_STOP_WORDS = new Set([
   "a", "an", "and", "award", "awards", "call", "contest", "for", "from",
@@ -251,7 +258,7 @@ export function matchOpportunityToProfiles(
         continue;
       }
       const freshOpportunity = !opportunity.sourceCheckedAt || isFresh(opportunity.sourceCheckedAt, 30, now);
-      const freshProfile = isFresh(candidate.profile.profileCheckedAt, 14, now);
+      const freshProfile = isFresh(candidate.profile.profileCheckedAt, PROFILE_FRESHNESS_DAYS, now);
       const isUnambiguousBest = isDirectOrgMatch || (candidate === best && candidate.hasCompatibleIdentity &&
         (!runnerUp || candidate.score - runnerUp.score >= 0.15) && freshOpportunity && freshProfile);
       const key = `${candidate.profile.profileId}:${candidateUrl.relation}`;

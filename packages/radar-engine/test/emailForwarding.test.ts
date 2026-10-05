@@ -44,3 +44,15 @@ test('unmatched email requires a private manual entry and sensitive proposals re
   const candidate = engine.store.emailCandidates[0]!; assert.equal(candidate.classification, 'unmatched'); assert.throws(() => engine.reviewEmailCandidate('email_user', candidate.id, { kind: 'create-manual', title: 'Unknown Call', organizationName: 'Unknown Org', idempotencyKey: 'manual-1' }), /explicitly/);
   const manual = engine.reviewEmailCandidate('email_user', candidate.id, { kind: 'create-manual', title: 'Unknown Call', organizationName: 'Unknown Org', status: 'accepted', idempotencyKey: 'manual-2' }); assert.equal(manual.mutation.trackerUpdated, true); assert.equal(engine.store.manualTrackerEntries[0]?.sourceKind, 'email'); assert.equal(engine.store.manualTrackerEntries[0]?.myStatus, 'accepted');
 });
+
+test('a portal submission confirmation proposes Submitted for the creator to confirm', () => {
+  const store = createStore(); const engine = new RadarEngine({ store, fetcher: new FixtureFetcher() });
+  engine.addUser({ id: 'email_user', displayName: 'Email User', genres: [], attributes: {} });
+  const opp = opportunity('opp_confirm', 'Harbor Prize', 'Harbor'); store.opportunities.set(opp.id, opp); store.tracked.push({ userId: 'email_user', opportunityId: opp.id, trackedAt: '2026-08-01T00:00:00.000Z', notify: true, myStatus: 'preparing', events: [] });
+  const address = engine.createForwardingAddress('email_user').address;
+  engine.ingestInboundEmail({ provider: 'fixture', providerMessageId: 'confirm-1', receivedAt: '2026-08-05T00:00:00.000Z', to: [address], from: 'no-reply@harbor.org', subject: 'Harbor Prize submission confirmation', textBody: 'Your application has been successfully submitted to the Harbor Prize.', headers: {}, attachments: [] });
+  const candidate = store.emailCandidates[0]!;
+  assert.equal(candidate.proposedStatus, 'submitted');
+  assert.equal(candidate.state, 'pending');
+  assert.equal(store.tracked[0]!.myStatus, 'preparing', 'nothing changes until the creator confirms');
+});
