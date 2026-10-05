@@ -5,6 +5,7 @@ export * from "./hash.js";
 export * from "./ledger.js";
 export * from "./decide.js";
 export * from "./questions.js";
+export * from "./sets/sorting.js";
 export * from "./sets/identity.js";
 export * from "./sets/confirming.js";
 export * from "./sets/writing.js";

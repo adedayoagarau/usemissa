@@ -253,6 +253,9 @@ export type { RegistryTaxonomyAudit, RegistryVerticalCompatibility } from './reg
 export {
   OpportunitySearchEngine,
   searchOpportunities,
+  searchOpportunitiesWithConfirmedFacts,
+  parseFinancialsAndFacilities,
+  paymentAmountsInText,
   detectOpportunityDomain,
   matchesDomain,
   VISUAL_ARTS_MEDIUMS,
@@ -262,7 +265,14 @@ export {
   type OpportunitySearchOptions,
   type OpportunitySearchHit,
   type OpportunitySearchResult,
+  type OpportunitySearchEngineOptions,
+  type OpportunityFinancials,
 } from './search/opportunitySearchEngine.js';
+export {
+  loadConfirmedFacts,
+  type ConfirmedFactsProvider,
+  type ConfirmedOpportunityFacts,
+} from './search/confirmedFacts.js';
 
 export * from './ranking/magazineRankingEngine.js';
 export * from './ranking/residencyRankingEngine.js';
