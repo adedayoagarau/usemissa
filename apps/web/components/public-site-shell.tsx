@@ -68,6 +68,7 @@ export function PublicSiteShell({
           <Link href="/rankings/magazines">Magazine rankings</Link>
           <Link href="/rankings/residencies">Residency rankings</Link>
           <Link href="/discover/match">Manuscript matcher</Link>
+          <Link href="/discover/prizes">Literary prizes</Link>
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>
           <a href={contactMailto()}>Share feedback</a>

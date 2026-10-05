@@ -3,7 +3,7 @@ import unicodedata
 from dataclasses import dataclass
 from datetime import date
 from difflib import SequenceMatcher
-from typing import Literal
+from typing import Any, Callable, Literal, Mapping
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
@@ -145,3 +145,65 @@ def resolve_identity(
     if candidate_ids:
         return IdentityResolution("review", None, "similar_identity", 0.85, tuple(candidate_ids))
     return IdentityResolution("create", None, "no_identity_match", 0.0)
+
+
+class OpportunityIdentityShadow:
+    """Records a Jev same_opportunity decision for each pair resolve_identity
+    left in "review". Shadow only: the answer is written to data_decisions and
+    never changes how an observation attaches. Failures are logged and ignored.
+    """
+
+    def __init__(self, client: Any, ledger: Any | None, *, log: Callable[[str], None] = print):
+        self.client = client
+        self.ledger = ledger
+        self.log = log
+
+    @staticmethod
+    def _deadline(value: date | str | None) -> str | None:
+        return value.isoformat() if isinstance(value, date) else value
+
+    def __call__(self, incoming: IdentityInput, incoming_id: str, record: IdentityRecord) -> Any:
+        from .jev import (
+            SAME_OPPORTUNITY,
+            decide,
+            identity_pair_subject_id,
+            opportunity_identity_state,
+            same_opportunity_state,
+        )
+
+        try:
+            state = same_opportunity_state(
+                opportunity_identity_state(
+                    title=incoming.title, organization=incoming.organizer,
+                    urls=(incoming.detail_url, incoming.official_url), deadline=self._deadline(incoming.deadline),
+                ),
+                opportunity_identity_state(
+                    title=record.title, organization=record.organizer,
+                    urls=(record.detail_url, record.official_url, *record.official_aliases, *record.detail_aliases),
+                    deadline=self._deadline(record.deadline),
+                ),
+            )
+            result = decide(
+                client=self.client, ledger=self.ledger, mode="shadow",
+                subject_id=identity_pair_subject_id(incoming_id, record.id), state=state,
+                questions=[SAME_OPPORTUNITY], evidence_url=incoming.detail_url,
+            )
+        except Exception as error:  # noqa: BLE001 - Jev must never break ingestion
+            self.log(f"[gary-identity] same_opportunity shadow failed for {incoming_id}: {error}")
+            return None
+        if result.error:
+            self.log(f"[gary-identity] same_opportunity shadow for {incoming_id}: {result.error}")
+        return result.outcomes.get(SAME_OPPORTUNITY.key)
+
+
+def opportunity_identity_shadow_from_env(
+    database_url: str, env: Mapping[str, str] | None = None
+) -> OpportunityIdentityShadow | None:
+    """None unless JEV_API_KEY is set."""
+
+    from .jev import PostgresDecisionLedger, jev_client_from_env
+
+    client = jev_client_from_env(env)
+    if not client.available:
+        return None
+    return OpportunityIdentityShadow(client, PostgresDecisionLedger(database_url))

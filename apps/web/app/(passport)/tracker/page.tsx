@@ -18,6 +18,7 @@ import {
   type TrackerProductLayout,
 } from "@/components/tracker-product";
 import { parseApplicationId, parseTrackerView } from "@/lib/trackerViews";
+import { emailIntegrationFlags } from "@/lib/email-integrations";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -161,6 +162,12 @@ export default async function TrackerPage({
       initialLayout={safeLayout(first(raw.layout))}
       initialQuery={first(raw.q).slice(0, 200)}
       initialImportId={first(raw.import).slice(0, 240)}
+      initialSection={first(raw.section).slice(0, 40)}
+      recordsAvailable={postgresTracker}
+      emailEvidence={(() => {
+        const flags = emailIntegrationFlags();
+        return flags.gmailSync || flags.emailForwarding;
+      })()}
     />
   );
 }

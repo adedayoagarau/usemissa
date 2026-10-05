@@ -5,8 +5,9 @@ import { Pool, type PoolClient } from "pg";
 import { ensureAgentGraphSchema } from "./agentGraphSchema.js";
 import { ensureContentReviewSchema } from "./contentReviewSchema.js";
 import { ensurePublicationRubricSchema } from "./publicationRubricSchema.js";
-import { evaluatePublicationRubric, type PublicationRubricCandidate } from "./publicationRubric.js";
-import { syncProfileOpportunityLinks } from "./profileIdentityMatcher.js";
+import { evaluatePublicationRubric, PUBLICATION_RUBRIC_VERSION, type PublicationDecision, type PublicationRubricCandidate } from "./publicationRubric.js";
+import { confirmEditorialReview, confirmingContextFromEnv, REVIEW_QUEUE_DECISION_SCOPE, type ConfirmingContext } from "./confirmingDecisions.js";
+import { profileIdentityJevFromEnv, syncProfileOpportunityLinks } from "./profileIdentityMatcher.js";
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from "./workerTelemetry.js";
 import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 import { ensureOpportunityVersionHead } from "./recommendation/versionHead.js";
@@ -139,6 +140,9 @@ export type ReviewCandidate = PublicationRubricCandidate & {
   callProfilePresent: boolean;
   /** Confirmed organization or linked profile name, when one is known. */
   organizationName?: string | null;
+  feeStatus?: string | null;
+  /** Latest lifecycle evidence passage from the source, when one was recorded. */
+  lifecycleEvidence?: string | null;
 };
 
 async function candidate(pool: Pool, opportunityId: string): Promise<ReviewCandidate | null> {
@@ -157,7 +161,8 @@ async function candidate(pool: Pool, opportunityId: string): Promise<ReviewCandi
        profile.reading_period_kind as "readingPeriodKind",
        coalesce(enrichment.evidence_count, 0)::int as "evidenceCount",
        coalesce(nullif(btrim(organization.data->>'name'), ''), nullif(btrim(organization_profile.name), ''), linked_profile.name,
-         nullif(btrim(evidence.destination_reconciliation->>'organizerName'), '')) as "organizationName"
+         nullif(btrim(evidence.destination_reconciliation->>'organizerName'), '')) as "organizationName",
+       o.fee_status as "feeStatus", lifecycle.evidence_passage as "lifecycleEvidence"
      from opportunities o
      left join opportunity_sources s on s.id = o.source_id
      left join radar_review_jobs job on job.opportunity_id = o.id
@@ -189,6 +194,11 @@ async function candidate(pool: Pool, opportunityId: string): Promise<ReviewCandi
      ) profile_identity on true
      left join opportunity_call_profiles profile on profile.opportunity_id = o.id
      left join lateral (
+       select evidence_passage from opportunity_lifecycle_evidence
+       where opportunity_id = o.id and evidence_passage is not null
+       order by fetched_at desc limit 1
+     ) lifecycle on true
+     left join lateral (
        select count(*) as evidence_count
        from radar_opportunity_enrichment_evidence
        where opportunity_id = o.id
@@ -212,6 +222,8 @@ export type EditorialReviewResult = {
   title: OpportunityTitleResult;
   /** True when the automated rubric alone would have published the record. */
   rubricPublish: boolean;
+  /** The publication rubric's own verdict, before title, relevance and publish-mode holds. */
+  rubricDecision: PublicationDecision;
 };
 
 /**
@@ -253,7 +265,8 @@ export function editorialReview(candidate: ReviewCandidate, mode: ReviewPublishM
       relevanceSignals: relevance.signals,
     },
   };
-  return { decision, score: rubric.score, reasons, checks, holdReasons, title, rubricPublish: rubric.decision === "publish" };
+  const rubricDecision = rubric.decision === "error" ? "needs-human" : rubric.decision;
+  return { decision, score: rubric.score, reasons, checks, holdReasons, title, rubricPublish: rubric.decision === "publish", rubricDecision };
 }
 
 export function isDurablePublicationGateError(error: unknown): boolean {
@@ -294,14 +307,15 @@ async function routeDurableGateConflictToHuman(pool: Pool, runId: string, job: R
   }
 }
 
-async function processJob(pool: Pool, runId: string, job: ReviewJob): Promise<ReviewDecision> {
+async function processJob(pool: Pool, runId: string, job: ReviewJob, confirming: ConfirmingContext): Promise<ReviewDecision> {
   const item = await candidate(pool, job.opportunityId);
   if (!item) {
     // Opportunity is already published or closed - complete the review job cleanly
     await pool.query("update radar_review_jobs set status = 'completed', last_error = null, lease_until = null, updated_at = now() where id = $1", [job.id]);
     return "suppress";
   }
-  const result = editorialReview(item);
+  // Shadow by default; live scope review_queue may only resolve a "needs-human" (see confirmingDecisions.ts).
+  const result = await confirmEditorialReview(confirming, item, editorialReview(item), PUBLICATION_RUBRIC_VERSION);
   const client = await pool.connect();
   try {
     await client.query("begin");
@@ -352,12 +366,13 @@ async function processJob(pool: Pool, runId: string, job: ReviewJob): Promise<Re
 export async function runReviewTick(pool: Pool, limit = batchSize()): Promise<{ claimed: number; decisions: Record<ReviewDecision, number> }> {
   // Refresh durable profile identity evidence before review. This is bounded,
   // idempotent, and fails closed if matching cannot be completed.
-  await syncProfileOpportunityLinks(pool, Math.max(limit * 5, 100));
+  await syncProfileOpportunityLinks(pool, Math.max(limit * 5, 100), { jev: profileIdentityJevFromEnv(pool) });
   await seedReviewJobs(pool);
   const runId = await startRun(pool);
   const jobs = await claimJobs(pool, limit);
   const decisions: Record<ReviewDecision, number> = { publish: 0, "needs-human": 0, suppress: 0, error: 0 };
-  for (const job of jobs) decisions[await processJob(pool, runId, job)]++;
+  const confirming = confirmingContextFromEnv(REVIEW_QUEUE_DECISION_SCOPE, pool);
+  for (const job of jobs) decisions[await processJob(pool, runId, job, confirming)]++;
   await finishRun(pool, runId, "completed", jobs.length, jobs.length);
   return { claimed: jobs.length, decisions };
 }

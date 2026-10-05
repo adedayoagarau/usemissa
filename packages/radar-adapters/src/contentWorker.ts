@@ -13,6 +13,15 @@ import {
   writeOpportunityEditorial,
   writeOrganizationEditorial,
 } from './editorialWriter.js';
+import {
+  applyGroundingHold,
+  contentDecisionDepsFromEnv,
+  groundOpportunityContent,
+  groundOrganizationProfile,
+  reuseEditorial,
+  shouldReuseEditorial,
+  type ContentDecisionDeps,
+} from './contentGrounding.js';
 import { ensureAgentGraphSchema } from './agentGraphSchema.js';
 import { ensureContentReviewSchema } from './contentReviewSchema.js';
 import { createMissaPostgresPool } from './postgresPoolPolicy.js';
@@ -284,21 +293,57 @@ async function writeHandoff(client: PoolClient, runId: string, opportunityId: st
   );
 }
 
-async function buildJob(pool: Pool, runId: string, job: ContentJob): Promise<boolean> {
+interface GroundingSources {
+  previousContent: OpportunityContent | null;
+  sourceText: string | null;
+}
+
+/** The previous write-up and the listing's own page text, read only when Jev is configured. */
+async function groundingSources(pool: Pool, opportunityId: string): Promise<GroundingSources> {
+  const result = await pool.query<{ previous_content: OpportunityContent | null; source_text: string | null }>(
+    `select
+       (select c.content from opportunity_contents c where c.opportunity_id = $1) as previous_content,
+       (select obs.description from gary_call_observations obs
+         where obs.opportunity_id = $1 and obs.description is not null
+         order by obs.observed_at desc limit 1) as source_text`,
+    [opportunityId],
+  );
+  const row = result.rows[0];
+  return { previousContent: row?.previous_content ?? null, sourceText: row?.source_text ?? null };
+}
+
+async function buildJob(pool: Pool, runId: string, job: ContentJob, decisions: ContentDecisionDeps): Promise<boolean> {
   const fetched = await contentInput(pool, job.opportunityId);
   if (!fetched) {
     await pool.query(`update radar_content_review_jobs set status = 'blocked', last_error = 'Opportunity is no longer content-buildable', lease_until = null, updated_at = now() where id = $1`, [job.id]);
     return false;
   }
   const { input, organizationId, organizationData } = fetched;
+  const sources = decisions.client.available
+    ? await groundingSources(pool, job.opportunityId).catch((error) => {
+        decisions.log?.(`Could not read grounding sources for ${job.opportunityId}`, error);
+        return null;
+      })
+    : null;
 
-  // 1. Synthesize curatorial dossier using AI (DeepSeek / OpenAI) or elevated deterministic writer
-  const content = await writeOpportunityEditorial(input);
+  // 1. Synthesize curatorial dossier using AI (DeepSeek / OpenAI) or elevated deterministic writer.
+  //    A live, confident "the change is not material" keeps the previous prose on fresh facts instead.
+  let content: OpportunityContent | null = null;
+  if (sources?.previousContent?.builderVersion === 'editorial-writer.v2') {
+    const next = buildOpportunityContent(input);
+    if (await shouldReuseEditorial(decisions, { opportunityId: job.opportunityId, previous: sources.previousContent, next, sourceText: sources.sourceText ?? undefined })) {
+      content = reuseEditorial(next, sources.previousContent);
+    }
+  }
+  content ??= await writeOpportunityEditorial(input);
+  if (decisions.client.available) {
+    content = await groundOpportunityContent(decisions, { opportunityId: job.opportunityId, facts: input, sourceText: sources?.sourceText ?? undefined, content });
+  }
 
   // 2. If the host institution has not had an editorial profile written yet, craft one
   if (organizationId && organizationData && !organizationData.editorialProfile) {
     try {
-      const orgEditorial = await writeOrganizationEditorial({
+      const orgInput = {
         name: input.organizationName || String(organizationData.name || ''),
         websiteUrl: String(organizationData.website_url || organizationData.websiteUrl || ''),
         kind: String(organizationData.kind || ''),
@@ -306,7 +351,12 @@ async function buildJob(pool: Pool, runId: string, job: ContentJob): Promise<boo
         rawDescription: String(organizationData.description || organizationData.biography || ''),
         editorialFocus: input.editorialFocus,
         sampleCalls: [input.title],
-      });
+      };
+      const written = await writeOrganizationEditorial(orgInput);
+      // In live grounding mode, fields the source does not support are left out rather than published.
+      const orgEditorial = decisions.client.available
+        ? await groundOrganizationProfile(decisions, { organizationId, source: orgInput, profile: written })
+        : written;
       await pool.query(
         `update radar_organizations
          set data = jsonb_set(data, '{editorialProfile}', $2::jsonb),
@@ -393,12 +443,12 @@ async function reviewJob(pool: Pool, runId: string, job: ContentJob): Promise<Op
     await pool.query(`update radar_content_review_jobs set status = 'blocked', last_error = 'Content projection is missing', lease_until = null, updated_at = now() where id = $1`, [job.id]);
     return 'error';
   }
-  const result = expireUnconfirmedContent(reviewOpportunityContent(row.content, {
+  const result = expireUnconfirmedContent(applyGroundingHold(reviewOpportunityContent(row.content, {
     sourceUrl: row.source_url,
     sourceProcessedAt: iso(row.processing_succeeded_at),
     organizationConfirmed: row.organization_confirmed,
     submissionState: row.submission_state,
-  }), row.generated_at);
+  }), row.content), row.generated_at);
   const reviewedContent: OpportunityContent = {
     ...row.content,
     review: {
@@ -443,7 +493,7 @@ async function reviewJob(pool: Pool, runId: string, job: ContentJob): Promise<Op
   }
 }
 
-export async function runContentReviewTick(pool: Pool, limit = batchSize()): Promise<{ built: number; reviewed: number; decisions: Record<OpportunityContentDecision, number> }> {
+export async function runContentReviewTick(pool: Pool, limit = batchSize(), decisionDeps: ContentDecisionDeps = contentDecisionDepsFromEnv(pool)): Promise<{ built: number; reviewed: number; decisions: Record<OpportunityContentDecision, number> }> {
   const runId = await startWorkerRun(pool, 'content-worker');
   if (!runId) throw new Error('Unable to start the content worker run telemetry record');
   try {
@@ -452,7 +502,7 @@ export async function runContentReviewTick(pool: Pool, limit = batchSize()): Pro
     const buildJobs = await claimBuildJobs(pool, limit);
     let built = 0;
     for (const job of buildJobs) {
-      try { if (await buildJob(pool, runId, job)) built++; } catch (error) { await failJob(pool, job, error); }
+      try { if (await buildJob(pool, runId, job, decisionDeps)) built++; } catch (error) { await failJob(pool, job, error); }
     }
     const reviewJobs = await claimReviewJobs(pool, limit);
     const decisions: Record<OpportunityContentDecision, number> = { approved: 0, 'needs-human': 0, blocked: 0, error: 0 };

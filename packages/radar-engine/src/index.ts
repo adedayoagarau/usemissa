@@ -31,7 +31,7 @@ export { validateCandidate, hasFatalIssues, looksLikeOpportunity } from './extra
 export { parseDate, daysBetween, addDays, isoDateOf, isPlausibleOpportunityDate } from './extraction/dates.js';
 export { extractFee } from './extraction/fees.js';
 export { OPENING_SIGNALS, CLOSING_SIGNALS, CLOSED_SIGNALS, SUSPICIOUS_SIGNALS, findSignals } from './extraction/signals.js';
-export { findCanonical, titleSimilarity, normalizeName, type DedupMatch } from './dedup/dedup.js';
+export { findCanonical, findDedupNearMisses, titleSimilarity, normalizeName, type DedupIdentityDecider, type DedupMatch, type DedupNearMiss } from './dedup/dedup.js';
 export {
   EMAIL_CANDIDATE_RETENTION_DAYS,
   EMAIL_MAX_BODY_CHARS,

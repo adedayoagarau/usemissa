@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from .harness import HarnessStore, heartbeat_loop
 from .health import start_health_server
+from .identity import opportunity_identity_shadow_from_env
 from .neon import NeonStore
 from .fetcher import HttpFetcher
 from .profile_crawler import crawl_profiles
@@ -399,7 +400,7 @@ def main(argv: list[str] | None = None) -> int:
     unknown_adapters = sorted(set(radar_sync_adapters) - set(RADAR_ADAPTERS))
     if unknown_adapters:
         raise SystemExit(f"unsupported Gary Radar sync adapters: {', '.join(unknown_adapters)}")
-    store = NeonStore(database_url)
+    store = NeonStore(database_url, identity_shadow=opportunity_identity_shadow_from_env(database_url))
     store.ensure_schema()
     start_health_server()
     harness = HarnessStore(database_url)
