@@ -6,8 +6,17 @@ import {
   type MagazineRankingPage,
   type MagazineRankingsFilter,
   type MagazineTelemetrySummary,
+  type MagazineIndexCoverage,
+  type MagazineIndexAnalytics,
+  type SubmissionTelemetryInput,
 } from "@missa/radar-adapters";
-import { rankMagazines, type RankingGenre, type ScoreBreakdown } from "@missa/radar-engine";
+import {
+  rankMagazines,
+  type MagazineScoringInput,
+  type RankingGenre,
+  type ScoreBreakdown,
+  type ScoredGenre,
+} from "@missa/radar-engine";
 import { SEED_MAGAZINES } from "@missa/radar-adapters/dist/src/ranking/data/seedRankings.js";
 import { catalogueReadDatabaseUrl } from "./catalogueDatabase";
 
@@ -24,74 +33,118 @@ function isUndefinedTableError(error: unknown): error is PostgresError {
   return error instanceof Error && (error as PostgresError).code === "42P01";
 }
 
-function getFallbackRankings(genre: RankingGenre = "overall"): MagazineRankingRow[] {
+/**
+ * Seed rankings are illustrative sample data. They may be shown as a labelled
+ * preview outside production, but never in production unless explicitly
+ * enabled with MISSA_RANKINGS_SEED_PREVIEW=1. They are never used to describe
+ * a real publication's standing.
+ */
+export function seedRankingsPreviewAllowed(
+  env: Record<string, string | undefined> = process.env,
+): boolean {
+  if (env.MISSA_RANKINGS_SEED_PREVIEW === "1") return true;
+  return env.VERCEL_ENV !== "production";
+}
+
+export type MagazineRankingDataSource = "seed" | "database" | "empty";
+
+function previewOrEmptyPage(
+  filter: MagazineRankingsFilter,
+): MagazineRankingPage & {
+  dataSource: MagazineRankingDataSource;
+} {
+  const genre = filter.genre ?? "overall";
+  if (!seedRankingsPreviewAllowed()) {
+    return {
+      dataSource: "empty",
+      items: [],
+      total: 0,
+      year: filter.year ?? new Date().getUTCFullYear(),
+      genre,
+    };
+  }
+  const all = getFallbackRankings(genre);
+  return {
+    dataSource: "seed",
+    items: all.slice(
+      filter.offset ?? 0,
+      (filter.offset ?? 0) + (filter.limit ?? 50),
+    ),
+    total: all.length,
+    year: filter.year ?? 2026,
+    genre,
+  };
+}
+
+function previewRow(
+  input: MagazineScoringInput,
+  genre: RankingGenre,
+  score: ScoreBreakdown & { rankPosition: number },
+): MagazineRankingRow {
+  const pushcart = input.pushcart
+    .filter((entry) => genre === "overall" || entry.genre === genre)
+    .sort((a, b) => a.rank - b.rank)[0];
+  return {
+    profileId: input.profileId,
+    name: input.name,
+    slug: input.profileId,
+    websiteUrl: null,
+    mediaUrl: null,
+    rankingYear: 2026,
+    genre,
+    rankPosition: score.rankPosition,
+    previousYearRank: null,
+    rankDelta: null,
+    prestigeTier: score.tier,
+    totalScore: score.totalScore,
+    accoladesScore: score.accoladesScore,
+    payScore: score.payScore,
+    turnaroundScore: score.turnaroundScore,
+    feesScore: score.feesScore,
+    respectScore: score.respectScore,
+    formatEthicsScore: score.formatAndEthicsScore,
+    medianResponseDays: input.medianResponseDays,
+    responseTimeBand: input.responseTimeBand,
+    regularFeeCents: input.regularSubmissionFeeCents,
+    chargesReadingFee: input.chargesSubmissionFee,
+    contributorPayCents: null,
+    payKind: input.contributorPay.kind,
+    simultaneousPolicy: input.simultaneousSubmissions,
+    debutFriendly: input.debutFriendly,
+    blindReading: input.blindReading,
+    digitalArchive: input.digitalArchive,
+    telemetryReports: 0,
+    pushcartRank: pushcart?.rank ?? null,
+    pushcartGenre: pushcart?.genre ?? null,
+    anthologySelections: input.anthologyCitations.filter(
+      (citation) =>
+        genre === "overall" ||
+        citation.genre === genre ||
+        citation.genre === "hybrid",
+    ).length,
+    factSources: {},
+    pillarStatus: score.pillarStatus,
+    coverage: score.coverage,
+    activeOpportunity: null,
+    schedule: null,
+  };
+}
+
+function getFallbackRankings(
+  genre: RankingGenre = "overall",
+): MagazineRankingRow[] {
   if (!memoryCache) {
-    const computed = rankMagazines(SEED_MAGAZINES, 2026);
+    const inputs = new Map(
+      SEED_MAGAZINES.map((input) => [input.profileId, input]),
+    );
     const rows: MagazineRankingRow[] = [];
-
-    for (const item of computed) {
-      // Overall
-      rows.push({
-        profileId: item.profileId,
-        name: item.name,
-        slug: item.profileId,
-        websiteUrl: null,
-        mediaUrl: null,
-        rankingYear: 2026,
-        genre: "overall",
-        rankPosition: item.overall.rankPosition,
-        previousYearRank: null,
-        rankDelta: null,
-        prestigeTier: item.overall.tier,
-        totalScore: item.overall.totalScore,
-        accoladesScore: item.overall.accoladesScore,
-        payScore: item.overall.payScore,
-        turnaroundScore: item.overall.turnaroundScore,
-        feesScore: item.overall.feesScore,
-        respectScore: item.overall.respectScore,
-        formatEthicsScore: item.overall.formatAndEthicsScore,
-        medianResponseDays: null,
-        regularFeeCents: 0,
-        contributorPayCents: 0,
-        simultaneousPolicy: "allowed",
-        activeOpportunity: null,
-        schedule: null,
-      });
-
-      // Specific genres
-      for (const [g, gScore] of Object.entries(item.genres) as Array<
-        [
-          Exclude<RankingGenre, "overall">,
-          (ScoreBreakdown & { rankPosition: number }) | undefined,
-        ]
+    for (const item of rankMagazines(SEED_MAGAZINES, 2026)) {
+      const input = inputs.get(item.profileId)!;
+      rows.push(previewRow(input, "overall", item.overall));
+      for (const [g, score] of Object.entries(item.genres) as Array<
+        [ScoredGenre, (ScoreBreakdown & { rankPosition: number }) | undefined]
       >) {
-        if (!gScore) continue;
-        rows.push({
-          profileId: item.profileId,
-          name: item.name,
-          slug: item.profileId,
-          websiteUrl: null,
-          mediaUrl: null,
-          rankingYear: 2026,
-          genre: g,
-          rankPosition: gScore.rankPosition,
-          previousYearRank: null,
-          rankDelta: null,
-          prestigeTier: gScore.tier,
-          totalScore: gScore.totalScore,
-          accoladesScore: gScore.accoladesScore,
-          payScore: gScore.payScore,
-          turnaroundScore: gScore.turnaroundScore,
-          feesScore: gScore.feesScore,
-          respectScore: gScore.respectScore,
-          formatEthicsScore: gScore.formatAndEthicsScore,
-          medianResponseDays: null,
-          regularFeeCents: 0,
-          contributorPayCents: 0,
-          simultaneousPolicy: "allowed",
-          activeOpportunity: null,
-          schedule: null,
-        });
+        if (score) rows.push(previewRow(input, g, score));
       }
     }
     memoryCache = rows;
@@ -103,39 +156,23 @@ function getFallbackRankings(genre: RankingGenre = "overall"): MagazineRankingRo
 }
 
 export function getMagazineRankingRepository(): {
-  listRankings: (filter?: MagazineRankingsFilter) => Promise<MagazineRankingPage & { dataSource: "seed" | "database" }>;
+  listRankings: (
+    filter?: MagazineRankingsFilter,
+  ) => Promise<MagazineRankingPage & { dataSource: MagazineRankingDataSource }>;
   getMagazineStanding: (profileId: string) => Promise<MagazineRankingRow[]>;
   getTelemetrySummary: (profileId: string) => Promise<MagazineTelemetrySummary>;
-  recordSubmissionTelemetry: (input: {
-    profileId: string;
-    userId?: string | null;
-    genre?: string | null;
-    submittedDate: string;
-    decisionDate?: string | null;
-    responseDays?: number | null;
-    outcome?: "accepted" | "rejected" | "withdrawn" | "pending" | null;
-    rejectionType?: "form" | "tiered_personal" | "editor_note" | null;
-    feePaidCents?: number;
-  }) => Promise<{ success: boolean; newMedianDays: number | null }>;
+  getIndexCoverage: () => Promise<MagazineIndexCoverage | null>;
+  getIndexAnalytics: () => Promise<MagazineIndexAnalytics | null>;
+  recordSubmissionTelemetry: (
+    input: SubmissionTelemetryInput,
+  ) => Promise<{ success: boolean; newMedianDays: number | null }>;
 } {
   const readConnectionString = catalogueReadDatabaseUrl();
   if (!readConnectionString) {
     return {
-      listRankings: async (filter = {}) => {
-        const genre = filter.genre ?? "overall";
-        const all = getFallbackRankings(genre);
-        return {
-          dataSource: "seed",
-          items: all.slice(filter.offset ?? 0, (filter.offset ?? 0) + (filter.limit ?? 50)),
-          total: all.length,
-          year: filter.year ?? 2026,
-          genre,
-        };
-      },
-      getMagazineStanding: async (profileId: string) => {
-        const all = getFallbackRankings("overall");
-        return all.filter((r) => r.profileId === profileId);
-      },
+      listRankings: async (filter = {}) => previewOrEmptyPage(filter),
+      // Seed scores never describe a real publication's standing.
+      getMagazineStanding: async () => [],
       getTelemetrySummary: async (profileId: string) => ({
         profileId,
         sampleSize: 0,
@@ -158,20 +195,34 @@ export function getMagazineRankingRepository(): {
         },
         latestReportAt: null,
       }),
-      recordSubmissionTelemetry: async () => ({ success: true, newMedianDays: null }),
+      getIndexCoverage: async () => null,
+      getIndexAnalytics: async () => null,
+      // Without a database nothing is stored, so nothing is reported as saved.
+      recordSubmissionTelemetry: async () => ({
+        success: false,
+        newMedianDays: null,
+      }),
     };
   }
 
   if (!globalThis.__missaRankingReadRepo) {
-    const pool = new Pool(missaPostgresPoolConfig(readConnectionString, "catalogue"));
-    globalThis.__missaRankingReadRepo = new PostgresMagazineRankingRepository(pool);
+    const pool = new Pool(
+      missaPostgresPoolConfig(readConnectionString, "catalogue"),
+    );
+    globalThis.__missaRankingReadRepo = new PostgresMagazineRankingRepository(
+      pool,
+    );
   }
 
   const readRepo = globalThis.__missaRankingReadRepo;
   const applicationConnectionString = process.env.DATABASE_URL?.trim();
   if (applicationConnectionString && !globalThis.__missaRankingWriteRepo) {
-    const pool = new Pool(missaPostgresPoolConfig(applicationConnectionString, "creator"));
-    globalThis.__missaRankingWriteRepo = new PostgresMagazineRankingRepository(pool);
+    const pool = new Pool(
+      missaPostgresPoolConfig(applicationConnectionString, "creator"),
+    );
+    globalThis.__missaRankingWriteRepo = new PostgresMagazineRankingRepository(
+      pool,
+    );
   }
   const writeRepo = globalThis.__missaRankingWriteRepo;
 
@@ -182,38 +233,41 @@ export function getMagazineRankingRepository(): {
         if (page.items.length > 0) return { ...page, dataSource: "database" };
       } catch (error) {
         if (!isUndefinedTableError(error)) throw error;
-        console.warn(
-          "Magazine rankings table is unavailable; serving the verified preview dataset.",
-        );
+        console.warn("Magazine rankings table is unavailable.");
       }
 
-      // Graceful fallback to seeded engine computations if DB isn't hydrated yet
-      const genre = filter.genre ?? "overall";
-      const fallback = getFallbackRankings(genre);
-      return {
-        dataSource: "seed",
-        items: fallback.slice(filter.offset ?? 0, (filter.offset ?? 0) + (filter.limit ?? 50)),
-        total: fallback.length,
-        year: filter.year ?? 2026,
-        genre,
-      };
+      // The live index is empty or missing: a labelled preview outside
+      // production, nothing in production.
+      return previewOrEmptyPage(filter);
     },
     getMagazineStanding: async (profileId: string) => {
       try {
-        const standing = await readRepo.getMagazineStanding(profileId);
-        if (standing.length > 0) return standing;
+        return await readRepo.getMagazineStanding(profileId);
       } catch (error) {
         if (!isUndefinedTableError(error)) throw error;
-        console.warn(
-          "Magazine rankings table is unavailable; serving the verified preview dataset.",
-        );
+        console.warn("Magazine rankings table is unavailable.");
+        // Seed scores never describe a real publication's standing.
+        return [];
       }
-
-      const all = getFallbackRankings("overall");
-      return all.filter((r) => r.profileId === profileId);
     },
     getTelemetrySummary: async (profileId: string) => {
       return readRepo.getTelemetrySummary(profileId);
+    },
+    getIndexCoverage: async () => {
+      try {
+        return await readRepo.getIndexCoverage();
+      } catch (error) {
+        if (!isUndefinedTableError(error)) throw error;
+        return null;
+      }
+    },
+    getIndexAnalytics: async () => {
+      try {
+        return await readRepo.getIndexAnalytics();
+      } catch (error) {
+        if (!isUndefinedTableError(error)) throw error;
+        return null;
+      }
     },
     recordSubmissionTelemetry: async (input) => {
       if (!writeRepo) return { success: false, newMedianDays: null };

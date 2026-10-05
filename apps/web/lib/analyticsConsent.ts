@@ -6,7 +6,8 @@
  * The consent record itself is the only thing written before that choice is
  * made, and it is strictly necessary to remember the answer.
  *
- * This module is safe to import from client components only.
+ * The consent store is for client components. The root layout imports only
+ * {@link consentAnsweredScript} on the server.
  */
 
 export type ConsentChoice = "accepted" | "declined";
@@ -22,6 +23,18 @@ export type ConsentState = ConsentChoice | "none" | "unknown";
 export const CONSENT_STORAGE_KEY = "missa.analytics.consent.v1";
 /** Cookie mirror, so the choice survives storage eviction. */
 export const CONSENT_COOKIE = "missa_consent";
+/** Set on <html> before first paint when a stored choice exists. */
+export const CONSENT_ANSWERED_ATTRIBUTE = "data-analytics-consent";
+
+/**
+ * Inline script for the document head. The consent banner is server-rendered
+ * so it paints with the page instead of after hydration; this marks visitors
+ * who already answered so the banner's stylesheet hides it before first paint.
+ * Reads the same sources, in the same order, as {@link readConsent}.
+ */
+export function consentAnsweredScript(): string {
+  return `(function(){var c=null;try{c=localStorage.getItem(${JSON.stringify(CONSENT_STORAGE_KEY)})}catch(e){}if(c!=="accepted"&&c!=="declined"){var m=document.cookie.match(/(?:^|; )${CONSENT_COOKIE}=(accepted|declined)(?:;|$)/);c=m?m[1]:null}if(c)document.documentElement.setAttribute(${JSON.stringify(CONSENT_ANSWERED_ATTRIBUTE)},c)})()`;
+}
 const CONSENT_MAX_AGE_SECONDS = 60 * 60 * 24 * 180;
 
 type Listener = (choice: ConsentChoice) => void;

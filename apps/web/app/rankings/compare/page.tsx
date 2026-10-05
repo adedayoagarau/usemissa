@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { publicIndexLayoutStyles as catalogueStyles } from "@/components/missa/public-index-layout";
 import type { Metadata } from "next";
+import { listingMetadata } from "@/lib/seo";
 import { cookies } from "next/headers";
 import { PublicSiteShell } from "@/components/public-site-shell";
+import { headerSessionFor } from "@/lib/headerSession";
 import { getMagazineRankingRepository } from "@/lib/magazineRankingRepository";
 import { getResidencyRankingRepository } from "@/lib/residencyRankingRepository";
 import { MagazineComparisonView } from "@/components/rankings/magazine-comparison-view";
@@ -12,11 +14,21 @@ import { Building, Compass } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Compare Rankings & Opportunities · Missa Index",
-  description:
-    "Compare literary magazines and artist residencies side-by-side across funding, awards, turnaround, and community ratings.",
-};
+export function generateMetadata({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
+  return listingMetadata(
+    {
+      title: "Compare Rankings & Opportunities · Missa Index",
+      description:
+        "Compare literary magazines and artist residencies side-by-side across funding, awards, turnaround, and community ratings.",
+      path: "/rankings/compare",
+    },
+    searchParams,
+  );
+}
 
 export default async function ComparePage({
   searchParams,
@@ -24,7 +36,8 @@ export default async function ComparePage({
   searchParams?: Promise<{ ids?: string; kind?: string }>;
 }) {
   const params = (await searchParams) ?? {};
-  const isResidency = params.kind === "residencies" || params.kind === "residency";
+  const isResidency =
+    params.kind === "residencies" || params.kind === "residency";
 
   const cookieStore = await cookies();
   const session = await getSessionAccountFromToken(
@@ -34,17 +47,25 @@ export default async function ComparePage({
   if (isResidency) {
     const residencyRepo = getResidencyRankingRepository();
     const residencyPage = await residencyRepo.listRankings({ limit: 1000 });
-    const defaultResidencyIds = ["macdowell", "yaddo", "headlands-center-for-the-arts"];
+    // Default to the top three programs in the index.
+    const defaultResidencyIds = residencyPage.items
+      .slice(0, 3)
+      .map((item) => item.profileId);
     const requestedIds = params.ids
-      ? params.ids.split(",").map((s) => s.trim()).filter(Boolean)
+      ? params.ids
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
       : defaultResidencyIds;
 
     return (
-      <PublicSiteShell current="Residencies">
+      <PublicSiteShell current="Residencies" session={headerSessionFor(session)}>
         <main id="main-content" className={catalogueStyles.main}>
           <header className={`${catalogueStyles.pageIntro} mb-8`}>
-            <p className={catalogueStyles.eyebrow}>Rankings · Side-by-Side Comparison</p>
-            <div className="flex flex-wrap items-center justify-between gap-4 mt-2">
+            <p className={catalogueStyles.eyebrow}>
+              Rankings · Side-by-Side Comparison
+            </p>
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
               <h1 className="text-3xl font-bold tracking-tight text-foreground">
                 Compare Artist Residencies
               </h1>
@@ -52,7 +73,7 @@ export default async function ComparePage({
               <div className="inline-flex rounded-lg border border-border bg-muted/40 p-1">
                 <Link
                   href="/rankings/compare?kind=magazines"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
                 >
                   <Compass className="h-3.5 w-3.5" />
                   <span>Magazines</span>
@@ -60,7 +81,7 @@ export default async function ComparePage({
                 <Link
                   href="/rankings/compare?kind=residencies"
                   aria-current="page"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-background text-foreground shadow-sm transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm transition-colors"
                 >
                   <Building className="h-3.5 w-3.5 text-primary" />
                   <span>Residencies</span>
@@ -68,7 +89,8 @@ export default async function ComparePage({
               </div>
             </div>
             <p className={`${catalogueStyles.lede} mt-2`}>
-              Compare fellowship funding, private studio solitude, meals, and community ratings for up to three residencies.
+              Compare cost, stipends, meals, studios and residents’ ratings for
+              up to three residencies.
             </p>
           </header>
 
@@ -84,18 +106,27 @@ export default async function ComparePage({
 
   // Default: Compare Magazines
   const requestedIds = params.ids
-    ? params.ids.split(",").map((s) => s.trim()).filter(Boolean)
-    : ["org_a3ea7b6729757baf61e5a260", "org_the_paris_review", "profile_2515e373709613f41db6d410b79d93d1"];
+    ? params.ids
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [
+        "org_a3ea7b6729757baf61e5a260",
+        "org_the_paris_review",
+        "profile_2515e373709613f41db6d410b79d93d1",
+      ];
 
   const repo = getMagazineRankingRepository();
   const allPage = await repo.listRankings({ genre: "overall", limit: 1000 });
 
   return (
-    <PublicSiteShell current="Magazine rankings">
+    <PublicSiteShell current="Magazine rankings" session={headerSessionFor(session)}>
       <main id="main-content" className={catalogueStyles.main}>
         <header className={`${catalogueStyles.pageIntro} mb-8`}>
-          <p className={catalogueStyles.eyebrow}>Rankings · Side-by-Side Comparison</p>
-          <div className="flex flex-wrap items-center justify-between gap-4 mt-2">
+          <p className={catalogueStyles.eyebrow}>
+            Rankings · Side-by-Side Comparison
+          </p>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
             <h1 className="text-3xl font-bold tracking-tight text-foreground">
               Compare Magazines
             </h1>
@@ -104,14 +135,14 @@ export default async function ComparePage({
               <Link
                 href="/rankings/compare?kind=magazines"
                 aria-current="page"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-background text-foreground shadow-sm transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-md bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm transition-colors"
               >
                 <Compass className="h-3.5 w-3.5 text-primary" />
                 <span>Magazines</span>
               </Link>
               <Link
                 href="/rankings/compare?kind=residencies"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
                 <Building className="h-3.5 w-3.5" />
                 <span>Residencies</span>
@@ -119,13 +150,15 @@ export default async function ComparePage({
             </div>
           </div>
           <p className={`${catalogueStyles.lede} mt-2`}>
-            Compare scores, contributor pay, and response times for up to three magazines.
+            Compare scores, contributor pay, and response times for up to three
+            magazines.
           </p>
         </header>
 
         {allPage.dataSource === "seed" && (
           <p role="status" className="mb-6 text-sm text-muted-foreground">
-            Rankings preview: these comparisons use seed data, not verified current submission terms.
+            Rankings preview: these comparisons use seed data, not verified
+            current submission terms.
           </p>
         )}
         <MagazineComparisonView

@@ -2,9 +2,12 @@ import { createStore as createRadarStore, type RadarStore } from '@missa/radar-e
 import { createStore as createWorkspaceStore, type WorkspaceStore } from '@missa/workspace-engine';
 import {
   emptyContentReviewQueue,
+  emptyPublicationHoldQueue,
   readContentReviewQueue,
+  readPublicationHoldQueue,
   readPlatformAdminAnalyticsEvents,
   type ContentReviewQueueData,
+  type PublicationHoldQueueData,
   type PlatformAdminAnalyticsEventsData,
 } from '@missa/radar-adapters';
 import { getEngine } from './engine';
@@ -272,6 +275,17 @@ export async function getPlatformAdminContent(): Promise<AdminArea<PlatformAdmin
       : Promise.resolve(emptyContentReviewQueue(generatedAt, 'DATABASE_URL is not configured; durable content review is unavailable.')),
   ]);
   return area(buildContentData(stores.radar, stores.workspace, reviewQueue), 'Opportunities, organization open calls, and durable content review', stores.maturity, generatedAt, [...stores.warnings, ...reviewQueue.warnings]);
+}
+
+/** Opportunities the review agent held for a person, for the /admin/radar publication review section. */
+export async function getPublicationReviewQueue(): Promise<PublicationHoldQueueData> {
+  const generatedAt = new Date().toISOString();
+  if (!process.env.DATABASE_URL) return emptyPublicationHoldQueue(generatedAt, 'DATABASE_URL is not configured; publication review is unavailable.');
+  try {
+    return await readPublicationHoldQueue(process.env.DATABASE_URL);
+  } catch {
+    return emptyPublicationHoldQueue(generatedAt, 'The publication review queue could not be read. Try again shortly.');
+  }
 }
 
 export async function getPlatformAdminAnalytics(options: { days?: number } = {}): Promise<AdminArea<PlatformAdminAnalyticsData>> {

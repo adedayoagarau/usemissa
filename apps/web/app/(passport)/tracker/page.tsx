@@ -1,6 +1,9 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
+  creatorEntitlements,
+  creatorFeatures,
+  creatorPoolFor,
   creatorRelationalAuthorityEnabled,
   listCanonicalTrackedOpportunities,
 } from "@missa/radar-adapters";
@@ -13,29 +16,14 @@ import {
   type TrackerHostedSubmission,
   type TrackerProductItem,
   type TrackerProductLayout,
-  type TrackerProductView,
 } from "@/components/tracker-product";
+import { parseApplicationId, parseTrackerView } from "@/lib/trackerViews";
+import { emailIntegrationFlags } from "@/lib/email-integrations";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-const trackerViews = new Set<TrackerProductView>([
-  "active",
-  "submissions",
-  "calendar",
-  "works",
-  "types",
-  "organizations",
-  "archive",
-]);
-
 function first(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
-}
-
-function safeView(value: string): TrackerProductView {
-  return trackerViews.has(value as TrackerProductView)
-    ? (value as TrackerProductView)
-    : "active";
 }
 
 function safeLayout(value: string): TrackerProductLayout {
@@ -150,17 +138,36 @@ export default async function TrackerPage({
         .works.map((work) => ({ id: work.id, title: work.title }))
     : [];
 
+  const entitlements = postgresTracker && process.env.DATABASE_URL
+    ? await creatorEntitlements(creatorPoolFor(process.env.DATABASE_URL), session.account.id).catch(() => undefined)
+    : undefined;
+  const features = creatorFeatures(entitlements?.plan ?? "free");
+  const allowance = entitlements?.activeTrackedLimit != null
+    ? { active: entitlements.activeTracked, limit: entitlements.activeTrackedLimit }
+    : undefined;
+
   return (
     <TrackerProduct
+      allowance={allowance}
       initialItems={initialItems}
       hostedSubmissions={hostedSubmissions}
       works={works}
       accountId={session.account.id}
       userId={userId}
-      initialView={safeView(first(raw.view))}
+      initialView={parseTrackerView(first(raw.view))}
+      initialApplicationId={parseApplicationId(first(raw.application))}
+      initialItemId={parseApplicationId(first(raw.item))}
+      initialNow={new Date().toISOString()}
+      features={features}
       initialLayout={safeLayout(first(raw.layout))}
       initialQuery={first(raw.q).slice(0, 200)}
       initialImportId={first(raw.import).slice(0, 240)}
+      initialSection={first(raw.section).slice(0, 40)}
+      recordsAvailable={postgresTracker}
+      emailEvidence={(() => {
+        const flags = emailIntegrationFlags();
+        return flags.gmailSync || flags.emailForwarding;
+      })()}
     />
   );
 }

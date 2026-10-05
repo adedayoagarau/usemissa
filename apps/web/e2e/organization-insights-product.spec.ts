@@ -12,7 +12,7 @@ async function insightsFixture(page: Page, baseURL: string | undefined) {
   const form = await (await page.request.post(`/api/orgs/${organizationId}/open-calls/${opportunity.id}/submission-paths`, { data: { categories: ['Poetry'], fields: [] } })).json() as { id: string };
   expect((await page.request.post(`/api/orgs/${organizationId}/open-calls/${opportunity.id}/publish`)).status()).toBe(200);
   const submitter = await playwrightRequest.newContext({ baseURL });
-  expect((await submitter.post('/api/auth/signup', { data: { email: `insights-${suffix}@example.com`, password: 'correct-horse-battery', displayName: 'Insights Submitter' } })).status()).toBe(201);
+  expect((await submitter.post('/api/auth/signup', { data: { email: `insights-${suffix}@example.com`, password: 'correct-horse-battery', givenName: 'Insights', familyName: 'Submitter' } })).status()).toBe(201);
   const submitted = await (await submitter.post(`/api/submission-paths/${form.id}/submit`, { data: { category: 'Poetry', answers: {}, works: [{ title: `River Maps ${suffix}` }, { title: `Returning City ${suffix}` }] }, headers: { 'Idempotency-Key': `insights-${suffix}` } })).json() as { works: Array<{ id: string }> };
   expect((await page.request.post(`/api/orgs/${organizationId}/works/${submitted.works[0]!.id}/decision`, { data: { outcome: 'accepted' } })).status()).toBe(200);
   expect((await page.request.post(`/api/orgs/${organizationId}/works/${submitted.works[1]!.id}/decision`, { data: { outcome: 'declined' } })).status()).toBe(200);

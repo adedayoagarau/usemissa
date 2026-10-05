@@ -6,7 +6,7 @@ const headers = { 'Cache-Control': 'private, no-store' };
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string; workId: string }> }) {
   const { id, workId } = await params;
-  const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status, headers });
   const body = await request.json().catch(() => ({}));
   if (workspaceRelationalAuthorityEnabled()) {

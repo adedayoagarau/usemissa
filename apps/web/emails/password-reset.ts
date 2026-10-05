@@ -1,4 +1,4 @@
-import { renderBaseEmailLayout, escapeHtml } from './components/base-layout';
+import { letterText, renderLetter, type LetterProps } from './components/letter';
 import { siteUrl } from '../lib/siteUrl';
 import { sendMail, type SendMailReport } from '../lib/mail-service';
 
@@ -9,42 +9,31 @@ export interface PasswordResetEmailProps {
   displayName?: string;
 }
 
+/** Password reset letter. Security email: no unsubscribe link. */
 export function renderPasswordResetEmail(props: PasswordResetEmailProps): { subject: string; html: string; text: string } {
   const subject = 'Reset your Missa password';
   const name = props.displayName?.trim() || '';
-  const greeting = name ? `Hello ${escapeHtml(name)},` : 'Hello,';
   const resetUrl = new URL(`/reset-password?token=${encodeURIComponent(props.resetToken)}`, `${siteUrl()}/`).toString();
-
-  const bodyHtml = `
-    <p style="margin:0 0 16px;font-size:15px;line-height:24px;">${greeting}</p>
-    <p style="margin:0 0 16px;font-size:15px;line-height:24px;">
-      We received a request to reset the password for your Missa account (<strong>${escapeHtml(props.email)}</strong>).
-    </p>
-    <p style="margin:0 0 16px;font-size:15px;line-height:24px;">
-      This password reset link will expire in <strong>1 hour</strong>. If you did not request a password reset, you can safely ignore this email — your password will remain unchanged.
-    </p>
-  `;
-
-  const noteHtml = `
-    <strong>Security reminder:</strong> Missa will never ask for your password or verification codes over email or chat.
-  `;
-
-  const html = renderBaseEmailLayout({
+  const letter: LetterProps = {
     subject,
-    preheader: 'Reset your password for your Missa account.',
-    eyebrow: 'Account security',
-    title: 'Reset your password',
-    bodyHtml,
-    noteHtml,
-    callToAction: {
-      label: 'Reset password',
-      url: resetUrl,
+    preheader: 'Choose a new password for your Missa account. The link works once and expires in 60 minutes.',
+    from: { kind: 'missa' },
+    headline: 'Reset your password',
+    blocks: [
+      ...(name ? [{ kind: 'paragraph' as const, text: `Hello ${name},` }] : []),
+      {
+        kind: 'paragraph',
+        text: `Choose a new password for your Missa account, ${props.email}. The link works once and expires in 60 minutes.`,
+      },
+      { kind: 'action', label: 'Choose a new password', url: resetUrl },
+      { kind: 'small', text: 'If you did not ask for this, ignore this email. Your current password stays the same.' },
+    ],
+    footer: {
+      reason: 'You get this because a password reset was requested for this email address.',
+      preferencesUrl: new URL('/inbox', `${siteUrl()}/`).toString(),
     },
-  });
-
-  const text = `Reset your Missa password\n\n${name ? `Hello ${name},\n\n` : ''}We received a request to reset the password for your Missa account (${props.email}).\n\nTo reset your password, visit the following link within 1 hour:\n${resetUrl}\n\nIf you did not request this, you can safely ignore this email. Your password will remain unchanged.`;
-
-  return { subject, html, text };
+  };
+  return { subject, html: renderLetter(letter), text: letterText(letter) };
 }
 
 export async function deliverPasswordResetEmail(
@@ -64,7 +53,6 @@ export async function deliverPasswordResetEmail(
     text,
     templateKey: 'password-reset',
     templateVersion: 'password-reset.v1',
-    metadata: { email: props.email },
     connectionString,
     retryFailed: true,
   });

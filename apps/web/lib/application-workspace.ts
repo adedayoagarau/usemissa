@@ -8,20 +8,28 @@ import type { ApplicationDetail, ApplicationSummary } from "./application-worksp
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v => !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0,10) === v, "Choose a valid date");
 export const applicationCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("notes"), notes: z.string().max(10000) }),
-  z.object({ action: z.literal("record"), status: z.string().refine(v => !!canonicalTrackerStatus(v)), occurredOn: date, timezone: z.string().refine(v => { try { new Intl.DateTimeFormat("en", {timeZone:v}); return true; } catch { return false; } }), note: z.string().max(2000).default("") }),
+  z.object({ action: z.literal("record"), status: z.string().refine(v => !!canonicalTrackerStatus(v)), occurredOn: date, timezone: z.string().refine(v => { try { new Intl.DateTimeFormat("en", {timeZone:v}); return true; } catch { return false; } }), note: z.string().max(2000).default(""), emailCandidateId: z.string().min(1).max(200).optional() }),
 ]);
 type Command = z.infer<typeof applicationCommand>;
+
+/** Email evidence that cannot be applied to this application. */
+export class ApplicationEvidenceError extends Error {}
 
 const projection = `select t.opportunity_id as "opportunityId", o.title,
  coalesce(p.name,org.data->>'name','') as "organizationName",o.type,t.status as "myStatus",
  o.status as "opportunityStatus",o.publication_state='published' as available,t.revision,
  o.deadline_date::text as deadline,coalesce(o.deadline_kind,'unknown') as "deadlineKind",
  to_char(o.deadline_time at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"') as "deadlineTime",o.deadline_timezone as "deadlineTimezone",
- t.submitted_at as "submittedAt",t.updated_at as "updatedAt",w.title as "workTitle",t.work_id as "workId",t.notify
+ t.submitted_at as "submittedAt",t.updated_at as "updatedAt",w.title as "workTitle",t.work_id as "workId",t.notify,
+ coalesce(prep.total,0)::int as "preparationTotal",coalesce(prep.done,0)::int as "preparationDone",coalesce(prep.items,'[]'::jsonb) as "preparationItems"
  from tracked_opportunities t join opportunities o on o.id=t.opportunity_id
  left join radar_organizations org on org.id=o.organization_id
  left join gary_profiles p on p.id=o.organization_id
- left join creator_library_works w on w.id=t.work_id and w.account_id=t.account_id`;
+ left join creator_library_works w on w.id=t.work_id and w.account_id=t.account_id
+ left join lateral (select count(*) filter (where i.state<>'not-applicable') as total,count(*) filter (where i.state in ('complete','ready')) as done,
+   jsonb_agg(jsonb_build_object('label',i.label,'state',i.state,'linked',(i.work_id is not null or i.file_id is not null or i.saved_answer_id is not null)) order by i.position) filter (where i.state<>'not-applicable') as items
+   from tracker_checklists c join tracker_checklist_items i on i.checklist_id=c.id and i.account_id=c.account_id
+   where c.account_id=t.account_id and c.tracked_opportunity_id=t.id) prep on true`;
 
 function safeUrl(value: string | null): string | null {
   if (!value) return null;
@@ -59,8 +67,21 @@ export class ApplicationWorkspaceRepository extends CreatorRepositoryBase {
         if(future)throw new Error("A recorded update cannot be in the future.");
         const preparing=["interested","saved","preparing","draft-started","ready-to-submit"].includes(input.status);
         const eventId=randomUUID();
+        // A forwarded or synced email only suggests a status. When the creator
+        // confirms it here, the event records the email as its evidence and the
+        // suggestion is closed in the same transaction.
+        let source="user",note=input.note||null,evidence:Record<string,unknown>={datePrecision:'day',timezone:input.timezone,correction:row.status===input.status};
+        let candidate:{id:string;data:{subject?:string;sourceMode?:string;matchedOpportunityId?:string;candidates?:{opportunityId:string}[]}}|undefined;
+        if(input.emailCandidateId){
+          candidate=(await client.query<{id:string;state:string;data:NonNullable<typeof candidate>["data"]}>(`select c.id,c.state,c.data from radar_email_candidates c where c.id=$1 and exists(select 1 from radar_accounts a where a.id=$2 and a.data->>'userId'=c.user_id) for update`,[input.emailCandidateId,envelope.accountId])).rows.find(r=>r.state==='pending');
+          if(!candidate)throw new ApplicationEvidenceError("This email was already reviewed or is no longer available.");
+          if(candidate.data.matchedOpportunityId!==opportunityId && !candidate.data.candidates?.some(m=>m.opportunityId===opportunityId))throw new ApplicationEvidenceError("This email is not linked to this application.");
+          source="email";note=note??`Confirmed from email: ${(candidate.data.subject??"").slice(0,300)}`;
+          evidence={...evidence,emailCandidateId:candidate.id,sourceMode:candidate.data.sourceMode??"forwarding"};
+        }
         await client.query(`update tracked_opportunities set status=$3,submitted_at=case when $3='submitted' then ($4::date + time '12:00') at time zone $5 when $6 then null else submitted_at end,revision=revision+1,updated_at=now() where account_id=$1 and opportunity_id=$2`,[envelope.accountId,opportunityId,input.status,input.occurredOn,input.timezone,preparing]);
-        await client.query(`insert into tracked_status_events(id,tracked_opportunity_id,account_id,from_status,to_status,source,idempotency_key,note,occurred_on,evidence) values($1,$2,$3,$4,$5,'user',$6,$7,$8,$9::jsonb)`,[eventId,row.id,envelope.accountId,row.status,input.status,envelope.idempotencyKey,input.note||null,input.occurredOn,JSON.stringify({datePrecision:'day',timezone:input.timezone,correction:row.status===input.status})]);
+        await client.query(`insert into tracked_status_events(id,tracked_opportunity_id,account_id,from_status,to_status,source,idempotency_key,note,occurred_on,evidence) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb)`,[eventId,row.id,envelope.accountId,row.status,input.status,source,envelope.idempotencyKey,note,input.occurredOn,JSON.stringify(evidence)]);
+        if(candidate)await client.query(`update radar_email_candidates set state='confirmed',data=data||jsonb_build_object('state','confirmed','reviewedAt',to_char(now() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),'reviewIdempotencyKey',$2::text,'reviewResult',jsonb_build_object('trackerUpdated',true,'statusEventId',$3::text)),revision=revision+1 where id=$1`,[candidate.id,envelope.idempotencyKey,eventId]);
         await client.query(`update creator_application_reminders set state='cancelled',due_at=null,snoozed_until=null,revision=revision+1,updated_at=now()
           where account_id=$1 and opportunity_id=$2 and state in ('scheduled','needs-review') and
           ((kind in ('preparation','deadline') and not $3::boolean) or (kind='response' and ($3::boolean or $4::boolean)))`,

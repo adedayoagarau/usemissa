@@ -7,7 +7,7 @@ async function trackerAccount(page: Page) {
     data: {
       email: `tracker-${suffix}@example.com`,
       password: 'correct-horse-battery',
-      displayName: 'Tracker Test User',
+      givenName: 'Tracker', familyName: 'Tester',
     },
   });
   expect(signup.status()).toBe(201);
@@ -31,44 +31,64 @@ async function trackerAccount(page: Page) {
   return opportunity!;
 }
 
-test('My applications records submission progress with self-scoped mutations', async ({ page }) => {
+test('Tracker deep links open the linked item in Saved and then Submissions', async ({ page }) => {
   const opportunity = await trackerAccount(page);
   await page.setViewportSize({ width: 1280, height: 900 });
-  const response = await page.goto('/tracker');
+  const response = await page.goto(`/tracker?view=saved&application=${encodeURIComponent(opportunity.id)}`);
   expect(response?.status()).toBe(200);
 
   await expect(page.getByRole('link', { name: 'Tracker', exact: true }).first()).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByRole('heading', { level: 1, name: 'My applications' })).toBeVisible();
-  await expect(page.getByRole('tab', { name: /Saved/ })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('heading', { name: opportunity.title, exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Tracker' })).toBeVisible();
+  const views = page.getByRole('navigation', { name: 'Tracker views' });
+  await expect(views.getByRole('button', { name: 'Saved', exact: true })).toHaveAttribute('aria-current', 'page');
+  const selected = page.locator('article[data-selected="true"]');
+  await expect(selected.getByRole('heading', { name: opportunity.title, exact: true })).toBeVisible();
+  await expect(selected).toBeFocused();
   await expect(page.getByText(/fit score|trust|freshness|acceptance rate|source confidence|\(\d+d\)/i)).toHaveCount(0);
 
-  await page.getByRole('button', { name: new RegExp(opportunity.title) }).click();
-  await page.getByRole('button', { name: 'Record submission' }).click();
-  await page.getByLabel('What happened?').selectOption('submitted');
-  await page.getByRole('button', { name: 'Save update' }).click();
-  await expect(page.getByRole('tab', { name: /Awaiting responses/ })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByLabel('Selected application').getByText('Submitted', { exact: true })).toBeVisible();
+  const statusSaved = page.waitForResponse((candidate) => candidate.url().includes('/status') && candidate.request().method() === 'POST');
+  await selected.getByLabel(`Update status for ${opportunity.title}`).selectOption('submitted');
+  expect((await statusSaved).ok()).toBeTruthy();
+
+  await page.goto(`/tracker?view=awaiting&application=${encodeURIComponent(opportunity.id)}`);
+  await expect(views.getByRole('button', { name: 'Submissions', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('article[data-selected="true"]').getByRole('heading', { name: opportunity.title, exact: true })).toBeVisible();
+
+  // A reminder for a saved item that has since been submitted still lands on it.
+  await page.goto(`/tracker?view=saved&application=${encodeURIComponent(opportunity.id)}`);
+  await expect(views.getByRole('button', { name: 'Submissions', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('article[data-selected="true"]')).toHaveCount(1);
   await page.screenshot({ path: 'outputs/tracker-product-desktop.png', fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBeFalsy();
 });
 
-test('My applications remains accessible at phone width', async ({ page }) => {
-  await trackerAccount(page);
+test('Tracker Saved view remains accessible at phone width', async ({ page }) => {
+  const opportunity = await trackerAccount(page);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/tracker');
+  await page.goto('/tracker?view=saved');
 
   await page.getByRole('button', { name: 'Open navigation' }).click();
   await expect(page.getByRole('link', { name: 'Tracker', exact: true }).last()).toHaveAttribute('aria-current', 'page');
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('heading', { level: 1, name: 'My applications' })).toBeVisible();
-  await expect(page.getByRole('tab', { name: /Saved/ })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('region', { name: 'Application list' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Tracker' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Tracker views' }).getByRole('button', { name: 'Saved', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('heading', { name: 'Saved and preparing' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: opportunity.title, exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBeFalsy();
 
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);
   await page.screenshot({ path: 'outputs/tracker-product-mobile.png', fullPage: true });
+});
+
+test('Tracker explains a deep link to an item that is no longer tracked', async ({ page }) => {
+  await trackerAccount(page);
+  await page.goto('/tracker?view=saved&application=not-in-this-tracker');
+  await expect(page.getByRole('heading', { name: 'This item is no longer in your Tracker' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Tracker views' }).getByRole('button', { name: 'Saved', exact: true })).toHaveAttribute('aria-current', 'page');
+  await page.getByRole('button', { name: 'Dismiss' }).click();
+  await expect(page.getByRole('heading', { name: 'This item is no longer in your Tracker' })).toHaveCount(0);
+  await expect(page).not.toHaveURL(/application=/);
 });
 
 test('Tracker status endpoint cannot mutate another account item', async ({ browser, baseURL }) => {
@@ -83,7 +103,7 @@ test('Tracker status endpoint cannot mutate another account item', async ({ brow
       data: {
         email: `tracker-other-${suffix}@example.com`,
         password: 'correct-horse-battery',
-        displayName: 'Other Tracker User',
+        givenName: 'Other', familyName: 'Tracker',
       },
     });
     expect(signup.status()).toBe(201);
@@ -107,15 +127,56 @@ test('Tracker status endpoint cannot mutate another account item', async ({ brow
   }
 });
 
-test('My applications exposes a stale-edit recovery error', async ({ page }) => {
+test('Tracker exposes a stale-edit recovery error', async ({ page }) => {
   const opportunity = await trackerAccount(page);
-  await page.route(`**/api/me/applications/${encodeURIComponent(opportunity.id)}`, async (route) => {
-    if (route.request().method() === 'GET') return route.continue();
-    await route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: 'This application changed in another session.' }) });
+  await page.route(`**/api/me/tracker/${encodeURIComponent(opportunity.id)}/status`, async (route) => {
+    await route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: 'conflict' }) });
   });
-  await page.goto('/tracker');
-  await page.getByRole('button', { name: new RegExp(opportunity.title) }).click();
-  await page.getByRole('button', { name: 'Record submission' }).click();
-  await page.getByRole('button', { name: 'Save update' }).click();
-  await expect(page.getByRole('dialog').getByRole('alert')).toContainText('changed in another session');
+  await page.goto(`/tracker?view=saved&application=${encodeURIComponent(opportunity.id)}`);
+  await page.getByLabel(`Update status for ${opportunity.title}`).selectOption('submitted');
+  await expect(page.locator('article[data-selected="true"]').getByRole('alert')).toContainText('changed in another session');
+  await expect(page.getByRole('button', { name: 'Reload latest Tracker state' })).toBeVisible();
+});
+
+test('Tracker details sheet opens from a row and returns focus when closed', async ({ page }) => {
+  const opportunity = await trackerAccount(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`/tracker?view=saved&application=${encodeURIComponent(opportunity.id)}`);
+
+  const card = page.locator('article[data-selected="true"]');
+  const details = card.getByRole('button', { name: `Details for ${opportunity.title}` });
+  await details.click();
+  const sheet = page.getByRole('dialog');
+  await expect(sheet.getByRole('heading', { name: opportunity.title, exact: true })).toBeVisible();
+  await expect(sheet.locator('#sheet-deadline-title')).toBeVisible();
+  await expect(page).toHaveURL(/item=/);
+
+  await page.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+  await expect(details).toBeFocused();
+  await expect(page).not.toHaveURL(/item=/);
+
+  // The deep link opens the same sheet directly.
+  await page.goto(`/tracker?view=saved&item=${encodeURIComponent(opportunity.id)}`);
+  const linked = page.getByRole('dialog');
+  await expect(linked.getByRole('heading', { name: opportunity.title, exact: true })).toBeVisible();
+  await linked.getByRole('button', { name: 'Close', exact: true }).last().click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test('Tracker Plan view groups calls in preparation by time left', async ({ page }) => {
+  const opportunity = await trackerAccount(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/tracker?view=plan');
+
+  const views = page.getByRole('navigation', { name: 'Tracker views' });
+  await expect(views.getByRole('button', { name: 'Plan', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('heading', { name: 'Plan by time left' })).toBeVisible();
+  for (const bucket of ['Act now', 'Develop', 'Plan ahead', 'Later'])
+    await expect(page.getByRole('heading', { name: bucket, exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: opportunity.title, exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBeFalsy();
+
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);
 });

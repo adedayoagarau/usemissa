@@ -8,10 +8,10 @@ import { getEngine, persistRadar } from "@/lib/engine";
 import { getCreatorAccountRepository } from "@/lib/creatorRepositories";
 import {
   issueSessionToken,
-  sessionCookieOptions,
-  SESSION_COOKIE,
+  setSessionCookie,
 } from "@/lib/auth";
 import { trackPlatformAnalytics } from "@/lib/platformAnalytics";
+import { recordSiteGoal } from "@/lib/siteTracking";
 import { clientAddress, consumeAuthRateLimit } from "@/lib/auth-rate-limit";
 import { deliverWelcomeEmail } from "@/emails/welcome";
 import { isNeonAuthConfigured } from "@/lib/neon-auth/server";
@@ -163,6 +163,7 @@ export async function POST(request: Request) {
     accountId: account.id,
     properties: { method: "password" },
   });
+  await recordSiteGoal(request, "signup", "/signup");
   void deliverWelcomeEmail(
     {
       accountId: account.id,
@@ -182,6 +183,6 @@ export async function POST(request: Request) {
     },
     { status: 201, headers: { "Cache-Control": "no-store" } },
   );
-  response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
+  setSessionCookie(response, token);
   return response;
 }

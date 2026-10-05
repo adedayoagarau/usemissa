@@ -1,6 +1,15 @@
 import { parseDate } from "@missa/radar-engine";
 import type { Pool } from "pg";
 import { parseDisallowForUserAgent } from "./sourcePolicy.js";
+import { confirmingContextFromEnv, confirmLifecycleEvidence, LIFECYCLE_DECISION_SCOPE, type ConfirmingContext } from "./confirmingDecisions.js";
+import {
+  askOperations,
+  lengthenedIntervalHours,
+  OperationsUsage,
+  recheckCadence,
+  recheckCadenceState,
+} from "@missa/decisions";
+import { HostHistoryTracker, retryShouldWaitLongest, type OperationsDecider } from "./operationsDecisions.js";
 
 export const LIFECYCLE_CLASSIFIER_VERSION = "lifecycle-source-v15";
 export const DEFAULT_LIFECYCLE_BATCH_SIZE = 25;
@@ -16,6 +25,8 @@ export type LifecycleDecision = {
   deadlineDate?: string;
   deadlineKind?: "exact" | "rolling" | "year-round" | "seasonal" | "until-filled";
   seasonLabel?: string;
+  /** Set when a live Jev decision resolved what the regex classifier sent to review. */
+  decider?: "jev";
 };
 
 type LifecycleJob = {
@@ -25,6 +36,9 @@ type LifecycleJob = {
   guidelinesUrl: string | null;
   submissionUrl: string | null;
   publicationState: string;
+  attempts?: number;
+  deadlineDate?: string | null;
+  status?: string | null;
 };
 
 export type LifecycleFetchResult =
@@ -36,6 +50,11 @@ export type LifecycleReconcilerOptions = {
   now?: Date;
   fetchPage?: (url: string) => Promise<LifecycleFetchResult>;
   logger?: Pick<Console, "info" | "warn">;
+  /** Jev lifecycle decisions; defaults to the environment (shadow unless DECISIONS_MODE_LIFECYCLE=live). */
+  confirming?: ConfirmingContext;
+  /** Jev scope `recheck`; omit (or run without JEV_API_KEY) to keep today's intervals. */
+  decisions?: OperationsDecider;
+  usage?: OperationsUsage;
 };
 
 const CLOSED = /\b(?:submissions?|applications?|the call|this call)\s+(?:are|is|has)\s+(?:now\s+)?closed\b|\b(?:submissions?|applications?)\s+have\s+closed\b|\bnot currently accepting\b/i;
@@ -80,7 +99,7 @@ type LifecycleEvidenceContext = { title?: string; sourceUrl?: string };
 const AGGREGATE_TITLE = /^(?:next\s*(?:-|&gt;|→)*|artconnect page \d+|opportunities without fees|art contests|opportunities for artists in .+|[^,]+,\s*[A-Z]{2},\s*[^,]+)$/i;
 const AGGREGATE_PAGE_FURNITURE = /\brolling deadline\s+\d+\s+opportunities\b|\bsort:\s*deadline\s+soonest\b|\bpopular filters\b[\s\S]{0,240}\brolling deadline\b/i;
 
-function isAggregateLifecycleEvidence(text: string, context: LifecycleEvidenceContext): boolean {
+export function isAggregateLifecycleEvidence(text: string, context: LifecycleEvidenceContext): boolean {
   if (context.title && AGGREGATE_TITLE.test(context.title.trim())) return true;
   if (AGGREGATE_PAGE_FURNITURE.test(text)) return true;
   if (!context.sourceUrl) return false;
@@ -254,10 +273,11 @@ async function claimJobs(pool: Pool, batchSize: number): Promise<LifecycleJob[]>
       update opportunity_lifecycle_verification_jobs j
       set status='processing', locked_at=now(), attempts=j.attempts+1, updated_at=now()
       from due where j.opportunity_id=due.opportunity_id
-      returning j.opportunity_id
+      returning j.opportunity_id, j.attempts
     )
     select o.id as "opportunityId", o.title, s.url as "sourceUrl", o.guidelines_url as "guidelinesUrl",
-           o.submission_url as "submissionUrl", o.publication_state as "publicationState"
+           o.submission_url as "submissionUrl", o.publication_state as "publicationState",
+           c.attempts, o.deadline_date::text as "deadlineDate", o.status
     from claimed c join opportunities o on o.id=c.opportunity_id
     left join opportunity_sources s on s.id=o.source_id
     order by case when o.publication_state='published' then 0 else 1 end, o.id
@@ -286,7 +306,59 @@ function nextInterval(decision: LifecycleDecision): string {
   return "7 days";
 }
 
-async function recordDecision(pool: Pool, job: LifecycleJob, sourceUrl: string, fetchedAt: Date, sourceDate: string | undefined, decision: LifecycleDecision): Promise<void> {
+const HOUR_MS = 60 * 60 * 1000;
+const LIFECYCLE_INTERVAL_HOURS: Record<string, number> = { "1 day": 24, "7 days": 168, "14 days": 336, "30 days": 720, "180 days": 4320 };
+/** Longest lifecycle recheck interval in use today; Jev may never exceed it. */
+export const MAX_LIFECYCLE_RECHECK_HOURS = 4320;
+/** Longest lifecycle retry delay today is least(attempts, 12) x 2 hours. */
+export const MAX_LIFECYCLE_RETRY_ATTEMPT_FACTOR = 12;
+
+/** Today's recheck interval for a recorded decision, as recordDecision applies it. */
+export function lifecycleRecheckInterval(decision: LifecycleDecision): string {
+  if (decision.decision === "apply" && decision.confidence === "high" && decision.status) return nextInterval(decision);
+  if (decision.decision === "review" && decision.confidence === "low") return "30 days";
+  return "7 days";
+}
+
+function hoursUntil(date: string | null | undefined, now: Date): number | undefined {
+  if (!date) return undefined;
+  const parsed = Date.parse(`${date.slice(0, 10)}T23:59:59Z`);
+  return Number.isFinite(parsed) ? (parsed - now.getTime()) / HOUR_MS : undefined;
+}
+
+/**
+ * Asks Jev for a recheck cadence (scope `recheck`). Returns a longer interval
+ * only for a live, confident answer that stays inside today's bounds and
+ * before any stated deadline; otherwise undefined keeps today's interval.
+ */
+async function decidedRecheckInterval(decisions: OperationsDecider | undefined, usage: OperationsUsage, job: LifecycleJob, decision: LifecycleDecision, now: Date): Promise<string | undefined> {
+  if (!decisions) return undefined;
+  const currentHours = LIFECYCLE_INTERVAL_HOURS[lifecycleRecheckInterval(decision)];
+  if (currentHours === undefined) return undefined;
+  const deadline = hoursUntil(decision.deadlineDate ?? job.deadlineDate, now);
+  usage.asked("recheck");
+  const outcomes = await askOperations(decisions, "recheck", {
+    subjectId: job.opportunityId,
+    state: recheckCadenceState({
+      hoursUntilDeadline: deadline,
+      status: job.status,
+      changeHistory: `listed as ${job.status ?? "unknown"}; this check: ${decision.decision} (${decision.confidence}) proposing ${decision.status ?? "no status"}; ${job.attempts ?? 0} checks claimed`,
+      sourceKind: "lifecycle-source",
+    }),
+    questions: [recheckCadence],
+  });
+  const outcome = outcomes?.[recheckCadence.key];
+  const hours = lengthenedIntervalHours({ currentHours, outcome, maxHours: MAX_LIFECYCLE_RECHECK_HOURS, hoursUntilDeadline: deadline });
+  if (hours === currentHours) {
+    const shadowHours = outcome ? lengthenedIntervalHours({ currentHours, outcome: { ...outcome, actionable: outcome.route === "apply" }, maxHours: MAX_LIFECYCLE_RECHECK_HOURS, hoursUntilDeadline: deadline }) : currentHours;
+    usage.made("recheck", shadowHours !== currentHours);
+    return undefined;
+  }
+  usage.skipped("recheck");
+  return `${hours} hours`;
+}
+
+async function recordDecision(pool: Pool, job: LifecycleJob, sourceUrl: string, fetchedAt: Date, sourceDate: string | undefined, decision: LifecycleDecision, intervalOverride?: string): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query("begin");
@@ -295,7 +367,7 @@ async function recordDecision(pool: Pool, job: LifecycleJob, sourceUrl: string, 
         (opportunity_id,source_url,fetched_at,source_date,classifier_version,decision,confidence,evidence_passage,
          proposed_status,proposed_open_date,proposed_deadline_date,proposed_deadline_kind,metadata)
       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb)
-  `, [job.opportunityId, sourceUrl, fetchedAt, sourceDate ? sourceDate.slice(0, 10) : null, LIFECYCLE_CLASSIFIER_VERSION, decision.decision, decision.confidence, decision.evidencePassage ?? null, decision.status ?? null, decision.openDate ?? null, decision.deadlineDate ?? null, decision.deadlineKind ?? null, JSON.stringify({ reason: decision.reason, ...(decision.seasonLabel ? { seasonLabel: decision.seasonLabel } : {}) })]);
+  `, [job.opportunityId, sourceUrl, fetchedAt, sourceDate ? sourceDate.slice(0, 10) : null, LIFECYCLE_CLASSIFIER_VERSION, decision.decision, decision.confidence, decision.evidencePassage ?? null, decision.status ?? null, decision.openDate ?? null, decision.deadlineDate ?? null, decision.deadlineKind ?? null, JSON.stringify({ reason: decision.reason, ...(decision.seasonLabel ? { seasonLabel: decision.seasonLabel } : {}), ...(decision.decider ? { decider: decision.decider } : {}) })]);
 
     if (decision.decision === "apply" && decision.confidence === "high" && decision.status) {
       await client.query(`
@@ -319,14 +391,21 @@ async function recordDecision(pool: Pool, job: LifecycleJob, sourceUrl: string, 
         `, [job.opportunityId, decision.seasonLabel, sourceUrl, fetchedAt]);
       }
       await client.query(`update opportunity_lifecycle_verification_jobs set status='pending', locked_at=null,
-        last_checked_at=$2::timestamptz,last_error=null,next_check_at=$2::timestamptz + $3::interval,updated_at=now() where opportunity_id=$1`, [job.opportunityId, fetchedAt, nextInterval(decision)]);
+        last_checked_at=$2::timestamptz,last_error=null,next_check_at=$2::timestamptz + $3::interval,updated_at=now() where opportunity_id=$1`, [job.opportunityId, fetchedAt, intervalOverride ?? nextInterval(decision)]);
+    } else if (intervalOverride) {
+      // A live Jev cadence: only ever longer than the 30- or 7-day waits below.
+      await client.query(`update opportunity_lifecycle_verification_jobs set status='pending', locked_at=null,
+        last_checked_at=$2,last_error=$3,next_check_at=$2::timestamptz + $4::interval,updated_at=now()
+        where opportunity_id=$1`, [job.opportunityId, fetchedAt, decision.reason.slice(0, 500), intervalOverride]);
     } else if (decision.decision === "review" && decision.confidence === "low") {
       await client.query(`update opportunity_lifecycle_verification_jobs set status='pending', locked_at=null,
         last_checked_at=$2,last_error=$3,next_check_at=$2::timestamptz + interval '30 days',updated_at=now()
         where opportunity_id=$1`, [job.opportunityId, fetchedAt, decision.reason.slice(0, 500)]);
     } else {
-      await client.query(`update opportunity_lifecycle_verification_jobs set status='review', locked_at=null,
-        last_checked_at=$2,last_error=$3,updated_at=now() where opportunity_id=$1`, [job.opportunityId, fetchedAt, decision.reason.slice(0, 500)]);
+      // Nobody reviews these by hand: keep the listing's current status and look again in a week.
+      await client.query(`update opportunity_lifecycle_verification_jobs set status='pending', locked_at=null,
+        last_checked_at=$2,last_error=$3,next_check_at=$2::timestamptz + interval '7 days',updated_at=now()
+        where opportunity_id=$1`, [job.opportunityId, fetchedAt, decision.reason.slice(0, 500)]);
     }
     await client.query("commit");
   } catch (error) {
@@ -337,7 +416,14 @@ async function recordDecision(pool: Pool, job: LifecycleJob, sourceUrl: string, 
   }
 }
 
-async function recordRetry(pool: Pool, job: LifecycleJob, error: string): Promise<void> {
+async function recordRetry(pool: Pool, job: LifecycleJob, error: string, waitLongest = false): Promise<void> {
+  if (waitLongest) {
+    // A live, confident "retry will fail": wait the longest delay used today.
+    await pool.query(`update opportunity_lifecycle_verification_jobs set status='retry',locked_at=null,
+    last_checked_at=now(),last_error=$2,next_check_at=now() + $3::int * interval '2 hours',updated_at=now()
+    where opportunity_id=$1`, [job.opportunityId, error.slice(0, 500), MAX_LIFECYCLE_RETRY_ATTEMPT_FACTOR]);
+    return;
+  }
   await pool.query(`update opportunity_lifecycle_verification_jobs set status='retry',locked_at=null,
     last_checked_at=now(),last_error=$2,next_check_at=now() + least(attempts,12) * interval '2 hours',updated_at=now()
     where opportunity_id=$1`, [job.opportunityId, error.slice(0, 500)]);
@@ -348,17 +434,36 @@ export async function runLifecycleReconcilerBatch(pool: Pool, options: Lifecycle
   const fetchPage = options.fetchPage ?? defaultFetchPage;
   const now = options.now ?? new Date();
   const totals = { claimed: jobs.length, applied: 0, review: 0, deferred: 0, retry: 0 };
+  const confirming = options.confirming ?? confirmingContextFromEnv(LIFECYCLE_DECISION_SCOPE, pool);
+  const usage = options.usage ?? new OperationsUsage();
+  const hosts = new HostHistoryTracker();
   for (const job of jobs) {
     let handled = false;
+    const fetchErrors: string[] = [];
     for (const url of urlCandidates(job)) {
       const result = await fetchPage(url);
-      if (result.status !== "ok") continue;
+      hosts.record(url, result.status === "ok");
+      if (result.status !== "ok") {
+        fetchErrors.push(result.status === "gone" ? "gone" : result.error ?? "error");
+        continue;
+      }
       const scopedText = scopeToOpportunity(result.text, job.title);
+      const evidenceContext = { title: job.title, sourceUrl: result.finalUrl ?? url };
+      // Shadow by default; live scope lifecycle may only resolve what the regex sends to review.
       const decision = scopedText
-        ? classifyLifecycleEvidence(scopedText, now, { title: job.title, sourceUrl: result.finalUrl ?? url })
+        ? await confirmLifecycleEvidence(confirming, {
+            opportunityId: job.opportunityId,
+            title: job.title,
+            sourceUrl: evidenceContext.sourceUrl,
+            text: scopedText,
+            now,
+            aggregate: isAggregateLifecycleEvidence(scopedText.slice(0, 500_000), evidenceContext),
+            classifierVersion: LIFECYCLE_CLASSIFIER_VERSION,
+          }, classifyLifecycleEvidence(scopedText, now, evidenceContext))
         : { decision: "review", confidence: "low", reason: "Large source page could not be scoped to this opportunity title." } satisfies LifecycleDecision;
       try {
-        await recordDecision(pool, job, result.finalUrl ?? url, now, result.sourceDate, decision);
+        const intervalOverride = await decidedRecheckInterval(options.decisions, usage, job, decision, now);
+        await recordDecision(pool, job, result.finalUrl ?? url, now, result.sourceDate, decision, intervalOverride);
         totals[decision.decision === "apply" ? "applied" : decision.confidence === "low" ? "deferred" : "review"] += 1;
       } catch (error) {
         await recordRetry(pool, job, error instanceof Error ? error.message : "database-transition-failed");
@@ -368,10 +473,15 @@ export async function runLifecycleReconcilerBatch(pool: Pool, options: Lifecycle
       break;
     }
     if (!handled) {
-      await recordRetry(pool, job, "No lifecycle source could be fetched.");
+      const firstUrl = urlCandidates(job)[0];
+      const waitLongest = firstUrl
+        ? await retryShouldWaitLongest(options.decisions, "recheck", { subjectId: job.opportunityId, url: firstUrl, error: fetchErrors.join("; "), attempts: job.attempts ?? 1, hosts }, usage)
+        : false;
+      await recordRetry(pool, job, "No lifecycle source could be fetched.", waitLongest);
       totals.retry += 1;
     }
   }
   options.logger?.info(`[missa-lifecycle-reconciler] ${JSON.stringify(totals)}`);
+  if (options.decisions && !options.usage) for (const line of usage.summary()) options.logger?.info(line);
   return totals;
 }

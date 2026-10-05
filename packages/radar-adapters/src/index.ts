@@ -41,7 +41,7 @@ export {
   missaPostgresPoolConfig,
   type MissaPoolRole,
 } from "./postgresPoolPolicy.js";
-export { canonicalOpportunityIsPublic, canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
+export { canonicalListedOpportunityPredicate, canonicalOpportunityIsPublic, canonicalPublicOpportunityPredicate, organizationLinkSql } from "./canonicalOpportunityProjection.js";
 export {
   creatorRelationalAuthorityEnabled,
   creatorRelationalAuthorityHealth,
@@ -71,7 +71,20 @@ export {
   type CreatorProfileInput,
   type CreatorProfileView,
   type CreatorPrivacyInput,
+  type AcceptedOutcome,
 } from "./creatorProfileRepository.js";
+export {
+  INQUIRY_TOPICS,
+  InquiryRateLimitError,
+  PostgresCreatorConnectionsRepository,
+  type CreatorInquiry,
+  type CreatorInvitation,
+  type InquiryStatus,
+  type InquiryTopic,
+  type InvitationStatus,
+  type InviteOption,
+  type ProfilePerson,
+} from "./creatorConnectionsRepository.js";
 export {
   CreatorAccountProvisionError,
   PostgresCreatorAccountRepository,
@@ -93,9 +106,111 @@ export {
 } from "./creatorInboxRepository.js";
 export {
   PostgresCreatorNotificationRepository,
+  quietHoursMinute,
   type CreatorNotificationPreferences,
   type NotificationDigestCadence,
 } from "./creatorNotificationRepository.js";
+export { deferRemindersInQuietHours } from "./reminderQuietHours.js";
+export {
+  creatorReminderEmailKey,
+  pendingCreatorReminderEmails,
+  type PendingCreatorReminderEmail,
+  type CreatorNoticeEmailKind,
+} from "./creatorReminderEmail.js";
+export {
+  creatorReminderTextKey,
+  pendingCreatorReminderTexts,
+  type PendingCreatorReminderText,
+} from "./creatorReminderText.js";
+export {
+  applySmsDeliveryReport,
+  completeSmsMessage,
+  confirmSmsVerification,
+  createSmsVerification,
+  expireSmsVerification,
+  optInSmsPhone,
+  optOutSmsPhone,
+  readSmsAccountStatus,
+  readSmsHealth,
+  readSmsPause,
+  recentSmsVerificationCount,
+  recordSkippedSms,
+  removeSmsPhone,
+  reserveSmsMessage,
+  setSmsEnabled,
+  SMS_CAP_EXEMPT_KINDS,
+  SMS_MAX_ATTEMPTS,
+  SMS_PAUSE_SETTING,
+  smsLedgerReady,
+  writeSmsPause,
+  type SmsAccountStatus,
+  type SmsCompletion,
+  type SmsDeliveryReport,
+  type SmsHealthData,
+  type SmsPauseState,
+  type SmsReservation,
+  type SmsReservationInput,
+  type SmsStatus,
+  type SmsVerificationResult,
+} from "./smsMessages.js";
+export {
+  buildWeeklyDigest,
+  weeklyDigestIsEmpty,
+  weeklyDigestKey,
+  weeklyDigestRecipients,
+  type WeeklyDigest,
+  type WeeklyDigestItem,
+  type WeeklyDigestOptions,
+  type WeeklyDigestRecipient,
+} from "./weeklyDigest.js";
+export {
+  CREATOR_FIT_SCOPE,
+  DIGEST_WORTH_SENDING_SCOPE,
+  assessCreatorFit,
+  creatorFitRankingFromEnv,
+  hasDeclaredPractice,
+  loadCreatorFitProfile,
+  recordDigestWorthSending,
+  type CreatorFitRanking,
+} from "./sorting/creatorFit.js";
+export {
+  DEFAULT_CONFIRMED_FACT_KEYS,
+  createLedgerConfirmedFactsProvider,
+  type ConfirmedFactField,
+  type LedgerConfirmedFactsOptions,
+} from "./sorting/ledgerConfirmedFacts.js";
+export {
+  applyCreatorSubscription,
+  creatorBillingAccount,
+  type CreatorBillingAccount,
+  type CreatorSubscriptionResult,
+  type CreatorSubscriptionUpdate,
+} from "./creatorBilling.js";
+export {
+  ACTIVE_TRACKED_STATUSES,
+  assertBulkTrackingWithinAllowance,
+  assertRoomForActiveCall,
+  assertTrackingAllowance,
+  CREATOR_PLAN_LIMITS,
+  isActiveTrackedStatus,
+  creatorEntitlements,
+  creatorPlan,
+  FREE_ACTIVE_TRACKED_LIMIT,
+  lockTrackingAllowance,
+  planIncludesSmsReminders,
+  planIncludes,
+  plansIncluding,
+  creatorFeatures,
+  SMS_REMINDER_PLANS,
+  TrackingLimitReachedError,
+  type CreatorEntitlements,
+  type CreatorFeature,
+  type CreatorPlan,
+  type CreatorPlanLimits,
+} from "./creatorEntitlements.js";
+export * from "./deadlineFacts.js";
+export * from "./creatorObligations.js";
+export * from "./creatorPlanningPreferences.js";
 export {
   CreatorEmailReviewError,
   PostgresCreatorEmailReviewRepository,
@@ -113,8 +228,12 @@ export {
   type CreatorWorkConnections,
 } from "./creatorLibraryRepository.js";
 export {
+  CALENDAR_SYNC_LEASE_SECONDS,
+  CALENDAR_SYNC_MAX_ATTEMPTS,
   CreatorCalendarError,
   PostgresCreatorCalendarRepository,
+  PROVIDER_MIRROR_PURPOSES,
+  type ProviderMirrorPurpose,
   type CreatorCalendarItem,
   type CreatorCalendarEvent,
   type CreatorCalendarTokenResult,
@@ -123,6 +242,13 @@ export {
   type CalendarProvider,
   type CalendarSyncLease,
 } from "./creatorCalendarRepository.js";
+export {
+  calendarProviderMirrorReady,
+  mirrorCalendarProviderAccount,
+  mirrorCalendarProviderEvents,
+  type CalendarMirrorAccountResult,
+  type CalendarMirrorTickResult,
+} from "./calendarProviderMirror.js";
 export {
   encryptCalendarCredential,
   decryptCalendarCredential,
@@ -186,10 +312,18 @@ export {
   profileNameEvidence,
   profileLinkRetirementStatement,
   syncProfileOpportunityLinks,
+  adjudicatePendingProfileLinks,
+  profileIdentityJevFromEnv,
+  profileLinkActionFromJev,
   type OpportunityIdentityInput,
   type ProfileIdentityDecision,
+  type ProfileIdentityJevOptions,
   type ProfileUrlEvidence,
 } from "./profileIdentityMatcher.js";
+export {
+  createDedupIdentityDecider,
+  dedupIdentityDeciderFromEnv,
+} from "./dedupIdentityDecider.js";
 export {
   commitTrackerImportTransaction,
   commitRelationalTrackerImportTransaction,
@@ -247,6 +381,18 @@ export {
   type ContentReviewQueueRow,
   type HumanContentReviewDecision,
 } from "./contentReviewAdmin.js";
+export {
+  emptyPublicationHoldQueue,
+  holdReasonsFromChecks,
+  mapPublicationHoldRow,
+  planPublicationApproval,
+  readPublicationHoldQueue,
+  resolvePublicationHold,
+  type PublicationApprovalPlan,
+  type PublicationHoldDecision,
+  type PublicationHoldQueueData,
+  type PublicationHoldRow,
+} from "./publicationHoldAdmin.js";
 export {
   classifyPublicationCandidate,
   publicationReviewMembershipHash,
@@ -306,7 +452,13 @@ export {
 export {
   runReviewTick,
   reviewCandidate,
+  editorialReview,
+  reviewPublishMode,
+  REVIEW_HOLD_REASON_TEXT,
+  type EditorialReviewResult,
   type ReviewCandidate,
+  type ReviewHoldReason,
+  type ReviewPublishMode,
 } from "./reviewWorker.js";
 export { runContentReviewTick } from "./contentWorker.js";
 export {
@@ -392,8 +544,13 @@ export {
   finishWorkerRun,
   heartbeatWorkerRun,
   readWorkerRunLifecycle,
+  readWorkerTickHealth,
+  recordWorkerTick,
   startWorkerRun,
+  workerTickRunId,
   type RadarWorkerKind,
+  type WorkerTickHealth,
+  type WorkerTickOutcome,
   type WorkerRunLifecycleStatus,
   type WorkerRunProgress,
 } from "./workerTelemetry.js";
@@ -416,6 +573,7 @@ export {
   type CreateOpportunityIssueReportResult,
   type PlatformAdminSupportCase,
   type PlatformAdminSupportQueue,
+  type PlatformAdminSupportQueueOptions,
   type PlatformAdminSupportSummary,
   type PlatformSupportStatus,
   type UpdatePlatformAdminSupportCaseInput,
@@ -584,8 +742,19 @@ export {
   type MediaDiscoveryResult,
 } from "./organizationMediaDiscovery.js";
 
+export * from "./ranking/live/sources.js";
+export * from "./ranking/live/feeFacts.js";
+export * from "./ranking/live/indexUpdate.js";
+export * from "./literary/index.js";
+
 export {
   PostgresMagazineRankingRepository,
+  refreshTurnaroundFromReports,
+  rerankYearGenre,
+  type MagazineIndexCoverage,
+  type MagazineIndexAnalytics,
+  type CategoryCounts,
+  type SubmissionTelemetryInput,
   type MagazineRankingOpportunity,
   type MagazineRankingRow,
   type MagazineRankingsFilter,
@@ -601,8 +770,9 @@ export {
   type ResidencyRankingPage,
   type SubmitResidencyReviewInput,
   type SubmitResidencyReviewResult,
-  type ResidencyIntelligenceSpecs,
-  type ResidencyFullIntelligenceProfile,
+  type ResidencyAmount,
+  residencyRow,
+  MISSA_REVIEWS_SOURCE_URL,
 } from "./ranking/residencyRankingRepository.js";
 
 export {
@@ -621,5 +791,92 @@ export {
   type ManuscriptMatchInput,
   type ManuscriptMatchCard,
   type ManuscriptMatchResponse,
+  type ManuscriptMatchStatus,
+  emptyManuscriptMatchResponse,
   type MatchCategory,
+  type ExcludedMagazine,
+  type DecisionModelInfo,
+  type ManuscriptRecognitionPiece,
 } from "./ranking/manuscriptMatchEngine.js";
+export * from "./ranking/submissionDecision.js";
+export {
+  WEB_VITAL_THRESHOLDS,
+  buildFunnelQuery,
+  createChartNote,
+  createMetricShare,
+  deleteChartNote,
+  isTrackedSitePath,
+  listChartNotes,
+  listMetricShares,
+  normalizeSitePath,
+  parseUserAgent,
+  periodFor,
+  purgeSiteObservability,
+  listPlatformAdminEmails,
+  readAlertSignals,
+  readAdminUserProfile,
+  readAlerts,
+  readGrowthMetrics,
+  readMetricShare,
+  readMonthlyMetrics,
+  readSiteFunnels,
+  readSiteHealth,
+  readSiteTraffic,
+  readUptimeFailureStreak,
+  recordSiteHit,
+  recordUptimeCheck,
+  revokeMetricShare,
+  searchAdminRecords,
+  siteVisitorHash,
+  upsertAlertState,
+  type AdminSearchResult,
+  type AdminUserProfile,
+  type AlertSignals,
+  type AlertTransition,
+  type Breakdown,
+  type ChartNote,
+  type FunnelDefinition,
+  type FunnelResult,
+  type FunnelStepMatch,
+  type GrowthData,
+  type MetricShare,
+  type MonthlyMetricsRow,
+  type ParsedUserAgent,
+  type SiteEventKind,
+  type SiteHealthData,
+  type SiteHitInput,
+  type SiteTrafficData,
+  type TrafficSummary,
+} from "./siteObservability.js";
+export * from "./ranking/residency/acaDirectory.js";
+export * from "./ranking/residency/recompute.js";
+export * from "./jevReadingRunner.js";
+export * from "./jevReadingEvaluation.js";
+export { relationsReady as cycleRelationsReady, type CycleDb, type CycleNotice } from "./cycleNotices.js";
+export * from "./cycleForecasts.js";
+export * from "./openingAlerts.js";
+export * from "./carryToNextCycle.js";
+export * from "./opportunityDeadlineFactsWriter.js";
+export { CONFIRMED_DATES_PREDICATE, type OpportunityRepositoryQueryWithDeadlineFacts } from "./opportunityRepository.js";
+export * from "./creatorObligationMutations.js";
+export { updateCanonicalTrackerPersonalTarget, CanonicalTrackerValidationError } from "./canonicalTracker.js";
+export type { CreatorReminderTextKind } from "./creatorReminderText.js";
+export { CREATOR_OPENING_NOTICE_KINDS, CREATOR_REMINDER_NOTICE_KINDS } from "./creatorReminderEmail.js";
+export { weeklyDigestPlanning, type WeeklyDigestPlanItem, type WeeklyDigestPlanning } from "./weeklyDigest.js";
+export {
+  calendarFeedAccountForToken,
+  calendarFeedForToken,
+  calendarFeedItemsForAccount,
+  type CalendarFeedData,
+  type CalendarFeedForecast,
+  type CalendarFeedObligation,
+  type CalendarFeedStage,
+  type CalendarFeedTier,
+  type CalendarFeedTracked,
+} from "./calendarFeedItems.js";
+export { trackerListItem, type CanonicalTrackerListItem } from "./canonicalTracker.js";
+export * from "./creatorSeason.js";
+export * from "./ranking/residency/provision.js";
+export * from "./ranking/live/honoursProfiles.js";
+export * from "./ranking/live/guidelineFacts.js";
+export { MAGAZINE_GUIDELINES } from "./ranking/data/magazines/guidelines.js";

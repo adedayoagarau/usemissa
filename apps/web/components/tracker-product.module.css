@@ -65,6 +65,23 @@
   line-height: 1.55;
 }
 
+.allowance {
+  margin-top: 8px;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.allowanceCount {
+  color: var(--foreground);
+}
+
+.allowanceLink {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .pageActions {
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -463,9 +480,10 @@
   font-size: 0.76rem;
 }
 
-.attention a {
+.attention a,
+.attentionButton {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 44px;
   flex: 0 0 auto;
   align-items: center;
   gap: 6px;
@@ -474,9 +492,52 @@
   font-weight: 700;
 }
 
-.attention a svg {
+.attention a svg,
+.attentionButton svg {
   width: 14px;
   height: 14px;
+}
+
+.attentionButton {
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.attentionButton:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.deadlineText {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.itemSignal {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 12px 0 0;
+  color: var(--muted-foreground);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.itemSignal svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.itemSignal small {
+  display: block;
+  font-size: 0.7rem;
 }
 
 .sectionHeading,
@@ -530,9 +591,16 @@
   background: var(--muted-foreground);
 }
 
-.itemCard[data-first-save="true"] {
+.itemCard[data-first-save="true"],
+.itemCard[data-selected="true"],
+.submissionCard[data-selected="true"] {
   border-color: color-mix(in srgb, var(--primary) 48%, transparent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 9%, transparent);
+}
+
+.itemCard[data-selected="true"],
+.submissionCard[data-selected="true"] {
+  scroll-margin-block: 96px;
 }
 
 .itemIdentity {
@@ -1007,7 +1075,8 @@
     padding: 15px;
   }
 
-  .importContext .quietLink {
+  .importContext .quietLink,
+  .importContext .quietButton {
     width: 100%;
   }
 
@@ -1046,7 +1115,8 @@
     grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .attention > div > a {
+  .attention > div > a,
+  .attention > div > .attentionButton {
     grid-column: 2;
     width: fit-content;
   }

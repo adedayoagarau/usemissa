@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import {
   OpportunityRevalidationRequiredError,
   OpportunityVersionHeadMissingError,
+  TrackingLimitReachedError,
 } from "@missa/radar-adapters";
 
 import { getSessionAccount } from "@/lib/auth";
+import { trackingLimitBody } from "@/lib/trackingLimit";
 import { getOpportunityRepository } from "@/lib/opportunityRepository";
 import {
   bindFirstSaveIntent,
@@ -24,6 +26,7 @@ import {
   saveOpportunityForAccount,
 } from "@/lib/saveOpportunityToTracker";
 import type { FirstSaveReceipt } from "@/lib/firstSaveTypes";
+import { afterTrackerSave } from "@/lib/tracker-save-hooks";
 
 const noStore = { "Cache-Control": "no-store" };
 
@@ -194,6 +197,9 @@ export async function POST(request: Request) {
     }
 
     const saved = await saveOpportunityForAccount(session, opportunity);
+    // A call saved before sign-up gets the same deadline, reminders and plan
+    // as one saved from the Tracker.
+    const calendar = await afterTrackerSave(session.account.id, opportunity.id);
     const nextAction = firstSaveNextAction(opportunity);
     const completion = createFirstSaveCompletionToken({
       journeyId: intent.journeyId,
@@ -254,10 +260,13 @@ export async function POST(request: Request) {
     }
     await Promise.all(saveEvents);
     return NextResponse.json(
-      { status: saved.status, receipt },
+      { status: saved.status, receipt, calendar },
       { status: saved.status === "created" ? 201 : 200, headers: noStore },
     );
   } catch (error) {
+    if (error instanceof TrackingLimitReachedError) {
+      return NextResponse.json(trackingLimitBody(error), { status: 409, headers: noStore });
+    }
     if (error instanceof OpportunityRevalidationRequiredError) {
       return NextResponse.json(
         {

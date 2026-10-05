@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "mcp__github__pull_request_read",
+      "mcp__github__list_pull_requests",
+      "mcp__github__search_pull_requests",
+      "mcp__github__create_pull_request",
+      "mcp__github__update_pull_request",
+      "mcp__github__update_pull_request_branch",
+      "mcp__github__merge_pull_request",
+      "mcp__github__get_file_contents",
+      "mcp__github__list_commits",
+      "mcp__github__get_commit"
+    ]
+  },
+  "autoMode": {
+    "allow": [
+      "$defaults",
+      "In adedayoagarau/usemissa, when the user asks to land or merge pull requests, including ones opened by other Claude sessions: merging main into a PR branch, resolving its conflicts, and pushing that merge commit (never a force push, rebase or other history rewrite); marking draft PRs ready for review; changing a PR's base branch; and merging PRs whose CI passes."
+    ]
+  }
+}

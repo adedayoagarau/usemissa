@@ -14,6 +14,29 @@ type AuthRateLimitInput = {
   email?: string;
 };
 
+/**
+ * Separate budgets for flows with different abuse profiles. The default
+ * policy covers sign-in and sign-up. Password reset sends email, so it gets a
+ * smaller budget in its own buckets.
+ */
+export type AuthRateLimitPolicy = {
+  scope: string;
+  ipLimit: number;
+  emailLimit: number;
+};
+
+export const DEFAULT_AUTH_RATE_LIMIT_POLICY: AuthRateLimitPolicy = {
+  scope: "",
+  ipLimit: IP_LIMIT,
+  emailLimit: EMAIL_LIMIT,
+};
+
+export const PASSWORD_RESET_RATE_LIMIT_POLICY: AuthRateLimitPolicy = {
+  scope: "password-reset",
+  ipLimit: 20,
+  emailLimit: 3,
+};
+
 type LocalBucket = {
   count: number;
   resetAt: number;
@@ -38,17 +61,19 @@ let redisClient: Redis | undefined;
  */
 export async function consumeAuthRateLimit(
   input: AuthRateLimitInput,
+  policy: AuthRateLimitPolicy = DEFAULT_AUTH_RATE_LIMIT_POLICY,
 ): Promise<number | undefined> {
   if (process.env.MISSA_DISABLE_AUTH_RATE_LIMIT === "1") return undefined;
   const now = Date.now();
+  const prefix = policy.scope ? `${policy.scope}:` : "";
   const scopes = [
-    { name: "ip", value: input.ip, limit: IP_LIMIT },
+    { name: `${prefix}ip`, value: input.ip, limit: policy.ipLimit },
     ...(input.email?.trim()
       ? [
           {
-            name: "email",
+            name: `${prefix}email`,
             value: input.email.trim().toLowerCase(),
-            limit: EMAIL_LIMIT,
+            limit: policy.emailLimit,
           },
         ]
       : []),

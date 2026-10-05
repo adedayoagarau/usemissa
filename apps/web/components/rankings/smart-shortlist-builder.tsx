@@ -20,19 +20,28 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { MagazineScheduleBadge } from "@/components/ui/magazine-schedule-badge";
 import { MagazineCitizenshipBadges } from "@/components/missa/magazine-citizenship-badges";
+import {
+  NOT_RECORDED,
+  feeLabel,
+  payLabel,
+  responseLabel,
+} from "@/lib/magazineFacts";
 import { MagazineTrackerAction } from "@/components/rankings/magazine-tracker-action";
+import { useSignedIn } from "@/lib/browserSession";
 
 interface SmartShortlistBuilderProps {
   initialPlan?: PortfolioStrategyPlan;
   initialGenre?: RankingGenre;
-  signedIn: boolean;
+  /** Omit on pages served from the CDN; the session then loads in the browser. */
+  signedIn?: boolean;
 }
 
 export function SmartShortlistBuilder({
   initialPlan,
   initialGenre = "overall",
-  signedIn,
+  signedIn: serverSignedIn,
 }: SmartShortlistBuilderProps) {
+  const signedIn = useSignedIn(serverSignedIn);
   const [genre, setGenre] = useState<RankingGenre>(initialGenre);
   const [preset, setPreset] = useState<SubmissionStrategyPreset>("balanced");
   const [freeOnly, setFreeOnly] = useState(false);
@@ -67,10 +76,10 @@ export function SmartShortlistBuilder({
         if (!res.ok) throw new Error("Plan generation failed");
         const data = await res.json();
         setPlan(data.plan);
-        toast.success("Submission portfolio updated!");
+        toast.success("Plan updated.");
       } catch (err) {
         console.error(err);
-        toast.error("Could not generate submission plan. Please try again.");
+        toast.error("We could not build a plan. Try again.");
       }
     });
   }, [fastOnly, freeOnly, genre, payingOnly, preset, simultaneousOnly]);
@@ -89,7 +98,7 @@ export function SmartShortlistBuilder({
       : `Missa Submission Shortlist (${plan.genre.toUpperCase()})`;
     const lines = [
       `# ${titleHeader}`,
-      `Strategy: ${plan.preset} · Estimated Reading Fees: $${(plan.totalEstimatedFeesCents / 100).toFixed(2)} · Avg Turnaround: ~${plan.expectedTurnaroundDays} days`,
+      `Strategy: ${plan.preset} · Recorded reading fees: $${(plan.totalEstimatedFeesCents / 100).toFixed(2)}${plan.unrecordedFeeCount > 0 ? ` (${plan.unrecordedFeeCount} not recorded)` : ""} · Median turnaround: ${plan.expectedTurnaroundDays != null ? `~${plan.expectedTurnaroundDays} days` : NOT_RECORDED.toLowerCase()}`,
       "",
       "## Targeted Submission Batch",
       "",
@@ -97,17 +106,9 @@ export function SmartShortlistBuilder({
 
     plan.slots.forEach((slot) => {
       const mag = slot.magazine;
-      const payStr =
-        mag.contributorPayCents > 0
-          ? `$${(mag.contributorPayCents / 100).toFixed(0)} pay`
-          : "Unpaid / Copies";
-      const feeStr =
-        mag.regularFeeCents === 0
-          ? "$0 fee"
-          : `$${(mag.regularFeeCents / 100).toFixed(0)} fee`;
-      const daysStr = mag.medianResponseDays
-        ? `~${mag.medianResponseDays}d`
-        : "unknown days";
+      const payStr = payLabel(mag);
+      const feeStr = feeLabel(mag);
+      const daysStr = `Response: ${responseLabel(mag)}`;
       lines.push(
         `- [ ] **${mag.name}** (${slot.role.toUpperCase()}) — Score: ${mag.totalScore} | ${payStr} | ${feeStr} | ${daysStr}`,
       );
@@ -292,9 +293,13 @@ export function SmartShortlistBuilder({
                   Est. Total Fees
                 </span>
                 <p className="text-lg font-bold text-foreground">
-                  {plan.totalEstimatedFeesCents === 0
-                    ? "$0 (100% Free)"
-                    : `$${(plan.totalEstimatedFeesCents / 100).toFixed(2)}`}
+                  {`$${(plan.totalEstimatedFeesCents / 100).toFixed(2)}`}
+                  {plan.unrecordedFeeCount > 0 ? (
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      {plan.unrecordedFeeCount} fee
+                      {plan.unrecordedFeeCount === 1 ? "" : "s"} not recorded
+                    </span>
+                  ) : null}
                 </p>
               </div>
               <div className="hidden h-8 w-px bg-border sm:block" />
@@ -303,7 +308,9 @@ export function SmartShortlistBuilder({
                   Expected Median Turnaround
                 </span>
                 <p className="text-lg font-bold text-foreground">
-                  ~{plan.expectedTurnaroundDays} Days
+                  {plan.expectedTurnaroundDays != null
+                    ? `~${plan.expectedTurnaroundDays} Days`
+                    : NOT_RECORDED}
                 </p>
               </div>
             </div>
@@ -391,7 +398,7 @@ export function SmartShortlistBuilder({
                             medianResponseDays: mag.medianResponseDays,
                             regularFeeCents: mag.regularFeeCents,
                             contributorPayCents: mag.contributorPayCents,
-                            formatEthicsScore: mag.formatEthicsScore ?? 0,
+                            debutFriendly: mag.debutFriendly ?? null,
                           }}
                           compact
                           className="mt-2"
@@ -417,9 +424,7 @@ export function SmartShortlistBuilder({
                           Pay
                         </span>
                         <span className="text-xs font-medium text-foreground">
-                          {mag.contributorPayCents > 0
-                            ? `$${(mag.contributorPayCents / 100).toFixed(0)}`
-                            : "Copies/Unpaid"}
+                          {payLabel(mag)}
                         </span>
                       </div>
 
@@ -429,9 +434,7 @@ export function SmartShortlistBuilder({
                           Fee
                         </span>
                         <span className="text-xs font-medium text-foreground">
-                          {mag.regularFeeCents === 0
-                            ? "Free ($0)"
-                            : `$${(mag.regularFeeCents / 100).toFixed(0)}`}
+                          {feeLabel(mag)}
                         </span>
                       </div>
 
@@ -441,9 +444,7 @@ export function SmartShortlistBuilder({
                           Turnaround
                         </span>
                         <span className="text-xs font-medium text-foreground">
-                          {mag.medianResponseDays
-                            ? `~${mag.medianResponseDays} days`
-                            : "Unknown"}
+                          {responseLabel(mag)}
                         </span>
                       </div>
 

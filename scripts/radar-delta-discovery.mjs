@@ -54,6 +54,23 @@ async function fetchHtml(url) {
 
 let newOpportunitiesDiscovered = 0;
 
+// Shadow-only Jev confirming decisions for newly detected calls. This script
+// inserts nothing, so the decisions are recorded for evaluation and never gate.
+let recordDetection = async () => undefined;
+try {
+  const confirming = await import("../packages/radar-adapters/dist/src/confirmingDecisions.js");
+  const context = { ...confirming.directPublishContextFromEnv(client), mode: "shadow" };
+  recordDetection = async (opportunityId, record) => {
+    try {
+      await confirming.confirmDirectPublish(context, { opportunityId, record, evidenceUrl: record.sourceUrl ?? null });
+    } catch {
+      // Never block discovery on a decision.
+    }
+  };
+} catch {
+  // Decisions are optional.
+}
+
 try {
   // 1. RIVET.ES DELTA (Page 1 -> 20 latest calls)
   console.log("1. Checking Rivet.es recent calls (Page 1)...");
@@ -68,6 +85,11 @@ try {
         // Detected brand new call!
         console.log(`   ✨ New Rivet call detected: ${slug}`);
         newOpportunitiesDiscovered++;
+        await recordDetection(`opp_rivet_${slug.replace(/[^a-zA-Z0-9_-]/g, "")}`.slice(0, 120), {
+          title: `${slug.split("-").map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(" ")} Open Call`,
+          sourceUrl: `https://rivet.es/calls/${slug}/`,
+          origin: "rivet-calls",
+        });
       }
     }
   }
@@ -123,6 +145,17 @@ try {
         if (exists.rows.length === 0) {
           console.log(`   ✨ New Submittable call detected: "${item.name}" by ${item.organization?.name}`);
           newOpportunitiesDiscovered++;
+          const submissionUrl = item.organization?.subdomain
+            ? `https://${item.organization.subdomain}.submittable.com/submit/${item.id}`
+            : `https://manager.submittable.com/opportunities/discover/${item.id}`;
+          await recordDetection(oppId, {
+            title: item.name ? String(item.name).trim() : null,
+            organizationName: item.organization?.name ?? null,
+            sourceUrl: submissionUrl,
+            submissionUrl,
+            deadlineDate: item.deadline && !Number.isNaN(new Date(item.deadline).getTime()) ? new Date(item.deadline).toISOString().slice(0, 10) : null,
+            origin: "submittable-discover-api",
+          });
         }
       }
     }

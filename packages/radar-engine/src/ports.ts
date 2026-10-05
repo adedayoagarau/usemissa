@@ -33,6 +33,20 @@ export interface Extractor {
   extract(source: Source, snapshot: PageSnapshot): OpportunityCandidate | Promise<OpportunityCandidate>;
 }
 
+/**
+ * Optional gate asked before extracting a page whose content hash changed.
+ * Returning false treats the change as carrying no new opportunity facts:
+ * the source keeps its current opportunities and records the new hash. A
+ * gate that throws is ignored and the page is extracted as usual.
+ */
+export interface ExtractionGate {
+  shouldExtract(
+    source: Source,
+    previous: PageSnapshot | undefined,
+    next: PageSnapshot,
+  ): boolean | Promise<boolean>;
+}
+
 export interface IdGenerator {
   next(prefix: string): string;
 }

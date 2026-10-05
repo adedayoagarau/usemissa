@@ -1,173 +1,222 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { Suspense, useState, useTransition } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { MissaWordmark } from '@/components/missa-wordmark';
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState, useTransition } from "react";
+import { AlertCircle, CheckCircle2, Eye, EyeOff, KeyRound } from "lucide-react";
+import { AuthShell } from "@/components/auth-shell";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
+import styles from "@/app/auth.module.css";
+
+const headingClass =
+  "font-heading text-4xl leading-[1.05] tracking-tight text-balance text-foreground";
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
-  const token = searchParams.get('token') || '';
+  const token = searchParams.get("token") || "";
 
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   if (!token) {
     return (
-      <div className="text-center space-y-4">
-        <h2 className="text-lg font-medium text-foreground">Missing reset token</h2>
-        <p className="text-sm text-muted-foreground">
-          This password reset link is invalid or incomplete. Please request a new link.
+      <section aria-labelledby="reset-heading">
+        <h1 id="reset-heading" className={headingClass}>
+          Missing reset token
+        </h1>
+        <p className="mt-3 text-base leading-relaxed text-muted-foreground">
+          This password reset link is invalid or incomplete. Request a new link
+          to continue.
         </p>
         <Link
           href="/forgot-password"
-          className="inline-block py-2.5 px-4 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors"
+          className={buttonVariants({ size: "lg", className: "mt-8 w-full" })}
         >
           Request new reset link
         </Link>
-      </div>
+      </section>
     );
   }
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+      setFieldError("Use at least 8 characters for your password.");
+      document.getElementById("password")?.focus();
       return;
     }
 
     setError(null);
+    setFieldError(null);
     startTransition(async () => {
       try {
-        const response = await fetch('/api/auth/reset-password', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
+        const response = await fetch("/api/auth/reset-password", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
           body: JSON.stringify({ token, password }),
         });
 
-        const body = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+        const body = (await response.json().catch(() => ({}))) as {
+          ok?: boolean;
+          error?: string;
+        };
         if (!response.ok || !body.ok) {
-          setError(body.error || 'Failed to reset password. Link may be expired.');
+          setError(
+            body.error ||
+              "We could not reset your password. The link may have expired.",
+          );
           return;
         }
 
         setSuccess(true);
       } catch {
-        setError('A network error occurred. Please try again.');
+        setError("A network error occurred. Please try again.");
       }
     });
   };
 
   if (success) {
     return (
-      <div className="space-y-4 text-center">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary mb-2">
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <h2 className="text-lg font-medium text-foreground">Password updated</h2>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          Your password has been successfully reset. You can now log in with your new credentials.
+      <section
+        aria-labelledby="reset-heading"
+        className="animate-in duration-200 fade-in-0 motion-reduce:animate-none"
+      >
+        <span
+          aria-hidden="true"
+          className="mb-6 flex size-11 items-center justify-center rounded-full bg-accent-tint text-primary"
+        >
+          <CheckCircle2 className="size-5" />
+        </span>
+        <h1 id="reset-heading" className={headingClass}>
+          Password updated
+        </h1>
+        <p className="mt-3 text-base leading-relaxed text-muted-foreground">
+          Your password has been reset. Other devices have been signed out.
         </p>
-        <div className="pt-4">
-          <Link
-            href="/login"
-            className="inline-block w-full text-center py-2.5 px-4 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors"
-          >
-            Log in to Missa
-          </Link>
-        </div>
-      </div>
+        <Link
+          href="/login"
+          className={buttonVariants({ size: "lg", className: "mt-8 w-full" })}
+        >
+          Log in to Missa
+        </Link>
+      </section>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      {error && (
-        <div className="p-3 text-sm rounded-lg bg-destructive/10 border border-destructive/20 text-destructive">
-          {error}
-        </div>
-      )}
-
-      <div>
-        <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1.5">
-          New password
-        </label>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          required
-          minLength={8}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="At least 8 characters"
-          className="h-11"
-        />
-      </div>
-
-      <div>
-        <label htmlFor="confirmPassword" className="block text-sm font-medium text-foreground mb-1.5">
-          Confirm new password
-        </label>
-        <Input
-          id="confirmPassword"
-          name="confirmPassword"
-          type="password"
-          autoComplete="new-password"
-          required
-          minLength={8}
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          placeholder="Repeat your new password"
-          className="h-11"
-        />
-      </div>
-
-      <Button
-        type="submit"
-        disabled={isPending}
-        className="w-full"
+    <section aria-labelledby="reset-heading">
+      <span
+        aria-hidden="true"
+        className="mb-6 flex size-11 items-center justify-center rounded-full bg-accent-tint text-primary"
       >
-        {isPending ? 'Updating password…' : 'Set new password'}
-      </Button>
-    </form>
+        <KeyRound className="size-5" />
+      </span>
+      <h1 id="reset-heading" className={headingClass}>
+        Choose a new password
+      </h1>
+      <p className="mt-3 text-base leading-relaxed text-muted-foreground">
+        Use at least 8 characters that you don’t use anywhere else.
+      </p>
+      <form onSubmit={handleSubmit} className="mt-8 grid gap-5" noValidate>
+        <Field data-invalid={Boolean(fieldError)}>
+          <FieldLabel htmlFor="password">New password</FieldLabel>
+          <div className={styles.passwordWrap}>
+            <Input
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              required
+              minLength={8}
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setFieldError(null);
+              }}
+              aria-invalid={Boolean(fieldError)}
+              aria-describedby={
+                fieldError ? "password-error" : "password-guidance"
+              }
+            />
+            <button
+              type="button"
+              className={styles.passwordToggle}
+              onClick={() => setShowPassword((value) => !value)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? (
+                <EyeOff className="size-4" />
+              ) : (
+                <Eye className="size-4" />
+              )}
+            </button>
+          </div>
+          <p
+            id="password-guidance"
+            className={
+              password.length >= 8
+                ? "flex items-center gap-1.5 text-sm text-primary"
+                : "flex items-center gap-1.5 text-sm text-muted-foreground"
+            }
+          >
+            <CheckCircle2 aria-hidden="true" className="size-4" />
+            At least 8 characters
+          </p>
+          {fieldError ? (
+            <FieldError id="password-error">{fieldError}</FieldError>
+          ) : null}
+        </Field>
+
+        {error ? (
+          <Alert variant="destructive">
+            <AlertCircle aria-hidden="true" />
+            <AlertDescription>
+              {error}{" "}
+              <Link
+                href="/forgot-password"
+                className="font-medium underline underline-offset-4"
+              >
+                Request a new link
+              </Link>
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        <Button
+          type="submit"
+          size="lg"
+          disabled={isPending}
+          aria-busy={isPending}
+          className="w-full"
+        >
+          {isPending ? <Spinner aria-hidden="true" /> : null}
+          {isPending ? "Updating password…" : "Set new password"}
+        </Button>
+      </form>
+    </section>
   );
 }
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen bg-background flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center mb-6">
-          <MissaWordmark className="h-6 w-auto text-foreground" />
-        </div>
-        <h1 className="text-center text-2xl font-serif font-medium text-foreground">
-          Choose a new password
-        </h1>
-        <p className="mt-2 text-center text-sm text-muted-foreground max-w-xs mx-auto">
-          Ensure your password is at least 8 characters long and not easily guessed.
-        </p>
-      </div>
-
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
-        <div className="bg-card py-8 px-6 sm:px-10 border border-border rounded-xl shadow-sm">
-          <Suspense fallback={<div className="text-center text-sm text-muted-foreground">Loading…</div>}>
-            <ResetPasswordForm />
-          </Suspense>
-        </div>
-      </div>
-    </div>
+    <AuthShell visual="recovery">
+      <Suspense
+        fallback={
+          <p role="status" className="text-sm text-muted-foreground">
+            Loading…
+          </p>
+        }
+      >
+        <ResetPasswordForm />
+      </Suspense>
+    </AuthShell>
   );
 }

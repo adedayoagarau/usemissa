@@ -8,6 +8,7 @@ COPY apps ./apps
 RUN npm ci --ignore-scripts
 RUN npm run build --workspace=@missa/contracts \
   && npm run build --workspace=@missa/taxonomy \
+  && npm run build --workspace=@missa/decisions \
   && npm run build --workspace=@missa/db \
   && npm run build --workspace=@missa/radar-engine \
   && npm run build --workspace=@missa/ingestion-v2
@@ -23,6 +24,8 @@ COPY --from=build /app/packages/contracts/package.json ./packages/contracts/pack
 COPY --from=build /app/packages/contracts/dist ./packages/contracts/dist
 COPY --from=build /app/packages/taxonomy/package.json ./packages/taxonomy/package.json
 COPY --from=build /app/packages/taxonomy/dist ./packages/taxonomy/dist
+COPY --from=build /app/packages/decisions/package.json ./packages/decisions/package.json
+COPY --from=build /app/packages/decisions/dist ./packages/decisions/dist
 COPY --from=build /app/packages/db/package.json ./packages/db/package.json
 COPY --from=build /app/packages/db/dist ./packages/db/dist
 COPY --from=build /app/packages/radar-engine/package.json ./packages/radar-engine/package.json

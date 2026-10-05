@@ -2,6 +2,7 @@
 
 import { useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { showSaveFailure } from '@/lib/saveFailureToast';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 
@@ -26,7 +27,7 @@ export function TrackButton({ opportunityId }: { userId: string; opportunityId: 
           });
           if (!res.ok) {
             const body = await res.json().catch(() => ({}));
-            toast.error(body.error ?? 'Failed to track');
+            showSaveFailure(body, 'Failed to track');
             return;
           }
           toast.success('Tracking this opportunity');

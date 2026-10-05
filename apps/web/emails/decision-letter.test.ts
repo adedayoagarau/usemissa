@@ -12,10 +12,11 @@ test('renderDecisionLetter renders accepted decision letter with editorial notes
     nextSteps: 'Our managing editor will contact you with contracts next week.',
   });
 
-  assert.ok(rendered.subject.includes('Three Seasons'));
-  assert.ok(rendered.subject.includes('The Paris Review'));
+  assert.equal(rendered.subject, 'About Three Seasons, from The Paris Review');
   assert.ok(rendered.html.includes('Dear Jane Doe,'));
-  assert.ok(rendered.html.includes('We are delighted to inform you'));
+  assert.ok(rendered.html.includes('We are delighted to tell you that we have accepted Three Seasons.'));
+  assert.ok(rendered.html.includes('Sent with Missa'), 'the organisation leads and Missa is the carrier');
+  assert.ok(rendered.html.includes('The Paris Review sent this through Missa'));
   assert.ok(rendered.html.includes('We loved the closing stanza in particular.'));
   assert.ok(rendered.html.includes('Our managing editor will contact you'));
   assert.ok(rendered.text.includes('Dear Jane Doe,'));
@@ -29,7 +30,8 @@ test('renderDecisionLetter renders polite decline letter', () => {
     outcome: 'declined',
   });
 
-  assert.ok(rendered.html.includes('it is not the right fit for <strong>Granta</strong>'));
+  assert.ok(rendered.html.includes('it is not the right fit for Granta at this time.'));
+  assert.ok(!rendered.html.includes('<strong>'), 'organisation text is never formatted as markup');
 });
 
 test('deliverDecisionEmail dispatches actionable email idempotently', async () => {

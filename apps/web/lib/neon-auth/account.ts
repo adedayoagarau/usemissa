@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
+import { headers } from 'next/headers';
 
-import { membershipsFor, type Account } from '@missa/radar-engine';
+import { isSessionIssuedAfterRevocation, membershipsFor, type Account } from '@missa/radar-engine';
 import { CreatorAccountProvisionError } from '@missa/radar-adapters';
 
 import { getEngine, persistRadar } from '@/lib/engine';
@@ -29,6 +30,18 @@ export class NeonAuthAccountError extends Error {
   }
 }
 
+/** Better Auth's session cookie as Neon Auth names it. */
+const NEON_AUTH_SESSION_COOKIE = '__Secure-neon-auth.session_token';
+
+/**
+ * Neon Auth's getSession() asks the remote auth service even when the request
+ * carries no session cookie, which cannot produce a session. Checking the same
+ * Cookie header it forwards keeps anonymous page renders off the network.
+ */
+async function hasNeonSessionCookie(): Promise<boolean> {
+  return ((await headers()).get('cookie') ?? '').includes(NEON_AUTH_SESSION_COOKIE);
+}
+
 /**
  * Resolve a previously linked Neon Auth identity without creating product
  * data as a side effect of an ordinary read.
@@ -38,10 +51,16 @@ export async function getNeonSessionAccount(): Promise<SessionAccount | undefine
   if (!auth) return undefined;
 
   try {
+    if (!(await hasNeonSessionCookie())) return undefined;
     const result = await auth.getSession();
     if (result.error || !result.data?.session || !result.data.user) return undefined;
     const resolved = await resolveNeonAuthAccount(result.data.user, false);
-    return resolved && 'memberships' in resolved ? resolved : undefined;
+    if (!resolved || !('memberships' in resolved)) return undefined;
+    // A Neon session that predates the account's revocation boundary is
+    // treated like a revoked Missa cookie, even while Neon still honors it.
+    return isSessionIssuedAfterRevocation(result.data.session.createdAt, resolved.account)
+      ? resolved
+      : undefined;
   } catch {
     return undefined;
   }
@@ -85,6 +104,10 @@ export async function provisionNeonAuthAccount(identity?: SignupIdentity): Promi
       503,
       'We could not connect your Missa account. Try again.',
     );
+  }
+  // The bridge must not mint a fresh Missa cookie from a revoked Neon session.
+  if (!isSessionIssuedAfterRevocation(result.data.session.createdAt, resolved.account)) {
+    throw new NeonAuthAccountError(401, 'Your session has ended. Sign in again.');
   }
   return resolved;
 }

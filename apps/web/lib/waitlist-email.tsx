@@ -1,5 +1,4 @@
 import { renderWaitlistConfirmationEmail, WAITLIST_CONFIRMATION_SUBJECT, waitlistConfirmationText } from '@/emails/waitlist-confirmation';
-import { absoluteUrl } from '@/lib/seo';
 import { sendMail } from '@/lib/mail-service';
 
 export interface WaitlistConfirmationEmailContent {
@@ -21,10 +20,9 @@ export interface WaitlistConfirmationDeliveryReport {
 }
 
 export function buildWaitlistConfirmationEmail(): WaitlistConfirmationEmailContent {
-  const logoUrl = absoluteUrl('/brand/missa-wordmark-240.svg');
   return {
     subject: WAITLIST_CONFIRMATION_SUBJECT,
-    html: `<!DOCTYPE html>${renderWaitlistConfirmationEmail({ logoUrl })}`,
+    html: renderWaitlistConfirmationEmail(),
     text: waitlistConfirmationText(),
   };
 }

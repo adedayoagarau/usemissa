@@ -3,6 +3,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import pg from "pg";
 import type { SubmittableItem } from "./harvestSubmittable.js";
+import { firstOwnUrl } from "@missa/radar-engine";
 
 const possibleEnvFiles = [
   "/Volumes/Crucial X10/usemissa/.env.local",
@@ -155,7 +156,8 @@ try {
         orgId,
         JSON.stringify({
           name: org.name,
-          website_url: org.websiteUrl || org.shareUrl,
+          // A Submittable page is never recorded as the organization's website.
+          website_url: firstOwnUrl(org.websiteUrl) ?? null,
           submittable_url: org.shareUrl,
           logo_url: org.imageUrl,
         }),
@@ -164,9 +166,9 @@ try {
       orgId = `org_subm_${org.id}`;
       createdOrgs++;
 
-      const websiteUrl = org.websiteUrl || org.shareUrl;
+      const websiteUrl = firstOwnUrl(org.websiteUrl) ?? null;
       let normWebsite = "";
-      try { normWebsite = new URL(websiteUrl).hostname.replace(/^www\./, ""); } catch {}
+      try { if (websiteUrl) normWebsite = new URL(websiteUrl).hostname.replace(/^www\./, ""); } catch {}
 
       await client.query(`
         INSERT INTO radar_organizations (id, data, created_at, updated_at)

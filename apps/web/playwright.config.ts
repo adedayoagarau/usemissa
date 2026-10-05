@@ -13,6 +13,9 @@ const relationalSpecs = [
   "**/discovery-relational.spec.ts",
   "**/profile.spec.ts",
   "**/profile-privacy.spec.ts",
+  "**/tracker-record.spec.ts",
+  "**/creator-home.spec.ts",
+  "**/creator-profile-relational.spec.ts",
 ];
 
 export default defineConfig({
@@ -45,6 +48,9 @@ export default defineConfig({
           DATABASE_URL: relational ? relationalDatabaseUrl : "",
           MISSA_SESSION_SECRET: "missa-e2e-session-secret",
           MISSA_DISABLE_AUTH_RATE_LIMIT: "1",
+          // Off by default in deployments; the browser suite still covers them.
+          MISSA_GMAIL_SYNC_ENABLED: "1",
+          MISSA_EMAIL_FORWARDING_ENABLED: "1",
           MISSA_CREATOR_RELATIONAL_AUTHORITY: relational ? "1" : "0",
           MISSA_OPPORTUNITY_REPOSITORY: relational ? "postgres" : "engine",
           MISSA_OPPORTUNITY_CONTENT_READS: relational ? "1" : "engine",

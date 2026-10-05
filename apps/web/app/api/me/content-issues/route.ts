@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { Pool } from "pg";
 import { getSessionAccount } from "@/lib/auth";
+import {
+  creatorDecisionContext,
+  recordContentIssueCredibility,
+} from "@/lib/creator-decisions";
 
 export const runtime = "nodejs";
 
@@ -87,6 +91,13 @@ export async function POST(request: Request) {
       [id, JSON.stringify({ subjectType, subjectId, issueType, status: "open" })],
     );
     await client.query("commit");
+    // How checkable the report is (scope moderation), recorded after the
+    // response; live mode orders the admin support queue by it.
+    const decisions = creatorDecisionContext("moderation");
+    if (decisions)
+      after(() =>
+        recordContentIssueCredibility(decisions, { reportId: id, subjectType, issueType, correction, evidenceUrl }).catch(() => undefined),
+      );
     return NextResponse.json({ status: "received", reportId: id }, { status: 201, headers });
   } catch {
     await client.query("rollback").catch(() => undefined);

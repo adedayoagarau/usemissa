@@ -7,14 +7,34 @@ export type CreatorNotificationPreferences = Readonly<{
   savedSearchEnabled: boolean; followEnabled: boolean; reminderEnabled: boolean;
   smsEnabled?: boolean; smsPhone?: string | null; smsPhoneVerifiedAt?: string | null;
   smsProviderState?: "unavailable" | "available";
+  /** True when the verified phone replied STOP and has not opted back in. */
+  smsOptedOut?: boolean;
+  /** Whether the account's plan includes text reminders; filled in by the web layer. */
+  smsPlanEligible?: boolean;
+  /** IANA timezone for reminder timing; null means each reminder's own timezone. */
+  timezone?: string | null;
+  /** "HH:MM" local start and end of quiet hours; both null when quiet hours are off. */
+  quietHoursStart?: string | null; quietHoursEnd?: string | null;
+  /** True for an account that has not yet chosen its email settings and should be asked once. */
+  emailChoiceNeeded?: boolean;
   providerState: "unavailable" | "available"; revision: number;
 }>;
+
+const clock = (minute: number | null) =>
+  minute === null ? null : `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
+/** Parse "HH:MM" into minutes after midnight; null for anything else. */
+export function quietHoursMinute(value: string | null | undefined): number | null {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value ?? "");
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+}
 
 type PreferenceRow = {
   in_app_enabled: boolean; email_enabled: boolean; digest_cadence: NotificationDigestCadence;
   saved_search_enabled: boolean; follow_enabled: boolean; reminder_enabled: boolean;
   sms_enabled: boolean; sms_phone: string | null; sms_phone_verified_at: Date | string | null;
-  sms_provider_state: "unavailable" | "available";
+  sms_provider_state: "unavailable" | "available"; sms_opted_out: boolean;
+  timezone: string | null; quiet_hours_start_minute: number | null; quiet_hours_end_minute: number | null;
+  email_choice_needed: boolean;
   provider_state: "unavailable" | "available"; revision: number;
 };
 
@@ -24,7 +44,10 @@ function view(row: PreferenceRow): CreatorNotificationPreferences {
     savedSearchEnabled: row.saved_search_enabled, followEnabled: row.follow_enabled,
     reminderEnabled: row.reminder_enabled, smsEnabled: row.sms_enabled, smsPhone: row.sms_phone,
     smsPhoneVerifiedAt: row.sms_phone_verified_at ? new Date(row.sms_phone_verified_at).toISOString() : null,
-    smsProviderState: row.sms_provider_state, providerState: row.provider_state, revision: row.revision,
+    smsProviderState: row.sms_provider_state, smsOptedOut: Boolean(row.sms_opted_out), timezone: row.timezone,
+    quietHoursStart: clock(row.quiet_hours_start_minute), quietHoursEnd: clock(row.quiet_hours_end_minute),
+    emailChoiceNeeded: Boolean(row.email_choice_needed),
+    providerState: row.provider_state, revision: row.revision,
   };
 }
 
@@ -38,7 +61,12 @@ export class PostgresCreatorNotificationRepository extends CreatorRepositoryBase
               coalesce((to_jsonb(p)->>'sms_enabled')::boolean,false) as sms_enabled,
               to_jsonb(p)->>'sms_phone' as sms_phone,
               (to_jsonb(p)->>'sms_phone_verified_at')::timestamptz as sms_phone_verified_at,
-              coalesce(to_jsonb(p)->>'sms_provider_state','unavailable') as sms_provider_state
+              coalesce(to_jsonb(p)->>'sms_provider_state','unavailable') as sms_provider_state,
+              to_jsonb(p)->>'sms_opted_out_at' is not null as sms_opted_out,
+              to_jsonb(p)->>'timezone' as timezone,
+              (to_jsonb(p)->>'quiet_hours_start_minute')::int as quiet_hours_start_minute,
+              (to_jsonb(p)->>'quiet_hours_end_minute')::int as quiet_hours_end_minute,
+              (to_jsonb(p) ? 'email_choice_at') and to_jsonb(p)->>'email_choice_at' is null as email_choice_needed
        from notification_preferences p where p.account_id=$1`,
       [accountId],
     );
@@ -56,28 +84,77 @@ export class PostgresCreatorNotificationRepository extends CreatorRepositoryBase
     return this.preferences(accountId);
   }
 
-  async update(envelope: CreatorCommandEnvelope, input: Omit<CreatorNotificationPreferences, "providerState" | "revision" | "smsProviderState" | "smsPhoneVerifiedAt" | "smsEnabled" | "smsPhone"> & Partial<Pick<CreatorNotificationPreferences, "smsEnabled" | "smsPhone">>): Promise<CreatorReceipt> {
+  async update(envelope: CreatorCommandEnvelope, input: Omit<CreatorNotificationPreferences, "providerState" | "revision" | "smsProviderState" | "smsPhoneVerifiedAt" | "smsEnabled" | "smsPhone" | "timezone" | "quietHoursStart" | "quietHoursEnd"> & Partial<Pick<CreatorNotificationPreferences, "smsEnabled" | "smsPhone" | "timezone" | "quietHoursStart" | "quietHoursEnd">>): Promise<CreatorReceipt> {
     return this.executeOwnerCommand(envelope, async (client) => {
+      const timingSchema = await client.query<{ ready: boolean }>(
+        `select count(*) = 3 as ready
+         from information_schema.columns
+         where table_schema=current_schema() and table_name='notification_preferences'
+           and column_name in ('timezone','quiet_hours_start_minute','quiet_hours_end_minute')`,
+      );
+      const timingReady = Boolean(timingSchema.rows[0]?.ready);
       const smsSchema = await client.query<{ ready: boolean }>(
         `select count(*) = 4 as ready
          from information_schema.columns
          where table_schema=current_schema() and table_name='notification_preferences'
            and column_name in ('sms_enabled','sms_phone','sms_phone_verified_at','sms_provider_state')`,
       );
-      const smsReset = smsSchema.rows[0]?.ready
-        ? ",sms_enabled=false,sms_phone=null"
+      // Texts stay on only for a verified phone; the caller has already
+      // checked the plan and provider. The phone itself changes only through
+      // verification, never through this form.
+      const sms = smsSchema.rows[0]?.ready
+        ? `,sms_enabled=($${timingReady ? 12 : 9}::boolean and sms_phone is not null and sms_phone_verified_at is not null)`
         : "";
+      // Older databases without the timing columns keep saving the rest.
+      const timing = timingReady
+        ? ",timezone=$9,quiet_hours_start_minute=$10,quiet_hours_end_minute=$11"
+        : "";
+      // Saving these settings is the creator's email choice, so the one-time prompt stops.
+      const choice = await this.hasEmailChoiceColumn(client) ? ",email_choice_at=now()" : "";
       const updated = await client.query<{ revision: number }>(
         `update notification_preferences set in_app_enabled=$3,email_enabled=$4,digest_cadence=$5,
-           saved_search_enabled=$6,follow_enabled=$7,reminder_enabled=$8${smsReset},
+           saved_search_enabled=$6,follow_enabled=$7,reminder_enabled=$8${timing}${sms}${choice},
            revision=revision+1,updated_at=now()
          where account_id=$1 and revision=$2 returning revision`,
         [envelope.accountId, envelope.expectedRevision, input.inAppEnabled, input.emailEnabled, input.digestCadence,
-          input.savedSearchEnabled, input.followEnabled, input.reminderEnabled],
+          input.savedSearchEnabled, input.followEnabled, input.reminderEnabled,
+          ...(timing ? [input.timezone ?? null, quietHoursMinute(input.quietHoursStart), quietHoursMinute(input.quietHoursEnd)] : []),
+          ...(sms ? [input.smsEnabled === true] : [])],
       );
       if (!updated.rows[0]) return this.conflict(client, envelope);
       return { resourceType: "notification-preferences", resourceId: envelope.accountId, revision: updated.rows[0].revision };
     });
+  }
+
+  /**
+   * Answer the one-time email question for an account created before email
+   * was on by default. Accepting turns on reminder emails and the weekly
+   * digest; declining keeps the current settings. Either way Missa stops asking.
+   */
+  async recordEmailChoice(envelope: CreatorCommandEnvelope, accept: boolean): Promise<CreatorReceipt> {
+    return this.executeOwnerCommand(envelope, async (client) => {
+      if (!await this.hasEmailChoiceColumn(client)) throw new Error("Email choice is unavailable before migration 0079");
+      const updated = await client.query<{ revision: number }>(
+        `update notification_preferences
+            set email_choice_at=now(),
+                email_enabled=case when $3 then true else email_enabled end,
+                reminder_enabled=case when $3 then true else reminder_enabled end,
+                digest_cadence=case when $3 then 'weekly' else digest_cadence end,
+                revision=revision+1,updated_at=now()
+          where account_id=$1 and revision=$2 returning revision`,
+        [envelope.accountId, envelope.expectedRevision, accept],
+      );
+      if (!updated.rows[0]) return this.conflict(client, envelope);
+      return { resourceType: "notification-preferences", resourceId: envelope.accountId, revision: updated.rows[0].revision };
+    });
+  }
+
+  private async hasEmailChoiceColumn(client: PoolClient): Promise<boolean> {
+    const result = await client.query<{ ready: boolean }>(
+      `select count(*) = 1 as ready from information_schema.columns
+        where table_schema=current_schema() and table_name='notification_preferences' and column_name='email_choice_at'`,
+    );
+    return Boolean(result.rows[0]?.ready);
   }
 
   private async conflict(client: PoolClient, envelope: CreatorCommandEnvelope): Promise<never> {

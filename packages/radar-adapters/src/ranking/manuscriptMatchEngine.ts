@@ -1,11 +1,18 @@
 import { Pool } from "pg";
-import type {
-  EditorialIntelligenceFullProfile,
-  PublicationEditorialSpecs,
-  PublicationCompensationDetails,
-  PublicationTelemetryAnalytics,
-  PublicationAestheticProfile,
-} from "./editorialIntelligenceRepository.js";
+import { recognitionForPublication } from "../literary/index.js";
+import {
+  DECISION_MODEL_VERSION,
+  TIER_THRESHOLDS,
+  buildSubmissionPlan,
+  compareCandidates,
+  decideMagazine,
+  formFromGenreLabel,
+  type DecisionBrief,
+  type Exclusion,
+  type MagazineDecision,
+  type MagazineFacts,
+  type SubmissionPlan,
+} from "./submissionDecision.js";
 
 export interface ManuscriptMatchInput {
   genre: "fiction" | "poetry" | "nonfiction" | "flash" | "hybrid";
@@ -19,13 +26,31 @@ export interface ManuscriptMatchInput {
   minPayRate?: "pro_rates_only" | "any_paying" | "all";
   allowSimultaneous?: boolean;
   limit?: number;
+  /**
+   * Name search across the whole index. When set, the response carries the
+   * matching magazines in `searchResults`, scored against the same brief.
+   */
+  query?: string;
+  /** The writer's country, for prizes with nationality rules. */
+  writerCountry?: string;
+  /**
+   * The date reading periods are checked against (YYYY-MM-DD). Defaults to
+   * today in UTC; pass it to reproduce a plan exactly.
+   */
+  asOf?: string;
 }
 
 export type MatchCategory =
-  | "dream_reach"
-  | "debut_champion"
-  | "rapid_pro"
-  | "packet_builder";
+  "dream_reach" | "debut_champion" | "rapid_pro" | "packet_builder";
+
+/** A prize-recognised piece this magazine published. */
+export interface ManuscriptRecognitionPiece {
+  /** The anthology or prize that picked it. */
+  source: string;
+  year: number;
+  writer: string;
+  work: string | null;
+}
 
 export interface ManuscriptMatchCard {
   profileId: string;
@@ -39,22 +64,26 @@ export interface ManuscriptMatchCard {
   specs: {
     maxWordCount: number | null;
     minWordCount: number | null;
-    allowsSimultaneous: boolean;
+    /** null when no source records the policy. */
+    allowsSimultaneous: boolean | null;
     requiresBlindReview: boolean;
   };
+  /** Values are null when Missa holds no stored record for them. */
   compensation: {
-    paysContributors: boolean;
-    payRateKind: string;
+    paysContributors: boolean | null;
+    payRateKind: string | null;
     isProRate: boolean;
     rateCentsPerWord: number | null;
     flatRateCents: number | null;
     hasFeeWaivers: boolean;
-    submissionFeeCents: number;
+    submissionFeeCents: number | null;
   };
   telemetry: {
-    medianResponseDays: number;
-    acceptanceRatePercent: number;
-    freeCapStatus: string;
+    medianResponseDays: number | null;
+    /** A listed band such as "under_3_months" when no median is recorded. */
+    responseBand: string | null;
+    acceptanceRatePercent: number | null;
+    freeCapStatus: string | null;
     submittableFreeCapDepletionDays: number | null;
   };
   aesthetic: {
@@ -62,19 +91,121 @@ export interface ManuscriptMatchCard {
     poetryForms: string[];
     authorComps: string[];
     editorialMotto: string | null;
-    unsolicitedSlushRatioPercent: number;
-    debutAuthorFriendlyScore: number;
+    unsolicitedSlushRatioPercent: number | null;
+    debutAuthorFriendlyScore: number | null;
     isDebutChampion: boolean;
   };
+  /** Prize and anthology record, all from cited sources. */
+  recognition: {
+    /** Pushcart Prize tally rank in the brief's genre, latest edition. */
+    pushcart: { rank: number; genre: string; edition: number } | null;
+    /** Best Microfiction and Best Small Fictions selections. */
+    anthologySelections: number;
+    /** O. Henry, Best American Short Stories and prize-winning stories. */
+    prizeSelections: number;
+    /** Newest recognised pieces, at most four. */
+    recent: ManuscriptRecognitionPiece[];
+    /** Writers from the brief this magazine has published prize-recognised work by. */
+    publishedComps: string[];
+  };
+  /** Rules, the four scores, tier and prize routes from the decision model. */
+  decision: MagazineDecision;
 }
 
+export interface ExcludedMagazine {
+  profileId: string;
+  name: string;
+  slug: string;
+  exclusions: Exclusion[];
+}
+
+/** Which model produced a response, so a plan can be reproduced. */
+export interface DecisionModelInfo {
+  version: string;
+  asOf: string;
+  weights: "standard" | "debut";
+  tierThresholds: typeof TIER_THRESHOLDS;
+}
+
+/**
+ * `available` means the publication index was read (it may still have no
+ * matches). `unavailable` means the index could not be read; callers must show
+ * that state rather than substitute sample publications.
+ */
+export type ManuscriptMatchStatus = "available" | "unavailable";
+
 export interface ManuscriptMatchResponse {
+  status: ManuscriptMatchStatus;
   totalAnalyzed: number;
   matchedCount: number;
   dreamReach: ManuscriptMatchCard[];
   debutChampions: ManuscriptMatchCard[];
   rapidPro: ManuscriptMatchCard[];
   simultaneousPackets: ManuscriptMatchCard[];
+  /** Magazines with a recorded prize or anthology record, best fit first. */
+  prizeTrack: ManuscriptMatchCard[];
+  /** The submission plan for this brief. */
+  plan?: SubmissionPlan;
+  /** Full cards for every magazine in the plan, in plan order. */
+  planCards?: ManuscriptMatchCard[];
+  /** Magazines whose recorded rules rule the piece out, with the reasons (at most 150). */
+  excluded?: ExcludedMagazine[];
+  excludedCount?: number;
+  model?: DecisionModelInfo;
+  /** Present only for a name search: every matching magazine, best fit first. */
+  searchResults?: ManuscriptMatchCard[];
+}
+
+const EXCLUDED_LIST_LIMIT = 150;
+
+/** Searches shorter than this return no rows rather than the whole index. */
+export const MANUSCRIPT_SEARCH_MIN_LENGTH = 2;
+const MANUSCRIPT_SEARCH_LIMIT = 40;
+
+/** Escape LIKE wildcards so a typed "%" or "_" matches literally. */
+function likePattern(query: string): string {
+  return `%${query.replace(/[\\%_]/g, (character) => `\\${character}`)}%`;
+}
+
+/**
+ * Stored tiers are the engine labels ("Tier 1 (Flagship Luminary)" …); the
+ * match cards use short keys. Tier 4 has no card group, so it maps to tier_3.
+ */
+export function indexTierKey(
+  value: unknown,
+): ManuscriptMatchCard["prestigeTier"] {
+  const label = typeof value === "string" ? value : "";
+  if (label === "tier_1" || label === "tier_2" || label === "tier_3")
+    return label;
+  if (label.startsWith("Tier 1")) return "tier_1";
+  if (label.startsWith("Tier 2")) return "tier_2";
+  if (label.startsWith("Tier 3") || label.startsWith("Tier 4")) return "tier_3";
+  return "unranked";
+}
+
+function nullableNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function nullableBoolean(value: unknown): boolean | null {
+  return value === null || value === undefined ? null : Boolean(value);
+}
+
+export function emptyManuscriptMatchResponse(
+  status: ManuscriptMatchStatus,
+): ManuscriptMatchResponse {
+  return {
+    status,
+    totalAnalyzed: 0,
+    matchedCount: 0,
+    dreamReach: [],
+    debutChampions: [],
+    rapidPro: [],
+    simultaneousPackets: [],
+    prizeTrack: [],
+  };
 }
 
 /** Match the canonical, human-readable slug emitted by ProfileRepository. */
@@ -89,6 +220,35 @@ export function manuscriptMatchProfileSlug(
   return nameSlug.length >= 3 ? nameSlug : String(fallback ?? "");
 }
 
+/** The ranking and Pushcart genre that a manuscript form is judged in. */
+export function rankingGenre(
+  genre: ManuscriptMatchInput["genre"],
+): "fiction" | "poetry" | "nonfiction" {
+  if (genre === "poetry") return "poetry";
+  if (genre === "nonfiction") return "nonfiction";
+  return "fiction";
+}
+
+type AnthologyPiece = {
+  anthology: string;
+  award_year: number;
+  author_name: string | null;
+  piece_title: string | null;
+};
+
+function parseAnthologyRecent(value: unknown): AnthologyPiece[] {
+  if (Array.isArray(value)) return value as AnthologyPiece[];
+  if (typeof value === "string") {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      return Array.isArray(parsed) ? (parsed as AnthologyPiece[]) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 export class ManuscriptMatchEngine {
   constructor(private pool: Pool | null) {}
 
@@ -96,13 +256,24 @@ export class ManuscriptMatchEngine {
     input: ManuscriptMatchInput,
   ): Promise<ManuscriptMatchResponse> {
     const limit = input.limit ?? 50;
+    const query = input.query?.trim() ?? "";
+    const searching = query.length > 0;
 
     if (!this.pool) {
-      return this.fallbackMatch(input, limit);
+      return emptyManuscriptMatchResponse("unavailable");
+    }
+    if (searching && query.length < MANUSCRIPT_SEARCH_MIN_LENGTH) {
+      return {
+        ...emptyManuscriptMatchResponse("available"),
+        searchResults: [],
+      };
     }
 
     try {
-      const query = `
+      // Facts come from two places: the detailed publication_* tables and the
+      // cited facts the Missa index records (missa_magazine_rankings, with
+      // fact_sources). Detailed values win; index facts fill the gaps.
+      const sql = `
         SELECT
           gp.id as profile_id,
           gp.name,
@@ -110,6 +281,23 @@ export class ManuscriptMatchEngine {
           gp.website_url,
           COALESCE(mr.prestige_tier, 'unranked') as prestige_tier,
           COALESCE(mr.total_score, 0) as total_score,
+          mr.pay_kind as rk_pay_kind,
+          mr.regular_fee_cents as rk_fee_cents,
+          mr.charges_reading_fee as rk_charges_fee,
+          mr.simultaneous_policy as rk_simultaneous,
+          mr.response_time_band as rk_response_band,
+          mr.median_response_days as rk_median_days,
+          mr.debut_friendly as rk_debut_friendly,
+          mr.blind_reading as rk_blind_reading,
+          mr.contributor_pay_cents as rk_contributor_pay_cents,
+          obs.reading_period as obs_reading_period,
+          obs.genres_json as obs_genres,
+          aw.anthology_count,
+          aw.anthology_authors,
+          aw.anthology_recent,
+          pc.source_rank as pushcart_rank,
+          pc.edition_year as pushcart_edition,
+          pc.genre as pushcart_genre,
           pes.max_word_count,
           pes.min_word_count,
           pes.max_poems_per_submission,
@@ -140,192 +328,330 @@ export class ManuscriptMatchEngine {
           SELECT ranking_rows.*
           FROM missa_magazine_rankings ranking_rows
           WHERE ranking_rows.profile_id = gp.id
-            AND ranking_rows.ranking_year = 2026
+            AND ranking_rows.ranking_year = (SELECT MAX(ranking_year) FROM missa_magazine_rankings)
           ORDER BY (ranking_rows.genre = 'overall') DESC, ranking_rows.total_score DESC
           LIMIT 1
         ) mr ON TRUE
+        LEFT JOIN LATERAL (
+          SELECT
+            count(*)::int AS anthology_count,
+            array_agg(DISTINCT a.author_name) FILTER (WHERE a.author_name IS NOT NULL) AS anthology_authors,
+            (
+              SELECT json_agg(recent)
+              FROM (
+                SELECT a2.anthology, a2.award_year, a2.author_name, a2.piece_title
+                FROM missa_literary_awards a2
+                WHERE a2.profile_id = gp.id
+                ORDER BY a2.award_year DESC
+                LIMIT 3
+              ) recent
+            ) AS anthology_recent
+          FROM missa_literary_awards a
+          WHERE a.profile_id = gp.id
+        ) aw ON TRUE
+        LEFT JOIN LATERAL (
+          SELECT p.source_rank, p.edition_year, p.genre
+          FROM missa_pushcart_rankings p
+          WHERE p.profile_id = gp.id AND p.genre = $3
+          ORDER BY p.edition_year DESC, p.source_rank
+          LIMIT 1
+        ) pc ON TRUE
+        LEFT JOIN LATERAL (
+          SELECT o.reading_period, o.genres_json
+          FROM gary_profile_observations o
+          WHERE o.profile_id = gp.id
+          ORDER BY o.observed_at DESC NULLS LAST
+          LIMIT 1
+        ) obs ON TRUE
         LEFT JOIN publication_editorial_specs pes ON pes.profile_id = gp.id
         LEFT JOIN publication_compensation_details pcd ON pcd.profile_id = gp.id
         LEFT JOIN publication_telemetry_analytics pta ON pta.profile_id = gp.id
         LEFT JOIN publication_aesthetic_profiles pap ON pap.profile_id = gp.id
-        WHERE gp.profile_kind IN ('literary_magazine', 'small_press', 'organization', 'visual_arts_organization')
-           OR mr.profile_id IS NOT NULL
-        ORDER BY mr.total_score DESC NULLS LAST
-        LIMIT 500;
+        WHERE (gp.profile_kind IN ('literary_magazine', 'small_press', 'organization', 'visual_arts_organization')
+           OR mr.profile_id IS NOT NULL)
+          AND ($1::text IS NULL OR gp.name ILIKE $1)
+        ORDER BY mr.total_score DESC NULLS LAST, gp.id
+        LIMIT $2;
       `;
 
-      const { rows } = await this.pool.query(query);
+      const { rows } = await this.pool.query(sql, [
+        searching ? likePattern(query) : null,
+        searching ? MANUSCRIPT_SEARCH_LIMIT : 500,
+        rankingGenre(input.genre),
+      ]);
       if (!rows || rows.length === 0) {
-        return this.fallbackMatch(input, limit);
+        return searching
+          ? { ...emptyManuscriptMatchResponse("available"), searchResults: [] }
+          : emptyManuscriptMatchResponse("available");
       }
 
-      return this.scoreAndGroupRows(rows, input, limit);
+      if (!searching) return this.scoreAndGroupRows(rows, input, limit);
+      const searchResults = this.scoreRows(rows, input);
+      return {
+        ...emptyManuscriptMatchResponse("available"),
+        totalAnalyzed: rows.length,
+        matchedCount: searchResults.length,
+        searchResults,
+      };
     } catch (err) {
-      console.warn(
-        "[ManuscriptMatchEngine] Postgres query failed, falling back to local heuristic matching:",
-        err,
-      );
-      return this.fallbackMatch(input, limit);
+      console.warn("[ManuscriptMatchEngine] Postgres query failed:", err);
+      return emptyManuscriptMatchResponse("unavailable");
     }
   }
 
-  private scoreAndGroupRows(
+  /** Score stored publication rows. Exposed for tests; no rows are invented. */
+  scoreAndGroupRows(
     rows: any[],
     input: ManuscriptMatchInput,
-    limit: number,
+    _limit: number,
   ): ManuscriptMatchResponse {
-    const scoredCards: ManuscriptMatchCard[] = [];
-
-    const normAestheticTags = (input.aestheticTags ?? []).map((t) =>
-      t.toLowerCase().trim(),
-    );
-    const normCompAuthors = (input.compAuthors ?? []).map((a) =>
-      a.toLowerCase().trim(),
+    const scoredCards = this.scoreRows(rows, input);
+    // Lanes hold only magazines whose recorded rules allow the piece now.
+    const eligible = scoredCards.filter(
+      (card) => card.decision.exclusions.length === 0,
     );
 
-    for (const row of rows) {
-      let score = 0;
-      const reasons: string[] = [];
+    const dreamReach = eligible
+      .filter((c) => c.prestigeTier === "tier_1")
+      .slice(0, 10);
+    const debutChampions = eligible
+      .filter((c) => c.aesthetic.isDebutChampion && c.prestigeTier !== "tier_1")
+      .slice(0, 10);
+    const rapidPro = eligible
+      .filter(
+        (c) =>
+          c.compensation.isProRate ||
+          (c.telemetry.medianResponseDays !== null &&
+            c.telemetry.medianResponseDays <= 30) ||
+          (c.telemetry.responseBand === "under_3_months" &&
+            c.compensation.paysContributors === true),
+      )
+      .slice(0, 10);
+    const simultaneousPackets = eligible
+      .filter((c) => c.specs.allowsSimultaneous !== false)
+      .slice(0, 15);
+    const prizeTrack = eligible
+      .filter(
+        (c) =>
+          c.recognition.pushcart !== null ||
+          c.recognition.anthologySelections > 0 ||
+          c.recognition.prizeSelections > 0,
+      )
+      .slice(0, 15);
 
-      const maxWords = row.max_word_count ? Number(row.max_word_count) : null;
-      const minWords = row.min_word_count ? Number(row.min_word_count) : null;
-      const allowsSimultaneous = row.allows_simultaneous ?? true;
+    const plan = buildSubmissionPlan(
+      scoredCards.map((card) => ({
+        profileId: card.profileId,
+        name: card.name,
+        slug: card.slug,
+        decision: card.decision,
+        allowsSimultaneous: card.specs.allowsSimultaneous,
+        medianResponseDays: card.telemetry.medianResponseDays,
+        responseBand: card.telemetry.responseBand,
+      })),
+    );
+    const byId = new Map(scoredCards.map((card) => [card.profileId, card]));
+    const planCards = [
+      ...plan.rounds.flatMap((round) => round.picks),
+      ...plan.opensLater,
+    ]
+      .map((pick) => byId.get(pick.profileId))
+      .filter((card): card is ManuscriptMatchCard => card !== undefined);
+    // Magazines opening later are listed in the plan, not again as ruled out.
+    const openingLater = new Set(plan.opensLater.map((pick) => pick.profileId));
+    const excluded: ExcludedMagazine[] = scoredCards
+      .filter(
+        (card) =>
+          card.decision.exclusions.length > 0 &&
+          !openingLater.has(card.profileId),
+      )
+      .map((card) => ({
+        profileId: card.profileId,
+        name: card.name,
+        slug: card.slug,
+        exclusions: card.decision.exclusions,
+      }))
+      .sort((a, b) =>
+        a.name.toLowerCase() < b.name.toLowerCase()
+          ? -1
+          : a.name.toLowerCase() > b.name.toLowerCase()
+            ? 1
+            : a.profileId < b.profileId
+              ? -1
+              : 1,
+      );
+
+    return {
+      status: "available",
+      totalAnalyzed: rows.length,
+      matchedCount: eligible.length,
+      dreamReach,
+      debutChampions,
+      rapidPro,
+      simultaneousPackets,
+      prizeTrack,
+      plan,
+      planCards,
+      excluded: excluded.slice(0, EXCLUDED_LIST_LIMIT),
+      excludedCount: excluded.length,
+      model: decisionModelInfo(input),
+    };
+  }
+
+  /**
+   * Score every row against the brief with the decision model, in the
+   * model's fixed order (see compareCandidates).
+   */
+  scoreRows(rows: any[], input: ManuscriptMatchInput): ManuscriptMatchCard[] {
+    const genre = rankingGenre(input.genre);
+    const brief = decisionBrief(input);
+    const asOf = resolveAsOf(input.asOf);
+
+    const cards = rows.map((row): ManuscriptMatchCard => {
+      const maxWords = nullableNumber(row.max_word_count);
+      const minWords = nullableNumber(row.min_word_count);
+      const allowsSimultaneous: boolean | null =
+        row.allows_simultaneous !== null &&
+        row.allows_simultaneous !== undefined
+          ? Boolean(row.allows_simultaneous)
+          : row.rk_simultaneous === "allowed" ||
+              row.rk_simultaneous === "conditional"
+            ? true
+            : row.rk_simultaneous === "forbidden"
+              ? false
+              : null;
       const requiresBlind = row.requires_blind_review ?? false;
 
-      // 1. Spec Compatibility (Max 25 pts)
-      if (input.wordCount && maxWords) {
-        if (input.wordCount <= maxWords) {
-          score += 20;
-          reasons.push(
-            `Within word limit (${input.wordCount.toLocaleString()} / max ${maxWords.toLocaleString()} words)`,
-          );
-        } else {
-          score -= 30; // Hard penalty for exceeding word count
-        }
-      } else {
-        score += 15;
-      }
-
-      if (input.allowSimultaneous && !allowsSimultaneous) {
-        score -= 20; // Does not permit simultaneous submissions
-      } else if (allowsSimultaneous) {
-        score += 5;
-      }
-
-      // 2. Aesthetic DNA & Comp Matching (Max 35 pts)
-      const writingStyles: string[] = row.writing_styles ?? [
-        "literary",
-        "personal",
-      ];
+      const writingStyles: string[] = row.writing_styles ?? [];
       const authorComps: string[] = row.author_comps ?? [];
       const poetryForms: string[] = row.poetry_forms ?? [];
+      const slushRatio = nullableNumber(row.unsolicited_slush_ratio_percent);
+      const debutScore = nullableNumber(row.debut_author_friendly_score);
+      const isDebutChampion =
+        row.is_debut_champion === true || row.rk_debut_friendly === true;
 
-      let compOverlapCount = 0;
-      for (const comp of normCompAuthors) {
-        if (
-          authorComps.some(
-            (c) =>
-              c.toLowerCase().includes(comp) || comp.includes(c.toLowerCase()),
-          )
-        ) {
-          compOverlapCount++;
-        }
-      }
+      const submissionFee =
+        nullableNumber(row.submission_fee_cents) ??
+        nullableNumber(row.rk_fee_cents) ??
+        (row.rk_charges_fee === false ? 0 : null);
+      const chargesFee =
+        submissionFee !== null
+          ? submissionFee > 0
+          : row.rk_charges_fee === true
+            ? true
+            : null;
+      const hasFeeWaivers = row.has_fee_waivers === true;
 
-      let styleOverlapCount = 0;
-      for (const style of normAestheticTags) {
-        if (
-          writingStyles.some((s) => s.toLowerCase().includes(style)) ||
-          poetryForms.some((f) => f.toLowerCase().includes(style))
-        ) {
-          styleOverlapCount++;
-        }
-      }
+      const payKind: string | null =
+        row.pay_rate_kind || row.rk_pay_kind || null;
+      const paysContributors: boolean | null =
+        nullableBoolean(row.pays_contributors) ??
+        (row.rk_pay_kind === "cash"
+          ? true
+          : row.rk_pay_kind === "unpaid" || row.rk_pay_kind === "copies_only"
+            ? false
+            : null);
+      const isProRate = row.is_pro_rate === true;
 
-      if (compOverlapCount > 0) {
-        score += Math.min(20, compOverlapCount * 10);
-        reasons.push(`Comp author alignment`);
-      }
+      const medianResponseDays =
+        nullableNumber(row.median_response_days) ??
+        nullableNumber(row.rk_median_days);
+      const responseBand: string | null =
+        medianResponseDays === null ? (row.rk_response_band ?? null) : null;
 
-      if (styleOverlapCount > 0) {
-        score += Math.min(15, styleOverlapCount * 5);
-        reasons.push(`Aesthetic style alignment`);
-      }
+      const pushcartRank = nullableNumber(row.pushcart_rank);
+      const pushcart =
+        pushcartRank !== null
+          ? {
+              rank: pushcartRank,
+              genre: String(row.pushcart_genre ?? genre),
+              edition: Number(row.pushcart_edition),
+            }
+          : null;
+      const anthologyCount = nullableNumber(row.anthology_count) ?? 0;
+      const anthologyRecent = parseAnthologyRecent(row.anthology_recent);
+      const anthologyAuthors: string[] = row.anthology_authors ?? [];
+      const prizePieces = recognitionForPublication(String(row.name ?? ""));
+      const prestigeTier = indexTierKey(row.prestige_tier);
 
-      if (compOverlapCount === 0 && styleOverlapCount === 0) {
-        score += 10; // Baseline general editorial fit
-      }
+      const facts: MagazineFacts = {
+        prestigeTier,
+        acceptedForms: acceptedForms(row.obs_genres),
+        readingPeriod:
+          typeof row.obs_reading_period === "string"
+            ? row.obs_reading_period
+            : null,
+        maxWords,
+        minWords,
+        allowsSimultaneous,
+        blindReading: nullableBoolean(row.rk_blind_reading),
+        chargesFee,
+        submissionFeeCents: submissionFee,
+        hasFeeWaivers,
+        paysContributors,
+        isProRate,
+        payKind,
+        contributorPayCents: nullableNumber(row.rk_contributor_pay_cents),
+        medianResponseDays,
+        responseBand,
+        acceptanceRatePercent: nullableNumber(row.acceptance_rate_percent),
+        slushRatioPercent: slushRatio,
+        isDebutFriendly: isDebutChampion,
+        writingStyles,
+        poetryForms,
+        authorComps,
+        pushcart,
+        anthologyCount,
+        anthologyAuthors,
+        prizePieces,
+      };
+      const decision = decideMagazine(facts, brief, asOf);
 
-      // 3. Debut Friendliness & Slush Ratio (Max 20 pts)
-      const slushRatio = Number(row.unsolicited_slush_ratio_percent ?? 65);
-      const debutScore = Number(row.debut_author_friendly_score ?? 8.5);
-      const isDebutChampion = Boolean(row.is_debut_champion ?? true);
+      const recent: ManuscriptRecognitionPiece[] = [
+        ...prizePieces.map((piece) => ({
+          source: piece.source,
+          year: piece.year,
+          writer: piece.writer,
+          work: piece.work,
+        })),
+        ...anthologyRecent
+          .filter((piece) => piece.author_name)
+          .map((piece) => ({
+            source: piece.anthology,
+            year: Number(piece.award_year),
+            writer: String(piece.author_name),
+            work: piece.piece_title,
+          })),
+      ]
+        .sort(
+          (a, b) =>
+            b.year - a.year ||
+            (a.writer < b.writer ? -1 : a.writer > b.writer ? 1 : 0),
+        )
+        .slice(0, 4);
 
-      if (input.isDebutAuthor) {
-        if (isDebutChampion || slushRatio >= 70) {
-          score += 20;
-          reasons.push(
-            `Debut champion (${slushRatio}% slush acceptance ratio)`,
-          );
-        } else {
-          score += 8;
-        }
-      } else {
-        score += 12;
-      }
-
-      // 4. Pay & Fee Preference (Max 20 pts)
-      const paysContributors = Boolean(row.pays_contributors);
-      const isProRate = Boolean(row.is_pro_rate);
-      const submissionFee = Number(row.submission_fee_cents ?? 0);
-      const hasFeeWaivers = Boolean(row.has_fee_waivers);
-
-      if (input.feeTolerance === "free_only" && submissionFee > 0) {
-        if (!hasFeeWaivers) {
-          score -= 25;
-        } else {
-          score += 5;
-          reasons.push("Fee waiver available");
-        }
-      } else {
-        score += 10;
-      }
-
-      if (input.minPayRate === "pro_rates_only") {
-        if (isProRate) {
-          score += 10;
-          reasons.push("Pro payment rate verified (≥ $0.08/w)");
-        } else {
-          score -= 15;
-        }
-      } else if (paysContributors) {
-        score += 8;
-      }
-
-      const normalizedScore = Math.max(10, Math.min(99, Math.round(score)));
-
-      // Determine fit category
       let fitCategory: MatchCategory = "packet_builder";
-      if (row.prestige_tier === "tier_1") {
+      if (prestigeTier === "tier_1") {
         fitCategory = "dream_reach";
-      } else if (isDebutChampion && slushRatio >= 75) {
+      } else if (isDebutChampion && slushRatio !== null && slushRatio >= 75) {
         fitCategory = "debut_champion";
       } else if (
         isProRate &&
-        Number(row.median_response_days ?? 45) <= 35
+        medianResponseDays !== null &&
+        medianResponseDays <= 35
       ) {
         fitCategory = "rapid_pro";
       }
 
-      scoredCards.push({
+      return {
         profileId: row.profile_id,
         name: row.name,
         slug: manuscriptMatchProfileSlug(row.name, row.slug ?? row.profile_id),
         websiteUrl: row.website_url,
-        prestigeTier: row.prestige_tier,
-        matchScore: normalizedScore,
+        prestigeTier,
+        matchScore: decision.composite,
         fitCategory,
-        reasons,
+        reasons: positiveReasons(decision),
         specs: {
           maxWordCount: maxWords,
           minWordCount: minWords,
@@ -334,7 +660,7 @@ export class ManuscriptMatchEngine {
         },
         compensation: {
           paysContributors,
-          payRateKind: row.pay_rate_kind || "variable",
+          payRateKind: payKind,
           isProRate,
           rateCentsPerWord: row.rate_cents_per_word
             ? Number(row.rate_cents_per_word)
@@ -346,177 +672,97 @@ export class ManuscriptMatchEngine {
           submissionFeeCents: submissionFee,
         },
         telemetry: {
-          medianResponseDays: Number(row.median_response_days ?? 32),
-          acceptanceRatePercent: Number(row.acceptance_rate_percent ?? 2.5),
-          freeCapStatus: row.free_cap_status || "healthy",
-          submittableFreeCapDepletionDays: row.submittable_free_cap_depletion_days
-            ? Number(row.submittable_free_cap_depletion_days)
-            : null,
+          medianResponseDays,
+          responseBand,
+          acceptanceRatePercent: nullableNumber(row.acceptance_rate_percent),
+          freeCapStatus: row.free_cap_status || null,
+          submittableFreeCapDepletionDays:
+            row.submittable_free_cap_depletion_days
+              ? Number(row.submittable_free_cap_depletion_days)
+              : null,
         },
         aesthetic: {
           writingStyles,
           poetryForms,
           authorComps,
-          editorialMotto: row.editorial_motto,
+          editorialMotto: row.editorial_motto ?? null,
           unsolicitedSlushRatioPercent: slushRatio,
           debutAuthorFriendlyScore: debutScore,
           isDebutChampion,
         },
-      });
+        recognition: {
+          pushcart,
+          anthologySelections: anthologyCount,
+          prizeSelections: prizePieces.length,
+          recent,
+          publishedComps: decision.publishedComps,
+        },
+        decision,
+      };
+    });
+
+    return cards.sort(compareCandidates);
+  }
+}
+
+/** Today's date in UTC, or the brief's date when it is a valid ISO date. */
+function resolveAsOf(asOf: string | undefined): string {
+  if (asOf && /^\d{4}-\d{2}-\d{2}$/.test(asOf)) return asOf;
+  return new Date().toISOString().slice(0, 10);
+}
+
+export function decisionModelInfo(
+  input: ManuscriptMatchInput,
+): DecisionModelInfo {
+  return {
+    version: DECISION_MODEL_VERSION,
+    asOf: resolveAsOf(input.asOf),
+    weights: input.isDebutAuthor ? "debut" : "standard",
+    tierThresholds: TIER_THRESHOLDS,
+  };
+}
+
+function decisionBrief(input: ManuscriptMatchInput): DecisionBrief {
+  return {
+    form: input.genre,
+    wordCount: input.wordCount ?? null,
+    aestheticTags: input.aestheticTags ?? [],
+    compAuthors: input.compAuthors ?? [],
+    isDebutAuthor: input.isDebutAuthor === true,
+    feeTolerance: input.feeTolerance ?? "any",
+    minPayRate: input.minPayRate ?? "all",
+    allowSimultaneous: input.allowSimultaneous === true,
+    writerCountry: input.writerCountry?.trim() || null,
+  };
+}
+
+/** Recorded genre labels as form keys; null when none are recorded. */
+function acceptedForms(value: unknown): string[] | null {
+  let labels: unknown = value;
+  if (typeof value === "string") {
+    try {
+      labels = JSON.parse(value);
+    } catch {
+      return null;
     }
-
-    scoredCards.sort((a, b) => b.matchScore - a.matchScore);
-
-    const dreamReach = scoredCards
-      .filter((c) => c.prestigeTier === "tier_1")
-      .slice(0, 10);
-    const debutChampions = scoredCards
-      .filter((c) => c.aesthetic.isDebutChampion && c.prestigeTier !== "tier_1")
-      .slice(0, 10);
-    const rapidPro = scoredCards
-      .filter((c) => c.compensation.isProRate || c.telemetry.medianResponseDays <= 30)
-      .slice(0, 10);
-    const simultaneousPackets = scoredCards
-      .filter((c) => c.specs.allowsSimultaneous)
-      .slice(0, 15);
-
-    return {
-      totalAnalyzed: rows.length,
-      matchedCount: scoredCards.length,
-      dreamReach,
-      debutChampions,
-      rapidPro,
-      simultaneousPackets,
-    };
   }
+  if (!Array.isArray(labels)) return null;
+  const forms = [
+    ...new Set(
+      labels
+        .filter((label): label is string => typeof label === "string")
+        .map(formFromGenreLabel)
+        .filter((form): form is string => form !== null),
+    ),
+  ];
+  return forms.length > 0 ? forms : null;
+}
 
-  private fallbackMatch(
-    input: ManuscriptMatchInput,
-    limit: number,
-  ): ManuscriptMatchResponse {
-    const dummyRows = [
-      {
-        profile_id: "paris-review",
-        name: "The Paris Review",
-        slug: "the-paris-review",
-        website_url: "https://theparisreview.org",
-        prestige_tier: "tier_1",
-        total_score: 98,
-        max_word_count: 8000,
-        min_word_count: null,
-        allows_simultaneous: true,
-        requires_blind_review: true,
-        pays_contributors: true,
-        pay_rate_kind: "per_word",
-        rate_cents_per_word: 12.0,
-        flat_rate_cents: 30000,
-        is_pro_rate: true,
-        has_fee_waivers: true,
-        submission_fee_cents: 300,
-        median_response_days: 60,
-        acceptance_rate_percent: 0.8,
-        freeCapStatus: "at_risk",
-        submittable_free_cap_depletion_days: 2,
-        writing_styles: ["literary", "realist", "personal"],
-        poetry_forms: ["free_verse", "lyric"],
-        author_comps: ["Lydia Davis", "Denis Johnson", "Deborah Eisenberg"],
-        editorial_motto: "Distinctive voice and unflinching psychological depth.",
-        unsolicited_slush_ratio_percent: 45,
-        debut_author_friendly_score: 7.8,
-        is_debut_champion: false,
-      },
-      {
-        profile_id: "split-lip-magazine",
-        name: "Split Lip Magazine",
-        slug: "split-lip-magazine",
-        website_url: "https://splitlipmagazine.com",
-        prestige_tier: "tier_2",
-        total_score: 91,
-        max_word_count: 3500,
-        min_word_count: null,
-        allows_simultaneous: true,
-        requires_blind_review: false,
-        pays_contributors: true,
-        pay_rate_kind: "flat_rate",
-        rate_cents_per_word: null,
-        flat_rate_cents: 7500,
-        is_pro_rate: true,
-        has_fee_waivers: true,
-        submission_fee_cents: 300,
-        median_response_days: 24,
-        acceptance_rate_percent: 3.2,
-        freeCapStatus: "at_risk",
-        submittable_free_cap_depletion_days: 1,
-        writing_styles: ["fabulist", "surrealist", "dark", "lyric"],
-        poetry_forms: ["prose_poetry", "ghazal", "hybrid"],
-        author_comps: ["Carmen Maria Machado", "Ocean Vuong", "Kelly Link"],
-        editorial_motto: "Voice-driven work with tooth and muscle.",
-        unsolicited_slush_ratio_percent: 86,
-        debut_author_friendly_score: 9.8,
-        is_debut_champion: true,
-      },
-      {
-        profile_id: "the-adroit-journal",
-        name: "The Adroit Journal",
-        slug: "the-adroit-journal",
-        website_url: "https://theadroitjournal.org",
-        prestige_tier: "tier_2",
-        total_score: 89,
-        max_word_count: 5000,
-        min_word_count: null,
-        allows_simultaneous: true,
-        requires_blind_review: false,
-        pays_contributors: true,
-        pay_rate_kind: "flat_rate",
-        rate_cents_per_word: null,
-        flat_rate_cents: 10000,
-        is_pro_rate: true,
-        has_fee_waivers: true,
-        submission_fee_cents: 0,
-        median_response_days: 28,
-        acceptance_rate_percent: 2.1,
-        freeCapStatus: "healthy",
-        submittable_free_cap_depletion_days: 7,
-        writing_styles: ["lyric", "experimental", "vibrant"],
-        poetry_forms: ["free_verse", "ghazal", "villanelle", "hybrid"],
-        author_comps: ["Ocean Vuong", "Kaveh Akbar", "Danez Smith"],
-        editorial_motto: "Fresh, urgent, and fearless writing.",
-        unsolicited_slush_ratio_percent: 82,
-        debut_author_friendly_score: 9.6,
-        is_debut_champion: true,
-      },
-      {
-        profile_id: "ploughshares",
-        name: "Ploughshares",
-        slug: "ploughshares",
-        website_url: "https://pshares.org",
-        prestige_tier: "tier_1",
-        total_score: 95,
-        max_word_count: 6000,
-        min_word_count: null,
-        allows_simultaneous: true,
-        requires_blind_review: false,
-        pays_contributors: true,
-        pay_rate_kind: "per_word",
-        rate_cents_per_word: 9.0,
-        flat_rate_cents: 22500,
-        is_pro_rate: true,
-        has_fee_waivers: true,
-        submission_fee_cents: 300,
-        median_response_days: 45,
-        acceptance_rate_percent: 1.4,
-        freeCapStatus: "healthy",
-        submittable_free_cap_depletion_days: 5,
-        writing_styles: ["literary", "narrative", "personal"],
-        poetry_forms: ["free_verse", "narrative"],
-        author_comps: ["Lorrie Moore", "George Saunders", "Jhumpa Lahiri"],
-        editorial_motto: "Memorable characterization, urgent stakes.",
-        unsolicited_slush_ratio_percent: 68,
-        debut_author_friendly_score: 8.8,
-        is_debut_champion: true,
-      },
-    ];
-
-    return this.scoreAndGroupRows(dummyRows, input, limit);
-  }
+/** Reasons that raised a score, fit first, for the short "why" list. */
+function positiveReasons(decision: MagazineDecision): string[] {
+  return (["fit", "payoff", "odds", "cost"] as const).flatMap((dimension) =>
+    decision.scores[dimension].reasons
+      .filter((reason) => reason.points > 0)
+      .map((reason) => reason.text),
+  );
 }

@@ -1,3 +1,4 @@
+import { orderByCreatorFit, type CreatorFitLevel } from "./creatorFit.js";
 import type {
   RecommendationCandidateResult,
   RecommendationPolicyConfig,
@@ -27,13 +28,22 @@ function isDiscovery(candidate: RecommendationCandidateResult): boolean {
   return candidate.provenance.candidateGenerators.some((generator) => generator === "fresh-catalogue" || generator === "baseline-open-catalogue");
 }
 
+/**
+ * Optional `creatorFit` groups eligible candidates by fit tier before the
+ * diversity limits run; within a tier the deterministic order is kept.
+ */
 export function rerankCandidates(
   candidates: RecommendationCandidateResult[],
   config: RecommendationPolicyConfig,
+  creatorFit?: ReadonlyMap<string, CreatorFitLevel>,
 ): RecommendationCandidateResult[] {
-  const eligible = candidates
-    .filter((candidate) => candidate.eligibilityState === "eligible")
-    .sort(baseOrder);
+  const eligible = orderByCreatorFit(
+    candidates
+      .filter((candidate) => candidate.eligibilityState === "eligible")
+      .sort(baseOrder),
+    (candidate) => candidate.opportunityId,
+    creatorFit,
+  );
   const selected: RecommendationCandidateResult[] = [];
   const deferred: RecommendationCandidateResult[] = [];
 

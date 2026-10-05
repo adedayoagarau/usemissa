@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bookmark, Check } from 'lucide-react';
+import { showSaveFailure } from '@/lib/saveFailureToast';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 
@@ -29,7 +30,7 @@ export function SaveOpportunityButton({ opportunityId, className }: { userId?: s
       }
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        toast.error(body.error ?? 'Could not save this opportunity');
+        showSaveFailure(body, 'Could not save this opportunity');
         return;
       }
       setSaved(true);

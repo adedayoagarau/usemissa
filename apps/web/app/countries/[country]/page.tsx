@@ -10,7 +10,15 @@ import { getPublicProfileBrowse } from "@/lib/publicProfileReads";
 import { getPublicOpportunityPage } from "@/lib/publicOpportunityReads";
 import styles from "./country-hub.module.css";
 
-export const dynamic = "force-dynamic";
+/**
+ * Served from the CDN: each page is generated on its first visit and then
+ * regenerated at most every five minutes.
+ */
+export const revalidate = 300;
+
+export function generateStaticParams() {
+  return [];
+}
 
 const COUNTRY_EMOJI: Record<string, string> = {
   US: "🇺🇸", GB: "🇬🇧", CA: "🇨🇦", AU: "🇦🇺", NG: "🇳🇬", IE: "🇮🇪",
@@ -65,7 +73,7 @@ export async function generateMetadata({
     description: isGlobal
       ? `Browse literary magazines, presses, residencies, and open calls accepting submissions from writers worldwide.`
       : `Browse literary magazines and small presses based in ${displayName}, plus country-filtered and explicitly worldwide opportunity listings. Check each official source for eligibility.`,
-    path: `/countries/${country.toLowerCase()}`,
+    path: `/countries/${normalized.countryCode.toLowerCase()}`,
   });
 }
 
@@ -130,7 +138,7 @@ export default async function CountryHubPage({
           "@context": "https://schema.org",
           "@type": "CollectionPage",
           name: `${displayName} — literary publishers & creative opportunities`,
-          url: absoluteUrl(`/countries/${country.toLowerCase()}`),
+          url: absoluteUrl(`/countries/${countryCode.toLowerCase()}`),
           breadcrumb: {
             "@type": "BreadcrumbList",
             itemListElement: [

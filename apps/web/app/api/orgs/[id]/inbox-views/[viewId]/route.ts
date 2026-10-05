@@ -25,7 +25,7 @@ function parseView(body: unknown): { name: string; filter: { status?: string; op
 
 export async function PATCH(request: Request, { params }: RouteContext) {
   const { id, viewId } = await params;
-  const access = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const access = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   if (!workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: 'Inbox views are not available yet' }, { status: 503 });
   const parsed = parseView(await request.json().catch(() => null));
@@ -45,7 +45,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
 export async function DELETE(request: Request, { params }: RouteContext) {
   const { id, viewId } = await params;
-  const access = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const access = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   if (!workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: 'Inbox views are not available yet' }, { status: 503 });
   const expectedRevision = Number(request.headers.get('if-match') ?? '');

@@ -3,11 +3,13 @@ import { NextResponse } from "next/server";
 import {
   creatorRelationalAuthorityEnabled,
   CreatorIdempotencyConflictError,
+  TrackingLimitReachedError,
   OpportunityRevalidationRequiredError,
   OpportunityVersionHeadMissingError,
 } from "@missa/radar-adapters";
 
 import { getSessionAccount } from "@/lib/auth";
+import { trackingLimitBody } from "@/lib/trackingLimit";
 import { getOpportunityRepository } from "@/lib/opportunityRepository";
 import {
   firstSaveMaterialFingerprint,
@@ -21,7 +23,7 @@ import {
   saveOpportunityForAccount,
 } from "@/lib/saveOpportunityToTracker";
 import type { FirstSaveReceipt } from "@/lib/firstSaveTypes";
-import { getCreatorCalendarRepository } from "@/lib/creatorRepositories";
+import { afterTrackerSave } from "@/lib/tracker-save-hooks";
 
 const noStore = { "Cache-Control": "no-store" };
 
@@ -108,15 +110,7 @@ export async function POST(request: Request) {
     ]);
 
     const saved = await saveOpportunityForAccount(session, opportunity, journeyId);
-    let calendar: { status: "added" | "no-deadline" | "pending"; eventId?: string } = { status: "no-deadline" };
-    const calendarRepository = getCreatorCalendarRepository();
-    if (calendarRepository) {
-      try {
-        calendar = await calendarRepository.ensureOpportunityDeadline(session.account.id, opportunity.id);
-      } catch {
-        calendar = { status: "pending" };
-      }
-    }
+    const calendar = await afterTrackerSave(session.account.id, opportunity.id);
     const nextAction = firstSaveNextAction(opportunity);
     const completion = createFirstSaveCompletionToken({
       journeyId,
@@ -180,6 +174,9 @@ export async function POST(request: Request) {
       },
     );
   } catch (error) {
+    if (error instanceof TrackingLimitReachedError) {
+      return NextResponse.json(trackingLimitBody(error), { status: 409, headers: noStore });
+    }
     if (error instanceof CreatorIdempotencyConflictError) {
       return NextResponse.json(
         { error: error.message },

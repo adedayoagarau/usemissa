@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -13,7 +13,9 @@ import {
   Clock3,
   FileCheck2,
   FolderKanban,
+  Hourglass,
   Import,
+  ListChecks,
   Library,
   ListFilter,
   Search,
@@ -21,12 +23,37 @@ import {
 } from "lucide-react";
 import type { MyStatus, OpportunityType } from "@missa/radar-engine";
 import { CalendarFeedButton } from "@/components/calendar-feed-button";
+import { Button } from "@/components/ui/button";
+import { UrgencyBadge } from "@/components/missa/deadline-badges";
+import {
+  TrackerItemSheet,
+  type TrackerFeatures,
+} from "@/components/missa/tracker-item-sheet";
+import { addDays, formatShortDate } from "@/lib/deadline-moment";
+import {
+  attentionObligations,
+  dueLabel,
+  planBuckets,
+  quietLabel,
+  rowDeadline,
+  rowResponseClock,
+  viewerToday,
+  type AttentionObligation,
+  type ViewerClock,
+} from "@/lib/tracker-plan";
 import { STATUS_LABELS } from "@/lib/statusLabels";
 import {
   readFirstSaveReceipt,
   setFirstSaveGuidanceDismissed,
 } from "@/lib/firstSaveClient";
 import type { FirstSaveReceipt } from "@/lib/firstSaveTypes";
+import {
+  resolveTrackerFocus,
+  trackerStage,
+  viewShowsStatus,
+  type TrackerStage,
+  type TrackerView,
+} from "@/lib/trackerViews";
 import styles from "./tracker-product.module.css";
 
 export type TrackerProductItem = {
@@ -49,6 +76,20 @@ export type TrackerProductItem = {
   workId?: string;
   workTitle?: string;
   importId?: string;
+  /** tracked_opportunities.id; present for relational Tracker items. */
+  trackedId?: string;
+  /** Provider-stated closing instant (ISO), when the source gives one. */
+  deadlineTime?: string;
+  /** IANA zone the provider states the deadline in. */
+  deadlineTimezone?: string;
+  /** The creator's own finish date, before the deadline. */
+  personalTargetOn?: string;
+  /** Last time the creator worked on this call. */
+  lastActivityAt?: string;
+  /** Date the creator submitted. */
+  submittedAt?: string;
+  cycleLabel?: string;
+  carriedFromTrackedId?: string;
 };
 
 export type TrackerHostedSubmission = {
@@ -63,22 +104,16 @@ export type TrackerHostedSubmission = {
   paymentStatus?: string;
 };
 
-export type TrackerProductView =
-  | "active"
-  | "submissions"
-  | "calendar"
-  | "works"
-  | "types"
-  | "organizations"
-  | "archive";
+export type TrackerProductView = TrackerView;
 export type TrackerProductLayout = "actions" | "board";
 type View = TrackerProductView;
 type Layout = TrackerProductLayout;
-type Stage =
-  "Saved" | "Preparing" | "Submitted" | "In progress" | "Outcome" | "Archived";
+type Stage = TrackerStage;
 
 const primaryViews: Array<{ id: View; label: string }> = [
   { id: "active", label: "Active" },
+  { id: "plan", label: "Plan" },
+  { id: "saved", label: "Saved" },
   { id: "submissions", label: "Submissions" },
   { id: "calendar", label: "Calendar" },
   { id: "works", label: "Works" },
@@ -90,25 +125,7 @@ const secondaryViews: Array<{ id: View; label: string }> = [
   { id: "archive", label: "Archive" },
 ];
 
-function stageFor(status: MyStatus): Stage {
-  if (["interested", "saved"].includes(status)) return "Saved";
-  if (["preparing", "draft-started", "ready-to-submit"].includes(status))
-    return "Preparing";
-  if (["submitted", "received"].includes(status)) return "Submitted";
-  if (
-    [
-      "in-review",
-      "longlisted",
-      "shortlisted",
-      "finalist",
-      "waitlisted",
-      "revision-requested",
-    ].includes(status)
-  )
-    return "In progress";
-  if (status === "archived") return "Archived";
-  return "Outcome";
-}
+const stageFor = trackerStage;
 
 function nextStatuses(status: MyStatus): MyStatus[] {
   if (["interested", "saved"].includes(status))
@@ -141,23 +158,21 @@ function formatDate(value: string): string {
   }).format(date);
 }
 
-function timingLabel(item: TrackerProductItem): string {
-  if (item.deadline) {
-    const date = formatDate(item.deadline);
-    if (item.daysToDeadline === 0) return `${date} · due today`;
-    if (item.daysToDeadline === 1) return `${date} · due tomorrow`;
-    if (item.daysToDeadline !== undefined && item.daysToDeadline > 1)
-      return `${date} · ${item.daysToDeadline} days left`;
-    if (item.daysToDeadline !== undefined && item.daysToDeadline < 0)
-      return `${date} · deadline passed`;
-    return date;
-  }
-  if (item.deadlineKind === "rolling") return "Rolling deadline";
-  if (item.deadlineKind === "until-filled") return "Until filled";
-  if (item.deadlineKind === "conflicting") return "Deadline needs review";
-  if (item.expectedResponseBy)
-    return `Response context · ${formatDate(item.expectedResponseBy)}`;
-  return "Deadline not listed";
+/** The row's deadline line, with the urgency badge inside the last week. */
+function DeadlineText({
+  item,
+  clock,
+}: {
+  item: TrackerProductItem;
+  clock: ViewerClock;
+}) {
+  const moment = rowDeadline(item, clock);
+  return (
+    <span className={styles.deadlineText}>
+      <span>{moment.label}</span>
+      {moment.urgent ? <UrgencyBadge label={moment.shortLabel} /> : null}
+    </span>
+  );
 }
 
 function typeLabel(type: OpportunityType): string {
@@ -208,7 +223,13 @@ function matches(item: TrackerProductItem, query: string): boolean {
     .includes(query.toLocaleLowerCase("en"));
 }
 
-function EmptyTracker() {
+function EmptyTracker({
+  receiptCount,
+  onOpenReceipts,
+}: {
+  receiptCount: number;
+  onOpenReceipts: () => void;
+}) {
   return (
     <section className={styles.empty} aria-labelledby="empty-tracker-title">
       <FolderKanban aria-hidden="true" />
@@ -221,10 +242,21 @@ function EmptyTracker() {
         <Link href="/opportunities" className={styles.primaryLink}>
           Browse Opportunities
         </Link>
-        <Link href="/import" className={styles.quietLink}>
-          <Import aria-hidden="true" />
-          Import an existing tracker
-        </Link>
+        {receiptCount ? (
+          <button
+            type="button"
+            className={styles.quietButton}
+            onClick={onOpenReceipts}
+          >
+            <FileCheck2 aria-hidden="true" />
+            View {receiptCount === 1 ? "your receipt" : `${receiptCount} receipts`}
+          </button>
+        ) : (
+          <Link href="/import" className={styles.quietLink}>
+            <Import aria-hidden="true" />
+            Import an existing tracker
+          </Link>
+        )}
       </div>
     </section>
   );
@@ -251,12 +283,18 @@ function SearchZero({
 
 function HostedSubmissionCard({
   submission,
+  selected,
 }: {
   submission: TrackerHostedSubmission;
+  selected?: boolean;
 }) {
   const outcomes = submission.works.filter((work) => work.outcome);
   return (
-    <article className={styles.submissionCard}>
+    <article
+      className={styles.submissionCard}
+      data-selected={selected || undefined}
+      tabIndex={selected ? -1 : undefined}
+    >
       <div className={styles.submissionIdentity}>
         <span>
           <FileCheck2 aria-hidden="true" />
@@ -317,11 +355,14 @@ function TrackerCard({
   busy,
   error,
   highlighted,
+  selected,
   stale,
+  clock,
   onStatus,
   onWork,
   onReminder,
   onRemove,
+  onDetails,
 }: {
   item: TrackerProductItem;
   works: Array<{ id: string; title: string }>;
@@ -329,20 +370,26 @@ function TrackerCard({
   busy: boolean;
   error?: string;
   highlighted?: boolean;
+  selected?: boolean;
   stale?: boolean;
+  clock: ViewerClock;
   onStatus: (item: TrackerProductItem, status: MyStatus) => void;
   onWork: (item: TrackerProductItem, workId?: string) => void;
   onReminder: (item: TrackerProductItem, notify: boolean) => void;
   onRemove: (item: TrackerProductItem) => void;
+  onDetails: (item: TrackerProductItem, trigger: HTMLElement) => void;
 }) {
   const action = itemAction(item, hosted);
   const stage = stageFor(item.myStatus);
+  const quiet = quietLabel(item, clock);
+  const response = rowResponseClock(item, clock);
   return (
     <article
       className={styles.itemCard}
       data-stage={stage.toLocaleLowerCase("en").replace(" ", "-")}
       data-first-save={highlighted || undefined}
-      tabIndex={highlighted ? -1 : undefined}
+      data-selected={selected || undefined}
+      tabIndex={highlighted || selected ? -1 : undefined}
     >
       <div className={styles.itemIdentity}>
         <span className={styles.monogram} aria-hidden="true">
@@ -365,7 +412,9 @@ function TrackerCard({
             <CalendarDays aria-hidden="true" />
             Timing
           </dt>
-          <dd>{timingLabel(item)}</dd>
+          <dd>
+            <DeadlineText item={item} clock={clock} />
+          </dd>
         </div>
         <div>
           <dt>
@@ -376,9 +425,35 @@ function TrackerCard({
         </div>
       </dl>
 
+      {response ? (
+        <p className={styles.itemSignal}>
+          <Hourglass aria-hidden="true" />
+          <span>
+            {response.label}
+            {response.basis ? <small>{response.basis}</small> : null}
+          </span>
+        </p>
+      ) : null}
+      {quiet ? (
+        <p className={styles.itemSignal}>
+          <Clock3 aria-hidden="true" />
+          <span>{quiet}</span>
+        </p>
+      ) : null}
+
       {item.notes ? <p className={styles.itemNote}>{item.notes}</p> : null}
 
       <div className={styles.itemControls}>
+        <Button
+          type="button"
+          variant="outline"
+          data-details-for={item.opportunityId}
+          aria-haspopup="dialog"
+          onClick={(event) => onDetails(item, event.currentTarget)}
+        >
+          <ListChecks aria-hidden="true" />
+          Details<span className="sr-only"> for {item.title}</span>
+        </Button>
         {!item.isManual ? (
           <label>
             <span>Status</span>
@@ -512,7 +587,17 @@ export function TrackerProduct({
   initialLayout,
   initialQuery,
   initialImportId,
+  initialApplicationId = "",
+  initialItemId = "",
+  initialNow,
+  features = {},
+  initialSection = "",
+  recordsAvailable = false,
+  emailEvidence = false,
+  allowance,
 }: {
+  /** Free-plan tracking allowance; omitted for plans without a limit. */
+  allowance?: { active: number; limit: number };
   initialItems: TrackerProductItem[];
   hostedSubmissions: TrackerHostedSubmission[];
   works: Array<{ id: string; title: string }>;
@@ -522,12 +607,40 @@ export function TrackerProduct({
   initialLayout: Layout;
   initialQuery: string;
   initialImportId: string;
+  /** Opportunity or receipt id from a deep link; selects that record. */
+  initialApplicationId?: string;
+  /** Opportunity id from `?item=`; opens that item's details sheet. */
+  initialItemId?: string;
+  /** Server time (ISO) so the first render matches the server's. */
+  initialNow?: string;
+  /** Plan features from creatorFeatures(plan). */
+  features?: TrackerFeatures;
+  /** `&section=` from a deep link; the sheet scrolls to that section. */
+  initialSection?: string;
+  /**
+   * Account storage holds application records, so `?application=` opens the
+   * details sheet. Without it (the demo world) the link only selects the card.
+   */
+  recordsAvailable?: boolean;
+  /** Email forwarding or Gmail sync is on, so the sheet can show email evidence. */
+  emailEvidence?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [items, setItems] = useState(initialItems);
-  const [view, setView] = useState<View>(initialView);
+  // A server refresh (for example after carrying a call forward) brings new items.
+  useEffect(() => setItems(initialItems), [initialItems]);
+  const [focus] = useState(() =>
+    resolveTrackerFocus({
+      view: initialView,
+      applicationId: initialApplicationId,
+      items: initialItems,
+      submissions: hostedSubmissions,
+    }),
+  );
+  const [missingApplication, setMissingApplication] = useState(focus.missing);
+  const [view, setView] = useState<View>(focus.view);
   const [layout, setLayout] = useState<Layout>(initialLayout);
   const [query, setQuery] = useState(initialQuery);
   const [busyId, setBusyId] = useState<string>();
@@ -538,6 +651,56 @@ export function TrackerProduct({
   const [firstSaveDismissed, setFirstSaveDismissed] = useState(false);
   const firstSaveRef = useRef<HTMLElement>(null);
   const reopenGuidanceRef = useRef<HTMLButtonElement>(null);
+  // The first render uses the server's clock in UTC so hydration matches;
+  // the viewer's own zone takes over once the page is interactive.
+  const [clock, setClock] = useState<ViewerClock>(() => ({
+    now: initialNow ? new Date(initialNow) : new Date(),
+    timeZone: "UTC",
+  }));
+  // `?item=` opens the sheet; so does `?application=`, the link every other
+  // surface (Inbox, email, Calendar, Library, Home) already uses.
+  const [sheetId, setSheetId] = useState(() => {
+    const requested =
+      initialItemId || (recordsAvailable ? initialApplicationId : "");
+    return initialItems.some((item) => item.opportunityId === requested)
+      ? requested
+      : "";
+  });
+  const [sheetSection, setSheetSection] = useState(initialSection);
+  const sheetTrigger = useRef<HTMLElement | null>(null);
+  const [dueSteps, setDueSteps] = useState<AttentionObligation[]>([]);
+
+  useEffect(() => {
+    let zone: string | undefined;
+    try {
+      zone = Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+    } catch {
+      zone = undefined;
+    }
+    setClock({ now: new Date(), timeZone: zone });
+  }, []);
+
+  const loadDueSteps = useCallback(async () => {
+    const today = viewerToday({ now: new Date() });
+    try {
+      const response = await fetch(
+        `/api/me/obligations?from=${today}&to=${addDays(today, 7)}&state=open`,
+        { cache: "no-store" },
+      );
+      if (!response.ok) return;
+      const payload = (await response.json()) as {
+        obligations?: AttentionObligation[];
+      };
+      if (Array.isArray(payload.obligations)) setDueSteps(payload.obligations);
+    } catch {
+      // Plan steps are an addition to Needs attention; the list stays useful without them.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!initialItems.some((item) => item.revision)) return;
+    void loadDueSteps();
+  }, [initialItems, loadDueSteps]);
 
   useEffect(() => {
     const stored = readFirstSaveReceipt(accountId);
@@ -568,6 +731,25 @@ export function TrackerProduct({
       { method: "DELETE" },
     ).catch(() => undefined);
   }, [accountId, initialItems]);
+
+  useEffect(() => {
+    if (!focus.opportunityId && !focus.submissionId) return;
+    const frame = requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLElement>(
+        "[data-selected='true']",
+      );
+      if (!target) return;
+      const reduceMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+      target.scrollIntoView({
+        block: "center",
+        behavior: reduceMotion ? "auto" : "smooth",
+      });
+      target.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focus]);
 
   useEffect(() => {
     if (!firstSaveReceipt || firstSaveDismissed) return;
@@ -631,7 +813,11 @@ export function TrackerProduct({
 
   function changeView(nextView: View) {
     setView(nextView);
-    updateUrl({ view: nextView === "active" ? undefined : nextView });
+    setMissingApplication(false);
+    updateUrl({
+      view: nextView === "active" ? undefined : nextView,
+      application: undefined,
+    });
     setAnnouncement(
       `${primaryViews.find((candidate) => candidate.id === nextView)?.label ?? secondaryViews.find((candidate) => candidate.id === nextView)?.label ?? "Tracker"} view opened.`,
     );
@@ -824,29 +1010,63 @@ export function TrackerProduct({
         busy={busyId === item.opportunityId}
         error={errors[item.opportunityId]}
         highlighted={firstSaveReceipt?.opportunityId === item.opportunityId}
+        selected={focus.opportunityId === item.opportunityId}
         stale={staleItems.has(item.opportunityId)}
+        clock={clock}
         onStatus={updateStatus}
         onWork={updateWork}
         onReminder={updateReminder}
         onRemove={removeItem}
+        onDetails={openDetails}
       />
     );
   }
 
+  function openDetails(item: TrackerProductItem, trigger?: HTMLElement) {
+    sheetTrigger.current = trigger ?? null;
+    setSheetId(item.opportunityId);
+    setSheetSection("");
+    updateUrl({ item: item.opportunityId, section: undefined });
+  }
+
+  function closeDetails() {
+    const closing = sheetId;
+    setSheetId("");
+    setSheetSection("");
+    updateUrl({ item: undefined, application: undefined, section: undefined });
+    if (!sheetTrigger.current && closing)
+      sheetTrigger.current = document.querySelector<HTMLElement>(
+        `[data-details-for="${CSS.escape(closing)}"]`,
+      );
+  }
+
+  const sheetItem = sheetId
+    ? items.find((item) => item.opportunityId === sheetId)
+    : undefined;
+
   const attention = activeItems.filter((item) => {
     const stage = stageFor(item.myStatus);
-    return (
-      (stage === "Saved" || stage === "Preparing") &&
-      item.daysToDeadline !== undefined &&
-      item.daysToDeadline <= 7
-    );
+    if (stage !== "Saved" && stage !== "Preparing") return false;
+    const moment = rowDeadline(item, clock);
+    return moment.state === "open" && moment.daysLeft !== null && moment.daysLeft <= 7;
   });
+  const today = viewerToday(clock);
+  const attentionSteps = attentionObligations(
+    dueSteps,
+    new Set(activeItems.map((item) => item.opportunityId)),
+    today,
+  );
+  const itemById = new Map(items.map((item) => [item.opportunityId, item]));
+  const planGroups = planBuckets(visibleItems, clock);
 
   const externalSubmissionItems = visibleItems.filter(
     (item) =>
       ["Submitted", "In progress", "Outcome"].includes(
         stageFor(item.myStatus),
       ) && !submissionByOpportunity.has(item.opportunityId),
+  );
+  const savedItems = visibleItems.filter((item) =>
+    viewShowsStatus("saved", item.myStatus),
   );
   const exactDates = visibleItems
     .filter((item) => item.deadline)
@@ -863,6 +1083,17 @@ export function TrackerProduct({
             Keep the next deadline, preparation step, and submission record
             together.
           </span>
+          {allowance ? (
+            <div className={styles.allowance}>
+              <span className={`${styles.allowanceCount} font-mono tabular-nums`}>
+                {allowance.active} of {allowance.limit}
+              </span>{" "}
+              calls in progress on Free. Submitted and closed calls don&apos;t count.{" "}
+              <Link href="/plan" className={styles.allowanceLink}>
+                Plus has no limit
+              </Link>
+            </div>
+          ) : null}
         </div>
         <div className={styles.pageActions}>
           <Link href="/import" className={styles.quietLink}>
@@ -1039,8 +1270,38 @@ export function TrackerProduct({
         {announcement ? <Check aria-hidden="true" /> : null}
       </p>
 
+      {missingApplication ? (
+        <section
+          className={styles.importContext}
+          aria-labelledby="tracker-missing-title"
+        >
+          <div>
+            <p>Linked item</p>
+            <h2 id="tracker-missing-title">
+              This item is no longer in your Tracker
+            </h2>
+            <span>It may have been removed. Your other items are below.</span>
+          </div>
+          <button
+            type="button"
+            className={styles.quietButton}
+            onClick={() => {
+              setMissingApplication(false);
+              updateUrl({ application: undefined });
+            }}
+          >
+            Dismiss
+          </button>
+        </section>
+      ) : null}
+
       {!items.length ? (
-        <EmptyTracker />
+        view === "submissions" && hostedSubmissions.length ? null : (
+          <EmptyTracker
+            receiptCount={hostedSubmissions.length}
+            onOpenReceipts={() => changeView("submissions")}
+          />
+        )
       ) : initialImportId && !scopedItems.length ? (
         <section className={styles.empty}>
           <Import aria-hidden="true" />
@@ -1096,7 +1357,7 @@ export function TrackerProduct({
 
           {layout === "actions" ? (
             <div className={styles.actionsLayout}>
-              {attention.length ? (
+              {attention.length || attentionSteps.length ? (
                 <section
                   className={styles.attention}
                   aria-labelledby="tracker-attention-title"
@@ -1115,12 +1376,43 @@ export function TrackerProduct({
                         <Clock3 aria-hidden="true" />
                         <span>
                           <strong>{item.title}</strong>
-                          <small>{timingLabel(item)}</small>
+                          <small>
+                            <DeadlineText item={item} clock={clock} />
+                          </small>
                         </span>
                         <Link href={action.href}>
                           {action.label}
                           <ArrowRight aria-hidden="true" />
                         </Link>
+                      </div>
+                    );
+                  })}
+                  {attentionSteps.map((step) => {
+                    const tracked = step.opportunityId
+                      ? itemById.get(step.opportunityId)
+                      : undefined;
+                    return (
+                      <div key={`step-${step.id}`}>
+                        <ListChecks aria-hidden="true" />
+                        <span>
+                          <strong>{step.label}</strong>
+                          <small>
+                            {dueLabel(step.dueOn, today, (iso) => formatShortDate(iso, clock.now))}
+                            {step.opportunityTitle ? ` · ${step.opportunityTitle}` : ""}
+                          </small>
+                        </span>
+                        {tracked ? (
+                          <button
+                            type="button"
+                            className={styles.attentionButton}
+                            aria-haspopup="dialog"
+                            onClick={(event) => openDetails(tracked, event.currentTarget)}
+                          >
+                            Open plan
+                            <span className="sr-only"> for {tracked.title}</span>
+                            <ArrowRight aria-hidden="true" />
+                          </button>
+                        ) : null}
                       </div>
                     );
                   })}
@@ -1173,7 +1465,78 @@ export function TrackerProduct({
         </>
       ) : null}
 
-      {items.length && visibleItems.length && view === "submissions" ? (
+      {items.length && visibleItems.length && view === "plan" ? (
+        <section
+          className={styles.viewSection}
+          aria-labelledby="tracker-plan-title"
+        >
+          <header>
+            <div>
+              <p>Calls in preparation</p>
+              <h2 id="tracker-plan-title">Plan by time left</h2>
+            </div>
+          </header>
+          <p className={styles.explanation}>
+            Act now closes within 30 days, Develop within 90 and Plan ahead
+            within 180. Submitted calls stay in Submissions.
+          </p>
+          <div className={styles.grouped}>
+            {planGroups.map((group) => (
+              <section
+                key={group.key}
+                aria-labelledby={`tracker-plan-${group.key}`}
+                data-plan-bucket={group.key}
+              >
+                <header>
+                  <div>
+                    <p>Plan</p>
+                    <h2 id={`tracker-plan-${group.key}`}>{group.label}</h2>
+                  </div>
+                  <span>{group.items.length}</span>
+                </header>
+                {group.items.length ? (
+                  <div className={styles.itemList}>
+                    {group.items.map(renderItem)}
+                  </div>
+                ) : (
+                  <p className={styles.explanation}>Nothing here right now.</p>
+                )}
+              </section>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {items.length && visibleItems.length && view === "saved" ? (
+        <section
+          className={styles.viewSection}
+          aria-labelledby="tracker-saved-title"
+        >
+          <header>
+            <div>
+              <p>Not yet submitted</p>
+              <h2 id="tracker-saved-title">Saved and preparing</h2>
+            </div>
+          </header>
+          <div className={styles.itemList}>{savedItems.map(renderItem)}</div>
+          {savedItems.length ? null : (
+            <section className={styles.empty}>
+              <FolderKanban aria-hidden="true" />
+              <h2>Nothing saved right now</h2>
+              <p>
+                Opportunities you save stay here until you record a
+                submission.
+              </p>
+              <Link href="/opportunities" className={styles.primaryLink}>
+                Browse Opportunities
+              </Link>
+            </section>
+          )}
+        </section>
+      ) : null}
+
+      {view === "submissions" &&
+      (hostedSubmissions.length || (items.length && visibleItems.length)) ? (
         <section
           className={styles.viewSection}
           aria-labelledby="tracker-submissions-title"
@@ -1197,6 +1560,7 @@ export function TrackerProduct({
               <HostedSubmissionCard
                 key={submission.id}
                 submission={submission}
+                selected={focus.submissionId === submission.id}
               />
             ))}
           </div>
@@ -1278,7 +1642,7 @@ export function TrackerProduct({
               return (
                 <Link href={action.href} key={item.opportunityId}>
                   <strong>{item.title}</strong>
-                  <span>{timingLabel(item)}</span>
+                  <span>{rowDeadline(item, clock).label}</span>
                 </Link>
               );
             })}
@@ -1341,6 +1705,35 @@ export function TrackerProduct({
           )}
         </section>
       ) : null}
+
+      <TrackerItemSheet
+        item={sheetItem}
+        open={Boolean(sheetItem)}
+        features={features}
+        clock={clock}
+        section={sheetSection}
+        hosted={sheetItem ? submissionByOpportunity.get(sheetItem.opportunityId) : undefined}
+        works={works}
+        emailEvidence={emailEvidence}
+        returnFocus={() => sheetTrigger.current}
+        onOpenChange={(open) => {
+          if (!open) closeDetails();
+        }}
+        onItemChange={(opportunityId, changes) =>
+          setItems((current) =>
+            current.map((candidate) =>
+              candidate.opportunityId === opportunityId
+                ? { ...candidate, ...changes }
+                : candidate,
+            ),
+          )
+        }
+        onCarried={(item) => {
+          setAnnouncement(`${item.title} is ready for its next cycle.`);
+          closeDetails();
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

@@ -1,0 +1,67 @@
+/* Deadline-state badges. Ochre marks time pressure only; every state carries
+   its own words, so meaning never depends on colour. Nothing here animates
+   (DESIGN.md §9). */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 22px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 550;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.urgent {
+  background: var(--ochre-tint);
+  color: var(--ochre-deep);
+  border: 1px solid color-mix(in srgb, var(--ochre) 30%, transparent);
+}
+
+.calm {
+  background: var(--surface-subtle);
+  color: var(--ink-2);
+  border: 1px solid var(--border);
+}
+
+.confirmed {
+  background: var(--accent-tint);
+  color: var(--accent-deep);
+  border: 1px solid color-mix(in srgb, var(--brand-accent) 25%, transparent);
+}
+
+.predicted {
+  background: var(--mineral-blue-tint);
+  color: var(--mineral-blue);
+  border: 1px dashed color-mix(in srgb, var(--mineral-blue) 45%, transparent);
+}
+
+.predicted .text {
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+.changed {
+  background: var(--ochre-tint);
+  color: var(--ochre-deep);
+  border: 1px solid color-mix(in srgb, var(--ochre) 30%, transparent);
+}
+
+.needs-checking,
+.neutral {
+  background: var(--surface-subtle);
+  color: var(--ink-2);
+  border: 1px solid var(--border);
+}
+
+.failed {
+  background: var(--destructive-subtle);
+  color: var(--ink);
+  border: 1px solid color-mix(in srgb, var(--destructive) 35%, transparent);
+}
+
+.days {
+  font-variant-numeric: tabular-nums;
+}

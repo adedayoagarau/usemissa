@@ -1,5 +1,7 @@
 import path from "node:path";
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
+import { buildContentSecurityPolicy } from "./lib/content-security-policy";
 
 const isProduction = process.env.VERCEL_ENV
   ? process.env.VERCEL_ENV === "production"
@@ -57,6 +59,12 @@ const nextConfig: NextConfig = {
           },
           { key: "X-DNS-Prefetch-Control", value: "off" },
           { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
+          // Report-only while reports are reviewed. Switch the key to
+          // Content-Security-Policy after a week of clean reports.
+          {
+            key: "Content-Security-Policy-Report-Only",
+            value: buildContentSecurityPolicy(),
+          },
           ...(isProduction
             ? [
                 {
@@ -77,4 +85,21 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Sentry build integration only when a DSN is configured; source maps are
+// uploaded only when SENTRY_AUTH_TOKEN (plus SENTRY_ORG/SENTRY_PROJECT) is set.
+const sentryEnabled = Boolean(
+  process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN,
+);
+const sentryUploads = Boolean(process.env.SENTRY_AUTH_TOKEN);
+
+export default sentryEnabled
+  ? withSentryConfig(nextConfig, {
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      silent: !process.env.CI,
+      telemetry: false,
+      sourcemaps: { disable: !sentryUploads },
+      widenClientFileUpload: sentryUploads,
+    })
+  : nextConfig;

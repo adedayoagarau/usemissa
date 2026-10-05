@@ -2,6 +2,7 @@ import type { Account } from '@missa/radar-engine';
 import type { OpenCall, Submission, SubmissionStatus } from './domain/types.js';
 import type { WorkspaceEngine } from './engine.js';
 import type { ImportSource } from './imports.js';
+import { SUBMISSION_IMPORT_TARGETS, resolveTargetIndexes, type ImportColumnMapping } from './importColumns.js';
 
 export const SUBMISSION_IMPORT_MAX_BYTES = 2_000_000;
 export const SUBMISSION_IMPORT_MAX_ROWS = 2_000;
@@ -39,8 +40,7 @@ function parseLine(line: string): string[] {
 }
 
 function key(value: string): string { return value.trim().toLowerCase().replace(/\s+/g, ' '); }
-function column(cells: string[], headers: string[], ...names: string[]): string {
-  const index = names.map(key).map((name) => headers.indexOf(name)).find((candidate) => candidate >= 0);
+function column(cells: string[], index: number | undefined): string {
   return index === undefined ? '' : cells[index] ?? '';
 }
 function status(value: string): SubmissionStatus {
@@ -57,21 +57,27 @@ function callsForOrganization(engine: WorkspaceEngine, organizationId: string): 
   return engine.entitiesForOrganization(organizationId).flatMap((entity) => engine.programsForEntity(entity.id)).flatMap((program) => engine.openCallsForProgram(program.id));
 }
 
-export function planSubmissionImport(csv: string, engine: WorkspaceEngine, organizationId: string, accountByEmail: (email: string) => Account | undefined, source: ImportSource = 'generic'): SubmissionImportPlan {
+export interface SubmissionImportOptions {
+  /** Normalized header → field or "ignore", confirmed by the organization. Overrides the alias rules. */
+  columnMapping?: ImportColumnMapping;
+}
+
+export function planSubmissionImport(csv: string, engine: WorkspaceEngine, organizationId: string, accountByEmail: (email: string) => Account | undefined, source: ImportSource = 'generic', options: SubmissionImportOptions = {}): SubmissionImportPlan {
   if (Buffer.byteLength(csv, 'utf8') > SUBMISSION_IMPORT_MAX_BYTES) throw new Error('CSV is larger than the 2 MB import limit');
   const lines = csv.replace(/^\uFEFF/, '').split(/\r?\n/).filter((line) => line.trim());
   if (lines.length < 2) throw new Error('CSV must include a header row and at least one data row');
   if (lines.length - 1 > SUBMISSION_IMPORT_MAX_ROWS) throw new Error(`CSV exceeds the ${SUBMISSION_IMPORT_MAX_ROWS}-row import limit`);
   const headers = parseLine(lines[0]).map(key);
+  const at = resolveTargetIndexes(headers, SUBMISSION_IMPORT_TARGETS, options.columnMapping);
   const calls = callsForOrganization(engine, organizationId);
   const seen = new Set<string>();
   const rows = lines.slice(1).map((line, index) => {
     const cells = parseLine(line);
-    const openCall = column(cells, headers, 'open call', 'opportunity', 'call', 'title', 'open call title', 'program');
-    const submitterEmail = column(cells, headers, 'submitter email', 'email', 'applicant email', 'applicant email address', 'email address');
-    const workTitle = column(cells, headers, 'work title', 'work', 'submission title', 'entry title', 'entry name') || 'Imported submission';
-    const submittedAt = column(cells, headers, 'submitted at', 'submission date', 'date', 'created time', 'timestamp') || undefined;
-    const row: SubmissionImportRow = { row: index + 2, openCall, submitterEmail: submitterEmail.trim().toLowerCase(), workTitle, submittedAt, status: status(column(cells, headers, 'status', 'decision')), errors: [], warnings: [] };
+    const openCall = column(cells, at.openCall);
+    const submitterEmail = column(cells, at.submitterEmail);
+    const workTitle = column(cells, at.workTitle) || 'Imported submission';
+    const submittedAt = column(cells, at.submittedAt) || undefined;
+    const row: SubmissionImportRow = { row: index + 2, openCall, submitterEmail: submitterEmail.trim().toLowerCase(), workTitle, submittedAt, status: status(column(cells, at.status)), errors: [], warnings: [] };
     const matchingCall = calls.find((candidate) => key(candidate.title) === key(openCall));
     if (!openCall || !matchingCall) row.errors.push('Open call was not found in this organization');
     if (!row.submitterEmail || !accountByEmail(row.submitterEmail)) row.errors.push('Submitter email does not match a Missa account');

@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { gmailAccountLookupKey } from '@missa/radar-engine';
 import { getEngine, persistRadar } from '@/lib/engine';
 import { verifyGooglePubSubOidc } from '@/lib/google-pubsub-auth';
+import { gmailSyncUnavailable } from '@/lib/email-integrations';
 
-export async function POST(request: Request) {
+export async function POST(request: Request) { const unavailable = gmailSyncUnavailable(); if (unavailable) return unavailable;
   const audience = process.env.GMAIL_PUBSUB_OIDC_AUDIENCE;
   const expectedEmail = process.env.GMAIL_PUBSUB_SERVICE_ACCOUNT;
   if (audience) {

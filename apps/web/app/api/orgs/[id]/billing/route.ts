@@ -1,28 +1,31 @@
 import { NextResponse } from 'next/server';
 import { requireOrganizationAccess } from '@/lib/organizationAccess';
 import { stripePriceId, type PaidPlan } from '@/lib/billing';
+import { ORGANIZATION_BILLING_UNAVAILABLE_MESSAGE, organizationBillingEnabled } from '@/lib/organizationBilling';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const result = await requireOrganizationAccess(request, id);
+  const result = await requireOrganizationAccess(request, id, { capability: 'billing.read' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
   const organization = result.access.radar.store.organizations.get(id)!;
+  // Raw Stripe customer, subscription, and connected-account identifiers stay
+  // server-side; the client only needs the commercial state.
   return NextResponse.json({
     organizationId: id,
     plan: organization.billingTier ?? 'free',
     status: organization.billingStatus ?? 'inactive',
-    customerId: organization.billingCustomerId ?? null,
-    subscriptionId: organization.billingSubscriptionId ?? null,
+    hasSubscription: Boolean(organization.billingSubscriptionId),
     cancelAtPeriodEnd: organization.billingCancelAtPeriodEnd ?? false,
-    connectAccountId: organization.stripeConnectAccountId ?? null,
     connectStatus: organization.stripeConnectStatus ?? 'not-connected',
-  });
+    paidPlansAvailable: organizationBillingEnabled(),
+  }, { headers: { 'Cache-Control': 'private, no-store' } });
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+  if (!organizationBillingEnabled()) return NextResponse.json({ error: ORGANIZATION_BILLING_UNAVAILABLE_MESSAGE }, { status: 503 });
   const idempotencyKey = request.headers.get('Idempotency-Key')?.trim().slice(0, 240) || undefined;
   const body = await request.json().catch(() => ({}));
   const plan = body.plan as PaidPlan;
