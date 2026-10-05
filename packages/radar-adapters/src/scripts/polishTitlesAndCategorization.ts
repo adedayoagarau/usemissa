@@ -53,7 +53,7 @@ async function run() {
   console.log("\n=== 2. FIXING PLACEHOLDER ORGANIZATION NAMES ===");
   // Placeholder organizations are never renamed after a listing platform
   // (ArtConnect, CuratorSpace, Playbill, Res Artis): that would present the
-  // platform as the host of every call attached to them (migration 0092). A
+  // platform as the host of every call attached to them (migration 0093). A
   // listing with no known host keeps an unknown host until it is resolved.
   await pool.query(`
     update radar_organizations

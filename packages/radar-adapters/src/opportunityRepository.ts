@@ -53,6 +53,7 @@ interface OpportunityRow extends QueryResultRow {
   organization_id: string | null;
   organization_name: string | null;
   organization_profile_website_url: string | null;
+  official_site_url?: string | null;
   organization_data_website_url: string | null;
   organization_verified: string | null;
   identity_asset_url: string | null;
@@ -399,6 +400,9 @@ function baseSelect(
     coalesce(org.data->>'name', o.organization_id) as organization_name,
     org.data->>'verified' as organization_verified,
     org_profile.website_url as organization_profile_website_url,
+    (select e.url from opportunity_source_evidence e
+      where e.opportunity_id = o.id and e.kind = 'official-site'
+      order by e.checked_at desc limit 1) as official_site_url,
     coalesce(org.data->>'website_url', org.data->>'websiteUrl', org.data->>'website') as organization_data_website_url,
     asset.url as identity_asset_url,
     asset.alt as identity_asset_alt,
@@ -1562,7 +1566,9 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
         required: item.required,
         limit: item.limit ?? undefined,
       })),
-      guidelinesUrl: row.guidelines_url ?? undefined,
+      // The page on the organization's site that names the call (official-site
+      // resolver) stands in when the stored guidelines are a platform's page.
+      guidelinesUrl: firstOwnUrl(row.guidelines_url, row.official_site_url) ?? row.guidelines_url ?? undefined,
       submissionUrl: row.submission_url ?? undefined,
       simultaneousAllowed: row.simultaneous_allowed ?? undefined,
       changes: changes.map((item) => ({
@@ -1600,5 +1606,6 @@ export function createPostgresOpportunityRepository(
 export function createPostgresOpportunityRepositoryFromUrl(
   connectionString: string,
 ): OpportunityRepository {
-  return new PostgresOpportunityRepository(createMissaPostgresPool(connectionString, "catalogue"));
+  // query_timeout applies on Vercel only (see @missa/db pool policy).
+  return new PostgresOpportunityRepository(createMissaPostgresPool(connectionString, "catalogue", { query_timeout: 20_000 }));
 }

@@ -5,7 +5,7 @@
  * a public page, and its link never stands in for the organization's own
  * (docs/opportunity-provenance-and-destination-policy.md).
  *
- * Migration 0093 keeps the same hosts in missa_intermediary_host_pattern();
+ * Migration 0094 keeps the same hosts in missa_intermediary_url_pattern();
  * test/intermediaries.test.ts fails when the two lists drift apart.
  */
 export interface IntermediaryPlatform {

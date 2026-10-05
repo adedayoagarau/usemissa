@@ -54,6 +54,7 @@ test("discovery requires a link to the organization itself, never only a platfor
   assert.match(predicate, /submittable\\\.com/);
   assert.match(predicate, /artconnect\\\.com/);
   assert.match(predicate, /gary_profiles listed_profile/);
+  assert.match(predicate, /listed_site\.kind = 'official-site'/);
   assert.throws(() => canonicalListedOpportunityPredicate("o; drop table opportunities"));
 });
 

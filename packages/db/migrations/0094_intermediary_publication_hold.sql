@@ -3,8 +3,8 @@
 -- Alliance, Rivet, Open Call Radar, ArtDeadline, FundsforNGOs, ArtInfoLand,
 -- Playbill) list or collect other organizations' calls. Missa may read them to
 -- discover a call, but a listing is public only when it links to the
--- organization itself: its guidelines, its own submission page, or its
--- website. A platform's link never stands in for those (owner decision,
+-- organization itself: its guidelines, its own submission page, its website,
+-- or the page on its site the official-site resolver confirmed. A platform's link never stands in for those (owner decision,
 -- 2026-10-04; docs/opportunity-provenance-and-destination-policy.md).
 --
 -- The hosts are generated from INTERMEDIARY_PLATFORMS in
@@ -21,10 +21,17 @@ RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
   SELECT coalesce(url ~* '^https?://' AND url !~* missa_intermediary_url_pattern(), false)
 $$;
 
-CREATE OR REPLACE FUNCTION missa_has_organization_link(guidelines_url text, submission_url text, organization_id text)
+-- The official-site resolver (officialSiteResolver.ts) records the page on the
+-- organization's site that names the call as 'official-site' evidence.
+CREATE OR REPLACE FUNCTION missa_has_organization_link(opportunity_id text, guidelines_url text, submission_url text, organization_id text)
 RETURNS boolean LANGUAGE sql STABLE AS $$
   SELECT missa_is_organization_url(guidelines_url)
     OR missa_is_organization_url(submission_url)
+    OR EXISTS (
+      SELECT 1 FROM opportunity_source_evidence e
+      WHERE e.opportunity_id = missa_has_organization_link.opportunity_id
+        AND e.kind = 'official-site' AND missa_is_organization_url(e.url)
+    )
     OR EXISTS (
       SELECT 1 FROM gary_profiles p
       WHERE p.id = organization_id AND missa_is_organization_url(p.website_url)
@@ -45,7 +52,7 @@ CREATE OR REPLACE FUNCTION missa_intermediary_publication_hold()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   IF NEW.publication_state = 'published'
-     AND NOT missa_has_organization_link(NEW.guidelines_url, NEW.submission_url, NEW.organization_id) THEN
+     AND NOT missa_has_organization_link(NEW.id, NEW.guidelines_url, NEW.submission_url, NEW.organization_id) THEN
     NEW.publication_state := 'reviewable';
   END IF;
   RETURN NEW;
@@ -67,23 +74,23 @@ INSERT INTO "data_decisions" (
   "applied_from"
 )
 SELECT
-  'dec_0093_link_' || md5(o."id"), 'opportunity', o."id", 'publication_state',
+  'dec_0094_link_' || md5(o."id"), 'opportunity', o."id", 'publication_state',
   'opportunity.has_organization_link', 1, 'noul',
   md5(o."id" || ':' || coalesce(o."guidelines_url", '') || ':' || coalesce(o."submission_url", '') || ':' || coalesce(o."organization_id", '')),
   coalesce(o."guidelines_url", o."submission_url"), 'false', 0, 1,
   '{"true": 0, "false": 1}'::jsonb, 'reject', 'live', 'human',
-  'migration-0093', 'opportunity.has_organization_link@1', 'applied', now(),
+  'migration-0094', 'opportunity.has_organization_link@1', 'applied', now(),
   o."publication_state"
 FROM "opportunities" o
 WHERE o."publication_state" = 'published'
-  AND NOT missa_has_organization_link(o."guidelines_url", o."submission_url", o."organization_id")
+  AND NOT missa_has_organization_link(o."id", o."guidelines_url", o."submission_url", o."organization_id")
 ON CONFLICT DO NOTHING;
 
 UPDATE "opportunities" o
 SET "publication_state" = 'reviewable', "updated_at" = now()
 FROM "data_decisions" d
 WHERE d."question_key" = 'opportunity.has_organization_link'
-  AND d."decider" = 'migration-0093'
+  AND d."decider" = 'migration-0094'
   AND d."subject_id" = o."id"
   AND o."publication_state" = 'published';
 
@@ -95,7 +102,7 @@ FROM "opportunities" o
 JOIN "data_decisions" d
   ON d."subject_id" = o."id"
  AND d."question_key" = 'opportunity.has_organization_link'
- AND d."decider" = 'migration-0093'
+ AND d."decider" = 'migration-0094'
 WHERE o."publication_state" = 'reviewable'
 ON CONFLICT ("opportunity_id") DO UPDATE
   SET "status" = 'queued', "next_attempt_at" = now(), "lease_until" = NULL,

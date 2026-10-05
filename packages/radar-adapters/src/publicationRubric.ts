@@ -1,5 +1,8 @@
 import { projectOpportunityAvailability } from "@missa/radar-engine";
 
+/** Bump whenever the rubric's gates or decisions change; recorded beside Jev decisions. */
+export const PUBLICATION_RUBRIC_VERSION = "publication-rubric-v1";
+
 export type PublicationGate = "pass" | "fail" | "review";
 export type PublicationDecision = "publish" | "needs-human" | "suppress";
 

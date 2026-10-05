@@ -995,6 +995,10 @@ export const opportunities = pgTable(
     // New ingestion is never public by default. Publication is an explicit,
     // gated transition performed by the review worker.
     publicationState: text("publication_state").notNull().default("reviewable"),
+    // Programme identity and edition (0092); read by goal scope, Follow,
+    // recommendations and similar-call matching. Not a foreign key.
+    programId: text("program_id"),
+    editionLabel: text("edition_label"),
     type: text("type").notNull(),
     discipline: text("discipline"),
     genres: text("genres")

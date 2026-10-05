@@ -263,4 +263,7 @@ test("a listing whose only links are a platform's is held until the organization
   const withWebsite = editorialReview({ ...submittableOnly, organizationDataWebsiteUrl: "https://outskirtsjournal.com" }, "auto");
   assert.equal(withWebsite.decision, "publish");
   assert.deepEqual(withWebsite.holdReasons, []);
+
+  const resolved = editorialReview({ ...submittableOnly, officialSiteUrl: "https://outskirtsjournal.com/submit" }, "auto");
+  assert.equal(resolved.decision, "publish");
 });

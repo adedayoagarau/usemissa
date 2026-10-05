@@ -119,8 +119,9 @@ const migrationFiles = [
   '0089_creator_profile_connections.sql',
   '0090_decision_ledger.sql',
   '0091_honest_defaults.sql',
-  '0092_misattributed_artconnect_host.sql',
-  '0093_intermediary_publication_hold.sql',
+  '0092_opportunity_program_identity.sql',
+  '0093_misattributed_artconnect_host.sql',
+  '0094_intermediary_publication_hold.sql',
 ];
 
 

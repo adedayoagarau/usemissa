@@ -50,8 +50,8 @@ test('recognizes platform names but not organizations that share initials', () =
   assert.equal(mentionsIntermediary('Open to poets and writers in any country'), false);
 });
 
-test('migration 0093 matches exactly the hosts listed in TypeScript', () => {
-  const migration = readFileSync(new URL('../../../db/migrations/0093_intermediary_publication_hold.sql', import.meta.url), 'utf8');
+test('migration 0094 matches exactly the hosts listed in TypeScript', () => {
+  const migration = readFileSync(new URL('../../../db/migrations/0094_intermediary_publication_hold.sql', import.meta.url), 'utf8');
   const stored = /missa_intermediary_url_pattern\(\)[\s\S]*?SELECT '([^']+)'::text/.exec(migration)?.[1];
   assert.equal(stored, intermediaryUrlSqlPattern());
 });

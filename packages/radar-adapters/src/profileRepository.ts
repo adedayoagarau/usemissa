@@ -1092,6 +1092,7 @@ export function createPostgresProfileRepositoryFromUrl(
   connectionString: string,
 ): ProfileRepository {
   return new PostgresProfileRepository(
-    createMissaPostgresPool(connectionString, "catalogue", { max: 4 }),
+    // query_timeout applies on Vercel only (see @missa/db pool policy).
+    createMissaPostgresPool(connectionString, "catalogue", { max: 4, query_timeout: 20_000 }),
   );
 }

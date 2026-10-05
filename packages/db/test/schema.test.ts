@@ -180,6 +180,8 @@ test("opportunities schema exposes the additive query and personal-state boundar
       (index) => index.config.name === "opportunity_sources_trust_idx",
     ),
   );
+  assert.ok(Object.values(opportunityConfig.columns).some((column) => column.name === "program_id"));
+  assert.ok(Object.values(opportunityConfig.columns).some((column) => column.name === "edition_label"));
   assert.ok(Object.values(sourceConfig.columns).some((column) => column.name === "trust_status"));
   assert.ok(Object.values(sourceConfig.columns).some((column) => column.name === "trust_score"));
   assert.ok(
@@ -733,4 +735,14 @@ test("deadline management migration is registered and keeps reminders unique per
     migration,
     /creator_calendar_events_purpose_check\s+CHECK \(purpose IN \([^)]*'plan-step', 'stage', 'tier-close', 'forecast'\)\)/,
   );
+});
+
+test("target schema replay creates programme identity on opportunities", () => {
+  const targetSchema = readFileSync("../../scripts/apply-target-schema.mjs", "utf8");
+  const migration = readFileSync("migrations/0092_opportunity_program_identity.sql", "utf8");
+  assert.ok(
+    targetSchema.indexOf("'0092_opportunity_program_identity.sql'") > targetSchema.indexOf("'0091_honest_defaults.sql'"),
+  );
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS program_id text/);
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS edition_label text/);
 });

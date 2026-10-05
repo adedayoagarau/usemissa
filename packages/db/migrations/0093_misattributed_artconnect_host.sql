@@ -35,11 +35,11 @@ INSERT INTO "data_decisions" (
   "applied_from"
 )
 SELECT
-  'dec_0092_opportunity_' || md5(o."id"), 'opportunity', o."id",
+  'dec_0093_opportunity_' || md5(o."id"), 'opportunity', o."id",
   'publication_state', 'opportunity.is_opportunity', 1, 'noul',
   md5(o."id" || ':' || o."title"), s."url", 'false', 0, 1,
   '{"true": 0, "false": 1}'::jsonb, 'reject', 'live', 'human',
-  'migration-0092', 'opportunity.is_opportunity@1', 'applied', now(),
+  'migration-0093', 'opportunity.is_opportunity@1', 'applied', now(),
   o."publication_state"
 FROM "opportunities" o
 LEFT JOIN "opportunity_sources" s ON s."id" = o."source_id"
@@ -59,10 +59,10 @@ INSERT INTO "data_decisions" (
   "policy_version", "status", "applied_at", "applied_from"
 )
 SELECT
-  'dec_0092_host_' || md5(o."id"), 'opportunity', o."id", 'organization_id',
+  'dec_0093_host_' || md5(o."id"), 'opportunity', o."id", 'organization_id',
   'opportunity.host_organization', 1, 'value',
   md5(o."id" || ':' || o."organization_id"), NULL, NULL, '{}'::jsonb, 'apply',
-  'live', 'heuristic', 'migration-0092', 'opportunity.host_organization@1',
+  'live', 'heuristic', 'migration-0093', 'opportunity.host_organization@1',
   'applied', now(), o."organization_id"
 FROM "opportunities" o
 LEFT JOIN "gary_profiles" p ON p."id" = o."organization_id"
@@ -85,7 +85,7 @@ UPDATE "opportunities" o
 SET "organization_id" = NULL, "updated_at" = now()
 FROM "data_decisions" d
 WHERE d."question_key" = 'opportunity.host_organization'
-  AND d."decider" = 'migration-0092'
+  AND d."decider" = 'migration-0093'
   AND d."subject_id" = o."id"
   AND o."organization_id" = d."applied_from";
 
@@ -102,7 +102,7 @@ BEGIN
     SET "program_id" = NULL, "updated_at" = now()
     FROM "data_decisions" d
     WHERE d."question_key" = 'opportunity.host_organization'
-      AND d."decider" = 'migration-0092'
+      AND d."decider" = 'migration-0093'
       AND d."subject_id" = o."id"
       AND o."program_id" = 'prog_' || substring(d."applied_from" FROM 13);
   END IF;
@@ -113,11 +113,11 @@ END $$;
 UPDATE "opportunity_profile_links" l
 SET "status" = 'rejected', "verified_at" = now(), "verified_until" = NULL,
     "evidence_json" = l."evidence_json"
-      || jsonb_build_object('retiredBy', 'migration-0092', 'retiredAt', now()),
+      || jsonb_build_object('retiredBy', 'migration-0093', 'retiredAt', now()),
     "updated_at" = now()
 FROM "data_decisions" d
 WHERE d."question_key" = 'opportunity.host_organization'
-  AND d."decider" = 'migration-0092'
+  AND d."decider" = 'migration-0093'
   AND d."subject_id" = l."opportunity_id"
   AND l."profile_id" = d."applied_from"
   AND l."status" <> 'rejected';
@@ -130,11 +130,11 @@ WHERE d."question_key" = 'opportunity.host_organization'
 UPDATE "opportunity_profile_links" l
 SET "status" = 'rejected', "verified_at" = now(), "verified_until" = NULL,
     "evidence_json" = l."evidence_json"
-      || jsonb_build_object('retiredBy', 'migration-0092', 'retiredAt', now()),
+      || jsonb_build_object('retiredBy', 'migration-0093', 'retiredAt', now()),
     "updated_at" = now()
 FROM "data_decisions" d
 WHERE d."question_key" = 'opportunity.host_organization'
-  AND d."decider" = 'migration-0092'
+  AND d."decider" = 'migration-0093'
   AND d."subject_id" = l."opportunity_id"
   AND l."matched_host" = 'artconnect.com'
   AND l."status" <> 'rejected';
@@ -146,10 +146,10 @@ INSERT INTO "data_decisions" (
   "policy_version", "status", "applied_at", "applied_from"
 )
 SELECT
-  'dec_0092_name_' || md5(org."id"), 'organization', org."id", 'name',
+  'dec_0093_name_' || md5(org."id"), 'organization', org."id", 'name',
   'organization.name', 1, 'value', md5(org."id" || ':' || (org."data"->>'name')),
   'https://www.artconnect.com/hakeem', 'b', '{}'::jsonb, 'apply', 'live',
-  'source', 'migration-0092', 'organization.name@1', 'applied', now(),
+  'source', 'migration-0093', 'organization.name@1', 'applied', now(),
   org."data"->>'name'
 FROM "radar_organizations" org
 WHERE org."id" = 'org_artconn_3e4e244173eda2fe'

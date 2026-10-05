@@ -236,9 +236,9 @@
     "composition.manuscript-match": {
       "semantic": "ManuscriptMatchWizard",
       "implementation": "apps/web/components/discover/manuscript-match-wizard.tsx",
-      "composition": ["Button", "Card", "Field", "NativeSelect"],
-      "appearance": "editorial-submission-brief-with-index-style-filters-and-evidence-led-match-cards",
-      "boundary": "Fit is a deterministic comparison aid, not eligibility or a submission claim. Journal destinations remain source-linked and external."
+      "composition": ["FieldSet", "RadioGroup", "InputGroup", "Slider", "Collapsible", "Textarea", "Combobox", "FilterChip", "Switch", "NativeSelect", "Button", "Select", "Sheet", "Tabs", "Empty", "Skeleton", "Spinner", "CountBadge", "MatchExplanationTrigger", "RankingTierBadge", "PlanTierBadge"],
+      "appearance": "submission-brief-beside-a-deterministic-submission-plan-and-searchable-sortable-ranked-lists-of-evidence-led-matches-with-a-browser-saved-shortlist",
+      "boundary": "Fit, odds, payoff and cost are deterministic scores from recorded facts, versioned with the decision model; the plan is guidance, not eligibility or a submission claim. Journal destinations remain source-linked and external."
     },
     "action.primary": {
       "primitive": "Button",
@@ -664,23 +664,29 @@
       ],
       "boundary": "Interactive public feature explorer with original fictional campaign photography. The homepage uses a one-work portfolio teaser; real public catalogue deadlines, local notification switches, and clearly labelled resettable sample submissions remain interactive. No private API write, delivery or publication. Existing app destinations retained. User-triggered motion with reduced-motion equivalent. Homepage preview starts with the White theme; five local theme choices remain interactive. Approved marketing-only forest, citron and sky surfaces use the scoped palette token chain."
     },
-    "composition.applications-workspace": {
-      "semantic": "ApplicationsWorkspace",
-      "implementation": "apps/web/components/missa/applications-workspace.tsx",
+    "composition.application-record": {
+      "semantic": "TrackerItemSheet",
+      "implementation": "apps/web/components/missa/tracker-item-sheet.tsx",
+      "sections": "apps/web/components/missa/application-record.tsx",
       "composition": [
+        "Sheet",
         "Button",
-        "Tabs",
         "Dialog",
-        "Collapsible",
         "Field",
         "Input",
         "Textarea",
         "NativeSelect",
-        "ApplicationLabels",
+        "Alert",
         "Skeleton",
-        "ApplicationPreparation"
+        "Separator",
+        "UrgencyBadge",
+        "PrepareChecklist",
+        "ApplicationReminders",
+        "ApplicationCalendarDelivery",
+        "ApplicationEmailEvidence"
       ],
-      "boundary": "Account-owned canonical applications and preparation; explicit recorded events, no submission on external navigation."
+      "appearance": "right-side-sheet-full-width-below-640px-single-scroll-with-eyebrow-sections",
+      "boundary": "The one Tracker sheet for a tracked application, opened by /tracker?item=<id> or /tracker?application=<id>&section=<progress|prepare|timing|materials|notes|history> from every surface. Deadline, stages and plan come from deadline management; the record sections add progress with the lifecycle Saved, Preparing, Ready, Submitted, In review, Outcome, where each reached step shows its recorded date and provenance (recorded by you, Missa-hosted submission, received from the organization, inferred from source information) and never an invented date. External navigation never records a submission. One Forest action per region. No AI wording."
     },
     "composition.library-material": {
       "semantic": "LibraryMaterialSheet",
@@ -823,7 +829,9 @@
     "MatchExplanationTrigger": {
       "base": "Button",
       "disclosure": "Popover",
-      "motion": "popover-transition-only"
+      "motion": "popover-transition-only",
+      "implementation": "components/missa/match-explanation-trigger.tsx",
+      "boundary": "Shows a percentage only when recorded evidence or watchouts exist; otherwise reads Limited data. The popover states its reasons, watchouts, and that fit is not eligibility."
     },
     "PublicationStateBadge": {
       "base": "Badge",
@@ -843,10 +851,18 @@
       "motion": "finite-entrance-when-becoming-nonzero",
       "implementation": "components/missa/count-badge.tsx"
     },
+    "PlanTierBadge": {
+      "base": "Badge",
+      "motion": "never",
+      "implementation": "components/missa/plan-tier-badge.tsx",
+      "boundary": "Labels a magazine's place in a submission plan from its recorded odds score: Long shot, Good fit or Likely. Guidance from recorded facts, never a prediction of acceptance."
+    },
     "FilterChip": {
       "base": "Button",
       "studioReferences": ["badge-12", "badge-13"],
-      "motion": "never"
+      "motion": "never",
+      "implementation": "components/missa/filter-chip.tsx",
+      "boundary": "Toggle choice announced with aria-pressed and shown with a check mark plus Forest outline; never a filled primary action."
     },
     "SaveAction": {
       "base": "Button",
@@ -875,6 +891,30 @@
       "implementation": "components/missa/application-labels.tsx",
       "motion": "never",
       "boundary": "Opportunity type plus at most one personal status or availability label"
+    },
+    "ApplicationCalendarDelivery": {
+      "base": "Button",
+      "implementation": "components/missa/application-calendar-delivery.tsx",
+      "motion": "indicator-while-confirmed-active",
+      "boundary": "Read-only delivery state for one application: private feed on/off, each provider connection (synced or reconnect), and planned sessions with Syncing…, Synced, Sync failed + Retry. Synced only after the provider queue reports success; the spinner shows only while a job is queued or running."
+    },
+    "ApplicationEmailEvidence": {
+      "base": "Button",
+      "implementation": "components/missa/application-email-evidence.tsx",
+      "motion": "never",
+      "boundary": "Email forwarding or Gmail evidence only suggests a status. Nothing changes until the creator confirms; confirming records the event with source=email and closes the suggestion in one transaction. Shown only when an email integration is enabled."
+    },
+    "SimilarOpportunities": {
+      "base": "Button",
+      "implementation": "components/missa/similar-opportunities.tsx",
+      "motion": "never",
+      "boundary": "Recovery after a decline, a withdrawal, or a missed deadline. Deterministic matches (lib/similar-opportunities.ts) from shared taxonomy, genres, kind of call, fee, and preparation time; each match lists its plain reasons. Never labelled AI or smart. Excludes tracked calls, the anchor, calls closing within 7 days, and calls hidden for this application; at most two per organization. Save to Tracker or Not for me."
+    },
+    "PreSubmitCheck": {
+      "base": "Button",
+      "implementation": "components/missa/pre-submit-check.tsx",
+      "motion": "never",
+      "boundary": "Before you submit: required materials, word limit against saved text, page limit, anonymous-review name check across titles, file names, and saved text, and file types. Each row is Passed, Needs attention, or Check manually with the status written beside its icon; anything Missa cannot read (file contents, page counts, document properties, unrecorded file types) is Check manually, never Passed."
     },
     "GoalSubmissionProgress": {
       "base": "Progress",

@@ -177,7 +177,7 @@ try {
 
     // Opportunities are not bound to these profiles here. A substring match of
     // the profile name against titles bound every unattributed listing with a
-    // "b" in its title to the artist profile named "b" (migration 0092). Host
+    // "b" in its title to the artist profile named "b" (migration 0093). Host
     // links come from the profile identity matcher, which needs an exact host
     // plus call-name evidence.
 

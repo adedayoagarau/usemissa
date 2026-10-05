@@ -52,24 +52,58 @@ export function missaPostgresPoolStats(pool: Pool): MissaPoolStats | undefined {
   return stats ? { ...stats } : undefined;
 }
 
-/** Shared pool-policy seam. Defaults preserve existing runtime behavior. */
+/**
+ * On Vercel a pool must never wait forever: pg's defaults (no connection
+ * timeout, which also bounds the wait for a free pool slot, and no query
+ * timeout) let one stalled socket hang every request on a Fluid instance until
+ * the 300s platform timeout. Long-running Railway workers keep pg's defaults.
+ */
+const SERVERLESS_CONNECTION_TIMEOUT_MS = 10_000;
+
+export type MissaPoolDefaults = Pick<PoolConfig, "max" | "query_timeout">;
+
+/** Shared pool-policy seam. Outside Vercel, defaults preserve existing runtime behavior. */
 export function missaPostgresPoolConfig(
   connectionString: string,
   role: MissaPoolRole,
-  defaults: Pick<PoolConfig, "max"> = {},
+  defaults: MissaPoolDefaults = {},
 ): PoolConfig {
   const roleKey = role.toUpperCase().replace("-", "_");
+  const serverless = Boolean(process.env.VERCEL);
   const max = positiveInteger(process.env[`MISSA_${roleKey}_POOL_MAX`]) ?? defaults.max;
-  const connectionTimeoutMillis = positiveInteger(process.env.MISSA_DB_CONNECTION_TIMEOUT_MS);
+  const connectionTimeoutMillis =
+    positiveInteger(process.env.MISSA_DB_CONNECTION_TIMEOUT_MS) ??
+    (serverless ? SERVERLESS_CONNECTION_TIMEOUT_MS : undefined);
   const idleTimeoutMillis = positiveInteger(process.env.MISSA_DB_IDLE_TIMEOUT_MS);
+  const queryTimeoutMillis =
+    positiveInteger(process.env.MISSA_DB_QUERY_TIMEOUT_MS) ??
+    (serverless && typeof defaults.query_timeout === "number" ? defaults.query_timeout : undefined);
   return {
     connectionString: normalizePostgresConnectionString(connectionString),
     ...(max === undefined ? {} : { max }),
     ...(connectionTimeoutMillis === undefined ? {} : { connectionTimeoutMillis }),
     ...(idleTimeoutMillis === undefined ? {} : { idleTimeoutMillis }),
+    ...(queryTimeoutMillis === undefined ? {} : { query_timeout: queryTimeoutMillis }),
   };
 }
 
-export function createMissaPostgresPool(connectionString: string, role: MissaPoolRole, defaults: Pick<PoolConfig, "max"> = {}): Pool {
-  return observeMissaPostgresPool(new Pool(missaPostgresPoolConfig(connectionString, role, defaults)), role);
+declare global {
+  // Process-wide (not module-scoped): Next.js can duplicate this module across
+  // route chunks, and the hook must reach pools created from any of them.
+  var __missaOnPostgresPoolCreated: ((pool: Pool, role: MissaPoolRole) => void) | undefined;
+}
+
+/**
+ * Lets a host runtime manage every pool this package creates. apps/web uses it
+ * to call @vercel/functions' attachDatabasePool, which keeps a Fluid instance
+ * alive until idle clients are closed instead of suspending with open sockets.
+ */
+export function onMissaPostgresPoolCreated(hook: (pool: Pool, role: MissaPoolRole) => void): void {
+  globalThis.__missaOnPostgresPoolCreated = hook;
+}
+
+export function createMissaPostgresPool(connectionString: string, role: MissaPoolRole, defaults: MissaPoolDefaults = {}): Pool {
+  const pool = observeMissaPostgresPool(new Pool(missaPostgresPoolConfig(connectionString, role, defaults)), role);
+  globalThis.__missaOnPostgresPoolCreated?.(pool, role);
+  return pool;
 }

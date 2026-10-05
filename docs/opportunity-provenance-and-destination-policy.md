@@ -36,6 +36,6 @@ One list, enforced in four places:
 | `packages/radar-engine/src/editorial/intermediaries.ts` | The list (`INTERMEDIARY_PLATFORMS`), plus `isIntermediaryUrl`, `isIntermediaryName`, `mentionsIntermediary` and the SQL pattern. Add a platform here. |
 | `toPublicOpportunity` (`publicOpportunity.ts`), applied by the Postgres opportunity repository | Every public read: intermediary links are removed or replaced with the organization's own page, platform hosts and sources are never shown, and write-ups that name one are withheld. |
 | `canonicalListedOpportunityPredicate` | Browse, counts, facets, detail and the sitemap only list listings with an organization link. Creator-owned views (tracker, calendar) keep saved items. |
-| Migration 0093 (`missa_intermediary_publication_hold`) and the review worker's `missing-organization-link` hold | A listing with no organization link cannot be published by any writer. The migration's host pattern must equal the TypeScript list (enforced by a test). |
+| Migration 0094 (`missa_intermediary_publication_hold`) and the review worker's `missing-organization-link` hold | A listing with no organization link cannot be published by any writer. The migration's host pattern must equal the TypeScript list (enforced by a test). |
 
 Organization profiles and the rankings drop intermediary websites, citations, open-call links and "listed by" labels when they are read.

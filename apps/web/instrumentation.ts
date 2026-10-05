@@ -6,6 +6,15 @@ import { sentryBaseOptions } from "./lib/sentry-options";
  * SDK is not even loaded without it.
  */
 export async function register() {
+  // Fluid compute: let Vercel close idle pg clients before an instance is
+  // suspended, so a resumed instance does not reuse dead sockets.
+  if (process.env.NEXT_RUNTIME === "nodejs" && process.env.VERCEL) {
+    const [{ attachDatabasePool }, { onMissaPostgresPoolCreated }] = await Promise.all([
+      import("@vercel/functions"),
+      import("@missa/db"),
+    ]);
+    onMissaPostgresPoolCreated((pool) => attachDatabasePool(pool));
+  }
   const dsn = process.env.SENTRY_DSN;
   if (!dsn) return;
   if (
