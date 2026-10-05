@@ -22,6 +22,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.5.7",
     "@missa/contracts": "^0.1.0",
+    "@missa/decisions": "0.1.0",
     "@missa/db": "^0.1.0",
     "@missa/ingestion-v2": "^0.1.0",
     "@missa/radar-adapters": "^0.1.0",

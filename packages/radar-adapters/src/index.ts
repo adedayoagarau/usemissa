@@ -573,6 +573,7 @@ export {
   type CreateOpportunityIssueReportResult,
   type PlatformAdminSupportCase,
   type PlatformAdminSupportQueue,
+  type PlatformAdminSupportQueueOptions,
   type PlatformAdminSupportSummary,
   type PlatformSupportStatus,
   type UpdatePlatformAdminSupportCaseInput,

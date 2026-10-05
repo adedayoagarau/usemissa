@@ -11,6 +11,7 @@ import { mirrorCalendarProviderTick } from './calendar-provider-mirror';
 import { recalculateObligationChains } from './deadline-planning';
 import { refreshCycleForecasts, tickOpeningAlerts } from './deadline-cycles';
 import { tickDeadlineReminders } from './deadline-reminders';
+import { recordDeadlineRiskFromEnv } from './creator-deadline-risk';
 import { completeMissedSaveFollowUps } from './tracker-save-hooks';
 
 /**
@@ -54,7 +55,9 @@ export async function runCreatorTick(accountId?: string) {
     const calendarSync = calendar
       ? await drainCalendarSyncJobs(calendar, { accountId, ...calendarSyncTickLimits() })
       : undefined;
-    const result = { missedSaves, deadlines, chains, forecasts, openings, deadlineReminders, reminders, reminderEmails, reminderTexts, weeklyDigests, goals, goalEmails, following, calendarMirror, calendarSync };
+    // Shadow decisions only (scope `nudges`); skipped unless Jev may see creator data.
+    const deadlineRisk = pool ? await recordDeadlineRiskFromEnv(pool, accountId) : undefined;
+    const result = { missedSaves, deadlines, chains, forecasts, openings, deadlineReminders, reminders, reminderEmails, reminderTexts, weeklyDigests, goals, goalEmails, following, calendarMirror, calendarSync, ...(deadlineRisk ? { deadlineRisk } : {}) };
     if (pool)
       await recordWorkerTick(pool, 'creator-worker', {
         status: 'completed',
