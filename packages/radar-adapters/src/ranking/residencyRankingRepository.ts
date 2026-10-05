@@ -1,4 +1,5 @@
 import { type Pool } from "pg";
+import { firstOwnUrl, isIntermediaryName, isIntermediaryUrl } from "@missa/radar-engine";
 import {
   RESIDENCY_PILLAR_KEYS,
   resolveMagazineSchedule,
@@ -152,7 +153,8 @@ function factSourcesFrom(value: unknown): ResidencyRankingRow["factSources"] {
   const out: ResidencyRankingRow["factSources"] = {};
   for (const [key, entry] of Object.entries(source)) {
     const e = entry as { url?: unknown; recordedOn?: unknown } | null;
-    if (e && typeof e.url === "string") {
+    // A fact stays recorded, but a listing platform is never cited on a public page.
+    if (e && typeof e.url === "string" && !isIntermediaryUrl(e.url)) {
       out[key] = { url: e.url, recordedOn: String(e.recordedOn ?? "") };
     }
   }
@@ -164,7 +166,7 @@ const MEALS = ["all", "some", "none"] as const;
 /** Maps a stored ranking row (with profile name, slug and website) to the public shape. */
 export function residencyRow(row: Record<string, unknown>): ResidencyRankingRow {
   const meals = MEALS.find((value) => value === row.meals) ?? null;
-  const openCall = nullableText(row.open_call_url)
+  const openCall = nullableText(row.open_call_url) && !isIntermediaryUrl(String(row.open_call_url))
     ? {
         title: String(row.open_call_title ?? "Open call"),
         url: String(row.open_call_url),
@@ -175,7 +177,7 @@ export function residencyRow(row: Record<string, unknown>): ResidencyRankingRow 
     profileId: String(row.profile_id),
     name: String(row.name),
     slug: String(row.slug ?? row.profile_id),
-    websiteUrl: nullableText(row.website_url),
+    websiteUrl: firstOwnUrl(nullableText(row.website_url)) ?? null,
     location: nullableText(row.location),
     rankPosition: Number(row.rank_position ?? 0),
     prestigeTier: String(row.prestige_tier),
@@ -203,7 +205,8 @@ export function residencyRow(row: Record<string, unknown>): ResidencyRankingRow 
     rmarRating: nullableNumber(row.rmar_rating),
     rmarRatingsCount: Number(row.rmar_ratings_count ?? 0),
     rmarReviewsCount: Number(row.rmar_reviews_count ?? 0),
-    directories: Array.isArray(row.directories) ? row.directories.map(String) : [],
+    // Listing platforms are never credited on a public page.
+    directories: Array.isArray(row.directories) ? row.directories.map(String).filter((name) => !isIntermediaryName(name)) : [],
     openCall,
     schedule: openCall
       ? resolveMagazineSchedule({

@@ -27,7 +27,8 @@ type Decision = 'approved' | 'blocked';
 const HOLD_REASON_LABELS: Record<PublicationHoldRow['holdReasons'][number], string> = {
   'held-for-editorial-review': 'Passed every automated check. Waiting for editorial approval.',
   'missing-organization': 'The title is a bare label and no organization is known. Re-reviewed automatically when one is linked.',
-  'possible-non-opportunity': 'The title looks like a blog post, newsletter, site page, or non-creative program. Suppressed automatically.',
+  'missing-organization-link': "Only a listing platform's link is known (Submittable, ArtConnect, …). It cannot publish until the organization's own page or website is recorded.",
+  'possible-non-opportunity': 'The title looks like a blog post, newsletter, site page, promotional artist interview, or non-creative program. Suppressed automatically.',
 };
 
 function formatDate(value?: string): string | undefined {
@@ -91,6 +92,7 @@ export default function PlatformAdminPublicationReview({ queue }: { queue: Publi
           { label: 'Waiting', value: queue.summary.total, detail: 'Reviewable opportunities held for a person' },
           { label: 'Ready to approve', value: queue.summary.heldForEditorialReview, detail: 'Passed every automated check' },
           { label: 'Organization missing', value: queue.summary.missingOrganization, detail: 'Bare title with no known organization' },
+          { label: 'Organization link missing', value: queue.summary.missingOrganizationLink, detail: 'Only a listing platform link is known' },
           { label: 'Possible non-opportunity', value: queue.summary.possibleNonOpportunity, detail: 'Blog, newsletter, site page, or non-creative program' },
         ]}
       />

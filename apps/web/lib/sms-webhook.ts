@@ -97,6 +97,41 @@ export function parseTelnyxEvent(body: unknown): TelnyxEvent {
   return { type: 'ignored' };
 }
 
+export type InboundReply = Readonly<{ phone: string; text: string; messageId: string }>;
+
+/**
+ * A received text that the keyword rules do not act on, for intent decisions.
+ * Keywords (STOP, START and their synonyms) are never returned here: they are
+ * always handled by the rules above.
+ */
+export function parseInboundReply(body: unknown): InboundReply | null {
+  const data = (body as { data?: { event_type?: unknown; payload?: TelnyxPayload } } | null)?.data;
+  const payload = data?.payload;
+  if (data?.event_type !== 'message.received' || !payload) return null;
+  const phone = normalisePhoneNumber(payload.from?.phone_number);
+  if (!phone || typeof payload.id !== 'string' || !payload.id || typeof payload.text !== 'string' || !payload.text.trim()) return null;
+  if (inboundKeyword(payload.text)) return null;
+  return { phone, text: payload.text, messageId: payload.id };
+}
+
+/**
+ * Asks Jev what a non-keyword reply wants (scope sms_intent). Opt-outs stay
+ * rule-based and over-inclusive: this can only add an opt-out, for a reply
+ * that confidently reads as one in other words, and sends nothing back. It
+ * never opts anyone back in and never undoes a keyword.
+ */
+export async function handleInboundReply(
+  reply: InboundReply,
+  handlers: Readonly<{
+    decide(reply: InboundReply): Promise<{ treatAsOptOut: boolean }>;
+    optOut(phone: string): Promise<unknown>;
+  }>,
+): Promise<boolean> {
+  const { treatAsOptOut } = await handlers.decide(reply);
+  if (treatAsOptOut) await handlers.optOut(reply.phone);
+  return treatAsOptOut;
+}
+
 export type TelnyxEventHandlers = Readonly<{
   applyDelivery(report: SmsDeliveryReport): Promise<unknown>;
   optOut(phone: string): Promise<unknown>;

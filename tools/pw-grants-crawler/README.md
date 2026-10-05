@@ -153,6 +153,26 @@ with a changed deadline create a `needs-review` candidate; everything else
 stays separate. Every source URL remains an alias and every crawl remains an
 observation under the canonical record.
 
+### Jev decisions (shadow by default)
+
+When `JEV_API_KEY` is set, Gary also asks Jev (TypeSafe AI's typed decision
+model) and records every answer in Missa's `data_decisions` ledger
+(`src/pw_grants_crawler/jev.py`, mirroring `packages/decisions`):
+
+- **Review worker:** before DeepSeek, Jev answers `gary.publication_route`
+  (`publish`, `needs_human`, `reject`) for candidates with no deterministic
+  blocker. In shadow mode (default) DeepSeek still decides exactly as before,
+  and its verdict is recorded beside Jev's as an `llm` row on the same input
+  hash. With `DECISIONS_MODE_GARY_REVIEW=live`, a confident Jev publish (at or
+  above `GARY_PUBLISH_THRESHOLD`) or reject is used instead of DeepSeek; any
+  other answer still goes to DeepSeek. Deterministic blockers always win.
+- **Identity:** each `needs-review` candidate pair is recorded as an
+  `identity.same_opportunity` decision after the ingest transaction commits.
+  This is shadow only and never changes how an observation attaches.
+
+`JEV_BASE_URL`, `JEV_MODEL` and `JEV_TIMEOUT_MS` are optional. A Jev or ledger
+failure is logged and ignored.
+
 ## Publication profile discovery
 
 Gary also includes a profile adapter for the Poets & Writers Literary Magazines

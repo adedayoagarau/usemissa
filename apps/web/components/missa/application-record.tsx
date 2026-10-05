@@ -578,6 +578,15 @@ export function RecordMaterials({
           {data.workTitle ?? "Open linked Work"} in Library
           <ArrowRight className="size-4" aria-hidden="true" />
         </Link>
+      ) : null}
+      {data.workId ? (
+        <Link
+          href="/profile/portfolio"
+          className="flex min-h-11 items-center gap-3 text-sm text-primary"
+        >
+          <ArrowUpRight className="size-4" aria-hidden="true" />
+          Show this Work on your portfolio
+        </Link>
       ) : !works.length ? (
         <p className="text-sm text-muted-foreground">
           Add a Work to your{" "}

@@ -4,6 +4,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import pg from "pg";
 import type { ResidencyProfile } from "./resArtisParser.js";
+import { firstOwnUrl } from "@missa/radar-engine";
 
 // Load DATABASE_URL
 const possibleEnvFiles = [
@@ -70,7 +71,8 @@ try {
       name: o.name,
       slug: o.slug,
       residency_name: o.residencyName,
-      website_url: o.website || o.resartisUrl,
+      // The directory's page is never recorded as the organization's website.
+      website_url: firstOwnUrl(o.website) ?? null,
       email: o.email,
       phone: o.phone,
       country: o.country,
@@ -100,10 +102,10 @@ try {
     `, [orgId, JSON.stringify(orgData)]);
 
     // 2. Gary Profiles (Residency Center Profile)
-    const websiteUrl = o.website || o.resartisUrl;
+    const websiteUrl = firstOwnUrl(o.website) ?? null;
     let normWebsite = "";
     try {
-      normWebsite = new URL(websiteUrl).hostname.replace(/^www\./, "");
+      if (websiteUrl) normWebsite = new URL(websiteUrl).hostname.replace(/^www\./, "");
     } catch {
       normWebsite = "resartis.org";
     }

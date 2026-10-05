@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { getResidencyRankingRepository } from "@/lib/residencyRankingRepository";
 import { getSessionAccount } from "@/lib/auth";
 import { clientAddress } from "@/lib/auth-rate-limit";
 import { submitResidencyReview } from "@/lib/residencyReviewSubmission";
+import { creatorDecisionContext, moderateResidencyReview } from "@/lib/creator-decisions";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,22 @@ export async function POST(
       account: session?.account,
       ip: clientAddress(request),
       recordReview: (review) => getResidencyRankingRepository().recordReview(review),
+      // Reviews have no hold store yet, so moderation is recorded after the
+      // response and never delays or changes publishing. Once a hold store
+      // exists, live mode should await this and pass holdReview.
+      moderate: async (review) => {
+        const decisions = creatorDecisionContext("moderation");
+        if (decisions)
+          after(() =>
+            moderateResidencyReview(decisions, {
+              reviewId: review.reviewId,
+              title: review.reviewTitle ?? null,
+              body: review.reviewBody,
+              ratingScore: review.ratingScore,
+            }).then(() => undefined, () => undefined),
+          );
+        return "publish";
+      },
     });
     return NextResponse.json(result.body, {
       status: result.status,

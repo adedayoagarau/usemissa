@@ -3,6 +3,7 @@ import {
   type PlatformAdminSupportCase,
   type PlatformAdminSupportSummary,
 } from '@missa/radar-adapters';
+import { decisionModeFromEnv, reportCredibility } from '@missa/decisions';
 import type { AdminArea, AdminMaturity } from './platformAdmin';
 
 export interface PlatformAdminSupportData {
@@ -41,7 +42,8 @@ export async function getPlatformAdminSupport(): Promise<AdminArea<PlatformAdmin
     };
   }
 
-  const queue = await readPlatformAdminSupportQueue(process.env.DATABASE_URL);
+  // Live moderation decisions order open cases by how checkable they are.
+  const queue = await readPlatformAdminSupportQueue(process.env.DATABASE_URL, decisionModeFromEnv('moderation') === 'live' ? { credibility: { questionKey: reportCredibility.key, subjectType: reportCredibility.subjectType } } : {});
   const maturity: AdminMaturity = !queue.available ? 'unavailable' : queue.warnings.length > 0 ? 'partial' : 'durable';
   return {
     provenance: {

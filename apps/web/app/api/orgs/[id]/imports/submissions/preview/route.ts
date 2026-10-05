@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { planSubmissionImport } from '@missa/workspace-engine';
 import { requireOrganizationAccess } from '@/lib/organizationAccess';
+import { resolveImportColumnMapping } from '@/lib/jevDecisions';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -11,7 +12,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const accountByEmail = (email: string) => [...result.access.radar.store.accounts.values()].find((account) => account.email === email);
   try {
     const source = ['submittable', 'google-forms', 'airtable', 'generic'].includes(body.source) ? body.source : 'generic';
-    return NextResponse.json(planSubmissionImport(body.csv, result.access.workspace, id, accountByEmail, source));
+    const { columnMapping, columns } = await resolveImportColumnMapping({ kind: 'submission', csv: body.csv, organizationId: id, requestedMapping: body.columnMapping, recordInShadow: true });
+    if (!columns) return NextResponse.json(planSubmissionImport(body.csv, result.access.workspace, id, accountByEmail, source));
+    return NextResponse.json({ ...planSubmissionImport(body.csv, result.access.workspace, id, accountByEmail, source, { columnMapping }), columns });
   }
   catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to parse submissions' }, { status: 400 }); }
 }

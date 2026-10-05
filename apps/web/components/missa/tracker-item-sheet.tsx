@@ -31,6 +31,8 @@ import {
   useApplicationRecord,
 } from "@/components/missa/application-record";
 import { SheetSectionHeading as SectionHeading } from "@/components/missa/sheet-section-heading";
+import { PreSubmitCheck } from "@/components/missa/pre-submit-check";
+import { SimilarOpportunities } from "@/components/missa/similar-opportunities";
 import type { TrackerHostedSubmission } from "@/components/tracker-product";
 import {
   DateConfidenceBadge,
@@ -364,6 +366,8 @@ export function TrackerItemSheet({
   const moment = item ? rowDeadline(item, clock) : undefined;
   const summary = useMemo(() => (item ? applicationSummary(item) : undefined), [item]);
   const stepRequest = useRef(0);
+  const [checklistVersion, setChecklistVersion] = useState(0);
+  const checklistLoaded = useCallback(() => setChecklistVersion((version) => version + 1), []);
   const record = useApplicationRecord({
     opportunityId,
     enabled: open && relational,
@@ -708,6 +712,13 @@ export function TrackerItemSheet({
 
               {relational ? <RecordProgress record={record} emailEvidence={emailEvidence} /> : null}
 
+              {relational &&
+              (item.myStatus === "declined" ||
+                item.myStatus === "withdrawn" ||
+                (preSubmission && moment.state === "closed")) ? (
+                <SimilarOpportunities opportunityId={item.opportunityId} />
+              ) : null}
+
               {relational && !accepted ? (
                 <section aria-labelledby="sheet-plan-title" className="space-y-4">
                   <SectionHeading id="sheet-plan-title" eyebrow="Plan">
@@ -868,8 +879,11 @@ export function TrackerItemSheet({
               ) : null}
 
               {!item.isManual && preSubmission ? (
-                <section id="sheet-checklist" aria-label="Checklist">
-                  <PrepareChecklist opportunityId={item.opportunityId} enabled={open} />
+                <section id="sheet-checklist" aria-label="Checklist" className="space-y-6">
+                  {relational ? (
+                    <PreSubmitCheck opportunityId={item.opportunityId} refreshKey={checklistVersion} />
+                  ) : null}
+                  <PrepareChecklist opportunityId={item.opportunityId} enabled={open} onLoaded={checklistLoaded} />
                 </section>
               ) : null}
 

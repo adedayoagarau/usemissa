@@ -186,11 +186,14 @@ export function OpportunityDetailView({
 }) {
   const tracked = Boolean(opportunity.personal?.tracked);
   const canonicalPath = `/opportunities/${opportunity.slug}`;
+  // Only the organization's own pages: an intermediary's link (Submittable,
+  // ArtConnect, …) never stands in for them, and neither does the page Missa
+  // discovered the call on.
   const officialHref = opportunity.guidelinesUrl ?? opportunity.submissionUrl;
-  const destinationHref = officialHref ?? opportunity.source.url;
+  const destinationHref = officialHref ?? opportunity.organizationWebsiteUrl;
   const destinationLabel = officialHref
     ? "Open Official Application"
-    : "Open Original Listing";
+    : "Open organization website";
 
   const call = opportunity.callProfile;
 
@@ -477,14 +480,16 @@ export function OpportunityDetailView({
                 opportunityTitle={cleanTitle}
               />
             )}
-            <a
-              className={styles.sourceButton}
-              href={destinationHref}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {destinationLabel} <ExternalLink aria-hidden="true" />
-            </a>
+            {destinationHref ? (
+              <a
+                className={styles.sourceButton}
+                href={destinationHref}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {destinationLabel} <ExternalLink aria-hidden="true" />
+              </a>
+            ) : null}
             <AddOpportunityToCalendarButton
               item={opportunity}
               signedIn={signedIn}
@@ -647,14 +652,16 @@ export function OpportunityDetailView({
                 Review the organization’s current instructions and submit
                 through its official website.
               </p>
-              <a
-                className={styles.sourceButton}
-                href={destinationHref}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {destinationLabel} <ExternalLink aria-hidden="true" />
-              </a>
+              {destinationHref ? (
+                <a
+                  className={styles.sourceButton}
+                  href={destinationHref}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {destinationLabel} <ExternalLink aria-hidden="true" />
+                </a>
+              ) : null}
               {signedIn ? (
                 <OpportunityIssueReport
                   opportunityId={opportunity.id}
@@ -909,15 +916,17 @@ export function OpportunityDetailView({
               opportunityTitle={cleanTitle}
             />
           )}
-          <OfficialDestinationLink
-            className={styles.sourceButton}
-            href={destinationHref}
-            opportunityId={opportunity.id}
-            surface="detail-sticky"
-          >
-            {destinationLabel}
-            <ExternalLink aria-hidden="true" />
-          </OfficialDestinationLink>
+          {destinationHref ? (
+            <OfficialDestinationLink
+              className={styles.sourceButton}
+              href={destinationHref}
+              opportunityId={opportunity.id}
+              surface="detail-sticky"
+            >
+              {destinationLabel}
+              <ExternalLink aria-hidden="true" />
+            </OfficialDestinationLink>
+          ) : null}
         </OpportunityDetailStickyActions>
 
         {/* Mobile Sticky Action Bar */}
@@ -938,13 +947,16 @@ export function OpportunityDetailView({
               opportunityTitle={cleanTitle}
             />
           )}
-          <OfficialDestinationLink
-            href={destinationHref}
-            opportunityId={opportunity.id}
-            surface="mobile-dock"
-          >
-            Open official site <ExternalLink aria-hidden="true" />
-          </OfficialDestinationLink>
+          {destinationHref ? (
+            <OfficialDestinationLink
+              href={destinationHref}
+              opportunityId={opportunity.id}
+              surface="mobile-dock"
+            >
+              {officialHref ? "Open official site" : "Open organization website"}{" "}
+              <ExternalLink aria-hidden="true" />
+            </OfficialDestinationLink>
+          ) : null}
         </MobileActionDock>
       </article>
     </main>

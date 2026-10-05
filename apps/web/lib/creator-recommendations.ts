@@ -2,7 +2,7 @@ import {
   CreatorRepositoryBase,
   CreatorConflictError,
   creatorPoolFor,
-  canonicalPublicOpportunityPredicate,
+  canonicalListedOpportunityPredicate,
   type CreatorCommandEnvelope,
 } from "@missa/radar-adapters";
 import { goalOpportunityScope } from "./goal-scope.ts";
@@ -202,7 +202,7 @@ export class CreatorRecommendationRepository extends CreatorRepositoryBase {
       and (coalesce(jsonb_array_length(g.match_preferences->'locations'),0)=0 or lower(o.location) in ('global','worldwide','international','online','remote') or exists(select 1 from jsonb_array_elements_text(g.match_preferences->'locations') loc where lower(loc)=lower(o.country_code) or lower(loc)=lower(o.country) or lower(loc)=lower(o.location))) and ${goalWorkFit}`;
     const goalFit = `exists(select 1 from creator_goals g where g.account_id=${owner} and g.state='active' and g.recommendations and g.ends_on >= (now() at time zone g.timezone)::date and ${goalOpportunityScope()} and ${goalConstraints} and (o.deadline_date is null or o.deadline_date<=g.ends_on))`;
     const profileFit = `((cardinality(${typeParam}::text[])=0 or o.type=any(${typeParam}::text[])) and (cardinality(${disciplineParam}::text[])=0 or o.discipline=any(${disciplineParam}::text[]) or o.genres && ${disciplineParam}::text[]))`;
-    const where = [canonicalPublicOpportunityPredicate("o")];
+    const where = [canonicalListedOpportunityPredicate("o")];
     if (goal) {
       where.push(profileFit);
       const goalId = bind(goal.id);

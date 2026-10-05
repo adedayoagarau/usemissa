@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import pg from "pg";
 import type { ArtConnectProfile } from "./artConnectParser.js";
+import { firstOwnUrl } from "@missa/radar-engine";
 
 // Load DATABASE_URL
 const possibleEnvFiles = [
@@ -38,12 +39,13 @@ console.log(`\n=== FAST VECTORIZED SYNC: ${orgs.length} ARTCONNECT ORGANIZATIONS
 
 // Pre-normalize websites
 const enrichedOrgs = orgs.map(o => {
-  const websiteUrl = o.website || o.artconnectUrl;
-  let normWebsite = "artconnect.com";
+  // ArtConnect's profile page is never recorded as the organization's website.
+  const websiteUrl = firstOwnUrl(o.website) ?? null;
+  let normWebsite: string | null = null;
   try {
-    normWebsite = new URL(websiteUrl).hostname.replace(/^www\./, "");
+    if (websiteUrl) normWebsite = new URL(websiteUrl).hostname.replace(/^www\./, "");
   } catch {}
-  return { ...o, normWebsite };
+  return { ...o, website: websiteUrl, normWebsite };
 });
 
 const { Client } = pg;
@@ -52,7 +54,6 @@ await client.connect();
 
 try {
   const BATCH_SIZE = 500;
-  let reboundCount = 0;
 
   for (let i = 0; i < enrichedOrgs.length; i += BATCH_SIZE) {
     const batch = enrichedOrgs.slice(i, i + BATCH_SIZE);
@@ -84,7 +85,7 @@ try {
         (x->>'profileKind'),
         substring(regexp_replace(lower(x->>'slug'), '[^a-z0-9]', '_', 'g') from 1 for 48),
         (x->>'name'),
-        coalesce(x->>'website', x->>'artconnectUrl'),
+        x->>'website',
         (x->>'normWebsite'),
         'confirmed',
         1.0,
@@ -174,20 +175,11 @@ try {
       ON CONFLICT (id) DO UPDATE SET image_url = EXCLUDED.image_url;
     `, [jsonStr]);
 
-    // 7. Rebind Opportunities
-    const rebindRes = await client.query(`
-      UPDATE opportunities o
-      SET organization_id = 'org_artconn_' || substring(md5(x->>'id') from 1 for 16),
-          program_id = 'prog_' || substring(md5(x->>'id') from 1 for 16),
-          updated_at = now()
-      FROM jsonb_array_elements($1::jsonb) x
-      WHERE (o.organization_id = 'org_41bb352fe07fb7ed24d0f843' OR o.organization_id IS NULL)
-        AND (
-          lower(o.title) LIKE '%' || lower(x->>'name') || '%'
-          OR o.guidelines_url LIKE '%' || (x->>'id') || '%'
-        );
-    `, [jsonStr]);
-    reboundCount += rebindRes.rowCount || 0;
+    // Opportunities are not bound to these profiles here. A substring match of
+    // the profile name against titles bound every unattributed listing with a
+    // "b" in its title to the artist profile named "b" (migration 0093). Host
+    // links come from the profile identity matcher, which needs an exact host
+    // plus call-name evidence.
 
     const currentSynced = Math.min(i + BATCH_SIZE, enrichedOrgs.length);
     console.log(`[${currentSynced}/${enrichedOrgs.length}] Vectorized batch committed to Railway PostgreSQL...`);
@@ -195,7 +187,6 @@ try {
 
   console.log(`\n======================================================`);
   console.log(`✔ Successfully synced ${enrichedOrgs.length} ArtConnect organizations!`);
-  console.log(`✔ Rebound ${reboundCount} opportunities to their true host profiles!`);
   console.log(`======================================================\n`);
 
 } finally {

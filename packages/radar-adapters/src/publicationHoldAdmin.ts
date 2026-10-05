@@ -47,6 +47,7 @@ export interface PublicationHoldQueueData {
     total: number;
     heldForEditorialReview: number;
     missingOrganization: number;
+    missingOrganizationLink: number;
     possibleNonOpportunity: number;
     otherReview: number;
   };
@@ -83,7 +84,7 @@ interface LockedRow extends QueryResultRow {
 }
 
 const SOURCE = "radar_review_jobs (needs-human) + radar_review_decisions";
-const HOLD_REASONS: ReviewHoldReason[] = ["held-for-editorial-review", "missing-organization", "possible-non-opportunity"];
+const HOLD_REASONS: ReviewHoldReason[] = ["held-for-editorial-review", "missing-organization", "missing-organization-link", "possible-non-opportunity"];
 
 const ORGANIZATION_NAME_SQL = `coalesce(nullif(btrim(organization.data->>'name'), ''), nullif(btrim(organization_profile.name), ''), linked_profile.name)`;
 const ORGANIZATION_JOINS = `
@@ -151,7 +152,7 @@ export function emptyPublicationHoldQueue(generatedAt = new Date().toISOString()
     generatedAt,
     source: SOURCE,
     warnings: warning ? [warning] : [],
-    summary: { total: 0, heldForEditorialReview: 0, missingOrganization: 0, possibleNonOpportunity: 0, otherReview: 0 },
+    summary: { total: 0, heldForEditorialReview: 0, missingOrganization: 0, missingOrganizationLink: 0, possibleNonOpportunity: 0, otherReview: 0 },
     rows: [],
   };
 }
@@ -243,11 +244,12 @@ export async function readPublicationHoldQueue(connectionString: string, limit =
          join opportunities o on o.id = j.opportunity_id and o.publication_state = 'reviewable'
         where j.status = 'needs-human'`,
     );
-    const summary = { total: Number(totalResult.rows[0]?.count ?? 0) || 0, heldForEditorialReview: 0, missingOrganization: 0, possibleNonOpportunity: 0, otherReview: 0 };
+    const summary = { total: Number(totalResult.rows[0]?.count ?? 0) || 0, heldForEditorialReview: 0, missingOrganization: 0, missingOrganizationLink: 0, possibleNonOpportunity: 0, otherReview: 0 };
     for (const row of counts.rows) {
       const count = Number(row.count) || 0;
       if (row.reason === "held-for-editorial-review") summary.heldForEditorialReview = count;
       else if (row.reason === "missing-organization") summary.missingOrganization = count;
+      else if (row.reason === "missing-organization-link") summary.missingOrganizationLink = count;
       else if (row.reason === "possible-non-opportunity") summary.possibleNonOpportunity = count;
       else if (row.reason === null) summary.otherReview = count;
     }

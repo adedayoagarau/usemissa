@@ -85,6 +85,13 @@ export async function submitResidencyReview(input: {
   ip: string;
   recordReview: (review: SubmitResidencyReviewInput) => Promise<SubmitResidencyReviewResult>;
   consumeRateLimit?: typeof consumeResidencyReviewRateLimit;
+  /**
+   * Optional moderation (scope `moderation`). It can only hold a review, and
+   * only when a hold store is given; otherwise the review publishes as today.
+   * A failing moderator never blocks the review.
+   */
+  moderate?: (review: SubmitResidencyReviewInput & { reviewId: string }) => Promise<"hold" | "publish">;
+  holdReview?: (review: SubmitResidencyReviewInput) => Promise<SubmitResidencyReviewResult>;
 }): Promise<ReviewSubmissionResult> {
   if (!input.account) {
     return { status: 401, body: { error: "Sign in to post a review." } };
@@ -129,7 +136,7 @@ export async function submitResidencyReview(input: {
       ? body.reviewTitle.trim().slice(0, 200)
       : null;
 
-  const result = await input.recordReview({
+  const review = {
     profileId: input.residencyId,
     reviewId: accountResidencyReviewId(input.account.id, input.residencyId),
     authorName: reviewAuthorName(input.account, body.isAnonymous !== false),
@@ -137,7 +144,14 @@ export async function submitResidencyReview(input: {
     reviewBody,
     ratingScore,
     source: COMMUNITY_REVIEW_SOURCE,
-  });
+  };
+  const verdict = input.moderate
+    ? await input.moderate(review).catch(() => "publish" as const)
+    : "publish";
+  const result =
+    verdict === "hold" && input.holdReview
+      ? await input.holdReview(review)
+      : await input.recordReview(review);
 
   if (result.duplicate) {
     return { status: 409, body: { error: "You have already reviewed this residency." } };

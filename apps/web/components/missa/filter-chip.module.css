@@ -1,0 +1,21 @@
+.chip {
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.chip[data-selected] {
+  border-color: var(--primary);
+  background: var(--accent-tint);
+  color: var(--accent-deep);
+}
+
+.chip[data-selected]:hover {
+  background: var(--accent-tint);
+  color: var(--accent-deep);
+}
+
+@media (pointer: coarse) {
+  .chip {
+    min-height: var(--touch-target-min);
+  }
+}

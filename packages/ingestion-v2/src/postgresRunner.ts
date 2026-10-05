@@ -3,11 +3,13 @@ import type { SourceDefinition } from "./contracts.js";
 import {
   executeShadowPipeline,
   shadowJob,
+  type PipelineExecutionOptions,
   type ShadowRunStore,
 } from "./execution.js";
 import { adaptiveCadenceHours } from "./scheduling.js";
 import type { SourceRefreshPolicy } from "./sourceManifest.js";
 import type { IngestionV2SourceRefreshHistory } from "./persistence.js";
+import type { PublisherDecisionContext } from "./publisher.js";
 
 export interface ScheduledSourceStore {
   claimDue(limit: number): Promise<string[]>;
@@ -37,11 +39,14 @@ export interface PostgresShadowBatchOptions {
   sources: Iterable<SourceDefinition>;
   runStore: ShadowRunStore;
   scheduleStore: ScheduledSourceStore;
+  /** Jev decisions beside the publisher's DeepSeek gate. */
+  decisions?: PublisherDecisionContext;
   limit?: number;
   now?: () => Date;
   logger?: Pick<Console, "info" | "warn">;
   reviewSourceIds?: ReadonlySet<string>;
   afterArtifact?: (source: SourceDefinition, artifact: Awaited<ReturnType<typeof executeShadowPipeline>>) => Promise<void>;
+  identityShadow?: PipelineExecutionOptions["identityShadow"];
 }
 
 function refreshPolicy(source: SourceDefinition): SourceRefreshPolicy {
@@ -134,7 +139,7 @@ export async function runDuePostgresShadowBatch(
         source,
         job,
         options.runStore,
-        { logger, forceReprocess: reviewMode },
+        { logger, forceReprocess: reviewMode, identityShadow: options.identityShadow, decisions: options.decisions },
       );
       if (options.afterArtifact) {
         try {

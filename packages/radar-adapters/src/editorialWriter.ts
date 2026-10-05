@@ -38,11 +38,27 @@ function trimTo(value: string, max: number): string {
   return normalized.length <= max ? normalized : `${normalized.slice(0, max - 1).trimEnd()}…`;
 }
 
-function cleanAiProse(text: string): string {
+/**
+ * Removes filler and boosterish phrases. The article before a replaced phrase
+ * is consumed with it, so "a great opportunity" becomes "an opportunity", never
+ * "a an opportunity".
+ */
+export function cleanAiProse(text: string): string {
   return text
-    .replace(/\b(?:as an ai|in conclusion|moreover|furthermore)\b/gi, "")
-    .replace(/\b(?:an exciting opportunity|great opportunity|amazing chance|don't miss out)\b/gi, "an opportunity")
+    // A filler that opened a sentence hands its capital to the next word.
+    .replace(/(^|[.!?]\s+)(?:as an ai|in conclusion|moreover|furthermore)\b,?\s*([a-z])/gi, (_match, lead: string, letter: string) => `${lead}${letter.toUpperCase()}`)
+    .replace(/\b(?:as an ai|in conclusion|moreover|furthermore)\b,?/gi, "")
+    .replace(/\s*\bdon['’]t miss out\b[!.]?/gi, "")
+    .replace(
+      /\b(?:(a|an|the)\s+)?(?:exciting opportunity|great opportunity|amazing chance)\b/gi,
+      (match: string, article: string | undefined, offset: number, whole: string) => {
+        if (article?.toLowerCase() === "the") return `${article} opportunity`;
+        const opensSentence = /^[A-Z]/.test(match) && /(^|[.!?]\s*)$/.test(whole.slice(0, offset));
+        return opensSentence ? "An opportunity" : "an opportunity";
+      },
+    )
     .replace(/\s+/g, " ")
+    .replace(/\s+([,.;:!?])/g, "$1")
     .trim();
 }
 

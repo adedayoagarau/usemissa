@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
+import { firstOwnUrl, isIntermediaryUrl } from "@missa/radar-engine";
 import {
   MIN_REPORTS_FOR_MEDIAN,
   PILLAR_KEYS,
@@ -197,7 +198,8 @@ function factSourcesFrom(value: unknown): MagazineRankingRow["factSources"] {
   const out: MagazineRankingRow["factSources"] = {};
   for (const [key, entry] of Object.entries(source)) {
     const e = entry as { url?: unknown; recordedOn?: unknown } | null;
-    if (e && typeof e.url === "string") {
+    // A fact stays recorded, but a listing platform is never cited on a public page.
+    if (e && typeof e.url === "string" && !isIntermediaryUrl(e.url)) {
       out[key] = { url: e.url, recordedOn: typeof e.recordedOn === "string" ? e.recordedOn : "" };
     }
   }
@@ -294,7 +296,7 @@ export function rankingRow(row: Record<string, unknown>): MagazineRankingRow {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, ""),
-    websiteUrl: row.website_url ? String(row.website_url) : null,
+    websiteUrl: firstOwnUrl(row.website_url ? String(row.website_url) : null) ?? null,
     mediaUrl: row.media_url ? String(row.media_url) : null,
     rankingYear: Number(row.ranking_year),
     genre: row.genre as RankingGenre,
