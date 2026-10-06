@@ -11,7 +11,7 @@ function plural(count: number, one: string, many: string): string {
 export function renderOrganizationDigestEmail(input: { organizationName: string; recipientName?: string; facts: OrganizationDigestFacts }): { subject: string; html: string; text: string } {
   const { facts } = input;
   const base = `${siteUrl()}/organization/${encodeURIComponent(facts.organizationId)}`;
-  const waiting = facts.lettersAwaitingApproval + facts.lettersNeedingAttention + facts.overdueReads.length;
+  const waiting = facts.lettersAwaitingApproval + facts.lettersNeedingAttention + facts.overdueReads.length + facts.questionsWaiting;
   const subject = waiting > 0 ? `${input.organizationName}: ${plural(waiting, 'thing needs', 'things need')} you today` : `${input.organizationName}: yesterday in Missa`;
   const blocks: LetterBlock[] = [
     { kind: 'paragraph', text: input.recipientName ? `Good morning, ${input.recipientName}.` : 'Good morning.' },
@@ -22,11 +22,12 @@ export function renderOrganizationDigestEmail(input: { organizationName: string;
       { label: 'Decisions recorded in the last day', value: String(facts.decisionsRecorded) },
       { label: 'Letters awaiting approval', value: String(facts.lettersAwaitingApproval) },
       { label: 'Letters scheduled in the next day', value: String(facts.lettersScheduledSoon) },
+      { label: 'Questions from submitters waiting', value: String(facts.questionsWaiting) },
     ] },
   ];
   if (facts.overdueReads.length) blocks.push({ kind: 'paragraph', text: `Past the due date: ${facts.overdueReads.slice(0, 5).map((reader) => `${reader.label} (${reader.count})`).join(', ')}${facts.overdueReads.length > 5 ? `, and ${facts.overdueReads.length - 5} more` : ''}. You can nudge them or move their reads from Reviews.` });
   if (facts.lettersNeedingAttention) blocks.push({ kind: 'paragraph', text: `${plural(facts.lettersNeedingAttention, 'letter has', 'letters have')} recipients that were not sent. Open Messages to retry them.` });
-  blocks.push({ kind: 'action', label: waiting > 0 ? 'Open what needs you' : 'Open your organization', url: facts.lettersAwaitingApproval || facts.lettersNeedingAttention ? `${base}/messages` : facts.overdueReads.length ? `${base}/reviews` : `${base}/overview` });
+  blocks.push({ kind: 'action', label: waiting > 0 ? 'Open what needs you' : 'Open your organization', url: facts.lettersAwaitingApproval || facts.lettersNeedingAttention || facts.questionsWaiting ? `${base}/messages` : facts.overdueReads.length ? `${base}/reviews` : `${base}/overview` });
   const letter: LetterProps = {
     subject,
     preheader: `${plural(facts.newSubmissions, 'new submission', 'new submissions')}, ${plural(facts.readsCompleted, 'read', 'reads')} completed, ${plural(facts.lettersAwaitingApproval, 'letter', 'letters')} awaiting approval.`,

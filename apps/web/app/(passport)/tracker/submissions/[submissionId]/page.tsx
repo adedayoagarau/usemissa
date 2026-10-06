@@ -11,6 +11,8 @@ import styles from './submission-detail.module.css';
 import { communicationTemplate, submissionStatusTimeline, type SubmissionStage } from '@missa/workspace-engine';
 import { SubmissionStatusTimeline } from '@/components/submission-status-timeline';
 import { resolveOrganizationCustomization } from '@/lib/organizationCustomization';
+import { SubmitterQuestionsPanel, type OwnQuestion } from '@/components/submitter-questions';
+import { submitterOwnQuestion } from '@/lib/submitterQuestionsData';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,6 +68,7 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
   let hasActiveReview = false;
   let stageEvents: Array<{ stage: SubmissionStage; at: string }> = [];
   let letters: Array<{ id: string; subject: string; kindLabel: string; at: string }> = [];
+  let questions: OwnQuestion[] | undefined;
 
   if (workspaceRelationalAuthorityEnabled()) {
     const detail = await (await getRelationalWorkspace()).submissionForOwner(session.account.id, submissionId);
@@ -102,6 +105,7 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
       const recipient = batch.recipients.find((item) => item.submissionId === found.id && item.status === 'sent');
       return recipient ? [{ id: batch.id, subject: communicationTemplate(batch.kind).label, kindLabel: batch.stage ? 'Stage announcement' : 'Letter', at: recipient.sentAt ?? batch.updatedAt }] : [];
     }).sort((a, b) => a.at.localeCompare(b.at));
+    questions = workspace.submitterQuestionsForSubmission(found.id).map(submitterOwnQuestion);
   }
 
   const organization = organizationName;
@@ -171,6 +175,13 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
               return <div key={fieldId}><dt>{field?.label ?? 'Question no longer in the current form'}</dt><dd>{values.map((value, index) => { const href = field?.type === 'file-upload' ? safeFileHref(value) : null; return <span key={`${value}-${index}`}>{href ? <a href={href} target="_blank" rel="noreferrer">{fileLabel(value)}<ArrowUpRight aria-hidden="true" /></a> : value}</span>; })}</dd></div>;
             })}</dl> : <p className={styles.emptyText}>No saved answers are attached to this receipt.</p>}
           </section>
+
+          {questions ? (
+            <section className={styles.section} aria-labelledby="submission-questions-title">
+              <header><div><p>Ask the organization</p><h2 id="submission-questions-title">Questions</h2></div><span>{questions.length}</span></header>
+              <SubmitterQuestionsPanel submissionId={submission.id} organizationName={customization?.displayName ?? organization ?? 'The organization'} questions={questions} canAsk={submission.status !== 'withdrawn'} />
+            </section>
+          ) : null}
 
           <section className={styles.section} aria-labelledby="submission-history-title">
             <header><div><p>Recorded events</p><h2 id="submission-history-title">History</h2></div></header>

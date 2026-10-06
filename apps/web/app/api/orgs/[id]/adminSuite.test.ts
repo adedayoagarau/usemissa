@@ -34,6 +34,9 @@ import { PATCH as setScreeningRules } from './open-calls/[openCallId]/eligibilit
 import { GET as searchRecords } from './search/route';
 import { organizationIntakeFlags } from '@/lib/intakeData';
 import { organizationAnalytics } from '@/lib/organizationAnalytics';
+import { GET as listOwnQuestions, POST as askQuestion } from '../../me/submissions/[submissionId]/questions/route';
+import { GET as listQuestions } from './questions/route';
+import { PATCH as patchQuestion } from './questions/[questionId]/route';
 
 const json = (body: unknown) => ({ method: 'POST', body: JSON.stringify(body) });
 
@@ -462,4 +465,47 @@ test('analytics count reads, overdue work, outcomes by category and letters for 
   const poetry = result.categories.find((row) => row.category === 'Poetry')!;
   assert.equal(poetry.submissions, 1);
   assert.ok(result.categories.some((row) => row.category === 'No category'));
+});
+
+test('submitters ask about their own submission; the organization answers or closes, and the digest counts what waits', async () => {
+  const data = await organizationRoleFixture();
+  const workspace = await getCompatibilityWorkspaceEngine();
+  const radar = await getEngine();
+  const submitter = data.accounts.get('submitter')!;
+  const owner = data.accounts.get('owner')!;
+  const own = { params: Promise.resolve({ submissionId: data.unassigned.id }) };
+  assert.equal((await askQuestion(requestAs(owner, '/questions', json({ body: 'Not my submission to ask about' })), own)).status, 404, 'only the submitter can ask');
+  assert.equal((await askQuestion(requestAs(submitter, '/questions', json({ body: 'Hi' })), own)).status, 400, 'too short');
+  const asked = await askQuestion(requestAs(submitter, '/questions', json({ body: 'Can I replace the file for my poem?' })), own);
+  assert.equal(asked.status, 201);
+  const { question } = await asked.json() as { question: { id: string; status: string } };
+  assert.equal(question.status, 'open');
+  const before = organizationDigestFacts({ radar, workspace, organizationId: data.organizationId });
+  assert.ok(before.questionsWaiting >= 1);
+  assert.ok(digestHasNews(before));
+
+  const orgParams = { params: Promise.resolve({ id: data.organizationId }) };
+  const listed = await (await listQuestions(requestAs(owner, '/questions'), orgParams)).json() as { questions: Array<{ id: string; submitterLabel: string; opportunityTitle: string }>; open: number };
+  assert.ok(listed.open >= 1);
+  assert.ok(listed.questions.some((item) => item.id === question.id && item.opportunityTitle));
+  assert.equal((await listQuestions(requestAs(data.accounts.get('reviewer')!, '/questions'), orgParams)).status, 403);
+
+  const questionParams = { params: Promise.resolve({ id: data.organizationId, questionId: question.id }) };
+  assert.equal((await patchQuestion(requestAs(data.accounts.get('reviewer')!, '/q', { method: 'PATCH', body: JSON.stringify({ action: 'answer', answer: 'Yes' }) }), questionParams)).status, 403);
+  assert.equal((await patchQuestion(requestAs(owner, '/q', { method: 'PATCH', body: JSON.stringify({ action: 'answer', answer: '  ' }) }), questionParams)).status, 400);
+  const answered = await patchQuestion(requestAs(owner, '/q', { method: 'PATCH', body: JSON.stringify({ action: 'answer', answer: 'Yes, send it to us by Friday.' }) }), questionParams);
+  assert.equal(answered.status, 200);
+  const answerPayload = await answered.json() as { question: { status: string }; email: { status: string } };
+  assert.equal(answerPayload.question.status, 'answered');
+  assert.ok(answerPayload.email.status, 'the email outcome is reported');
+  const seen = await (await listOwnQuestions(requestAs(submitter, '/questions'), own)).json() as { questions: Array<Record<string, unknown>> };
+  const mine = seen.questions.find((item) => item.id === question.id)!;
+  assert.equal(mine.answer, 'Yes, send it to us by Friday.');
+  assert.equal('answeredByAccountId' in mine, false, 'the submitter never sees who answered');
+
+  const second = await (await askQuestion(requestAs(submitter, '/questions', json({ body: 'And may I add a cover note?' })), own)).json() as { question: { id: string } };
+  const closed = await patchQuestion(requestAs(owner, '/q', { method: 'PATCH', body: JSON.stringify({ action: 'close' }) }), { params: Promise.resolve({ id: data.organizationId, questionId: second.question.id }) });
+  assert.equal((await closed.json() as { question: { status: string } }).question.status, 'closed');
+  const unknown = await patchQuestion(requestAs(owner, '/q', { method: 'PATCH', body: JSON.stringify({ action: 'close' }) }), { params: Promise.resolve({ id: data.organizationId, questionId: 'question_missing' }) });
+  assert.equal(unknown.status, 404);
 });

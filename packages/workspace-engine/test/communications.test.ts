@@ -226,3 +226,19 @@ test("round brief acknowledgements expire when the brief changes", () => {
   clock = "2026-10-02T10:00:00.000Z";
   assert.equal(engine.hasAcknowledgedRoundBrief(round.id, "acct_a", "2026-10-02T09:00:00.000Z"), false, "an edited brief needs a fresh acknowledgement");
 });
+
+test("submitters ask about their own submission and organizations answer within scope", () => {
+  const { engine, first } = seed();
+  assert.throws(() => engine.askSubmitterQuestion(first.id, "acct_other", "When will we hear?"), /not found/);
+  assert.throws(() => engine.askSubmitterQuestion(first.id, "acct_rosa", "?"), /sentence/);
+  const question = engine.askSubmitterQuestion(first.id, "acct_rosa", "When will decisions be announced?");
+  assert.equal(question.organizationId, "org_1");
+  engine.askSubmitterQuestion(first.id, "acct_rosa", "Can I replace my file?");
+  engine.askSubmitterQuestion(first.id, "acct_rosa", "Is the fee refundable?");
+  assert.throws(() => engine.askSubmitterQuestion(first.id, "acct_rosa", "One more question here"), /three open questions/);
+  assert.throws(() => engine.answerSubmitterQuestion("org_2", question.id, "Soon", "acct_admin"), /not part of this organization/);
+  engine.answerSubmitterQuestion("org_1", question.id, "By 12 December.", "acct_admin");
+  assert.equal(question.status, "answered");
+  assert.equal(engine.submitterQuestionsForOrganization("org_1")[0]!.status, "open", "open questions sort first");
+  assert.equal(engine.submitterQuestionsForSubmission(first.id).length, 3);
+});

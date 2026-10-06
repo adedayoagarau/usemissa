@@ -69,6 +69,12 @@
       "composition": ["Tabs", "Field", "Input", "Textarea", "NativeSelect", "Checkbox", "Button", "Dialog", "Alert", "Empty", "Sonner", "LetterStateBadge"],
       "boundary": "Letters are organization words sent through Missa. A batch is sent only after approval bound to its wording; a test send goes to the admin only; per-recipient results come from the durable mail ledger and are never inferred."
     },
+    "composition.submitter-questions": {
+      "semantic": "SubmitterQuestions",
+      "implementation": "apps/web/components/submitter-questions.tsx",
+      "composition": ["Field", "Textarea", "Button", "Alert", "Empty", "Sonner", "QuestionStateBadge"],
+      "boundary": "A submitter asks about their own submission from its receipt; the organization answers or closes it from Messages. Answers appear on the receipt and are emailed; who answered is never shown to the submitter."
+    },
     "composition.organization-customization": {
       "semantic": "OrganizationCustomizationForm",
       "implementation": "apps/web/components/organization-customization-form.tsx",
@@ -887,6 +893,12 @@
       "motion": "never",
       "implementation": "components/missa/operations-badges.tsx",
       "boundary": "Approval-gate state of an organization letter batch in customer language; sent is the only positive state and partly sent is a warning, never a success."
+    },
+    "QuestionStateBadge": {
+      "base": "Badge",
+      "motion": "never",
+      "implementation": "components/missa/operations-badges.tsx",
+      "boundary": "State of a question a submitter asked an organization: waiting for an answer, answered, or closed."
     },
     "SubmissionStageBadge": {
       "base": "Badge",

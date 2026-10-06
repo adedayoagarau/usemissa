@@ -151,6 +151,14 @@ create table if not exists workspace_communication_batches (
 );
 create index if not exists workspace_communication_batches_org_idx on workspace_communication_batches (organization_id);
 
+create table if not exists workspace_submitter_questions (
+  id text primary key,
+  organization_id text not null,
+  data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+create index if not exists workspace_submitter_questions_org_idx on workspace_submitter_questions (organization_id);
+
 create table if not exists workspace_audit_log (
   id text primary key,
   at timestamptz not null,

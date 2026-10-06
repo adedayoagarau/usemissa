@@ -12,6 +12,7 @@ import type {
   Decision,
   DeliveryTask,
   CommunicationBatch,
+  SubmitterQuestion,
 } from '../domain/types.js';
 import type { AuditEntry } from '@missa/radar-engine';
 
@@ -47,6 +48,8 @@ export interface WorkspaceStore {
   deliveryTasks: Map<string, DeliveryTask>;
   /** Approval-gated organization letters (longlist, shortlist, decisions...). */
   communicationBatches: Map<string, CommunicationBatch>;
+  /** Questions submitters asked about their own submissions. */
+  submitterQuestions: Map<string, SubmitterQuestion>;
 }
 
 export function createStore(): WorkspaceStore {
@@ -65,6 +68,7 @@ export function createStore(): WorkspaceStore {
     decisions: new Map(),
     deliveryTasks: new Map(),
     communicationBatches: new Map(),
+    submitterQuestions: new Map(),
   };
 }
 
@@ -88,5 +92,6 @@ export function cloneStore(source: WorkspaceStore): WorkspaceStore {
     decisions: cloneMap(source.decisions),
     deliveryTasks: cloneMap(source.deliveryTasks),
     communicationBatches: cloneMap(source.communicationBatches ?? new Map()),
+    submitterQuestions: cloneMap(source.submitterQuestions ?? new Map()),
   };
 }

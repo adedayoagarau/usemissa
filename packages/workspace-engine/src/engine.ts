@@ -18,6 +18,7 @@ import type {
   CommunicationRecipient,
   CommunicationRecipientStatus,
   SubmissionStage,
+  SubmitterQuestion,
 } from "./domain/types.js";
 import { canTransitionCommunication, communicationContentHash, communicationEditable, stageForCommunicationKind } from "./communications.js";
 import { MISSA_TAXONOMY } from "@missa/taxonomy";
@@ -45,6 +46,7 @@ function* idsInStore(store: WorkspaceStore): Iterable<string> {
     store.decisions,
     store.deliveryTasks,
     store.communicationBatches,
+    store.submitterQuestions,
   ];
   for (const map of maps) yield* map.keys();
   for (const path of store.submissionPaths.values()) {
@@ -737,6 +739,58 @@ export class WorkspaceEngine {
     }
     if (withdrawn.length) this.store.auditLog.push({ id: this.ids.next("audit"), at: this.now(), accountId: actorAccountId, action: "review-assignment.withdrawn", targetType: "review_round", targetId: reviewRoundId, detail: JSON.stringify({ reviewerAccountId, withdrawn: withdrawn.length }) });
     return withdrawn;
+  }
+
+  // --- Submitter questions ---------------------------------------------------------
+
+  /** A submitter asks about their own submission. At most three open questions per submission. */
+  askSubmitterQuestion(submissionId: string, submitterAccountId: string, body: string): SubmitterQuestion {
+    const submission = this.store.submissions.get(submissionId);
+    if (!submission || submission.submitterAccountId !== submitterAccountId) throw new Error("Submission not found");
+    const path = this.store.submissionPaths.get(submission.submissionPathId);
+    const call = path ? this.store.openCalls.get(path.openCallId) : undefined;
+    const program = call ? this.store.programs.get(call.programId) : undefined;
+    const team = program ? this.store.entities.get(program.entityId) : undefined;
+    if (!team) throw new Error("Submission not found");
+    const text = body.trim();
+    if (text.length < 5) throw new Error("Write your question in a sentence or two");
+    if (text.length > 2_000) throw new Error("Keep your question under 2,000 characters");
+    const open = [...this.store.submitterQuestions.values()].filter((question) => question.submissionId === submissionId && question.status === "open").length;
+    if (open >= 3) throw new Error("You already have three open questions on this submission; the organization will answer them first");
+    const question: SubmitterQuestion = { id: this.ids.next("question"), organizationId: team.organizationId, submissionId, submitterAccountId, body: text, askedAt: this.now(), status: "open" };
+    this.store.submitterQuestions.set(question.id, question);
+    this.store.auditLog.push({ id: this.ids.next("audit"), at: question.askedAt, accountId: submitterAccountId, action: "submitter-question.asked", targetType: "submission", targetId: submissionId });
+    return question;
+  }
+
+  answerSubmitterQuestion(organizationId: string, questionId: string, answer: string, actorAccountId: string): SubmitterQuestion {
+    const question = this.store.submitterQuestions.get(questionId);
+    if (!question || question.organizationId !== organizationId) throw new Error("Question is not part of this organization");
+    const text = answer.trim();
+    if (!text) throw new Error("Write an answer");
+    if (text.length > 5_000) throw new Error("Keep the answer under 5,000 characters");
+    question.answer = text;
+    question.answeredAt = this.now();
+    question.answeredByAccountId = actorAccountId;
+    question.status = "answered";
+    this.store.auditLog.push({ id: this.ids.next("audit"), at: question.answeredAt, accountId: actorAccountId, action: "submitter-question.answered", targetType: "submission", targetId: question.submissionId });
+    return question;
+  }
+
+  closeSubmitterQuestion(organizationId: string, questionId: string, actorAccountId: string): SubmitterQuestion {
+    const question = this.store.submitterQuestions.get(questionId);
+    if (!question || question.organizationId !== organizationId) throw new Error("Question is not part of this organization");
+    question.status = "closed";
+    this.store.auditLog.push({ id: this.ids.next("audit"), at: this.now(), accountId: actorAccountId, action: "submitter-question.closed", targetType: "submission", targetId: question.submissionId });
+    return question;
+  }
+
+  submitterQuestionsForOrganization(organizationId: string): SubmitterQuestion[] {
+    return [...this.store.submitterQuestions.values()].filter((question) => question.organizationId === organizationId).sort((left, right) => (left.status === "open" ? 0 : 1) - (right.status === "open" ? 0 : 1) || right.askedAt.localeCompare(left.askedAt));
+  }
+
+  submitterQuestionsForSubmission(submissionId: string): SubmitterQuestion[] {
+    return [...this.store.submitterQuestions.values()].filter((question) => question.submissionId === submissionId).sort((left, right) => left.askedAt.localeCompare(right.askedAt));
   }
 
   // --- Communications ------------------------------------------------------------

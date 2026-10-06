@@ -219,6 +219,22 @@ export interface DeliveryTask {
   completedAt?: IsoDateTime;
 }
 
+// --- Submitter questions -------------------------------------------------------
+
+/** A question a submitter asks the organization about their own submission. */
+export interface SubmitterQuestion {
+  id: string;
+  organizationId: string;
+  submissionId: string;
+  submitterAccountId: string;
+  body: string;
+  askedAt: IsoDateTime;
+  status: 'open' | 'answered' | 'closed';
+  answer?: string;
+  answeredAt?: IsoDateTime;
+  answeredByAccountId?: string;
+}
+
 // --- Organization communications ---------------------------------------------
 
 /** A stage a Submission can be told it has reached, between receipt and decision. */

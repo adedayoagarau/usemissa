@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import type { CalibrationLabel, CommunicationBatchStatus, TimelineStepId } from "@missa/workspace-engine";
+import type { CalibrationLabel, CommunicationBatchStatus, SubmitterQuestion, TimelineStepId } from "@missa/workspace-engine";
 
 /**
  * Read-only state labels for the organization admin suite. Each wrapper owns
@@ -50,6 +50,21 @@ export function SubmissionStageBadge({ step, label }: { step: TimelineStepId; la
   return (
     <Badge variant={variant} size="compact">
       {label}
+    </Badge>
+  );
+}
+
+const questionStateCopy: Record<SubmitterQuestion["status"], { label: string; variant: BadgeVariant }> = {
+  open: { label: "Waiting for an answer", variant: "information" },
+  answered: { label: "Answered", variant: "success" },
+  closed: { label: "Closed", variant: "secondary" },
+};
+
+export function QuestionStateBadge({ status }: { status: SubmitterQuestion["status"] }) {
+  const copy = questionStateCopy[status];
+  return (
+    <Badge variant={copy.variant} size="compact">
+      {copy.label}
     </Badge>
   );
 }

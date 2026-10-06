@@ -14,6 +14,7 @@ import type {
   Decision,
   DeliveryTask,
   CommunicationBatch,
+  SubmitterQuestion,
 } from '../domain/types.js';
 import { postgresSchema } from './postgresSchema.js';
 
@@ -100,6 +101,7 @@ export async function saveStoreToPostgres(store: WorkspaceStore, pool: Pool, exp
     await client.query('delete from decisions');
     await client.query('delete from delivery_tasks');
     await client.query('delete from workspace_communication_batches');
+    await client.query('delete from workspace_submitter_questions');
     await client.query('delete from works');
     await client.query('delete from submissions');
     await client.query('delete from submission_drafts');
@@ -197,6 +199,12 @@ export async function saveStoreToPostgres(store: WorkspaceStore, pool: Pool, exp
       );
     }
 
+    for (const question of store.submitterQuestions.values()) {
+      await client.query(
+        'insert into workspace_submitter_questions (id, organization_id, data, updated_at) values ($1, $2, $3, $4)',
+        [question.id, question.organizationId, JSON.stringify(question), question.answeredAt ?? question.askedAt],
+      );
+    }
     for (const batch of store.communicationBatches.values()) {
       await client.query(
         'insert into workspace_communication_batches (id, organization_id, data, updated_at) values ($1, $2, $3, $4)',
@@ -273,6 +281,7 @@ export async function saveStoreDeltaToPostgres(
     decisions: mapDelta(previous.decisions, current.decisions),
     deliveryTasks: mapDelta(previous.deliveryTasks, current.deliveryTasks),
     communicationBatches: mapDelta(previous.communicationBatches ?? new Map(), current.communicationBatches ?? new Map()),
+    submitterQuestions: mapDelta(previous.submitterQuestions ?? new Map(), current.submitterQuestions ?? new Map()),
   };
   const previousAuditIds = new Set(previous.auditLog.map((entry) => entry.id));
   const newAuditEntries = current.auditLog.filter((entry) => !previousAuditIds.has(entry.id));
@@ -300,6 +309,7 @@ export async function saveStoreDeltaToPostgres(
     for (const id of delta.decisions.deletes) await client.query('delete from decisions where id = $1', [id]);
     for (const id of delta.deliveryTasks.deletes) await client.query('delete from delivery_tasks where id = $1', [id]);
     for (const id of delta.communicationBatches.deletes) await client.query('delete from workspace_communication_batches where id = $1', [id]);
+    for (const id of delta.submitterQuestions.deletes) await client.query('delete from workspace_submitter_questions where id = $1', [id]);
     for (const id of delta.works.deletes) await client.query('delete from works where id = $1', [id]);
     for (const id of delta.submissions.deletes) await client.query('delete from submissions where id = $1', [id]);
     for (const id of delta.submissionDrafts.deletes) await client.query('delete from submission_drafts where id = $1', [id]);
@@ -357,6 +367,10 @@ export async function saveStoreDeltaToPostgres(
     for (const task of delta.deliveryTasks.upserts) await client.query(
       'insert into delivery_tasks (id, work_id, status, due_date, completed_at) values ($1, $2, $3, $4, $5) on conflict (work_id) do update set status = excluded.status, due_date = excluded.due_date, completed_at = excluded.completed_at',
       [task.id, task.workId, task.status, task.dueDate ?? null, task.completedAt ?? null],
+    );
+    for (const question of delta.submitterQuestions.upserts) await client.query(
+      'insert into workspace_submitter_questions (id, organization_id, data, updated_at) values ($1, $2, $3, $4) on conflict (id) do update set organization_id = excluded.organization_id, data = excluded.data, updated_at = excluded.updated_at',
+      [question.id, question.organizationId, JSON.stringify(question), question.answeredAt ?? question.askedAt],
     );
     for (const batch of delta.communicationBatches.upserts) await client.query(
       'insert into workspace_communication_batches (id, organization_id, data, updated_at) values ($1, $2, $3, $4) on conflict (id) do update set organization_id = excluded.organization_id, data = excluded.data, updated_at = excluded.updated_at',
@@ -593,6 +607,11 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<WorkspaceStore>
     store.reviewRecommendations.set(recommendation.reviewAssignmentId, recommendation);
   }
 
+  const questionsReady = (await pool.query<{ ready: boolean }>("select to_regclass('public.workspace_submitter_questions') is not null as ready")).rows[0]?.ready === true;
+  if (questionsReady) {
+    const questions = await pool.query<{ id: string; data: SubmitterQuestion }>('select id, data from workspace_submitter_questions');
+    for (const row of questions.rows) store.submitterQuestions.set(row.id, row.data);
+  }
   const batchesReady = (await pool.query<{ ready: boolean }>("select to_regclass('public.workspace_communication_batches') is not null as ready")).rows[0]?.ready === true;
   if (batchesReady) {
     const batches = await pool.query<{ id: string; data: CommunicationBatch }>('select id, data from workspace_communication_batches');

@@ -11,6 +11,8 @@ export interface OrganizationDigestFacts {
   lettersScheduledSoon: number;
   lettersNeedingAttention: number;
   decisionsRecorded: number;
+  /** Questions from submitters still waiting for an answer. */
+  questionsWaiting: number;
 }
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -42,10 +44,11 @@ export function organizationDigestFacts(input: { radar: Pick<RadarEngine, 'store
     lettersScheduledSoon: batches.filter((batch) => batch.status === 'approved' && batch.scheduledFor && Date.parse(batch.scheduledFor) < now + DAY).length,
     lettersNeedingAttention: batches.filter((batch) => batch.status === 'partially-sent' || batch.status === 'failed').length,
     decisionsRecorded: workspace.decisionsForOrganization(organizationId).filter((decision) => Date.parse(decision.decidedAt) >= since).length,
+    questionsWaiting: workspace.submitterQuestionsForOrganization(organizationId).filter((question) => question.status === 'open').length,
   };
 }
 
 /** True when there is anything worth an email. Quiet days send nothing. */
 export function digestHasNews(facts: OrganizationDigestFacts): boolean {
-  return facts.newSubmissions > 0 || facts.readsCompleted > 0 || facts.overdueReads.length > 0 || facts.lettersAwaitingApproval > 0 || facts.lettersScheduledSoon > 0 || facts.lettersNeedingAttention > 0 || facts.decisionsRecorded > 0;
+  return facts.newSubmissions > 0 || facts.readsCompleted > 0 || facts.overdueReads.length > 0 || facts.lettersAwaitingApproval > 0 || facts.lettersScheduledSoon > 0 || facts.lettersNeedingAttention > 0 || facts.decisionsRecorded > 0 || facts.questionsWaiting > 0;
 }

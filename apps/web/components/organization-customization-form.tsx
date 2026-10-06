@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import type { OrganizationCustomization } from '@missa/radar-engine';
-import { ORGANIZATION_ACCENTS, STATUS_TRANSPARENCY_OPTIONS, SUBMISSION_STAGES } from '@/lib/organizationCustomizationOptions';
+import { ORGANIZATION_ACCENTS, STAGE_VOCABULARY_PRESETS, STATUS_TRANSPARENCY_OPTIONS, SUBMISSION_STAGES } from '@/lib/organizationCustomizationOptions';
 import type { ResolvedOrganizationCustomization } from '@/lib/organizationCustomization';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -97,12 +97,18 @@ export function OrganizationCustomizationForm({ organizationId, section, stored,
           <fieldset className="grid gap-3 rounded-lg border border-border p-4">
             <legend className="px-1 text-sm font-medium text-foreground">Stage vocabulary</legend>
             <p className="text-xs text-muted-foreground">What you call each stage, used in letters and on the submitter’s tracker. Tick the stages this organization actually runs so submitters can see what lies ahead.</p>
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Start from a preset">
+              <span className="text-xs text-muted-foreground">Start from:</span>
+              {STAGE_VOCABULARY_PRESETS.map((preset) => (
+                <Button key={preset.id} type="button" variant="outline" size="sm" title={preset.description} onClick={() => { setStageLabels({ ...preset.stageLabels }); setDeclaredStages(new Set(preset.declaredStages)); }}>{preset.label}</Button>
+              ))}
+            </div>
             <div className="grid gap-3 sm:grid-cols-3">
               {SUBMISSION_STAGES.map((stage) => (
                 <div key={stage} className="grid gap-2">
                   <label className="flex items-center gap-2 text-sm text-foreground">
-                    <Checkbox checked={declaredStages.has(stage)} onCheckedChange={(checked) => setDeclaredStages((current) => { const next = new Set(current); if (checked) next.add(stage); else next.delete(stage); return next; })} aria-label={`We run a ${resolved.stageLabels[stage]} stage`} />
-                    <span>We run a {resolved.stageLabels[stage].toLocaleLowerCase('en')}</span>
+                    <Checkbox checked={declaredStages.has(stage)} onCheckedChange={(checked) => setDeclaredStages((current) => { const next = new Set(current); if (checked) next.add(stage); else next.delete(stage); return next; })} aria-label={`We run a ${stageLabels[stage].trim() || resolved.stageLabels[stage]} stage`} />
+                    <span>We run a {(stageLabels[stage].trim() || resolved.stageLabels[stage]).toLocaleLowerCase('en')} stage</span>
                   </label>
                   <Input aria-label={`Label for ${stage}`} value={stageLabels[stage]} onChange={(event) => setStageLabels((current) => ({ ...current, [stage]: event.target.value }))} maxLength={40} placeholder={resolved.stageLabels[stage]} />
                 </div>

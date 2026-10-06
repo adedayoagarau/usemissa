@@ -13,6 +13,8 @@ import { batchSummary, COMMUNICATIONS_UNAVAILABLE } from '@/lib/communicationsDa
 import { deliveryStatusByEffect } from '@/lib/communicationsSend';
 import { resolveOrganizationCustomization } from '@/lib/organizationCustomization';
 import { getEngine } from '@/lib/engine';
+import { OrganizationQuestionsPanel } from '@/components/submitter-questions';
+import { submitterQuestionView, SUBMITTER_QUESTIONS_UNAVAILABLE } from '@/lib/submitterQuestionsData';
 import { getCompatibilityWorkspaceEngine, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
 type Query = { q?: string; state?: string; selected?: string };
@@ -54,8 +56,15 @@ export default async function OrganizationMessagesPage({ params, searchParams }:
     available={!relational}
     unavailableReason={relational ? COMMUNICATIONS_UNAVAILABLE : undefined}
   />;
+  const questionsPanel = <OrganizationQuestionsPanel
+    organizationId={organizationId}
+    canManage={membership.role === 'owner' || membership.role === 'admin'}
+    questions={compatibility ? compatibility.submitterQuestionsForOrganization(organizationId).map((question) => submitterQuestionView(question, radar, compatibility)) : []}
+    available={!relational}
+    unavailableReason={relational ? SUBMITTER_QUESTIONS_UNAVAILABLE : undefined}
+  />;
   const history = process.env.DATABASE_URL ? await readOrganizationMessageHistory(process.env.DATABASE_URL, organizationId) : { available: false, effects: [] as const };
-  if (!history.available) return <main id="organization-main" className={styles.main}><header className={styles.header}><div><p className={styles.eyebrow}>Outcome desk</p><h1>Messages</h1><p>Compose, approve and send letters here. Provider delivery history needs the durable ledger.</p></div><span className={styles.role}>{projection.label}</span></header>{manager}<section className={styles.limited}><h2>Provider delivery ledger unavailable</h2><p>Missa cannot read the authoritative delivery ledger, so it does not infer a healthy empty queue from compatibility audit entries. Letter batches above keep their own per-recipient results.</p></section></main>;
+  if (!history.available) return <main id="organization-main" className={styles.main}><header className={styles.header}><div><p className={styles.eyebrow}>Outcome desk</p><h1>Messages</h1><p>Compose, approve and send letters here. Provider delivery history needs the durable ledger.</p></div><span className={styles.role}>{projection.label}</span></header>{manager}{questionsPanel}<section className={styles.limited}><h2>Provider delivery ledger unavailable</h2><p>Missa cannot read the authoritative delivery ledger, so it does not infer a healthy empty queue from compatibility audit entries. Letter batches above keep their own per-recipient results.</p></section></main>;
   const batches = history.effects.filter((effect) => effect.kind === 'decision-email').map((effect) => {
     const failed = ['failed', 'bounced', 'suppressed', 'unknown'].includes(effect.status);
     const state = organizationMessageState(effect.status);
@@ -76,6 +85,7 @@ export default async function OrganizationMessagesPage({ params, searchParams }:
 
   return <main id="organization-main" className={styles.main}><header className={styles.header}><div><p className={styles.eyebrow}>Outcome desk</p><h1>Messages</h1><p>Compose, approve and send letters to submitters, then inspect recorded correspondence recipient by recipient. A Decision, prepared message, send, and delivery receipt remain separate facts.</p></div><span className={styles.role}>{projection.label}</span></header>
     {manager}
+    {questionsPanel}
     <dl className={styles.summary}><div><dt>Recorded batches</dt><dd>{batches.length}</dd></div><div><dt>Need attention</dt><dd>{needsAttention}</dd></div><div><dt>Recorded recipients</dt><dd>{recordedRecipients}</dd></div><div><dt>Replies recorded</dt><dd>—</dd></div></dl>
     <form className={styles.filters} role="search"><label><span>Search correspondence</span><input name="q" defaultValue={query.q ?? ''} placeholder="Recipient, Work, or Opportunity" /></label><label><span>Recorded state</span><select name="state" defaultValue={query.state ?? ''}><option value="">All states</option><option>Accepted</option><option>Delivered</option><option>In progress</option><option>Needs attention</option></select></label><button type="submit">Apply</button>{query.q || query.state ? <Link className={styles.clear} href={base}>Clear</Link> : null}</form>
     {visible.length && selected ? <div className={styles.desk}><section className={styles.queuePanel} aria-label="Message queue"><header className={styles.queueHeader}><div><p className={styles.eyebrow}>Consequence-first queue</p><h2>Correspondence</h2></div><span>{visible.length} {visible.length === 1 ? 'record' : 'records'}</span></header><ol className={styles.queue}>{visible.map((batch) => <li key={batch.id}><Link aria-current={batch.id === selected.id ? 'true' : undefined} href={selectedHref(batch.id)}><div><h3>{batch.subject}</h3><p>{batch.opportunity} · {displayDate(batch.at)}</p><div className={styles.queueMeta}><span className={styles.state}>{batch.state}</span><span className={styles.attention}>{batch.failed ? `${batch.failed} need attention` : batch.delivered ? `${batch.delivered} delivered` : batch.accepted ? `${batch.accepted} accepted` : 'Delivery in progress'}</span></div></div><span className={styles.open}>{batch.id === selected.id ? 'Selected' : 'Open'}<ArrowRight aria-hidden="true" /></span></Link></li>)}</ol></section>

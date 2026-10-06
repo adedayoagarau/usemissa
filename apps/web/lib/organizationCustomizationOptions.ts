@@ -23,3 +23,22 @@ export const STATUS_TRANSPARENCY_OPTIONS: ReadonlyArray<{ id: StatusTransparency
 ];
 
 export const SUBMISSION_STAGES: readonly OrganizationSubmissionStage[] = ['longlist', 'shortlist', 'finalist'];
+
+export interface StageVocabularyPreset {
+  id: 'prize' | 'journal' | 'residency' | 'grant';
+  label: string;
+  description: string;
+  stageLabels: Record<OrganizationSubmissionStage, string>;
+  declaredStages: OrganizationSubmissionStage[];
+}
+
+/**
+ * Starting points for stage vocabulary by kind of organization. A preset only
+ * fills the form; the organization can still edit each label before saving.
+ */
+export const STAGE_VOCABULARY_PRESETS: readonly StageVocabularyPreset[] = [
+  { id: 'prize', label: 'Prize or award', description: 'Longlist, shortlist, finalists.', stageLabels: { longlist: 'Longlist', shortlist: 'Shortlist', finalist: 'Finalist' }, declaredStages: ['longlist', 'shortlist', 'finalist'] },
+  { id: 'journal', label: 'Journal or press', description: 'Second read, then held for an issue.', stageLabels: { longlist: 'Second read', shortlist: 'Held for consideration', finalist: 'Final round' }, declaredStages: ['longlist', 'shortlist'] },
+  { id: 'residency', label: 'Residency or fellowship', description: 'Shortlist, then interviews.', stageLabels: { longlist: 'Under consideration', shortlist: 'Shortlist', finalist: 'Interview stage' }, declaredStages: ['shortlist', 'finalist'] },
+  { id: 'grant', label: 'Grant or fund', description: 'Eligibility, panel, recommendation.', stageLabels: { longlist: 'Eligible', shortlist: 'Panel review', finalist: 'Recommended for funding' }, declaredStages: ['longlist', 'shortlist', 'finalist'] },
+];
