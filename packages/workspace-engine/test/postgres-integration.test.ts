@@ -70,6 +70,10 @@ test('delta save updates an existing submission that has no idempotency key', { 
   try {
     await ensurePostgresSchema(pool);
     await pool.query(`insert into radar_organizations (id, data) values ('org_delta', '{}') on conflict (id) do nothing`);
+    // The target schema enforces the submitter foreign key and adds an email column.
+    const accountColumns = await pool.query<{ column_name: string }>("select column_name from information_schema.columns where table_schema = 'public' and table_name = 'radar_accounts'");
+    if (accountColumns.rows.some((row) => row.column_name === 'email')) await pool.query(`insert into radar_accounts (id, email, data) values ('acct_delta', 'acct_delta@example.invalid', '{}') on conflict (id) do nothing`);
+    else if (accountColumns.rows.length) await pool.query(`insert into radar_accounts (id, data) values ('acct_delta', '{}') on conflict (id) do nothing`);
     const engine = new WorkspaceEngine();
     const team = engine.createEntity('org_delta', 'Delta team');
     const program = engine.createProgram(team.id, 'Delta program');
