@@ -183,6 +183,9 @@ create table if not exists review_assignments (
   reviewer_account_id text not null,
   completed_at timestamptz
 );
+alter table review_assignments add column if not exists expires_at timestamptz;
+alter table review_assignments add column if not exists recused_at timestamptz;
+alter table review_assignments add column if not exists recusal_reason text;
 
 create table if not exists review_recommendations (
   review_assignment_id text primary key references review_assignments(id),

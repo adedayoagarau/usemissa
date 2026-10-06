@@ -179,6 +179,11 @@ export interface ReviewAssignment {
   submissionId: string;
   reviewerAccountId: string;
   completedAt?: IsoDateTime;
+  /** The date the organization asked for this read by; past it, an open read is overdue. */
+  expiresAt?: IsoDateTime;
+  /** Set when the reader declared a conflict or the organization moved the read elsewhere. */
+  recusedAt?: IsoDateTime;
+  recusalReason?: string;
 }
 
 /** Fixed small rubric per MVP scope (not a rubric builder — see Story 7.3). */

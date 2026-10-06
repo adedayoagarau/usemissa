@@ -472,6 +472,7 @@ export class WorkspaceEngine {
     const assignment = this.store.reviewAssignments.get(reviewAssignmentId);
     if (!assignment)
       throw new Error(`Unknown review assignment: ${reviewAssignmentId}`);
+    if (assignment.recusedAt) throw new Error("This read was withdrawn and can no longer be scored");
     const recommendation: ReviewRecommendation = {
       reviewAssignmentId,
       score,
@@ -629,6 +630,7 @@ export class WorkspaceEngine {
     reviewRoundId: string,
     pairs: Array<{ submissionId: string; reviewerAccountId: string }>,
     actorAccountId?: string,
+    options: { expiresAt?: string } = {},
   ): { created: ReviewAssignment[]; skipped: Array<{ submissionId: string; reviewerAccountId: string; reason: string }> } {
     const round = this.store.reviewRounds.get(reviewRoundId);
     if (!round) throw new Error(`Unknown review round: ${reviewRoundId}`);
@@ -643,7 +645,9 @@ export class WorkspaceEngine {
         continue;
       }
       try {
-        created.push(this.assignReviewer(reviewRoundId, pair.submissionId, pair.reviewerAccountId));
+        const assignment = this.assignReviewer(reviewRoundId, pair.submissionId, pair.reviewerAccountId);
+        if (options.expiresAt) assignment.expiresAt = options.expiresAt;
+        created.push(assignment);
         const submission = this.store.submissions.get(pair.submissionId);
         if (submission && submission.status === "submitted") submission.status = "in-review";
       } catch (error) {
@@ -662,6 +666,65 @@ export class WorkspaceEngine {
       });
     }
     return { created, skipped };
+  }
+
+
+  // --- Round lifecycle -----------------------------------------------------------
+
+  /** The due date most reads in a round carry, if any (withdrawn reads still record what was asked). */
+  roundDueDate(reviewRoundId: string): string | undefined {
+    const counts = new Map<string, number>();
+    for (const assignment of this.store.reviewAssignments.values()) {
+      if (assignment.reviewRoundId !== reviewRoundId || !assignment.expiresAt) continue;
+      counts.set(assignment.expiresAt, (counts.get(assignment.expiresAt) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((left, right) => right[1] - left[1] || right[0].localeCompare(left[0]))[0]?.[0];
+  }
+
+  /** Sets (or clears) the due date on every open read in the round. Completed reads keep theirs. */
+  setRoundDueDate(organizationId: string, reviewRoundId: string, dueAt: string | undefined, actorAccountId?: string): number {
+    if (!this.organizationScope(organizationId).reviewRound(reviewRoundId)) throw new Error("Review round is not part of this organization");
+    if (dueAt !== undefined && Number.isNaN(Date.parse(dueAt))) throw new Error("Due date must be a valid date");
+    let changed = 0;
+    for (const assignment of this.store.reviewAssignments.values()) {
+      if (assignment.reviewRoundId !== reviewRoundId || assignment.completedAt || assignment.recusedAt) continue;
+      assignment.expiresAt = dueAt;
+      changed += 1;
+    }
+    this.store.auditLog.push({ id: this.ids.next("audit"), at: this.now(), accountId: actorAccountId, action: "review-round.due_date_set", targetType: "review_round", targetId: reviewRoundId, detail: JSON.stringify({ dueAt: dueAt ?? null, assignments: changed }) });
+    return changed;
+  }
+
+  /**
+   * A reader declares a conflict on their own open read. The read leaves
+   * their queue and the submission becomes eligible for another reader; the
+   * reason stays private to the organization.
+   */
+  declareReviewConflict(reviewAssignmentId: string, reviewerAccountId: string, reason: string): ReviewAssignment {
+    const assignment = this.store.reviewAssignments.get(reviewAssignmentId);
+    if (!assignment || assignment.reviewerAccountId !== reviewerAccountId) throw new Error("Unknown review assignment");
+    if (assignment.recusedAt) return assignment;
+    if (assignment.completedAt) throw new Error("A completed read cannot be withdrawn; ask the organization to correct it");
+    const trimmed = reason.trim();
+    if (!trimmed) throw new Error("Say briefly why you have a conflict");
+    assignment.recusedAt = this.now();
+    assignment.recusalReason = trimmed.slice(0, 500);
+    this.store.auditLog.push({ id: this.ids.next("audit"), at: assignment.recusedAt, accountId: reviewerAccountId, action: "review-assignment.conflict_declared", targetType: "review_assignment", targetId: assignment.id });
+    return assignment;
+  }
+
+  /** The organization withdraws a reader's open reads in a round, for example before reassigning them. */
+  withdrawOpenReads(organizationId: string, reviewRoundId: string, reviewerAccountId: string, reason: string, actorAccountId?: string): ReviewAssignment[] {
+    if (!this.organizationScope(organizationId).reviewRound(reviewRoundId)) throw new Error("Review round is not part of this organization");
+    const withdrawn: ReviewAssignment[] = [];
+    for (const assignment of this.store.reviewAssignments.values()) {
+      if (assignment.reviewRoundId !== reviewRoundId || assignment.reviewerAccountId !== reviewerAccountId || assignment.completedAt || assignment.recusedAt) continue;
+      assignment.recusedAt = this.now();
+      assignment.recusalReason = reason.slice(0, 500);
+      withdrawn.push(assignment);
+    }
+    if (withdrawn.length) this.store.auditLog.push({ id: this.ids.next("audit"), at: this.now(), accountId: actorAccountId, action: "review-assignment.withdrawn", targetType: "review_round", targetId: reviewRoundId, detail: JSON.stringify({ reviewerAccountId, withdrawn: withdrawn.length }) });
+    return withdrawn;
   }
 
   // --- Communications ------------------------------------------------------------

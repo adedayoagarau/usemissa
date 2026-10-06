@@ -185,8 +185,8 @@ export async function saveStoreToPostgres(store: WorkspaceStore, pool: Pool, exp
 
     for (const a of store.reviewAssignments.values()) {
       await client.query(
-        'insert into review_assignments (id, review_round_id, submission_id, reviewer_account_id, completed_at) values ($1, $2, $3, $4, $5)',
-        [a.id, a.reviewRoundId, a.submissionId, a.reviewerAccountId, a.completedAt ?? null],
+        'insert into review_assignments (id, review_round_id, submission_id, reviewer_account_id, completed_at, expires_at, recused_at, recusal_reason) values ($1, $2, $3, $4, $5, $6, $7, $8)',
+        [a.id, a.reviewRoundId, a.submissionId, a.reviewerAccountId, a.completedAt ?? null, a.expiresAt ?? null, a.recusedAt ?? null, a.recusalReason ?? null],
       );
     }
 
@@ -343,8 +343,8 @@ export async function saveStoreDeltaToPostgres(
       [round.id, round.openCallId, round.name, round.createdAt],
     );
     for (const assignment of delta.reviewAssignments.upserts) await client.query(
-      'insert into review_assignments (id, review_round_id, submission_id, reviewer_account_id, completed_at) values ($1, $2, $3, $4, $5) on conflict (id) do update set review_round_id = excluded.review_round_id, submission_id = excluded.submission_id, reviewer_account_id = excluded.reviewer_account_id, completed_at = excluded.completed_at',
-      [assignment.id, assignment.reviewRoundId, assignment.submissionId, assignment.reviewerAccountId, assignment.completedAt ?? null],
+      'insert into review_assignments (id, review_round_id, submission_id, reviewer_account_id, completed_at, expires_at, recused_at, recusal_reason) values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (id) do update set review_round_id = excluded.review_round_id, submission_id = excluded.submission_id, reviewer_account_id = excluded.reviewer_account_id, completed_at = excluded.completed_at, expires_at = excluded.expires_at, recused_at = excluded.recused_at, recusal_reason = excluded.recusal_reason',
+      [assignment.id, assignment.reviewRoundId, assignment.submissionId, assignment.reviewerAccountId, assignment.completedAt ?? null, assignment.expiresAt ?? null, assignment.recusedAt ?? null, assignment.recusalReason ?? null],
     );
     for (const recommendation of delta.reviewRecommendations.upserts) await client.query(
       'insert into review_recommendations (review_assignment_id, score, notes, recorded_at) values ($1, $2, $3, $4) on conflict (review_assignment_id) do update set score = excluded.score, notes = excluded.notes, recorded_at = excluded.recorded_at',
@@ -559,6 +559,9 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<WorkspaceStore>
     submission_id: string;
     reviewer_account_id: string;
     completed_at: Date | null;
+    expires_at?: Date | null;
+    recused_at?: Date | null;
+    recusal_reason?: string | null;
   }>('select * from review_assignments');
   for (const row of reviewAssignments.rows) {
     const assignment: ReviewAssignment = {
@@ -567,6 +570,9 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<WorkspaceStore>
       submissionId: row.submission_id,
       reviewerAccountId: row.reviewer_account_id,
       completedAt: row.completed_at?.toISOString(),
+      ...(row.expires_at ? { expiresAt: row.expires_at.toISOString() } : {}),
+      ...(row.recused_at ? { recusedAt: row.recused_at.toISOString() } : {}),
+      ...(row.recusal_reason ? { recusalReason: row.recusal_reason } : {}),
     };
     store.reviewAssignments.set(assignment.id, assignment);
   }

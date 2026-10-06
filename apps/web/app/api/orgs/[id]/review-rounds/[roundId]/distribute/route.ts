@@ -41,7 +41,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const plan = planDistribution({ submissions: inputs.submissions, readers: inputs.readers, readersPerSubmission, policy });
   if (dryRun) return NextResponse.json({ dryRun: true, plan }, { headers });
 
-  const applied = result.access.workspace.applyDistribution(roundId, plan.assignments, result.access.session.account.id);
+  const applied = result.access.workspace.applyDistribution(roundId, plan.assignments, result.access.session.account.id, { expiresAt: result.access.workspace.roundDueDate(roundId) });
   await persistOrganizationMutation(result.access, {
     action: 'review-assignment.distributed',
     targetType: 'review_round',

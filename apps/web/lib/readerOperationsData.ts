@@ -44,7 +44,7 @@ export interface RoundOperationsView {
   authority: 'compatibility' | 'relational';
   scoresAvailable: boolean;
   generatedAt: string;
-  round: { id: string; name: string; openCallId: string; openCallTitle: string };
+  round: { id: string; name: string; openCallId: string; openCallTitle: string; dueAt?: string };
   totals: { submissions: number; eligibleSubmissions: number; assignments: number; completed: number; open: number; recused: number };
   readers: RoundReaderRow[];
   calibration: ScoreCalibration;
@@ -92,7 +92,7 @@ export function compatibilityRoundOperationsView(input: { radar: Radar; workspac
   const submissionIds = new Set(submissions.map((submission) => submission.id));
   const assignments: ReaderAssignmentRecord[] = [...workspace.store.reviewAssignments.values()]
     .filter((assignment) => assignment.reviewRoundId === roundId && submissionIds.has(assignment.submissionId))
-    .map((assignment) => ({ id: assignment.id, reviewerAccountId: assignment.reviewerAccountId, submissionId: assignment.submissionId, completedAt: assignment.completedAt, recusedAt: (assignment as { recusedAt?: string }).recusedAt, expiresAt: (assignment as { expiresAt?: string }).expiresAt }));
+    .map((assignment) => ({ id: assignment.id, reviewerAccountId: assignment.reviewerAccountId, submissionId: assignment.submissionId, completedAt: assignment.completedAt, recusedAt: assignment.recusedAt, expiresAt: assignment.expiresAt }));
   const recommendations: ReaderRecommendationRecord[] = assignments.flatMap((assignment) => {
     const recommendation = workspace.recommendationForAssignment(assignment.id);
     return recommendation ? [{ reviewAssignmentId: assignment.id, score: recommendation.score, recordedAt: recommendation.recordedAt }] : [];
@@ -100,7 +100,7 @@ export function compatibilityRoundOperationsView(input: { radar: Radar; workspac
   const members = organizationMembers(radar, organizationId);
   const organizationOpen = new Map<string, number>();
   for (const assignment of workspace.store.reviewAssignments.values()) {
-    if (assignment.completedAt || (assignment as { recusedAt?: string }).recusedAt) continue;
+    if (assignment.completedAt || assignment.recusedAt) continue;
     if (!scope.submission(assignment.submissionId)) continue;
     organizationOpen.set(assignment.reviewerAccountId, (organizationOpen.get(assignment.reviewerAccountId) ?? 0) + 1);
   }
@@ -129,7 +129,7 @@ export function compatibilityRoundOperationsView(input: { radar: Radar; workspac
     authority: 'compatibility',
     scoresAvailable: true,
     generatedAt: now,
-    round: { id: round.id, name: round.name, openCallId: openCall.id, openCallTitle: openCall.title },
+    round: { id: round.id, name: round.name, openCallId: openCall.id, openCallTitle: openCall.title, dueAt: workspace.roundDueDate(round.id) },
     totals: {
       submissions: submissions.length,
       eligibleSubmissions: submissions.filter((submission) => submission.status !== 'withdrawn').length,
@@ -206,15 +206,15 @@ export function compatibilityDistributionInputs(input: { radar: Radar; workspace
         submitterAccountId: submission.submitterAccountId,
         submitterName: profile?.displayName || submitter?.displayName,
         submitterEmailDomain: submitter?.email.split('@')[1],
-        existingReviewerAccountIds: mine.filter((assignment) => !(assignment as { recusedAt?: string }).recusedAt).map((assignment) => assignment.reviewerAccountId),
-        recusedReviewerAccountIds: mine.filter((assignment) => (assignment as { recusedAt?: string }).recusedAt).map((assignment) => assignment.reviewerAccountId),
+        existingReviewerAccountIds: mine.filter((assignment) => !assignment.recusedAt).map((assignment) => assignment.reviewerAccountId),
+        recusedReviewerAccountIds: mine.filter((assignment) => assignment.recusedAt).map((assignment) => assignment.reviewerAccountId),
       };
     });
   const members = new Set(radar.store.memberships.filter((membership) => membership.organizationId === organizationId).map((membership) => membership.accountId));
   const readers: DistributionReader[] = input.readerAccountIds.filter((accountId) => members.has(accountId)).map((accountId) => {
     const account = radar.store.accounts.get(accountId);
     const profile = account?.userId ? radar.store.users.get(account.userId) : undefined;
-    const open = [...workspace.store.reviewAssignments.values()].filter((assignment) => assignment.reviewerAccountId === accountId && !assignment.completedAt && !(assignment as { recusedAt?: string }).recusedAt && scope.submission(assignment.submissionId)).length;
+    const open = [...workspace.store.reviewAssignments.values()].filter((assignment) => assignment.reviewerAccountId === accountId && !assignment.completedAt && !assignment.recusedAt && scope.submission(assignment.submissionId)).length;
     return { accountId, label: profile?.displayName || account?.displayName || account?.email || accountId, name: profile?.displayName || account?.displayName, emailDomain: account?.email.split('@')[1], openAssignments: open, capacity: input.capacity };
   });
   return { submissions, readers };

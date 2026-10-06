@@ -148,3 +148,45 @@ test("applyDistribution assigns, skips duplicates and moves submissions into rev
   assert.equal(engine.store.submissions.get(second.id)!.status, "in-review");
   assert.ok(engine.store.auditLog.some((entry) => entry.action === "review-assignment.distributed"));
 });
+
+test("round due dates apply to open reads only and distribution carries them", () => {
+  const { engine, call, first, second } = seed();
+  const round = engine.createReviewRound(call.id, "Readers");
+  const done = engine.assignReviewer(round.id, first.id, "acct_a");
+  engine.recordReview(done.id, 70);
+  const open = engine.assignReviewer(round.id, second.id, "acct_a");
+  assert.equal(engine.setRoundDueDate("org_1", round.id, "2026-11-01T17:00:00.000Z", "acct_admin"), 1);
+  assert.equal(open.expiresAt, "2026-11-01T17:00:00.000Z");
+  assert.equal(done.expiresAt, undefined, "completed reads keep their own record");
+  assert.equal(engine.roundDueDate(round.id), "2026-11-01T17:00:00.000Z");
+  const result = engine.applyDistribution(round.id, [{ submissionId: first.id, reviewerAccountId: "acct_b" }], "acct_admin", { expiresAt: engine.roundDueDate(round.id) });
+  assert.equal(result.created[0]!.expiresAt, "2026-11-01T17:00:00.000Z");
+  assert.throws(() => engine.setRoundDueDate("org_2", round.id, undefined), /not part of this organization/);
+  assert.throws(() => engine.setRoundDueDate("org_1", round.id, "not a date"), /valid date/);
+});
+
+test("readers declare conflicts on their own open reads and withdrawn reads cannot be scored", () => {
+  const { engine, call, first, second } = seed();
+  const round = engine.createReviewRound(call.id, "Readers");
+  const mine = engine.assignReviewer(round.id, first.id, "acct_a");
+  assert.throws(() => engine.declareReviewConflict(mine.id, "acct_b", "I know them"), /Unknown review assignment/);
+  assert.throws(() => engine.declareReviewConflict(mine.id, "acct_a", "  "), /why/);
+  engine.declareReviewConflict(mine.id, "acct_a", "I taught the submitter last year");
+  assert.ok(mine.recusedAt);
+  assert.throws(() => engine.recordReview(mine.id, 50), /withdrawn/);
+  const scored = engine.assignReviewer(round.id, second.id, "acct_a");
+  engine.recordReview(scored.id, 60);
+  assert.throws(() => engine.declareReviewConflict(scored.id, "acct_a", "Late conflict"), /completed read/);
+});
+
+test("withdrawing a reader's open reads leaves completed reads alone", () => {
+  const { engine, call, first, second } = seed();
+  const round = engine.createReviewRound(call.id, "Readers");
+  const done = engine.assignReviewer(round.id, first.id, "acct_a");
+  engine.recordReview(done.id, 80);
+  const open = engine.assignReviewer(round.id, second.id, "acct_a");
+  const withdrawn = engine.withdrawOpenReads("org_1", round.id, "acct_a", "Reader away", "acct_admin");
+  assert.deepEqual(withdrawn.map((item) => item.id), [open.id]);
+  assert.equal(open.recusalReason, "Reader away");
+  assert.equal(done.recusedAt, undefined);
+});

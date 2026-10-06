@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -55,5 +56,49 @@ export function ReviewerScoreForm({ assignmentId, existing }: { assignmentId: st
         {existing ? <span className="text-xs text-muted-foreground">Recorded {new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(existing.recordedAt))}</span> : null}
       </div>
     </form>
+  );
+}
+
+/**
+ * A reader withdraws from one open read because of a conflict of interest.
+ * The reason goes to the organization only; the read leaves this queue.
+ */
+export function DeclareConflictButton({ assignmentId }: { assignmentId: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const submit = () => startTransition(async () => {
+    setError(null);
+    const response = await fetch(`/api/reviewer/assignments/${encodeURIComponent(assignmentId)}/conflict`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ reason }) });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) { setError(body.error ?? 'The conflict could not be recorded.'); return; }
+    toast.success('Conflict recorded. This read has left your queue.');
+    setOpen(false);
+    router.push('/reviews');
+    router.refresh();
+  });
+  return (
+    <>
+      <Button type="button" variant="outline" onClick={() => setOpen(true)}>Declare a conflict</Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Declare a conflict of interest</DialogTitle>
+            <DialogDescription>Use this if you know the submitter, have worked on this Work, or cannot read it fairly. The organization sees your reason; the submitter never does.</DialogDescription>
+          </DialogHeader>
+          <Field>
+            <FieldLabel htmlFor={`conflict-${assignmentId}`}>Why you should not read this</FieldLabel>
+            <Textarea id={`conflict-${assignmentId}`} value={reason} onChange={(event) => setReason(event.target.value)} maxLength={500} rows={3} />
+          </Field>
+          {error ? <Alert variant="destructive"><AlertTitle>Not recorded</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
+          <DialogFooter>
+            <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
+            <Button type="button" onClick={submit} disabled={pending || !reason.trim()}>{pending ? 'Recording…' : 'Withdraw from this read'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

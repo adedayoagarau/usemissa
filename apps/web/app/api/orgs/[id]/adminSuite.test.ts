@@ -12,6 +12,11 @@ import { PATCH as patchLetter } from './communications/[batchId]/route';
 import { POST as previewLetter } from './communications/[batchId]/preview/route';
 import { POST as sendLetter } from './communications/[batchId]/send/route';
 import { GET as getCustomization, PATCH as patchCustomization } from './customization/route';
+import { PATCH as patchRound } from './review-rounds/[roundId]/route';
+import { POST as reassign } from './review-rounds/[roundId]/reassign/route';
+import { POST as promote } from './review-rounds/[roundId]/promote/route';
+import { POST as declareConflict } from '../../reviewer/assignments/[assignmentId]/conflict/route';
+import { reviewerAssignmentsForAccount } from '@/lib/reviewerProduct';
 
 const json = (body: unknown) => ({ method: 'POST', body: JSON.stringify(body) });
 
@@ -165,4 +170,67 @@ test('customization validates input and resolves defaults', async () => {
   assert.equal(body.resolved.displayName, 'Role Prize');
   assert.equal(body.resolved.communications.senderName, 'Role Prize');
   assert.deepEqual(body.resolved.declaredStages, ['longlist', 'shortlist']);
+});
+
+test('round due dates, reader conflicts and reassignment keep each submission covered', async () => {
+  const { data, workspace, round } = await freshRound();
+  const owner = data.accounts.get('owner')!;
+  const reviewer = data.accounts.get('reviewer')!;
+  const admin = data.accounts.get('admin')!;
+  const roundParams = { params: Promise.resolve({ id: data.organizationId, roundId: round.id }) };
+  const away = workspace.assignReviewer(round.id, data.unassigned.id, reviewer);
+  const other = workspace.assignReviewer(round.id, data.assigned.id, reviewer);
+
+  const due = await patchRound(requestAs(owner, `/review-rounds/${round.id}`, { method: 'PATCH', body: JSON.stringify({ dueAt: '2026-11-01' }) }), roundParams);
+  assert.equal(due.status, 200);
+  assert.equal(away.expiresAt, '2026-11-01T23:59:59.000Z', 'a bare date means the end of that day');
+  assert.equal((await patchRound(requestAs(reviewer, `/review-rounds/${round.id}`, { method: 'PATCH', body: JSON.stringify({ dueAt: null }) }), roundParams)).status, 403);
+
+  // The reader declares a conflict on one read; it leaves their queue.
+  const conflictParams = (assignmentId: string) => ({ params: Promise.resolve({ assignmentId }) });
+  assert.equal((await declareConflict(requestAs(admin, '/conflict', json({ reason: 'x' })), conflictParams(away.id))).status, 404, 'only the assigned reader can declare');
+  const declared = await declareConflict(requestAs(reviewer, '/conflict', json({ reason: 'I edited this manuscript' })), conflictParams(away.id));
+  assert.equal(declared.status, 200);
+  const radar = await getEngine();
+  assert.ok(!reviewerAssignmentsForAccount(workspace, radar, reviewer).some((item) => item.id === away.id));
+
+  // Reassign the reader's remaining open read to the admin; the submission keeps one reader.
+  const body = { fromReviewerAccountId: reviewer, readerAccountIds: [admin], policy: { sharedEmailDomain: false } };
+  const preview = await reassign(requestAs(owner, `/review-rounds/${round.id}/reassign`, json({ ...body, dryRun: true })), roundParams);
+  const previewBody = await preview.json() as { plan: { assignments: Array<{ submissionId: string; reviewerAccountId: string }>; withdrawing: number } };
+  assert.equal(previewBody.plan.withdrawing, 1);
+  assert.deepEqual(previewBody.plan.assignments, [{ submissionId: data.assigned.id, reviewerAccountId: admin }]);
+  assert.equal(other.recusedAt, undefined, 'a preview writes nothing');
+  const applied = await reassign(requestAs(owner, `/review-rounds/${round.id}/reassign`, json({ ...body, dryRun: false })), roundParams);
+  assert.equal(applied.status, 201);
+  assert.ok(other.recusedAt);
+  const replacement = [...workspace.store.reviewAssignments.values()].find((item) => item.reviewRoundId === round.id && item.reviewerAccountId === admin);
+  assert.equal(replacement?.expiresAt, '2026-11-01T23:59:59.000Z', 'replacements inherit the round due date');
+  assert.equal((await reassign(requestAs(owner, `/review-rounds/${round.id}/reassign`, json({ ...body, dryRun: true })), roundParams)).status, 409, 'nothing left to move');
+});
+
+test('promotion opens a new round from the top scores and can draft the stage letter', async () => {
+  const { data, workspace, round } = await freshRound();
+  const owner = data.accounts.get('owner')!;
+  const reviewer = data.accounts.get('reviewer')!;
+  const roundParams = { params: Promise.resolve({ id: data.organizationId, roundId: round.id }) };
+  workspace.recordReview(workspace.assignReviewer(round.id, data.assigned.id, reviewer).id, 90);
+  workspace.recordReview(workspace.assignReviewer(round.id, data.unassigned.id, reviewer).id, 40);
+
+  const preview = await promote(requestAs(owner, `/review-rounds/${round.id}/promote`, json({ name: 'Jury', top: 1, dryRun: true })), roundParams);
+  const previewBody = await preview.json() as { promoted: Array<{ submissionId: string }>; cutoff: number };
+  assert.deepEqual(previewBody.promoted.map((row) => row.submissionId), [data.assigned.id]);
+  assert.equal(previewBody.cutoff, 90);
+  const roundsBefore = workspace.reviewRoundsForOpenCall(data.openCall.id).length;
+
+  const created = await promote(requestAs(owner, `/review-rounds/${round.id}/promote`, json({ name: 'Jury', top: 1, letterKind: 'shortlist' })), roundParams);
+  assert.equal(created.status, 201);
+  const body = await created.json() as { round: { id: string; name: string }; letterId: string };
+  assert.equal(workspace.reviewRoundsForOpenCall(data.openCall.id).length, roundsBefore + 1);
+  assert.equal(body.round.name, 'Jury');
+  const letter = workspace.communicationBatch(data.organizationId, body.letterId)!;
+  assert.equal(letter.kind, 'shortlist');
+  assert.equal(letter.status, 'draft', 'promotion never tells anyone by itself');
+  assert.deepEqual(letter.recipients.map((recipient) => recipient.submissionId), [data.assigned.id]);
+  assert.equal((await promote(requestAs(reviewer, `/review-rounds/${round.id}/promote`, json({ name: 'Jury' })), roundParams)).status, 403);
 });

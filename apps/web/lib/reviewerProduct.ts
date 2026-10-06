@@ -12,6 +12,7 @@ export interface ReviewerAssignmentView {
   state: ReviewerAssignmentState;
   submittedAt: string;
   completedAt?: string;
+  dueAt?: string;
   legacyRecommendation?: {
     score?: number;
     notes?: string;
@@ -30,6 +31,7 @@ export function reviewerAssignmentsForAccount(
   accountId: string,
 ): ReviewerAssignmentView[] {
   return workspace.reviewAssignmentsForReviewer(accountId)
+    .filter((assignment) => !assignment.recusedAt)
     .map((assignment) => reviewerAssignmentForAccount(workspace, radar, accountId, assignment.id))
     .filter((assignment): assignment is ReviewerAssignmentView => Boolean(assignment))
     .sort((a, b) => {
@@ -45,7 +47,7 @@ export function reviewerAssignmentForAccount(
   assignmentId: string,
 ): ReviewerAssignmentView | undefined {
   const assignment = workspace.store.reviewAssignments.get(assignmentId);
-  if (!assignment || assignment.reviewerAccountId !== accountId) return undefined;
+  if (!assignment || assignment.reviewerAccountId !== accountId || assignment.recusedAt) return undefined;
 
   const round = workspace.store.reviewRounds.get(assignment.reviewRoundId);
   const submission = workspace.store.submissions.get(assignment.submissionId);
@@ -67,6 +69,7 @@ export function reviewerAssignmentForAccount(
     state: assignment.completedAt && recommendation ? 'legacy-submitted' : 'awaiting-review-contract',
     submittedAt: submission.submittedAt,
     completedAt: assignment.completedAt,
+    dueAt: assignment.expiresAt,
     legacyRecommendation: recommendation ? {
       score: recommendation.score,
       notes: recommendation.notes,

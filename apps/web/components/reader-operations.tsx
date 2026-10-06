@@ -20,6 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { CalibrationBadge } from '@/components/missa/operations-badges';
+import { PromoteDialog, ReassignReadsDialog, RoundDueDateControl } from '@/components/reader-round-actions';
 
 const REFRESH_MS = 30_000;
 const OUTCOMES = ['accepted', 'declined', 'waitlisted'] as const;
@@ -92,7 +93,7 @@ export function ReaderOperations({ organizationId, initial, canManage }: { organ
         <div>
           <p className="text-xs font-semibold tracking-[0.08em] text-accent-deep uppercase">Reader operations</p>
           <h2 id="reader-operations-title" className="mt-1 font-heading text-2xl font-medium text-foreground">{view.round.name}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{view.round.openCallTitle} · {totals.eligibleSubmissions} eligible {totals.eligibleSubmissions === 1 ? 'submission' : 'submissions'} · {totals.assignments} {totals.assignments === 1 ? 'assignment' : 'assignments'}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{view.round.openCallTitle}{view.round.dueAt ? ` · due ${new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(view.round.dueAt))}` : ''} · {totals.eligibleSubmissions} eligible {totals.eligibleSubmissions === 1 ? 'submission' : 'submissions'} · {totals.assignments} {totals.assignments === 1 ? 'assignment' : 'assignments'}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-sm text-foreground">
@@ -105,6 +106,13 @@ export function ReaderOperations({ organizationId, initial, canManage }: { organ
           {canManage ? <NudgeDialog base={base} roundId={roundId} readers={view.readers.filter((reader) => reader.open > 0)} /> : null}
         </div>
       </header>
+
+      {canManage && view.authority === 'compatibility' ? (
+        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border px-5 py-3">
+          <RoundDueDateControl key={view.round.dueAt ?? 'none'} base={base} roundId={roundId} dueAt={view.round.dueAt} onSaved={refresh} />
+          <PromoteDialog base={base} roundId={roundId} organizationId={organizationId} scored={view.ranking.filter((row) => row.averageScore !== undefined).length} />
+        </div>
+      ) : null}
 
       <div className="grid gap-3 px-5 py-4 sm:grid-cols-4">
         <Stat label="Round complete" value={`${completion}%`} detail={`${totals.completed} of ${totals.assignments} reads`}>
@@ -154,7 +162,8 @@ export function ReaderOperations({ organizationId, initial, canManage }: { organ
                     <TableRow key={reader.reviewerAccountId}>
                       <TableCell>
                         <div className="font-medium text-foreground">{reader.label}</div>
-                        <div className="text-xs text-muted-foreground">{reader.role}{reader.lastActivityAt ? ` · last read ${new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(new Date(reader.lastActivityAt))}` : ''}</div>
+                        <div className="text-xs text-muted-foreground">{reader.role}{reader.lastActivityAt ? ` · last read ${new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(new Date(reader.lastActivityAt))}` : ''}{reader.recused ? ` · ${reader.recused} withdrawn` : ''}</div>
+                        {canManage && reader.open > 0 && view.authority === 'compatibility' ? <ReassignReadsDialog base={base} roundId={roundId} reader={{ reviewerAccountId: reader.reviewerAccountId, label: reader.label, open: reader.open }} view={view} onDone={async () => { await refresh(); router.refresh(); }} /> : null}
                       </TableCell>
                       <TableCell>
                         <Progress value={reader.percentComplete} aria-label={`${reader.label} completed ${reader.completed} of ${reader.assigned - reader.recused} reads`}>
