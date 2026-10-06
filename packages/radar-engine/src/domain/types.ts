@@ -384,6 +384,8 @@ export interface OrganizationCustomization {
   statusTransparency?: "minimal" | "stages" | "full";
   /** Date (YYYY-MM-DD) each opportunity expects to decide by, keyed by open call id. Shown to submitters. */
   decisionDates?: Record<string, string>;
+  /** Per opportunity: intake screening rules. They raise flags for a person; they never decline. */
+  eligibilityRules?: Record<string, { maxWorks?: number; allowedCategories?: string[]; requireFiles?: boolean; maxSubmissionsPerSubmitter?: number }>;
   /** Per review round: what readers must read and acknowledge before scoring. */
   roundBriefs?: Record<string, { text: string; updatedAt: string }>;
   /** Per opportunity: what the organization chose to publish on its public results page. */

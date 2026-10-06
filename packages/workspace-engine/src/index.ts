@@ -65,6 +65,7 @@ export {
   type RecipientCandidate,
   type RecipientSelection,
 } from "./communications.js";
+export { intakeFlags, type EligibilityRules, type IntakeFlag, type IntakeFlagCode, type IntakeSubmission } from "./intakeChecks.js";
 export {
   submissionStatusTimeline,
   DEFAULT_STAGE_LABELS,

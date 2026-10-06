@@ -29,6 +29,10 @@ import { POST as recordReviewRoute } from '../../reviewer/assignments/[assignmen
 import { POST as previewResults, PUT as publishResults, DELETE as unpublishResults } from './open-calls/[openCallId]/results/route';
 import { POST as acceptFromWaitlist } from './works/[workId]/accept-from-waitlist/route';
 import { publicResultsFor } from '@/lib/publicResults';
+import { POST as triage } from './submissions/triage/route';
+import { PATCH as setScreeningRules } from './open-calls/[openCallId]/eligibility/route';
+import { GET as searchRecords } from './search/route';
+import { organizationIntakeFlags } from '@/lib/intakeData';
 
 const json = (body: unknown) => ({ method: 'POST', body: JSON.stringify(body) });
 
@@ -386,4 +390,56 @@ test('waitlisted Works can be accepted with a drafted letter, and results publis
   assert.ok(!after.winners.some((entry) => entry.workTitles.includes(work.title)), 'withdrawn submissions never appear');
   assert.equal((await unpublishResults(requestAs(owner, '/results', { method: 'DELETE' }), callParams)).status, 200);
   assert.equal(radar.store.organizations.get(id)!.customization?.publishedResults?.[data.openCall.id], undefined);
+});
+
+test('bulk triage fills undecided Works, drafts letters per opportunity and skips withdrawn submissions', async () => {
+  const data = await organizationRoleFixture();
+  const owner = data.accounts.get('owner')!;
+  const id = data.organizationId;
+  const workspace = await getCompatibilityWorkspaceEngine();
+  const params = { params: Promise.resolve({ id }) };
+  const decided = workspace.worksForSubmission(data.assigned.id)[0]!;
+  const before = workspace.decisionForWork(id, decided.id)!.outcome;
+  const response = await triage(requestAs(owner, '/submissions/triage', json({ action: 'decide', outcome: 'declined', submissionIds: [data.assigned.id, data.unassigned.id, 'submission_missing'] })), params);
+  assert.equal(response.status, 200);
+  const body = await response.json() as { recorded: number; kept: number; unknown: string[] };
+  assert.equal(workspace.decisionForWork(id, decided.id)!.outcome, before, 'an existing decision is kept');
+  assert.equal(workspace.decisionForWork(id, workspace.worksForSubmission(data.unassigned.id)[0]!.id)!.outcome, 'declined');
+  assert.equal(body.kept, 1);
+  assert.deepEqual(body.unknown, ['submission_missing']);
+
+  const letter = await triage(requestAs(owner, '/submissions/triage', json({ action: 'draft-letter', kind: 'rejection-with-dignity', submissionIds: [data.unassigned.id] })), params);
+  assert.equal(letter.status, 201);
+  const letterBody = await letter.json() as { letters: string[] };
+  assert.equal(workspace.communicationBatch(id, letterBody.letters[0]!)!.status, 'draft');
+  assert.equal((await triage(requestAs(data.accounts.get('viewer')!, '/submissions/triage', json({ action: 'decide', outcome: 'declined', submissionIds: [data.unassigned.id] })), params)).status, 403);
+});
+
+test('screening rules raise flags without changing any submission', async () => {
+  const data = await organizationRoleFixture();
+  const owner = data.accounts.get('owner')!;
+  const id = data.organizationId;
+  const radar = await getEngine();
+  const workspace = await getCompatibilityWorkspaceEngine();
+  radar.store.organizations.get(id)!.customization = undefined;
+  const callParams = { params: Promise.resolve({ id, openCallId: data.openCall.id }) };
+  workspace.store.submissions.get(data.unassigned.id)!.category = 'Poetry';
+  const statusBefore = workspace.store.submissions.get(data.unassigned.id)!.status;
+  assert.equal((await setScreeningRules(requestAs(owner, '/eligibility', { method: 'PATCH', body: JSON.stringify({ maxWorks: 0 }) }), callParams)).status, 400);
+  assert.equal((await setScreeningRules(requestAs(owner, '/eligibility', { method: 'PATCH', body: JSON.stringify({ allowedCategories: ['Fiction'], maxSubmissionsPerSubmitter: 5 }) }), callParams)).status, 200);
+  const flags = organizationIntakeFlags({ radar, workspace, organizationId: id });
+  assert.ok(flags.get(data.unassigned.id)!.some((flag) => flag.code === 'category-not-accepted'), 'Poetry is not an accepted category');
+  assert.equal(workspace.store.submissions.get(data.unassigned.id)!.status, statusBefore, 'flags never change a submission');
+});
+
+test('record search finds submissions by submitter and Work, for ledger roles only', async () => {
+  const data = await organizationRoleFixture();
+  const params = { params: Promise.resolve({ id: data.organizationId }) };
+  const search = (accountId: string, q: string) => searchRecords(requestAs(accountId, `/search?q=${encodeURIComponent(q)}`), params);
+  const found = await (await search(data.accounts.get('owner')!, 'unassigned poem')).json() as { results: Array<{ kind: string; href: string }> };
+  assert.ok(found.results.some((result) => result.kind === 'submission' && result.href.endsWith(`/submissions/${data.unassigned.id}`)));
+  const opportunity = await (await search(data.accounts.get('owner')!, 'spring reading')).json() as { results: Array<{ kind: string }> };
+  assert.equal(opportunity.results[0]!.kind, 'opportunity');
+  assert.deepEqual((await (await search(data.accounts.get('owner')!, 'x')).json() as { results: unknown[] }).results, [], 'one letter is too short');
+  assert.equal((await search(data.accounts.get('reviewer')!, 'poem')).status, 403);
 });
