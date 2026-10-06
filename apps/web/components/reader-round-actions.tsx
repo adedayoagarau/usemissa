@@ -41,6 +41,30 @@ export function RoundDueDateControl({ base, roundId, dueAt, onSaved }: { base: s
   );
 }
 
+/** The date submitters are told to expect a decision by, for the round's opportunity. */
+export function DecisionDateControl({ base, openCallId, date, onSaved }: { base: string; openCallId: string; date?: string; onSaved: () => Promise<void> }) {
+  const [value, setValue] = useState(date ?? '');
+  const [pending, startTransition] = useTransition();
+  const save = (next: string | null) => startTransition(async () => {
+    const response = await fetch(`${base}/open-calls/${encodeURIComponent(openCallId)}/decision-date`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ date: next }) });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) { toast.error(body.error ?? 'The date could not be saved.'); return; }
+    toast.success(next ? 'Submitters will see this date on their tracker.' : 'Expected decision date removed.');
+    if (!next) setValue('');
+    await onSaved();
+  });
+  return (
+    <div className="flex flex-wrap items-end gap-2">
+      <Field className="w-auto">
+        <FieldLabel htmlFor={`decision-date-${openCallId}`}>Decisions expected by</FieldLabel>
+        <Input id={`decision-date-${openCallId}`} type="date" size="compact" value={value} onChange={(event) => setValue(event.target.value)} className="w-40" />
+      </Field>
+      <Button type="button" size="sm" variant="outline" onClick={() => save(value || null)} disabled={pending || value === (date ?? '')}>Save date</Button>
+      {date ? <Button type="button" size="sm" variant="ghost" onClick={() => save(null)} disabled={pending}>Clear</Button> : null}
+    </div>
+  );
+}
+
 interface ReassignPlan {
   assignments: Array<{ submissionId: string; reviewerAccountId: string }>;
   conflicts: Array<{ submissionId: string; reviewerAccountId: string; reason: string; detail: string }>;

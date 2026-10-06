@@ -62,6 +62,7 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
   let works: ReceiptWork[];
   let decisions: ReceiptDecision[];
   let organizationId: string | undefined;
+  let openCallId: string | undefined;
   let hasActiveReview = false;
   let stageEvents: Array<{ stage: SubmissionStage; at: string }> = [];
   let letters: Array<{ id: string; subject: string; kindLabel: string; at: string }> = [];
@@ -74,6 +75,7 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
     call = { title: detail.openCallTitle, ...(detail.radarOpportunityId ? { radarOpportunityId: detail.radarOpportunityId } : {}) };
     organizationName = radar.store.organizations.get(detail.organizationId)?.name;
     organizationId = detail.organizationId;
+    openCallId = detail.openCallId;
     works = detail.works;
     decisions = detail.decisions;
     hasActiveReview = detail.status === 'in-review';
@@ -93,6 +95,7 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
     works = workspace.worksForSubmission(found.id);
     decisions = workspace.decisionsForSubmission(entity?.organizationId ?? '', found.id);
     organizationId = entity?.organizationId;
+    openCallId = foundCall.id;
     hasActiveReview = found.status === 'in-review' || workspace.reviewAssignmentsForSubmission(found.id).some((assignment) => !(assignment as { recusedAt?: string }).recusedAt);
     stageEvents = workspace.stageEventsForSubmission(found.id).map((event) => ({ stage: event.stage, at: event.at }));
     letters = [...workspace.store.communicationBatches.values()].flatMap((batch) => {
@@ -115,6 +118,7 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
     declaredStages: customization?.declaredStages,
     stageLabels: customization?.stageLabels,
     organizationName: customization?.displayName ?? organization,
+    expectedDecisionBy: openCallId ? organizationRecord?.customization?.decisionDates?.[openCallId] : undefined,
   });
   const fields = new Map((path.fields ?? []).map((field: SubmissionField) => [field.id, field]));
   const answers = Object.entries(submission.answers ?? {});

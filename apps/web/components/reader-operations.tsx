@@ -20,7 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { CalibrationBadge } from '@/components/missa/operations-badges';
-import { PromoteDialog, ReassignReadsDialog, RoundDueDateControl } from '@/components/reader-round-actions';
+import { DecisionDateControl, PromoteDialog, ReassignReadsDialog, RoundDueDateControl } from '@/components/reader-round-actions';
 
 const REFRESH_MS = 30_000;
 const OUTCOMES = ['accepted', 'declined', 'waitlisted'] as const;
@@ -109,7 +109,10 @@ export function ReaderOperations({ organizationId, initial, canManage }: { organ
 
       {canManage && view.authority === 'compatibility' ? (
         <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border px-5 py-3">
-          <RoundDueDateControl key={view.round.dueAt ?? 'none'} base={base} roundId={roundId} dueAt={view.round.dueAt} onSaved={refresh} />
+          <div className="flex flex-wrap items-end gap-6">
+            <RoundDueDateControl key={view.round.dueAt ?? 'none'} base={base} roundId={roundId} dueAt={view.round.dueAt} onSaved={refresh} />
+            <DecisionDateControl key={view.round.expectedDecisionBy ?? 'none'} base={base} openCallId={view.round.openCallId} date={view.round.expectedDecisionBy} onSaved={refresh} />
+          </div>
           <PromoteDialog base={base} roundId={roundId} organizationId={organizationId} scored={view.ranking.filter((row) => row.averageScore !== undefined).length} />
         </div>
       ) : null}

@@ -44,7 +44,7 @@ export interface RoundOperationsView {
   authority: 'compatibility' | 'relational';
   scoresAvailable: boolean;
   generatedAt: string;
-  round: { id: string; name: string; openCallId: string; openCallTitle: string; dueAt?: string };
+  round: { id: string; name: string; openCallId: string; openCallTitle: string; dueAt?: string; expectedDecisionBy?: string };
   totals: { submissions: number; eligibleSubmissions: number; assignments: number; completed: number; open: number; recused: number };
   readers: RoundReaderRow[];
   calibration: ScoreCalibration;
@@ -129,7 +129,7 @@ export function compatibilityRoundOperationsView(input: { radar: Radar; workspac
     authority: 'compatibility',
     scoresAvailable: true,
     generatedAt: now,
-    round: { id: round.id, name: round.name, openCallId: openCall.id, openCallTitle: openCall.title, dueAt: workspace.roundDueDate(round.id) },
+    round: { id: round.id, name: round.name, openCallId: openCall.id, openCallTitle: openCall.title, dueAt: workspace.roundDueDate(round.id), expectedDecisionBy: radar.store.organizations.get(organizationId)?.customization?.decisionDates?.[openCall.id] },
     totals: {
       submissions: submissions.length,
       eligibleSubmissions: submissions.filter((submission) => submission.status !== 'withdrawn').length,

@@ -34,6 +34,9 @@ export interface SubmissionStatusTimelineInput {
   declaredStages?: SubmissionStage[];
   stageLabels?: Partial<Record<SubmissionStage, string>>;
   organizationName?: string;
+  /** The date the organization said it expects to decide by (YYYY-MM-DD or ISO). */
+  expectedDecisionBy?: string;
+  now?: string;
 }
 
 export interface SubmissionStatusTimeline {
@@ -105,7 +108,14 @@ export function submissionStatusTimeline(input: SubmissionStatusTimelineInput): 
     const latest = [...input.decisions].sort((left, right) => left.decidedAt.localeCompare(right.decidedAt)).at(-1)!;
     steps.push({ id: 'decision', label: 'Decision', state: 'current', at: latest.decidedAt, detail: describeDecisions(input) });
   } else {
-    steps.push({ id: 'decision', label: 'Decision', state: 'upcoming', detail: 'Decisions stay attached to each Work you submitted.' });
+    const expected = input.expectedDecisionBy ? Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(input.expectedDecisionBy) ? `${input.expectedDecisionBy}T23:59:59.000Z` : input.expectedDecisionBy) : Number.NaN;
+    const late = !Number.isNaN(expected) && expected < Date.parse(input.now ?? new Date().toISOString());
+    const detail = Number.isNaN(expected)
+      ? 'Decisions stay attached to each Work you submitted.'
+      : late
+        ? `${input.organizationName ?? 'The organization'} expected to decide by ${shortDate(input.expectedDecisionBy!)} and is running later than planned.`
+        : `Expected by ${shortDate(input.expectedDecisionBy!)}. Decisions stay attached to each Work you submitted.`;
+    steps.push({ id: 'decision', label: 'Decision', state: 'upcoming', detail });
   }
 
   if (!steps.some((step) => step.state === 'current')) steps[0]!.state = 'current';

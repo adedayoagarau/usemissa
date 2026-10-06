@@ -382,6 +382,8 @@ export interface OrganizationCustomization {
   declaredStages?: OrganizationSubmissionStage[];
   /** How much of the review journey submitters can see. */
   statusTransparency?: "minimal" | "stages" | "full";
+  /** Date (YYYY-MM-DD) each opportunity expects to decide by, keyed by open call id. Shown to submitters. */
+  decisionDates?: Record<string, string>;
   communications?: {
     senderName?: string;
     replyTo?: string;

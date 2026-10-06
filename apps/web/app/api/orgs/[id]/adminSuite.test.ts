@@ -21,6 +21,9 @@ import { GET as runScheduledLetters } from '../../cron/organization-letters/rout
 import { GET as runDigest } from '../../cron/organization-digest/route';
 import { digestHasNews, organizationDigestFacts } from '@/lib/organizationDigest';
 import { renderOrganizationDigestEmail } from '@/emails/organization-digest';
+import { PATCH as setDecisionDate } from './open-calls/[openCallId]/decision-date/route';
+import { submissionHistory } from '@/lib/submissionHistory';
+import { organizationSetupSteps } from '@/lib/organizationSetup';
 
 const json = (body: unknown) => ({ method: 'POST', body: JSON.stringify(body) });
 
@@ -288,4 +291,39 @@ test('the admin digest counts the last day and skips quiet or opted-out organiza
   radar.store.organizations.get(data.organizationId)!.customization = undefined;
   const sent = await (await runDigest(new Request('https://usemissa.test/api/cron/organization-digest', { headers: { authorization: 'Bearer cron-secret-for-tests' } }))).json() as { sent: number };
   assert.ok(sent.sent >= 2, 'owner and admin each receive one');
+});
+
+test('decision dates, readable history and the setup checklist reflect recorded facts', async () => {
+  const { data, workspace, round } = await freshRound();
+  const owner = data.accounts.get('owner')!;
+  const reviewer = data.accounts.get('reviewer')!;
+  const id = data.organizationId;
+  const radar = await getEngine();
+  radar.store.organizations.get(id)!.customization = undefined;
+
+  const params = { params: Promise.resolve({ id, openCallId: data.openCall.id }) };
+  assert.equal((await setDecisionDate(requestAs(owner, '/decision-date', { method: 'PATCH', body: JSON.stringify({ date: 'soon' }) }), params)).status, 400);
+  assert.equal((await setDecisionDate(requestAs(reviewer, '/decision-date', { method: 'PATCH', body: JSON.stringify({ date: '2026-12-12' }) }), params)).status, 403);
+  assert.equal((await setDecisionDate(requestAs(owner, '/decision-date', { method: 'PATCH', body: JSON.stringify({ date: '2026-12-12' }) }), params)).status, 200);
+  assert.equal(radar.store.organizations.get(id)!.customization?.decisionDates?.[data.openCall.id], '2026-12-12');
+
+  const assignment = workspace.assignReviewer(round.id, data.unassigned.id, reviewer);
+  workspace.recordReview(assignment.id, 75, 'Promising');
+  workspace.recordDecision(id, workspace.worksForSubmission(data.unassigned.id)[0]!.id, 'waitlisted', owner);
+  const history = submissionHistory({ radar, workspace, organizationId: id, submissionId: data.unassigned.id });
+  const kinds = history.map((event) => event.kind);
+  assert.ok(kinds.includes('received') && kinds.includes('review') && kinds.includes('decision'));
+  assert.equal(history.at(-1)!.kind, 'received', 'oldest last');
+  assert.match(history.find((event) => event.kind === 'review')!.detail!, /score 75/);
+  assert.doesNotMatch(JSON.stringify(history), /submission_|work_|assignment_/, 'no raw identifiers');
+  assert.deepEqual(submissionHistory({ radar, workspace, organizationId: 'org_other', submissionId: data.unassigned.id }), [], 'scoped to the organization');
+
+  const steps = organizationSetupSteps({ radar, workspace, organizationId: id });
+  const done = Object.fromEntries(steps.map((step) => [step.id, step.done]));
+  assert.equal(done.structure, true);
+  assert.equal(done.readers, true);
+  assert.equal(done.round, true);
+  assert.equal(done.appearance, false, 'appearance is not done until something is set');
+  radar.store.organizations.get(id)!.customization = { accent: 'ochre' };
+  assert.equal(organizationSetupSteps({ radar, workspace, organizationId: id }).find((step) => step.id === 'appearance')!.done, true);
 });

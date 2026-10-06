@@ -123,6 +123,7 @@ export default async function TrackerPage({
         transparency: customization?.statusTransparency ?? "stages",
         declaredStages: customization?.declaredStages,
         stageLabels: customization?.stageLabels,
+        expectedDecisionBy: call ? organization?.customization?.decisionDates?.[call.id] : undefined,
       });
       return {
         id: submission.id,

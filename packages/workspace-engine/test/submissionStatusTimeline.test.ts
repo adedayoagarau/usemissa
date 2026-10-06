@@ -58,3 +58,10 @@ test("withdrawn submissions end at withdrawn", () => {
   assert.deepEqual(timeline.steps.map((step) => step.id), ["received", "withdrawn"]);
   assert.equal(timeline.summary, "Withdrawn");
 });
+
+test("an expected decision date is shown, and said plainly when it has passed", () => {
+  const upcoming = submissionStatusTimeline({ ...base, transparency: "stages", expectedDecisionBy: "2026-12-12", now: "2026-10-06T00:00:00.000Z" });
+  assert.match(upcoming.steps.at(-1)!.detail!, /Expected by 12 Dec 2026/);
+  const late = submissionStatusTimeline({ ...base, transparency: "stages", expectedDecisionBy: "2026-09-30", now: "2026-10-06T00:00:00.000Z" });
+  assert.match(late.steps.at(-1)!.detail!, /running later than planned/);
+});
