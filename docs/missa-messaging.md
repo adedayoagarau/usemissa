@@ -87,8 +87,8 @@ Each one is true today. Keep the proof current before you use it.
    group chats and a friend's story the day after they close."
 3. **Say what we don't know.** "Check us. Every call links to the organizer's
    page, and anything we couldn't confirm is marked." Not "Can I trust Missa? Yes."
-4. **Dry, not cute.** One turn per piece at most, and no exclamation marks in
-   the product. "Some writers aim for 100 rejections a year. Pick your number."
+4. **Have fun, the dry kind.** See "Fun" below for where it belongs and where
+   it never goes. "Some writers aim for 100 rejections a year. Pick your number."
 5. **The work is theirs.** We handle the admin and never comment on the work.
    Don't promise odds, fit scores or acceptance.
 6. **In hard moments, plain words and a next step.** "Declined. It's saved with
@@ -97,6 +97,56 @@ Each one is true today. Keep the proof current before you use it.
 The emails already sound like this ("It closes today, {name}.", "Still waiting
 on {organization}?", "The deadline moved."). Keep them as they are. The job is
 to make the marketing pages sound like the inbox.
+
+## Fun
+
+Missa should make people smile a few times a week. Use the jokes creators
+already make about the submission life: the open tabs, the colour-coded
+spreadsheet, the nine-month wait, the goal of 100 rejections a year. Laugh with
+them about the admin. Never laugh at the work or at the person.
+
+1. **Joke about the admin, never the work.**
+2. **Use their jokes, not ours.** Tabs, spreadsheets, reading periods, response
+   times and rejection counts are shared ground.
+3. **One per screen.** If it needs explaining, cut it.
+4. **Never when it costs something.** No jokes near money, eligibility, a
+   deadline that's today, or a "no".
+5. **The joke can't bend a fact.** Only say "we did the maths" if we did.
+6. **Exclamation marks are for acceptances.** No emoji in the product UI.
+
+### How much fun, where
+
+| Dial | Surfaces |
+| --- | --- |
+| High | Social posts, the film and cutdowns, launch emails |
+| Medium | Empty states, 404, onboarding hints, first run, success toasts, The Sunday List intro, import, goals |
+| Low | Homepage sections, feature tabs, check-in emails, unsubscribe |
+| None | Buttons, statuses, errors, fees, eligibility, deadline-day reminders, declines, decision letters, payments, legal |
+
+### Lines to start from
+
+| Where | Line |
+| --- | --- |
+| Empty Tracker | Nothing saved yet. Your open tabs can finally rest. |
+| First save | Saved. One less tab. |
+| Marked as sent | Marked as sent. Go make something while they read. |
+| Reminder set | Reminder set for 14 March. We'll do the remembering. |
+| Import | Bring your spreadsheet. Yes, even that one. |
+| Import done | 47 submissions imported. Your spreadsheet can retire now. |
+| Onboarding, "What do you make?" | Pick everything. Poets who paint are welcome. |
+| Onboarding, location | Lots of calls care where you live. We'll tell you which ones. |
+| Accepted | Accepted! Read it three times? Everyone does. |
+| Still waiting | It's been 92 days. They said 60. A polite nudge is allowed. |
+| Goals | Some writers aim for 100 rejections a year. Pick your number. |
+| 404 | This page closed early. Plenty of calls haven't. |
+| Loading | Reading the fine print… |
+| No results | No calls match that. Try fewer filters, or check back Sunday. |
+| Unsubscribe from The Sunday List | Unsubscribed. Sundays are yours again. |
+| Log out | See you next call. |
+| Social | Your open tabs called. They'd like a break. |
+| Social | That magazine that only reads in March? It's on the calendar. |
+
+Declines stay plain: "Declined. It's saved with the rest. Where's it going next?"
 
 ## Words
 
@@ -124,8 +174,8 @@ funded"). In sentences to a person, say "call".
 | Search | The placeholder teaches what you can search | Search calls, organizations or "no fee" |
 | Buttons | One or two words. Say exactly what happens | Save · Remind me · Mark as sent · Log a reply · Withdraw |
 | Status | One word each, and the same word everywhere | Saved · Sent · Heard back · Accepted · Declined · Withdrawn · Closed |
-| Toasts | What happened, plus the one detail that matters | Reminder set for 14 March. |
-| Empty states | What goes here, and how to add the first one | Nothing saved yet. Save a call and it'll show up here. |
+| Toasts | What happened, plus the one detail that matters | Reminder set for 14 March. We'll do the remembering. |
+| Empty states | What goes here, and how to add the first one | Nothing saved yet. Your open tabs can finally rest. |
 | Form hints | A plain example instead of a rule | Two or three sentences, the way you'd say it before a reading. |
 | Unknowns | Exact and short. Never guess | Fee not listed · Deadline not confirmed |
 | Dates | Absolute, local, in the data font | Closes Fri 14 Mar, 11:59 pm your time |
@@ -171,6 +221,30 @@ These would make the new words untrue.
   still points at it.
 - Plus and text reminders appear on `/plan`, in Terms and in Privacy, while the
   positioning doc says they're unreleased.
+
+## How this is enforced
+
+| Layer | What it does | Where |
+| --- | --- | --- |
+| This guide | The source for every line. `AGENTS.md` sends every AI copy change here. | `docs/missa-messaging.md`, `AGENTS.md` |
+| Claude Code hook | After each edit, checks the changed lines in that file and sends failures straight back to the agent to fix. | `.claude/settings.json` |
+| CI | Fails a PR that adds a banned word to product copy. Only new or changed lines count, so old copy fails the first time someone touches it. | `npm run check:language`, `scripts/missa-language-rules.mjs` |
+| Debt report | Counts the legacy copy still to migrate, by rule. | `npm run check:language:report` |
+| Escape hatch | `missa-language-allow: <reason>` on a line keeps a flagged word on purpose, such as a quoted competitor. Reviewers should question every one. | Inline comment |
+| People | A script catches words, not tone. The fun dial, specificity and "would a person say this?" still need a reviewer reading against this guide. | PR review |
+
+Before this guide, `check:language` compared only uncommitted changes, so it
+passed every PR in CI. It now diffs against the PR's base (`HEAD^1`, with
+`fetch-depth: 2`).
+
+With the copy edits, put the lead lines in one module (for example
+`apps/web/lib/brand.ts`: the tagline, the one sentence and the audience line).
+Have page metadata, the manifest, `llms.txt` and the share images import from
+it, with a unit test, so the site can't drift into a 24th description.
+
+When you add a word to "Don't say", add a rule to
+`scripts/missa-language-rules.mjs` and a case to
+`scripts/tests/check-missa-language.test.mjs`.
 
 ## Open decisions
 

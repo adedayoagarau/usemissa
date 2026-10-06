@@ -25,8 +25,9 @@ assumed. Don't stall on questions.
 - **What is launching**, in one sentence a creator would understand.
 - **Who it's for.** Name the person, not the segment.
 - **The one thing they should remember.** Only one.
-- **CTA and end line.** Missa's default close is "Missa. Opportunities for every
-  creator." Don't invent a new tagline per film.
+- **CTA and end line.** Use the end line in `docs/missa-messaging.md` (currently
+  "Missa. Find the call. Make the deadline."). Don't invent a new tagline per film.
+  That guide also sets the voice, the fun dial and the words to avoid.
 - **Length.** Speech runs about 2.2–2.5 words a second with room for pauses:
 
   | Length | Words |

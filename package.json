@@ -17,6 +17,8 @@
     "format:check": "prettier --check .",
     "check:language": "node scripts/check-missa-language.mjs",
     "check:language:all": "node scripts/check-missa-language.mjs --all",
+    "check:language:report": "node scripts/check-missa-language.mjs --report",
+    "test:language": "node --test scripts/tests/check-missa-language.test.mjs",
   "check:design-system": "node scripts/check-design-system.mjs",
   "check:creator-migration-boundary": "node scripts/verify-creator-migration-boundary.mjs",
     "design-system:catalogue": "node scripts/check-design-system.mjs --write-catalogue",
