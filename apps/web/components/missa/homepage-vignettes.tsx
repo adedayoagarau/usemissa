@@ -13,6 +13,8 @@ import {
 
 import type { ReactNode } from "react";
 
+import { CallCover } from "@/components/illustrations/missa-illustrations";
+import type { VignetteCall } from "@/lib/homepageShowcase";
 import styles from "./homepage-vignettes.module.css";
 
 /**
@@ -28,35 +30,7 @@ import styles from "./homepage-vignettes.module.css";
  * Decorative: every use is aria-hidden and the page says the same in text.
  */
 
-export type VignetteCall = {
-  id: string;
-  title: string;
-  typeLabel: string;
-  organizationName: string | null;
-  /** ISO date (YYYY-MM-DD) of the deadline. */
-  date: string;
-  /** Whole days from today to the deadline, at least 1. */
-  daysLeft: number;
-};
-
-const TYPE_LABELS: Record<string, string> = {
-  "open-call": "Open call",
-  grant: "Grant",
-  residency: "Residency",
-  award: "Award",
-  fellowship: "Fellowship",
-  magazine: "Magazine",
-  contest: "Contest",
-  exhibition: "Exhibition",
-};
-
-export function typeLabel(type: string | undefined) {
-  if (!type) return "Open call";
-  return (
-    TYPE_LABELS[type] ??
-    type.replace(/-/g, " ").replace(/^./, (character) => character.toUpperCase())
-  );
-}
+export type { VignetteCall } from "@/lib/homepageShowcase";
 
 function asDate(iso: string) {
   return new Date(`${iso.slice(0, 10)}T12:00:00Z`);
@@ -81,9 +55,6 @@ function shortDate(iso: string) {
   });
 }
 
-export function daysBetween(fromIso: string, toIso: string) {
-  return Math.round((asDate(toIso).getTime() - asDate(fromIso).getTime()) / 86_400_000);
-}
 
 function daysLeftLabel(days: number) {
   return days === 1 ? "Tomorrow" : `${days} days left`;
@@ -128,6 +99,9 @@ export function CallCardVignette({
   return (
     <div className={styles.card}>
       <div className={styles.plate}>
+        <span className={styles.plateArt}>
+          <CallCover type={call.type} />
+        </span>
         <span className={styles.badges}>
           <span className={styles.badge}>{call.typeLabel}</span>
           {call.daysLeft <= 7 ? (
@@ -144,10 +118,12 @@ export function CallCardVignette({
         >
           {saved ? <Check size={16} aria-hidden="true" /> : <Bookmark size={16} aria-hidden="true" />}
         </span>
-        <span className={styles.plateName}>{call.organizationName ?? call.typeLabel}</span>
       </div>
       <div className={styles.cardBody}>
         <strong className={styles.cardTitle}>{call.title}</strong>
+        {call.organizationName ? (
+          <span className={styles.cardOrg}>{call.organizationName}</span>
+        ) : null}
         <span className={styles.fact}>
           <CalendarDays size={12} aria-hidden="true" /> {longDate(call.date)}
         </span>

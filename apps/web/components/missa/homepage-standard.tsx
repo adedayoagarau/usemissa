@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, BellRing, Bookmark } from "lucide-react";
 import type { ReactNode } from "react";
-import type { OpportunityBrowseProjection } from "@missa/radar-engine";
 
 import { buttonVariants } from "@/components/ui/button";
 import { MissaWordmark } from "@/components/missa-wordmark";
@@ -11,57 +10,21 @@ import { categorySearch } from "@/lib/homepage-opportunity-categories";
 import { Reveal } from "./homepage-reveal";
 import { HomepageMorph } from "./homepage-morph";
 import { HeroWord } from "./homepage-hero-word";
+import { CloseScene } from "@/components/illustrations/missa-illustrations";
 import { HomepageQuestions } from "./homepage-standard-client";
 import {
   ProfileVignette,
   ReminderEmailVignette,
   TrackerItemVignette,
-  daysBetween,
   longDate,
-  typeLabel,
-  type VignetteCall,
 } from "./homepage-vignettes";
+import {
+  weekBeforeReminder,
+  type Showcase,
+  type VignetteCall,
+} from "@/lib/homepageShowcase";
 import styles from "./homepage-standard.module.css";
 
-type HomepageCall = Pick<
-  OpportunityBrowseProjection,
-  "id" | "title" | "organizationName" | "deadline"
-> &
-  Partial<Pick<OpportunityBrowseProjection, "type">>;
-
-
-/** Titles set in capitals read as shouting at vignette scale; skip them. */
-function shouts(title: string) {
-  const letters = title.replace(/[^A-Za-z]/g, "");
-  if (letters.length < 12) return false;
-  return letters.replace(/[^A-Z]/g, "").length / letters.length > 0.6;
-}
-
-/**
- * The live calls the hero tour and the feature cards are drawn from: dated
- * calls with at least one full day left, soonest first, so every date shown
- * is still ahead of the visitor.
- */
-export function pickShowcaseCalls(items: HomepageCall[], today: string): VignetteCall[] {
-  return items
-    .filter(
-      (item) =>
-        item.deadline.kind === "exact" &&
-        item.deadline.date &&
-        Number.isFinite(Date.parse(item.deadline.date)) &&
-        !shouts(item.title),
-    )
-    .map((item) => ({
-      id: item.id,
-      title: item.title,
-      typeLabel: typeLabel(item.type),
-      organizationName: item.organizationName ?? null,
-      date: item.deadline.date!.slice(0, 10),
-      daysLeft: daysBetween(today, item.deadline.date!),
-    }))
-    .filter((call) => call.daysLeft >= 1)
-    .sort((a, b) => a.daysLeft - b.daysLeft);
-}
 
 export function HomepageHero({
   open,
@@ -149,8 +112,12 @@ function FeatureCard({
   );
 }
 
-export function HomepageProof({ calls }: { calls: VignetteCall[] }) {
-  const [first, second] = calls;
+export function HomepageProof({ showcase }: { showcase: Showcase }) {
+  const first = showcase.urgent ?? showcase.lead;
+  const second = showcase.urgent ? showcase.lead : null;
+  // The email a creator receives a week before the deadline, with the real date.
+  const reminderCall = showcase.lead ?? showcase.urgent;
+  const reminder = reminderCall ? weekBeforeReminder(reminderCall) : null;
   return (
     <section className={styles.section} aria-labelledby="homepage-proof-heading">
       <Reveal className={styles.sectionHead}>
@@ -195,7 +162,13 @@ export function HomepageProof({ calls }: { calls: VignetteCall[] }) {
           action="Choose your reminders"
           caption="Example, built from a call open today"
           delay={0.06}
-          stage={first ? <div className={styles.vignetteFrame}><ReminderEmailVignette call={first} /></div> : null}
+          stage={
+            reminder ? (
+              <div className={styles.vignetteFrame}>
+                <ReminderEmailVignette call={reminder} />
+              </div>
+            ) : null
+          }
         >
           Missa emails you before a saved call closes. You choose how early.
         </FeatureCard>
@@ -242,8 +215,9 @@ export function HomepageQuestionsSection() {
   );
 }
 
-export function HomepageClose({ calls }: { calls: VignetteCall[] }) {
-  const [first, second] = calls;
+export function HomepageClose({ showcase }: { showcase: Showcase }) {
+  const first = showcase.lead ?? showcase.urgent;
+  const second = showcase.lead ? showcase.urgent : null;
   const firstCloses = first ? longDate(first.date) : null;
   return (
     <section className={styles.close} aria-labelledby="homepage-close-heading">
@@ -265,6 +239,9 @@ export function HomepageClose({ calls }: { calls: VignetteCall[] }) {
           </div>
         </div>
         <div className={styles.closeCards} aria-hidden="true">
+          <span className={styles.closeScene}>
+            <CloseScene />
+          </span>
           <div className={styles.closeCard} data-back>
             <span className={styles.closeCardLabel}>
               <Bookmark size={14} /> Shortlisted

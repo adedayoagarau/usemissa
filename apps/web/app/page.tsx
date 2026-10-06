@@ -7,11 +7,11 @@ import {
   HomepageClose,
   HomepageFooterStandard,
   HomepageHero,
-  pickShowcaseCalls,
   HomepageProof,
   HomepageQuestionsSection,
 } from "@/components/missa/homepage-standard";
 import { ShortlistBar } from "@/components/missa/homepage-shortlist";
+import { pickShowcase } from "@/lib/homepageShowcase";
 import type { ActiveFiltersState } from "@/components/missa/opportunities-browse";
 import { getHomepageStats, type HomepageStats } from "@/lib/homepageStats";
 import { parseOpportunityBrowseQuery } from "@/lib/opportunityQuery";
@@ -82,13 +82,19 @@ export default async function HomePage({
     ...parseOpportunityBrowseQuery(urlParams),
     limit: HOMEPAGE_RESULT_LIMIT,
   };
+  // A second, small pool for the product examples: recently added calls
+  // usually have weeks of lead time, unlike the soonest-closing list above.
+  const showcaseQuery = {
+    ...parseOpportunityBrowseQuery(new URLSearchParams({ sort: "recently-added" })),
+    limit: 24,
+  };
   const closingQuery = {
     ...parseOpportunityBrowseQuery(new URLSearchParams()),
     deadlineWithinDays: 7,
     limit: 1,
   };
 
-  const [browse, closing, stats] = await Promise.all([
+  const [browse, closing, stats, recent] = await Promise.all([
     getPublicOpportunityBrowse(query).catch(
       (): OpportunityBrowseWithFacets | null => null,
     ),
@@ -96,11 +102,17 @@ export default async function HomePage({
       (): OpportunityBrowseWithFacets | null => null,
     ),
     getHomepageStats().catch((): HomepageStats | null => null),
+    getPublicOpportunityBrowse(showcaseQuery).catch(
+      (): OpportunityBrowseWithFacets | null => null,
+    ),
   ]);
   const loadFailed = browse === null;
   const today = new Date().toISOString().slice(0, 10);
   const [result, facetCounts] = browse ?? EMPTY_BROWSE;
-  const showcase = pickShowcaseCalls(result.items, today);
+  const showcase = pickShowcase(
+    [...result.items, ...(recent ? recent[0].items : [])],
+    today,
+  );
 
   const activeFilters: ActiveFiltersState = {
     type: query.types[0] ?? null,
@@ -131,7 +143,7 @@ export default async function HomePage({
         <HomepageHero
           open={stats?.open ?? null}
           closingThisWeek={closing ? closing[1].total : null}
-          tourCall={showcase[0] ?? null}
+          tourCall={showcase.lead ?? showcase.urgent}
         />
         <HomepageBrowse
           items={result.items}
@@ -143,9 +155,9 @@ export default async function HomePage({
           initialQuery={query.query ?? ""}
           locations={LOCATION_OPTIONS}
         />
-        <HomepageProof calls={showcase} />
+        <HomepageProof showcase={showcase} />
         <HomepageQuestionsSection />
-        <HomepageClose calls={showcase} />
+        <HomepageClose showcase={showcase} />
       </main>
       <ShortlistBar />
       <HomepageFooterStandard />

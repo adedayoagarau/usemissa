@@ -21,6 +21,7 @@ import {
   TrackerItemVignette,
   type VignetteCall,
 } from "./homepage-vignettes";
+import { weekBeforeReminder } from "@/lib/homepageShowcase";
 import styles from "./homepage-morph.module.css";
 
 /**
@@ -63,8 +64,8 @@ type Step = {
 const STEPS: Step[] = [
   { id: "search", surface: "search", width: 360, height: 50, radius: 10, hold: 1900, aim: true },
   { id: "searchGo", surface: "search", width: 360, height: 50, radius: 10, hold: 450, aim: true, press: true },
-  { id: "card", surface: "card", width: 300, height: 196, radius: 12, hold: 1400, aim: true },
-  { id: "saved", surface: "card", width: 300, height: 196, radius: 12, hold: 900, aim: true, press: true },
+  { id: "card", surface: "card", width: 300, height: 220, radius: 12, hold: 1400, aim: true },
+  { id: "saved", surface: "card", width: 300, height: 220, radius: 12, hold: 900, aim: true, press: true },
   { id: "toast", surface: "toast", width: 232, height: 52, radius: 10, hold: 1300 },
   { id: "tracker", surface: "tracker", width: 380, height: 118, radius: 14, hold: 2200 },
   { id: "reminder", surface: "reminder", width: 340, height: 232, radius: 12, hold: 2400 },
@@ -110,7 +111,7 @@ function Surface({ step, call }: { step: Step; call: VignetteCall }) {
     case "tracker":
       return <TrackerItemVignette call={call} />;
     case "reminder":
-      return <ReminderEmailVignette call={call} />;
+      return <ReminderEmailVignette call={weekBeforeReminder(call)} />;
     case "profile":
       return <ProfileVignette following={step.id === "following"} pressed={step.press} />;
   }
@@ -133,7 +134,13 @@ export function HomepageMorph({ call }: { call: VignetteCall | null }) {
     Boolean(call) && !reduced && !held && !attending && !tabHidden && inView;
   const tiltX = useSpring(0, TILT);
   const tiltY = useSpring(0, TILT);
-  const step = STEPS[index];
+  // The card's height follows its content: cover, title (one or two lines),
+  // organization line when there is one, and the date.
+  const cardHeight = call
+    ? 178 + (call.title.length > 40 ? 20 : 0) + (call.organizationName ? 20 : 0)
+    : 220;
+  const base = STEPS[index];
+  const step = base.surface === "card" ? { ...base, height: cardHeight } : base;
 
   useEffect(() => {
     const sync = () => setTabHidden(document.visibilityState === "hidden");
@@ -153,12 +160,14 @@ export function HomepageMorph({ call }: { call: VignetteCall | null }) {
   // Aim the cursor once the shape has mostly settled into this step.
   useEffect(() => {
     if (reduced) return;
+    const current = STEPS[index];
+    const height = current.surface === "card" ? cardHeight : current.height;
     const timer = window.setTimeout(
       () => {
         const box = canvas.current?.getBoundingClientRect();
         if (!box) return;
         const centre = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
-        const target = step.aim
+        const target = current.aim
           ? canvas.current?.querySelector<HTMLElement>("[data-current] [data-cursor-target]")
           : null;
         if (target) {
@@ -168,18 +177,18 @@ export function HomepageMorph({ call }: { call: VignetteCall | null }) {
             y: rect.top + rect.height / 2 - centre.y - HOTSPOT.y,
           });
         } else {
-          setCursor({ x: step.width / 2 + 18, y: step.height / 2 + 14 });
+          setCursor({ x: current.width / 2 + 18, y: height / 2 + 14 });
         }
       },
-      step.press ? 0 : 340,
+      current.press ? 0 : 340,
     );
     return () => window.clearTimeout(timer);
-  }, [step, reduced]);
+  }, [index, cardHeight, reduced]);
 
   if (!call) return null;
 
   if (reduced) {
-    const still = STEPS[2];
+    const still = { ...STEPS[2], height: cardHeight };
     return (
       <div className={styles.stage} aria-hidden="true">
         <div className={styles.canvas}>

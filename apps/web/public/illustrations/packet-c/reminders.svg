@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 96" fill="none" aria-hidden="true" focusable="false">
+<path fill="var(--ochre-tint)" d="M22 36Q21 21 35 20Q49 21 48 36L49 47L54 53H17L22 47Z"/>
+<path fill="var(--accent-tint)" d="M40 53L94 47L100 80L46 87Z"/>
+<path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" d="M40 53L94 47L100 80L46 87Z M40 53L70 67L94 47 M46 87L64 69 M100 80L77 66 M22 36Q21 21 35 20Q49 21 48 36L49 47L54 53H17L22 47Z M29 57Q35 66 42 57 M32 20V16H37V20 M14 29L10 24 M55 29L59 24 M74 31C74 19 94 18 95 31C96 44 75 44 74 31Z M85 23V32L90 35"/>
+</svg>

@@ -8,6 +8,7 @@ import { CalendarDays, MapPin, Tag } from "lucide-react";
 import type { OpportunityBrowseProjection } from "@missa/radar-engine";
 import { AddOpportunityToCalendarButton } from "@/components/add-opportunity-to-calendar-button";
 import { NativeBadge } from "@/components/uitripled/native-badge-carbon";
+import { CallCover } from "@/components/illustrations/missa-illustrations";
 import styles from "./opportunity-browse-project-card.module.css";
 
 type OpportunityCardItem = Pick<
@@ -156,10 +157,9 @@ export function OpportunityBrowseProjectCard({
               onError={() => setFailedImage(cardImage)}
             />
           ) : (
-            <span className={styles.identityPlate} aria-hidden="true">
-              <span className={styles.identityName}>
-                {item.organizationName || typeLabel(item.type)}
-              </span>
+            // No cleared image: the illustrated cover for the call's type.
+            <span className={styles.cover} aria-hidden="true">
+              <CallCover type={item.type} />
             </span>
           )}
         </Link>
@@ -212,7 +212,7 @@ export function OpportunityBrowseProjectCard({
             {item.title}
           </Link>
         </h2>
-        {item.organizationName && cardImage ? (
+        {item.organizationName ? (
           <p className={styles.org}>{item.organizationName}</p>
         ) : null}
         {practices.length > 0 ? (

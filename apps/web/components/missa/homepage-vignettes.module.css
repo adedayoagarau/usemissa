@@ -61,22 +61,22 @@
 
 .plate {
   position: relative;
-  display: flex;
-  min-height: 112px;
+  height: 104px;
   flex: 0 0 auto;
-  align-items: flex-end;
-  padding: 12px 14px;
+  overflow: hidden;
   background: var(--accent-tint);
 }
 
-.plateName {
-  overflow: hidden;
-  color: var(--accent-deep);
-  font-size: 1.0625rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.plateArt {
+  position: absolute;
+  inset: 0;
+  color: var(--ink);
+}
+
+.plateArt svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .badges {
@@ -128,6 +128,15 @@
 .save[data-pressed],
 .outlineButton[data-pressed] {
   transform: scale(0.94);
+}
+
+.cardOrg {
+  margin-top: -4px;
+  overflow: hidden;
+  color: var(--ink-2);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cardBody {

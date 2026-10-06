@@ -353,6 +353,23 @@
   justify-items: end;
 }
 
+/* The desk scene sits behind the cards in white line on Forest. */
+.closeScene {
+  position: absolute;
+  top: 50%;
+  right: -6%;
+  width: min(460px, 115%);
+  color: var(--primary-foreground);
+  transform: translateY(-24%);
+  pointer-events: none;
+}
+
+.closeScene svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .closeCard {
   display: grid;
   width: min(100%, 360px);
