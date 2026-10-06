@@ -11,6 +11,7 @@ These instructions apply to every AI-authored UI change in this repository.
 | Installed Studio inventory                | `apps/web/component-catalogue.json` |
 | Reusable AI UI directive                  | `docs/ai-ui-build-directive.md`     |
 | Directory filters and creator portfolio integration | `docs/directory-portfolio-integration-handoff.md` |
+| Messaging, taglines, and microcopy        | `docs/missa-messaging.md`           |
 
 ## Before building UI
 
