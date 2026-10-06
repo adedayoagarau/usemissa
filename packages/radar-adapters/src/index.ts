@@ -708,6 +708,7 @@ export * from "./mediaReviewService.js";
 export * from "./mediaRightsRule.js";
 export * from "./mediaCandidateStore.js";
 export * from "./mediaRightsCleanup.js";
+export * from "./mediaMirror.js";
 export { inferSourceRole } from "./enrichmentWorker.js";
 // The media dry-run CLI is intentionally not exported from this runtime
 // barrel. It imports node:fs and path resolution for offline fixtures; a

@@ -7,6 +7,7 @@ import { fetchWithPolicy, USER_AGENT } from "./mediaFetcher.js";
 import { extractMediaCandidates } from "./mediaExtractor.js";
 import { insertMediaCandidate, promoteAttributedCandidate } from "./mediaCandidateStore.js";
 import { applyAutomaticRights } from "./mediaRightsRule.js";
+import { mirrorServedImages, vercelBlobImageStore } from "./mediaMirror.js";
 import type { SourceRole } from "./mediaExtractionContracts.js";
 import { OperationsUsage } from "@missa/decisions";
 import { HostHistoryTracker, logOperationsUsage, radarOperationsDecider, retryShouldWaitLongest, type OperationsDecider } from "./operationsDecisions.js";
@@ -382,8 +383,13 @@ async function processJob(client: PoolClient, job: ClaimedJob): Promise<void> {
         organizerWebsiteUrl: job.organizerWebsiteUrl,
       });
       await insertMediaCandidate(client, candidate, { opportunityId: job.opportunityId, jobId: job.id });
-      if (await promoteAttributedCandidate(client, candidate, { opportunityId: job.opportunityId, fallbackAlt: job.title })) {
+      const publishedId = await promoteAttributedCandidate(client, candidate, { opportunityId: job.opportunityId, fallbackAlt: job.title });
+      if (publishedId) {
         attributedCount++;
+        // Serve Missa's own copy rather than hotlinking, when storage is configured.
+        if (process.env.BLOB_READ_WRITE_TOKEN) {
+          await mirrorServedImages(client, { store: vercelBlobImageStore(), assetIds: [publishedId] });
+        }
       }
 
       if (candidate.status !== "rejected") {

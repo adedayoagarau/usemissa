@@ -1,4 +1,5 @@
 import pg from "pg";
+import { mirrorServedImages, vercelBlobImageStore } from "../mediaMirror.js";
 import {
   recheckUnreviewedClearedAssets,
   reportUnreviewedClearedAssets,
@@ -53,6 +54,11 @@ async function run() {
       return;
     }
     console.log("Re-checked:", await recheckUnreviewedClearedAssets(client, { approvedBy }));
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      console.log("Stored copies:", await mirrorServedImages(client, { store: vercelBlobImageStore() }));
+    } else {
+      console.log("BLOB_READ_WRITE_TOKEN is not set: run media:mirror-images to stop hotlinking.");
+    }
   } finally {
     client.release();
     await pool.end();

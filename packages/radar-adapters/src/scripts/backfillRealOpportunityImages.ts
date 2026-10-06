@@ -3,6 +3,7 @@ import { fetchWithPolicy } from "../mediaFetcher.js";
 import { extractMediaCandidates, inferSourceRole } from "../mediaExtractor.js";
 import { applyAutomaticRights } from "../mediaRightsRule.js";
 import { insertMediaCandidate, promoteAttributedCandidate } from "../mediaCandidateStore.js";
+import { mirrorServedImages, vercelBlobImageStore } from "../mediaMirror.js";
 import type { CandidateStatus } from "../mediaExtractionContracts.js";
 
 /**
@@ -141,6 +142,12 @@ async function run() {
   console.log(`${dryRun ? "Would publish" : "Published"} official og:images credited to the organizer: ${published}`);
   console.log(`Pages that could not be fetched (or robots.txt disallowed): ${pagesFailed}`);
   console.log("No rights were cleared. Other candidates wait for review.");
+
+  if (!dryRun && process.env.BLOB_READ_WRITE_TOKEN) {
+    console.log("Stored copies:", await mirrorServedImages(pool, { store: vercelBlobImageStore() }));
+  } else if (!dryRun) {
+    console.log("BLOB_READ_WRITE_TOKEN is not set: images are still served from organizers' sites. Run media:mirror-images.");
+  }
 
   await pool.end();
 }
