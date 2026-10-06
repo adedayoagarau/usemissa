@@ -60,8 +60,13 @@ test("urgent closes within a week; lead is two weeks out from another organizati
 test("shouting titles, slug names and duplicates are skipped", () => {
   assert.equal(shouts("ALL WRITE, COLUMBIA, CREATIVE NONFICTION Writers Conference"), true);
   assert.equal(shouts("North River Review — Call for Submissions"), false);
+  assert.equal(shouts("2026 EVENT Creative Non-Fiction Contest - STUDENTS"), true);
+  assert.equal(shouts("Winter 2027 Issue: Nonfiction"), false);
   assert.equal(sluglike("Driftdribblemiscellany"), true);
   assert.equal(sluglike("North River Review"), false);
+  assert.equal(sluglike("Eventmagazine"), true);
+  assert.equal(sluglike("HerStry"), false);
+  assert.equal(sluglike("Poetry"), false);
   const { urgent, lead } = pickShowcase(
     [
       call("loud", "2026-10-09", { title: "ANNUAL OPEN CALL FOR EMERGING ARTISTS" }),

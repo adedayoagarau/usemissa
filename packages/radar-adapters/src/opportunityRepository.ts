@@ -193,8 +193,11 @@ const VALID_SOURCE_KINDS = new Set<OpportunityRepositorySource["kind"]>([
 // identity. This is deliberately a second line of defence after media
 // extraction/review: historical imports may have incorrectly marked portal
 // chrome as cleared, but it must never reach a public projection.
+// Logos, favicons and background-removed cutouts are not editorial images:
+// they crop badly as card covers, which then fall back to the call type's
+// illustrated cover instead.
 const NON_EDITORIAL_MEDIA_PATTERN =
-  "submittable|slideroom|callforentry|typeform|airtable|entrythingy|duotrope|duosuma|submit[-_]?button|powered[+%20_-]*by|wordpress[-_]?logo|automattic|wix.*(?:badge|banner)|squarespace.*logo|placeholder|editmysite|curatorspace|webclip([._/?-]|$)";
+  "submittable|slideroom|callforentry|typeform|airtable|entrythingy|duotrope|duosuma|submit[-_]?button|powered[+%20_-]*by|wordpress[-_]?logo|automattic|wix.*(?:badge|banner)|squarespace.*logo|placeholder|editmysite|curatorspace|webclip([._/?-]|$)|logo|favi|apple-touch-icon|removebg";
 
 // Values provisioned from stdin can carry a trailing newline in Vercel.
 // Normalize feature flags so a valid production configuration cannot silently

@@ -60,16 +60,25 @@ export function daysBetween(fromIso: string, toIso: string) {
   return Math.round((noon(toIso) - noon(fromIso)) / 86_400_000);
 }
 
-/** Titles set in capitals read as shouting at vignette scale. */
+/**
+ * Titles set in capitals read as shouting at vignette scale: mostly capitals,
+ * or two or more capitalised words ("2026 EVENT ... STUDENTS").
+ */
 export function shouts(title: string) {
   const letters = title.replace(/[^A-Za-z]/g, "");
-  if (letters.length < 12) return false;
-  return letters.replace(/[^A-Z]/g, "").length / letters.length > 0.6;
+  if (letters.length >= 12 && letters.replace(/[^A-Z]/g, "").length / letters.length > 0.6) {
+    return true;
+  }
+  return (title.match(/\b[A-Z]{4,}\b/g) ?? []).length >= 2;
 }
 
-/** Imported names sometimes arrive as run-together slugs ("Driftdribblemiscellany"). */
+/**
+ * Imported names sometimes arrive as run-together slugs ("Driftdribblemiscellany",
+ * "Eventmagazine"): one long word, capitalised only at the start.
+ */
 export function sluglike(name: string | null | undefined) {
-  return Boolean(name && !/\s/.test(name) && name.length > 14);
+  if (!name || /\s/.test(name)) return false;
+  return name.length > 14 || (name.length >= 10 && /^[A-Z]?[a-z]+$/.test(name));
 }
 
 /**
