@@ -1,19 +1,20 @@
 import pg from "pg";
 import {
+  recheckUnreviewedClearedAssets,
   reportUnreviewedClearedAssets,
   restoreRevertedAssets,
-  revertUnreviewedClearedAssets,
 } from "../mediaRightsCleanup.js";
 
 /**
- * One-off: puts identity assets that were cleared in bulk, without review,
- * back to `unknown`. Plan and approval: docs/media-rights-review.md.
+ * One-off: re-checks identity assets that were cleared in bulk, without
+ * review. The organizer's own og:image is kept, credited to the organizer;
+ * everything else is set back to `unknown` for review.
+ * Plan and approval: docs/media-rights-review.md.
  *
- *   npm run media:revert-bulk-cleared                 report only (default)
- *   npm run media:revert-bulk-cleared -- --apply --approved-by="Name"
- *   npm run media:revert-bulk-cleared -- --restore    undo from the backup table
- *
- * Do not run --apply against production until the owner has approved the plan.
+ *   npm run media:recheck-bulk-cleared                 counts only (default)
+ *   npm run media:recheck-bulk-cleared -- --dry-run    also fetches pages and previews the result
+ *   npm run media:recheck-bulk-cleared -- --apply --approved-by="Name"
+ *   npm run media:recheck-bulk-cleared -- --restore    put the old rights back from the backup table
  */
 
 const dbUrl = process.env.DATABASE_URL;
@@ -24,6 +25,7 @@ if (!dbUrl) {
 
 const args = process.argv.slice(2);
 const apply = args.includes("--apply");
+const dryRun = args.includes("--dry-run");
 const restore = args.includes("--restore");
 const approvedBy = args.find((arg) => arg.startsWith("--approved-by="))?.slice("--approved-by=".length) ?? "";
 
@@ -37,8 +39,12 @@ async function run() {
       return;
     }
     console.log("Unreviewed cleared assets:", await reportUnreviewedClearedAssets(client));
+    if (dryRun) {
+      console.log("Preview (nothing written):", await recheckUnreviewedClearedAssets(client, { approvedBy, dryRun: true }));
+      return;
+    }
     if (!apply) {
-      console.log("Report only. Nothing was changed. Pass --apply --approved-by=\"Name\" after the owner approves.");
+      console.log("Counts only. Pass --dry-run to preview, or --apply --approved-by=\"Name\" to run.");
       return;
     }
     if (!approvedBy.trim()) {
@@ -46,7 +52,7 @@ async function run() {
       process.exitCode = 1;
       return;
     }
-    console.log("Reverted:", await revertUnreviewedClearedAssets(client, { approvedBy }));
+    console.log("Re-checked:", await recheckUnreviewedClearedAssets(client, { approvedBy }));
   } finally {
     client.release();
     await pool.end();

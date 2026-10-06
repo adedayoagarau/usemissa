@@ -1,10 +1,15 @@
 import type { Pool, PoolClient } from "pg";
-import { isLogoLikeImage } from "./mediaExtractor.js";
+import { extractMediaCandidates, inferSourceRole, isLogoLikeImage } from "./mediaExtractor.js";
+import { fetchWithPolicy } from "./mediaFetcher.js";
+import { applyAutomaticRights } from "./mediaRightsRule.js";
+import { insertMediaCandidate, promoteAttributedCandidate } from "./mediaCandidateStore.js";
+import type { DiscoveredMediaCandidate } from "./mediaExtractionContracts.js";
 
 /**
  * One-off cleanup for identity assets that backfillRealOpportunityImages.ts
  * (before 6 October 2026) and ingestAllCanonicalData.ts marked `cleared`
- * without anyone reviewing them. The plan, and the owner approval it needs,
+ * without anyone reviewing them. Each is re-checked against the automatic
+ * rule rather than simply hidden. The plan, and the owner approval it needs,
  * is in docs/media-rights-review.md.
  *
  * A reviewed asset always has a reviewer and a review time, because
@@ -115,27 +120,165 @@ export async function reportUnreviewedClearedAssets(client: Queryable): Promise<
   };
 }
 
-export interface RevertResult {
+export interface RecheckPage {
+  html: string;
+  finalUrl: string;
+  redirectChain?: string[];
+  httpStatus?: number;
+}
+
+/** Fetches an opportunity's official page; null when it cannot be read. */
+export type RecheckPageFetcher = (url: string) => Promise<RecheckPage | null>;
+
+export const fetchRecheckPage: RecheckPageFetcher = async (url) => {
+  try {
+    const fetched = await fetchWithPolicy(url, { expectedType: "html", checkRobots: true });
+    const html = typeof fetched.body === "string" ? fetched.body : fetched.body.toString("utf-8");
+    return { html, finalUrl: fetched.finalUrl, redirectChain: fetched.redirectChain, httpStatus: fetched.httpStatus };
+  } catch {
+    return null;
+  }
+};
+
+export interface RecheckResult {
+  /** Opportunities whose bulk-cleared images were re-checked. */
+  opportunities: number;
+  /** Bulk-cleared assets set to unknown (backed up first). */
   reverted: number;
+  /** Opportunities whose organizer's own og:image is now shown, credited. */
+  attributedImages: number;
+  /** Of those, the og:image was the organizer's logo and became its mark. */
+  attributedLogos: number;
+  /** Opportunities whose page could not be fetched; their images wait for review. */
+  pagesUnavailable: number;
+  /** Opportunities whose page has no og:image the rule accepts; images wait for review. */
+  needsReview: number;
   profileVisualCopiesRemoved: number;
   mediaJobsRequeued: number;
 }
 
-/**
- * Sets every unreviewed `cleared` asset back to `unknown`, removes the copies
- * made from them into gary_profile_visuals, and requeues the opportunity's
- * media job so its images return through the review queue. Every changed row
- * is copied into the backup table first; restoreRevertedAssets undoes it.
- *
- * Runs in one transaction. Pass a dedicated client, not a pool.
- */
-export async function revertUnreviewedClearedAssets(
-  client: Queryable,
-  options: { approvedBy: string; requeueMedia?: boolean },
-): Promise<RevertResult> {
-  const approvedBy = options.approvedBy.trim();
-  if (!approvedBy) throw new Error("The owner's approval is required: pass the approver's name.");
+type RecheckOpportunity = {
+  id: string;
+  title: string;
+  page_url: string | null;
+  organization_id: string | null;
+  organization_confirmed: boolean;
+  source_kind: string | null;
+  source_authority_kind: string | null;
+  organizer_name: string | null;
+  organizer_website_url: string | null;
+};
 
+/**
+ * Re-checks every unreviewed `cleared` asset against the automatic rule
+ * instead of simply hiding it.
+ *
+ * 1. Fetches each affected opportunity's official page (outside any
+ *    transaction) and applies the rule to its images.
+ * 2. In one transaction: backs up every row it changes, sets the bulk-cleared
+ *    assets to `unknown`, removes their gary_profile_visuals copies, records
+ *    the page's candidates, and publishes the organizer's own og:image as
+ *    `needs-attribution` with the organizer's credit (a logo becomes the
+ *    organization's mark).
+ * 3. Requeues the media job for opportunities left without an image.
+ *
+ * Cards whose organizer has a qualifying og:image keep an image throughout.
+ * With `dryRun`, pages are fetched and the result is computed, but nothing is
+ * written. Pass a dedicated client, not a pool.
+ */
+export async function recheckUnreviewedClearedAssets(
+  client: Queryable,
+  options: { approvedBy: string; dryRun?: boolean; fetchPage?: RecheckPageFetcher; concurrency?: number },
+): Promise<RecheckResult> {
+  const approvedBy = options.approvedBy.trim();
+  if (!approvedBy && !options.dryRun) throw new Error("The owner's approval is required: pass the approver's name.");
+  const fetchPage = options.fetchPage ?? fetchRecheckPage;
+
+  const { rows: opportunities } = await client.query<RecheckOpportunity>(
+    `select o.id, o.title,
+            case when o.guidelines_url ~* '^https?://' then o.guidelines_url
+                 when o.submission_url ~* '^https?://' then o.submission_url end as page_url,
+            o.organization_id,
+            coalesce((select e.organization_confirmed from opportunity_source_evidence e
+                      where e.opportunity_id = o.id order by e.checked_at desc limit 1), false) as organization_confirmed,
+            s.kind as source_kind,
+            s.authority_kind as source_authority_kind,
+            coalesce(org_profile.name, org.data->>'name') as organizer_name,
+            coalesce(org_profile.website_url, org.data->>'website_url', org.data->>'websiteUrl', org.data->>'website')
+              as organizer_website_url
+     from opportunities o
+     left join opportunity_sources s on s.id = o.source_id
+     left join radar_organizations org on org.id = o.organization_id
+     left join gary_profiles org_profile on org_profile.id = o.organization_id
+     where exists (select 1 from opportunity_identity_assets a where a.opportunity_id = o.id and ${UNREVIEWED_CLEARED_WHERE})
+     order by o.id`,
+  );
+
+  // 1. Fetch and apply the rule, outside any transaction.
+  const candidatesByOpportunity = new Map<string, DiscoveredMediaCandidate[]>();
+  let pagesUnavailable = 0;
+  const concurrency = Math.max(1, options.concurrency ?? 10);
+  for (let i = 0; i < opportunities.length; i += concurrency) {
+    await Promise.all(
+      opportunities.slice(i, i + concurrency).map(async (row) => {
+        const page = row.page_url ? await fetchPage(row.page_url) : null;
+        if (!page) {
+          pagesUnavailable++;
+          return;
+        }
+        const extraction = extractMediaCandidates(
+          page.html,
+          {
+            opportunityId: row.id,
+            title: row.title,
+            pageUrl: page.finalUrl,
+            sourceRole: inferSourceRole(page.finalUrl, {
+              sourceKind: row.source_kind ?? undefined,
+              sourceAuthorityKind: row.source_authority_kind ?? undefined,
+              organizationId: row.organization_id ?? undefined,
+            }),
+            organizationId: row.organization_id ?? undefined,
+            organizationConfirmed: row.organization_confirmed,
+          },
+          page.redirectChain ?? [],
+          page.httpStatus ?? 200,
+        );
+        candidatesByOpportunity.set(
+          row.id,
+          extraction.candidates.map((candidate) =>
+            applyAutomaticRights(candidate, {
+              organizerName: row.organizer_name,
+              organizerWebsiteUrl: row.organizer_website_url,
+            }),
+          ),
+        );
+      }),
+    );
+  }
+
+  const attributed = new Map<string, DiscoveredMediaCandidate>();
+  for (const [opportunityId, candidates] of candidatesByOpportunity) {
+    const official = candidates.find((candidate) => candidate.rightsStatus === "needs-attribution");
+    if (official) attributed.set(opportunityId, official);
+  }
+  const attributedLogos = [...attributed.values()].filter((c) => c.candidateKind === "organization-logo").length;
+  const titles = new Map(opportunities.map((row) => [row.id, row.title]));
+
+  const { rows: countRows } = await client.query<{ n: string }>(
+    `select count(*) as n from opportunity_identity_assets a where ${UNREVIEWED_CLEARED_WHERE}`,
+  );
+  const summary = {
+    opportunities: opportunities.length,
+    attributedImages: attributed.size,
+    attributedLogos,
+    pagesUnavailable,
+    needsReview: opportunities.length - attributed.size - pagesUnavailable,
+  };
+  if (options.dryRun) {
+    return { ...summary, reverted: Number(countRows[0]?.n ?? 0), profileVisualCopiesRemoved: 0, mediaJobsRequeued: 0 };
+  }
+
+  // 2. One transaction: back up, revert, record candidates, publish credited og:images.
   await client.query("begin");
   try {
     await client.query(
@@ -189,20 +332,30 @@ export async function revertUnreviewedClearedAssets(
       [approvedBy],
     );
 
+    if (await tableExists(client, "opportunity_media_candidates")) {
+      for (const [opportunityId, candidates] of candidatesByOpportunity) {
+        for (const candidate of candidates) await insertMediaCandidate(client, candidate, { opportunityId });
+      }
+    }
+    for (const [opportunityId, candidate] of attributed) {
+      await promoteAttributedCandidate(client, candidate, { opportunityId, fallbackAlt: titles.get(opportunityId) });
+    }
+
+    // 3. Requeue media jobs for opportunities still without an image.
     let mediaJobsRequeued = 0;
-    const opportunityIds = [...new Set(reverted.rows.map((row) => row.opportunity_id))];
-    if (options.requeueMedia !== false && opportunityIds.length > 0 && (await tableExists(client, "radar_enrichment_jobs"))) {
+    const withoutImage = [...new Set(reverted.rows.map((row) => row.opportunity_id))].filter((id) => !attributed.has(id));
+    if (withoutImage.length > 0 && (await tableExists(client, "radar_enrichment_jobs"))) {
       const requeued = await client.query(
         `update radar_enrichment_jobs
          set status = 'queued', next_attempt_at = now(), lease_until = null, updated_at = now()
          where kind = 'media' and status in ('completed', 'failed') and opportunity_id = any($1::text[])`,
-        [opportunityIds],
+        [withoutImage],
       );
       mediaJobsRequeued = requeued.rowCount ?? 0;
     }
 
     await client.query("commit");
-    return { reverted: reverted.rowCount ?? 0, profileVisualCopiesRemoved, mediaJobsRequeued };
+    return { ...summary, reverted: reverted.rowCount ?? 0, profileVisualCopiesRemoved, mediaJobsRequeued };
   } catch (error) {
     await client.query("rollback");
     throw error;
@@ -210,9 +363,10 @@ export async function revertUnreviewedClearedAssets(
 }
 
 /**
- * Undoes revertUnreviewedClearedAssets from its backup table: puts each
+ * Undoes recheckUnreviewedClearedAssets from its backup table: puts each
  * asset's rights back unless a person has reviewed it since, and reinserts the
- * removed profile visual copies.
+ * removed profile visual copies. The organizer og:images it published stay,
+ * because the automatic rule allows them.
  */
 export async function restoreRevertedAssets(client: Queryable): Promise<{ restored: number; profileVisualCopiesRestored: number }> {
   await client.query("begin");

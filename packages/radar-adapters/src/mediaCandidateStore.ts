@@ -64,3 +64,64 @@ export async function insertMediaCandidate(
     ],
   );
 }
+
+/**
+ * Publishes a candidate the automatic rule marked `needs-attribution` (an
+ * og:image from the organizer's own site) as the opportunity's identity asset,
+ * credited to the organizer. A logo becomes the organization's mark, never a
+ * card cover. An asset a person has reviewed is never overwritten.
+ *
+ * Returns the asset id, or undefined when the candidate does not qualify.
+ */
+export async function promoteAttributedCandidate(
+  client: Pick<PoolClient | Pool, "query">,
+  candidate: DiscoveredMediaCandidate,
+  target: { opportunityId: string; fallbackAlt?: string },
+): Promise<string | undefined> {
+  if (candidate.rightsStatus !== "needs-attribution" || !candidate.attributionText) return undefined;
+  const isLogo = candidate.candidateKind === "organization-logo";
+  // An image is shared across the organization's other calls only when it
+  // stands for the organization: its logo, or the image on its own page. A
+  // poster for one call must not appear on the organizer's other calls.
+  const organizationWide = isLogo || candidate.sourceRole === "organization-page";
+  const assetId = `asset:og:${target.opportunityId}`;
+  await client.query(
+    `insert into opportunity_identity_assets
+       (id, opportunity_id, url, alt, kind, rights_status, source_url, width, height,
+        evidence_passage, attribution_requirement, permitted_scope, content_hash,
+        inheritance_level, linked_organization_id, metadata, created_at)
+     values ($1, $2, $3, $4, $5, 'needs-attribution', $6, $7, $8, $9, $10,
+             'missa-catalogue-and-briefs', $11, $12, $13, $14::jsonb, now())
+     on conflict (id) do update set
+       url = excluded.url, alt = excluded.alt, kind = excluded.kind,
+       rights_status = excluded.rights_status, source_url = excluded.source_url,
+       width = excluded.width, height = excluded.height,
+       evidence_passage = excluded.evidence_passage,
+       attribution_requirement = excluded.attribution_requirement,
+       content_hash = excluded.content_hash, inheritance_level = excluded.inheritance_level,
+       linked_organization_id = excluded.linked_organization_id,
+       metadata = opportunity_identity_assets.metadata || excluded.metadata
+     where opportunity_identity_assets.reviewer is null and opportunity_identity_assets.reviewed_at is null`,
+    [
+      assetId,
+      target.opportunityId,
+      candidate.resolvedUrl,
+      candidate.alt ?? target.fallbackAlt ?? null,
+      isLogo ? "organization-mark" : "opportunity-artwork",
+      candidate.pageUrl,
+      candidate.width ?? null,
+      candidate.height ?? null,
+      `og:image published on ${candidate.pageUrl}, the organizer's own website.`,
+      candidate.attributionText,
+      candidate.contentHash ?? null,
+      organizationWide ? "organization" : "opportunity",
+      organizationWide ? (candidate.linkedOrganizationId ?? null) : null,
+      JSON.stringify({
+        rightsRule: candidate.metadata?.rightsRule ?? null,
+        candidateKind: candidate.candidateKind,
+        extractionMethod: candidate.extractionMethod,
+      }),
+    ],
+  );
+  return assetId;
+}

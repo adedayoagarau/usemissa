@@ -2,21 +2,22 @@ import pg from "pg";
 import { fetchWithPolicy } from "../mediaFetcher.js";
 import { extractMediaCandidates, inferSourceRole } from "../mediaExtractor.js";
 import { applyAutomaticRights } from "../mediaRightsRule.js";
-import { insertMediaCandidate } from "../mediaCandidateStore.js";
+import { insertMediaCandidate, promoteAttributedCandidate } from "../mediaCandidateStore.js";
 import type { CandidateStatus } from "../mediaExtractionContracts.js";
 
 /**
- * Finds images for published opportunities that have none and queues them
- * for rights review in opportunity_media_candidates.
+ * Finds images for every published opportunity that has no image Missa may
+ * show, and records each one in opportunity_media_candidates.
  *
- * This script never clears rights and never writes opportunity_identity_assets.
- * An image reaches a card only after a person records a `cleared` or
- * `permitted` decision through reviewMediaCandidate. The one automatic rule,
- * an og:image from the organizer's own site, marks a candidate
- * `needs-attribution` with the organizer as the credit; that state is not
- * served publicly either. See docs/media-rights-review.md.
+ * This script never clears or permits rights. The one automatic rule applies:
+ * an og:image from the organizer's own website is published as
+ * `needs-attribution`, credited to the organizer, and a logo becomes the
+ * organization's mark rather than a cover. Everything else waits in the
+ * candidate queue for a person to review. See docs/media-rights-review.md.
  *
- * Usage: npx tsx src/scripts/backfillRealOpportunityImages.ts [--dry-run] [--limit=250]
+ * Usage: npx tsx src/scripts/backfillRealOpportunityImages.ts [--dry-run] [--limit=N] [--recheck]
+ *   --limit    stop after N opportunities (default: all)
+ *   --recheck  also revisit opportunities whose page was checked in the last 7 days
  */
 
 const dbUrl = process.env.DATABASE_URL;
@@ -27,8 +28,9 @@ if (!dbUrl) {
 
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
-const limitArg = Number(args.find((arg) => arg.startsWith("--limit="))?.split("=")[1] ?? 250);
-const limit = Number.isFinite(limitArg) && limitArg > 0 ? Math.floor(limitArg) : 250;
+const recheck = args.includes("--recheck");
+const limitArg = Number(args.find((arg) => arg.startsWith("--limit="))?.split("=")[1]);
+const limit = Number.isFinite(limitArg) && limitArg > 0 ? Math.floor(limitArg) : null;
 
 const { Pool } = pg;
 const pool = new Pool({ connectionString: dbUrl, max: 10 });
@@ -46,9 +48,9 @@ type MissingRow = {
 };
 
 async function run() {
-  console.log(`=== QUEUEING OPPORTUNITY IMAGES FOR RIGHTS REVIEW${dryRun ? " (dry run)" : ""} ===`);
+  console.log(`=== FINDING OFFICIAL IMAGES FOR OPPORTUNITIES${dryRun ? " (dry run)" : ""} ===`);
 
-  // Published opportunities with no identity asset and nothing already queued.
+  // Published opportunities with no image Missa may show.
   const missing = await pool.query<MissingRow>(
     `select o.id, o.title,
             case when o.guidelines_url ~* '^https?://' then o.guidelines_url else o.submission_url end as page_url,
@@ -69,16 +71,24 @@ async function run() {
      ) e on true
      where o.publication_state = 'published'
        and (o.guidelines_url ~* '^https?://' or o.submission_url ~* '^https?://')
-       and not exists (select 1 from opportunity_identity_assets a where a.opportunity_id = o.id)
-       and not exists (select 1 from opportunity_media_candidates c where c.opportunity_id = o.id)
-     limit $1`,
-    [limit],
+       and not exists (
+         select 1 from opportunity_identity_assets a
+         where a.opportunity_id = o.id and a.rights_status in ('cleared', 'permitted', 'needs-attribution')
+       )
+       and ($1::boolean or not exists (
+         select 1 from opportunity_media_candidates c
+         where c.opportunity_id = o.id and c.retrieved_at > now() - interval '7 days'
+       ))
+     order by o.deadline_date asc nulls last, o.id
+     limit $2`,
+    [recheck, limit],
   );
 
   console.log(`Extracting images for ${missing.rows.length} opportunities without one...`);
 
   const byStatus: Partial<Record<CandidateStatus, number>> = {};
   let pagesFailed = 0;
+  let published = 0;
 
   async function queueImagesFor(row: MissingRow) {
     let fetched;
@@ -113,7 +123,12 @@ async function run() {
         organizerWebsiteUrl: row.organizer_website_url,
       });
       byStatus[candidate.status] = (byStatus[candidate.status] ?? 0) + 1;
-      if (!dryRun) await insertMediaCandidate(pool, candidate, { opportunityId: row.id });
+      if (dryRun) {
+        if (candidate.rightsStatus === "needs-attribution") published++;
+        continue;
+      }
+      await insertMediaCandidate(pool, candidate, { opportunityId: row.id });
+      if (await promoteAttributedCandidate(pool, candidate, { opportunityId: row.id, fallbackAlt: row.title })) published++;
     }
   }
 
@@ -122,9 +137,10 @@ async function run() {
     await Promise.all(missing.rows.slice(i, i + 15).map(queueImagesFor));
   }
 
-  console.log(`${dryRun ? "Would queue" : "Queued"} candidates by status:`, byStatus);
+  console.log(`${dryRun ? "Would record" : "Recorded"} candidates by status:`, byStatus);
+  console.log(`${dryRun ? "Would publish" : "Published"} official og:images credited to the organizer: ${published}`);
   console.log(`Pages that could not be fetched (or robots.txt disallowed): ${pagesFailed}`);
-  console.log("No rights were cleared. Review queued candidates before they appear on cards.");
+  console.log("No rights were cleared. Other candidates wait for review.");
 
   await pool.end();
 }

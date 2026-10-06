@@ -10,9 +10,11 @@ import {
   insertMediaCandidate,
   isLogoLikeImage,
   MEDIA_RIGHTS_RULE_VERSION,
+  promoteAttributedCandidate,
+  recheckUnreviewedClearedAssets,
   reportUnreviewedClearedAssets,
   restoreRevertedAssets,
-  revertUnreviewedClearedAssets,
+  SERVABLE_ASSET_RIGHTS,
   type DiscoveredMediaCandidate,
   type ExtractionMethod,
   type SourceRole,
@@ -208,7 +210,7 @@ test("isLogoLikeImage separates logos, wordmarks and icons from photographs", ()
   assert.equal(isLogoLikeImage({ resolvedUrl: "https://example.org/a.png", width: 192, height: 192 }), true);
 });
 
-test("needs-attribution images are not served on public cards", () => {
+test("cards show the organizer's credited og:image, and logos only as a mark", () => {
   const { text } = buildOpportunityBrowseQuery({
     category: "all",
     types: [],
@@ -220,19 +222,31 @@ test("needs-attribution images are not served on public cards", () => {
     sort: "soonest-deadline",
     limit: 10,
   });
-  assert.match(text, /a\.rights_status in \('cleared', 'permitted'\)/);
-  assert.doesNotMatch(text, /needs-attribution/);
+  const servable = "(a.rights_status in ('cleared', 'permitted') or (a.rights_status = 'needs-attribution' and a.attribution_requirement is not null))";
+  assert.equal(SERVABLE_ASSET_RIGHTS, servable);
+  assert.ok(text.includes(servable));
+  assert.doesNotMatch(text, /rights_status = 'unknown'|'unknown'\)/);
+  // The cover never uses a logo; the logo is selected separately as the mark.
+  const cover = text.slice(text.indexOf("select asset_candidate.url"), text.indexOf(") asset on true"));
+  assert.doesNotMatch(cover, /organization-mark|'logo'/);
+  const logo = text.slice(text.indexOf("select logo_candidate.url"), text.indexOf(") logo on true"));
+  assert.match(logo, /a\.kind = 'organization-mark'/);
+  assert.ok(logo.includes(servable));
+  assert.match(text, /asset\.credit as identity_asset_credit/);
+  assert.match(text, /logo\.url as identity_logo_url/);
+  // Missa's stored copy is preferred over the organizer's original URL.
+  assert.match(cover, /coalesce\(nullif\(a\.metadata->>'storedUrl', ''\), a\.url\)/);
 });
 
-test("the image backfill script queues candidates and never clears rights", async () => {
+test("the image backfill script never clears or permits rights", async () => {
   const source = await readFile(new URL("../../src/scripts/backfillRealOpportunityImages.ts", import.meta.url), "utf8");
   const code = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
-  assert.doesNotMatch(code, /rights_status/i);
-  assert.doesNotMatch(code, /'cleared'|"cleared"/);
-  assert.doesNotMatch(code, /opportunity_identity_assets\s*\(/i);
+  assert.doesNotMatch(code, /rights_status\s*=/i);
+  assert.doesNotMatch(code, /insert\s+into\s+opportunity_identity_assets/i);
   assert.doesNotMatch(code, /update\s+opportunity_identity_assets/i);
   assert.match(code, /applyAutomaticRights/);
   assert.match(code, /insertMediaCandidate/);
+  assert.match(code, /promoteAttributedCandidate/);
 });
 
 test("insertMediaCandidate stores the rule's rights and never overwrites a review", async () => {
@@ -254,27 +268,62 @@ test("insertMediaCandidate stores the rule's rights and never overwrites a revie
   assert.doesNotMatch(onConflict, /[\s,](?:status|rights_status)\s*=/);
 });
 
+const CLEANUP_SCHEMA = `
+  create table opportunity_sources(id text primary key, kind text, authority_kind text);
+  create table radar_organizations(id text primary key, data jsonb not null);
+  create table gary_profiles(id text primary key, name text, website_url text);
+  create table opportunity_source_evidence(opportunity_id text, organization_confirmed boolean, checked_at timestamptz default now());
+  create table opportunities(
+    id text primary key, title text not null, publication_state text not null, organization_id text,
+    source_id text, guidelines_url text, submission_url text
+  );
+  create table opportunity_identity_assets(
+    id text primary key, opportunity_id text not null, url text not null, alt text,
+    kind text not null, rights_status text not null, source_url text, width integer, height integer,
+    reviewer text, reviewed_at timestamptz, evidence_passage text, attribution_requirement text,
+    permitted_scope text, content_hash text, inheritance_level text not null default 'opportunity',
+    linked_organization_id text, metadata jsonb not null default '{}'::jsonb,
+    created_at timestamptz not null default now()
+  );
+  create table opportunity_media_candidates(
+    id text primary key, opportunity_id text not null, job_id text, original_url text not null,
+    resolved_url text not null, page_url text not null, source_role text not null, candidate_kind text not null,
+    alt text, caption text, title text, width integer, height integer, mime_type text, file_size integer,
+    retrieved_at timestamptz not null default now(), http_status integer, redirect_chain jsonb not null default '[]',
+    content_hash text, attribution_text text, inheritance_level text not null, linked_organization_id text,
+    linked_program_id text, extraction_method text not null, parser_version text not null, confidence text not null,
+    rejection_reasons text[] not null default '{}', status text not null, rights_status text not null,
+    metadata jsonb not null default '{}', created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    unique (opportunity_id, resolved_url)
+  );
+  create table gary_profile_visuals(
+    id text primary key, profile_id text not null, asset_type text not null, image_url text not null,
+    label text, issue_year integer, season text, metadata jsonb not null default '{}'::jsonb,
+    created_at timestamptz not null default now()
+  );
+  create table radar_enrichment_jobs(
+    id text primary key, opportunity_id text not null, kind text not null, status text not null,
+    next_attempt_at timestamptz not null default now(), lease_until timestamptz,
+    updated_at timestamptz not null default now()
+  );
+`;
+
 async function cleanupDatabase() {
   const db = new PGlite();
+  await db.exec(CLEANUP_SCHEMA);
   await db.exec(`
-    create table opportunities(id text primary key, publication_state text not null);
-    create table opportunity_identity_assets(
-      id text primary key, opportunity_id text not null, url text not null, alt text,
-      kind text not null, rights_status text not null, width integer, height integer,
-      reviewer text, reviewed_at timestamptz, linked_organization_id text,
-      metadata jsonb not null default '{}'::jsonb
-    );
-    create table gary_profile_visuals(
-      id text primary key, profile_id text not null, asset_type text not null, image_url text not null,
-      label text, issue_year integer, season text, metadata jsonb not null default '{}'::jsonb,
-      created_at timestamptz not null default now()
-    );
-    create table radar_enrichment_jobs(
-      id text primary key, opportunity_id text not null, kind text not null, status text not null,
-      next_attempt_at timestamptz not null default now(), lease_until timestamptz,
-      updated_at timestamptz not null default now()
-    );
-    insert into opportunities values ('opp1','published'), ('opp2','published'), ('opp3','published'), ('opp4','draft');
+    insert into opportunity_sources values ('src', 'official', null);
+    insert into radar_organizations values
+      ('org1', '{"name":"Cave Canem","website":"https://cavecanem.example"}'),
+      ('org2', '{"name":"Northern Festival"}'),
+      ('org3', '{"name":"Northern Stage"}');
+    insert into gary_profiles values ('org2', 'Northern Festival', 'https://www.festival.example/');
+    insert into opportunities values
+      ('opp1', 'Cave Canem Fellowship', 'published', 'org1', 'src', 'https://cavecanem.example/fellowship', null),
+      ('opp2', 'Festival Open Call', 'published', 'org2', 'src', 'https://festival.example/call', null),
+      ('opp3', 'Stage Residency', 'published', 'org3', 'src', 'https://www.artconnect.com/opportunities/stage', null),
+      ('opp4', 'Draft Call', 'draft', null, 'src', null, 'https://org.example/apply');
     insert into opportunity_identity_assets (id, opportunity_id, url, alt, kind, rights_status, width, height, reviewer, reviewed_at) values
       ('asset_opp1', 'opp1', 'https://cavecanem.example/favicon-logo.png', 'opp1 visual', 'opportunity-artwork', 'cleared', null, null, null, null),
       ('asset:hero:opp2', 'opp2', 'https://festival.example/pool-scene.jpg', 'Hero', 'opportunity-artwork', 'cleared', 1200, 800, null, null),
@@ -289,7 +338,8 @@ async function cleanupDatabase() {
     insert into radar_enrichment_jobs (id, opportunity_id, kind, status) values
       ('job1', 'opp1', 'media', 'completed'),
       ('job2', 'opp2', 'media', 'blocked'),
-      ('job3', 'opp3', 'winners', 'completed');
+      ('job3', 'opp3', 'winners', 'completed'),
+      ('job4', 'opp3', 'media', 'completed');
   `);
   const client = {
     async query(text: string, values?: unknown[]) {
@@ -306,6 +356,17 @@ async function cleanupDatabase() {
   return { db, client, rights };
 }
 
+// The organizers' pages as the re-check would fetch them.
+const PAGES: Record<string, string> = {
+  "https://cavecanem.example/fellowship": shareImagePage(
+    "https://cavecanem.example/media/fellows-reading.jpg",
+    `<meta property="og:image:width" content="1200" /><meta property="og:image:height" content="630" />`,
+  ),
+  "https://festival.example/call": shareImagePage("https://festival.example/brand/festival-logo.png"),
+  "https://www.artconnect.com/opportunities/stage": shareImagePage("https://www.artconnect.com/uploads/stage.jpg"),
+};
+const fetchPage = async (url: string) => (PAGES[url] ? { html: PAGES[url], finalUrl: url } : null);
+
 test("the cleanup report counts only cleared assets with no reviewer", async () => {
   const { client } = await cleanupDatabase();
   const report = await reportUnreviewedClearedAssets(client as never);
@@ -318,20 +379,42 @@ test("the cleanup report counts only cleared assets with no reviewer", async () 
   assert.equal(report.profileVisualCopies, 1);
 });
 
-test("the cleanup needs a named approver and changes nothing without one", async () => {
+test("the re-check needs a named approver, and a dry run changes nothing", async () => {
   const { client, rights } = await cleanupDatabase();
   const before = await rights();
-  await assert.rejects(revertUnreviewedClearedAssets(client as never, { approvedBy: "  " }), /approval/);
+  await assert.rejects(recheckUnreviewedClearedAssets(client as never, { approvedBy: "  ", fetchPage }), /approval/);
+  const preview = await recheckUnreviewedClearedAssets(client as never, { approvedBy: "", dryRun: true, fetchPage });
+  assert.deepEqual(preview, {
+    opportunities: 4,
+    attributedImages: 2,
+    attributedLogos: 1,
+    pagesUnavailable: 1,
+    needsReview: 1,
+    reverted: 4,
+    profileVisualCopiesRemoved: 0,
+    mediaJobsRequeued: 0,
+  });
   assert.deepEqual(await rights(), before);
 });
 
-test("the cleanup reverts unreviewed cleared assets and can be restored", async () => {
+test("the re-check keeps the organizer's own og:image, credited, and hides the rest", async () => {
   const { db, client, rights } = await cleanupDatabase();
-  const result = await revertUnreviewedClearedAssets(client as never, { approvedBy: "Owner Name" });
-  assert.deepEqual(result, { reverted: 4, profileVisualCopiesRemoved: 1, mediaJobsRequeued: 1 });
+  const result = await recheckUnreviewedClearedAssets(client as never, { approvedBy: "Owner Name", fetchPage });
+  assert.deepEqual(result, {
+    opportunities: 4,
+    attributedImages: 2,
+    attributedLogos: 1,
+    pagesUnavailable: 1, // opp4's page is unreachable
+    needsReview: 1, // opp3's page is a listing site
+    reverted: 4,
+    profileVisualCopiesRemoved: 1,
+    mediaJobsRequeued: 1, // opp3; opp1 has an image again and opp2's job is blocked by robots.txt
+  });
 
   assert.deepEqual(await rights(), {
     "asset:hero:opp2": "unknown",
+    "asset:og:opp1": "needs-attribution",
+    "asset:og:opp2": "needs-attribution",
     asset_opp1: "unknown",
     asset_opp3: "unknown",
     mark_opp4: "unknown",
@@ -339,18 +422,58 @@ test("the cleanup reverts unreviewed cleared assets and can be restored", async 
     reviewed_opp3: "cleared",
     unknown_opp1: "unknown",
   });
+
+  const { rows: published } = await db.query<{
+    id: string; url: string; kind: string; attribution_requirement: string; source_url: string;
+    linked_organization_id: string | null; reviewer: string | null;
+  }>(
+    `select id, url, kind, attribution_requirement, source_url, linked_organization_id, reviewer
+     from opportunity_identity_assets where id like 'asset:og:%' order by id`,
+  );
+  assert.deepEqual(published, [
+    {
+      id: "asset:og:opp1",
+      url: "https://cavecanem.example/media/fellows-reading.jpg",
+      kind: "opportunity-artwork",
+      attribution_requirement: "Image: Cave Canem",
+      source_url: "https://cavecanem.example/fellowship",
+      linked_organization_id: null, // a call's own image is not shared with the organizer's other calls
+      reviewer: null,
+    },
+    {
+      id: "asset:og:opp2",
+      url: "https://festival.example/brand/festival-logo.png",
+      kind: "organization-mark", // a logo is the organization's mark, never a cover
+      attribution_requirement: "Image: Northern Festival",
+      source_url: "https://festival.example/call",
+      linked_organization_id: "org2", // the mark stands for the organization on all its calls
+      reviewer: null,
+    },
+  ]);
+
   const { rows: [reverted] } = await db.query<{ metadata: { rightsRevert: Record<string, unknown> } }>(
     "select metadata from opportunity_identity_assets where id = 'asset_opp1'",
   );
   assert.equal(reverted.metadata.rightsRevert.approvedBy, "Owner Name");
   assert.equal(reverted.metadata.rightsRevert.from, "cleared");
 
+  const candidates = await db.query<{ opportunity_id: string; status: string }>(
+    "select opportunity_id, status from opportunity_media_candidates order by opportunity_id",
+  );
+  assert.deepEqual(candidates.rows.map((row) => [row.opportunity_id, row.status]), [
+    ["opp1", "needs-attribution"],
+    ["opp2", "needs-attribution"],
+    ["opp3", "reviewable"], // a listing site's image waits for a person
+  ]);
+
   const visuals = await db.query<{ id: string }>("select id from gary_profile_visuals order by id");
   assert.deepEqual(visuals.rows.map((row) => row.id), ["org-media:other"]);
   const jobs = await db.query<{ id: string; status: string }>("select id, status from radar_enrichment_jobs order by id");
-  assert.deepEqual(jobs.rows.map((row) => [row.id, row.status]), [["job1", "queued"], ["job2", "blocked"], ["job3", "completed"]]);
+  assert.deepEqual(jobs.rows.map((row) => [row.id, row.status]), [
+    ["job1", "completed"], ["job2", "blocked"], ["job3", "completed"], ["job4", "queued"],
+  ]);
 
-  // Nothing is left to revert, and the public card query would now skip them.
+  // Nothing is left to re-check.
   assert.equal((await reportUnreviewedClearedAssets(client as never)).total, 0);
 
   // A person reviews one asset before the restore; the restore leaves it alone.
@@ -360,6 +483,31 @@ test("the cleanup reverts unreviewed cleared assets and can be restored", async 
   const after = await rights();
   assert.equal(after.asset_opp1, "cleared");
   assert.equal(after.asset_opp3, "rejected");
+  assert.equal(after["asset:og:opp1"], "needs-attribution");
   const visualsAfter = await db.query<{ id: string }>("select id from gary_profile_visuals order by id");
   assert.deepEqual(visualsAfter.rows.map((row) => row.id), ["org-media:copy", "org-media:other"]);
+});
+
+test("publishing an organizer og:image never overwrites a person's review", async () => {
+  const { db, client } = await cleanupDatabase();
+  await db.query(
+    `insert into opportunity_identity_assets (id, opportunity_id, url, kind, rights_status, reviewer, reviewed_at)
+     values ('asset:og:opp1', 'opp1', 'https://cavecanem.example/media/fellows-reading.jpg', 'opportunity-artwork', 'rejected', 'editor@missa', now())`,
+  );
+  const [candidate] = extractMediaCandidates(PAGES["https://cavecanem.example/fellowship"], {
+    opportunityId: "opp1",
+    title: "Cave Canem Fellowship",
+    pageUrl: "https://cavecanem.example/fellowship",
+    sourceRole: "official-opportunity-page",
+  }).candidates.map((c) => applyAutomaticRights(c, { organizerName: "Cave Canem", organizerWebsiteUrl: "https://cavecanem.example" }));
+  assert.equal(candidate.rightsStatus, "needs-attribution");
+  await promoteAttributedCandidate(client as never, candidate, { opportunityId: "opp1" });
+  const { rows: [row] } = await db.query<{ rights_status: string }>("select rights_status from opportunity_identity_assets where id = 'asset:og:opp1'");
+  assert.equal(row.rights_status, "rejected");
+
+  // A candidate the rule did not accept is never published.
+  assert.equal(
+    await promoteAttributedCandidate(client as never, { ...candidate, rightsStatus: "unknown" }, { opportunityId: "opp2" }),
+    undefined,
+  );
 });
