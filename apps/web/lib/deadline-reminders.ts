@@ -69,7 +69,8 @@ function databaseUrl(): string | undefined {
 
 /**
  * Called after a call is saved to the Tracker. While the application is
- * before submission and the call has a published, confirmed deadline, adds
+ * before submission, the call's deadline reminders are on, and the call has a
+ * published, confirmed deadline, adds
  * one deadline reminder per default offset (creator_planning_preferences,
  * default 7 and 1 days before) at 09:00 in the creator's zone, skipping any
  * that would land in the past or after the call closes. A default the creator
@@ -84,14 +85,16 @@ export async function applyDefaultReminders(accountId: string, opportunityId: st
     const schema = await readSchema(client);
     if (!schema.ready) return { created: 0, skipped: 'schema' };
     await client.query('begin');
-    const row = (await client.query<{ status: string; deadline: string | null; deadline_kind: string; publication_state: string; deadline_time: Date | null; deadline_timezone: string | null; tz: string }>(
-      `select t.status,o.deadline_date::text as deadline,o.deadline_kind,o.publication_state,o.deadline_time,o.deadline_timezone,${ACCOUNT_TZ} as tz
+    const row = (await client.query<{ status: string; notify: boolean; deadline: string | null; deadline_kind: string; publication_state: string; deadline_time: Date | null; deadline_timezone: string | null; tz: string }>(
+      `select t.status,t.notify,o.deadline_date::text as deadline,o.deadline_kind,o.publication_state,o.deadline_time,o.deadline_timezone,${ACCOUNT_TZ} as tz
          from tracked_opportunities t join opportunities o on o.id=t.opportunity_id
          left join notification_preferences p on p.account_id=t.account_id
         where t.account_id=$1 and t.opportunity_id=$2 for update of t`, [accountId, opportunityId])).rows[0];
     const skip = async (reason: string) => { await client.query('rollback'); return { created: 0, skipped: reason }; };
     if (!row) return await skip('not-tracked');
     if (!(PRE_SUBMISSION_STATUSES as readonly string[]).includes(row.status)) return await skip('not-preparing');
+    // The call's "Deadline reminders off" switch covers Missa's own notices.
+    if (!row.notify) return await skip('reminders-off');
     if (!row.deadline || !['fixed', 'exact'].includes(row.deadline_kind) || row.publication_state !== 'published') return await skip('no-confirmed-deadline');
     const preferences = await getPlanningPreferences(client, accountId);
     const own = (await client.query<{ offset: number | null }>(
@@ -218,7 +221,7 @@ async function scheduleDeadlineDay(client: PoolClient, schema: Schema, accountId
        left join creator_planning_preferences pp on pp.account_id=t.account_id
        cross join lateral (select ${ACCOUNT_TZ} as tz) x
        cross join lateral (select coalesce(o.deadline_time,((o.deadline_date+1)::timestamp at time zone coalesce(o.deadline_timezone,x.tz))) as closes_at) c
-      where ($1::text is null or t.account_id=$1) and t.status in ${PRE}
+      where ($1::text is null or t.account_id=$1) and t.status in ${PRE} and t.notify
         and o.publication_state='published' and o.deadline_kind in ('fixed','exact') and o.deadline_date is not null
         and o.deadline_date-(now() at time zone x.tz)::date between 0 and 1
         and c.closes_at > now() and coalesce(pp.deadline_day_alarm,true)
@@ -241,7 +244,7 @@ async function scheduleTierEndings(client: PoolClient, schema: Schema, accountId
           where d2.opportunity_id=d.opportunity_id and d2.closes_on>d.closes_on and d2.fee_cents>d.fee_cents
             and coalesce(d2.fee_currency,'USD')=coalesce(d.fee_currency,'USD')
           order by d2.closes_on,d2.position limit 1) n on true
-      where ($1::text is null or t.account_id=$1) and t.status in ${PRE} and o.publication_state='published'
+      where ($1::text is null or t.account_id=$1) and t.status in ${PRE} and t.notify and o.publication_state='published'
         and d.fee_cents is not null and d.closes_on-(now() at time zone x.tz)::date between 0 and 3
         and coalesce(d.closes_at,((d.closes_on+1)::timestamp at time zone coalesce(d.timezone,o.deadline_timezone,x.tz))) > now()
         and ${planFilter(schema, 't.account_id', '$2')}

@@ -183,6 +183,8 @@ export function CalendarWorkspace({
     }>(),
     [connectionsOpen, setConnectionsOpen] = useState(false),
     [opportunityPicker, setOpportunityPicker] = useState(false),
+    [pickerDay, setPickerDay] = useState<string>(),
+    [opportunitySaving, setOpportunitySaving] = useState<string>(),
     [opportunities, setOpportunities] = useState<OpportunityOption[]>([]),
     [opportunityQuery, setOpportunityQuery] = useState(""),
     [opportunityLoading, setOpportunityLoading] = useState(false),
@@ -553,13 +555,56 @@ export function CalendarWorkspace({
       purpose: "personal",
     });
   }
+  /** Opens the picker for a day: the one right-clicked, else the cursor's. */
   function addOpportunity(day = isoDay(cursor)) {
     setContextMenu(undefined);
     setOpportunityQuery("");
+    setPickerDay(day);
     setOpportunityPicker(true);
-    void day;
   }
-  function chooseOpportunity(item: OpportunityOption, day = isoDay(cursor)) {
+  /**
+   * A call that is not yet in the Tracker is saved first, which adds its
+   * official deadline and default reminders; preparation time can only be
+   * linked to a saved application. Then the editor opens on the chosen day.
+   */
+  async function chooseOpportunity(item: OpportunityOption) {
+    const day = pickerDay ?? isoDay(cursor);
+    const saved = applications.some(
+      (application) => application.opportunityId === item.id,
+    );
+    if (!saved) {
+      if (opportunitySaving) return;
+      setOpportunitySaving(item.id);
+      try {
+        const response = await fetch("/api/me/tracker", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            opportunityId: item.id,
+            journeyId: window.crypto.randomUUID(),
+          }),
+        });
+        const data = (await response.json().catch(() => ({}))) as {
+          error?: string;
+          calendar?: { status?: string };
+        };
+        if (!response.ok) {
+          toast.error(data.error ?? "We could not save this call. Try again.");
+          return;
+        }
+        toast.success(
+          data.calendar?.status === "pending"
+            ? "Saved · Calendar update pending"
+            : "Saved · Deadline added to Calendar",
+        );
+        await load();
+      } catch {
+        toast.error("We could not save this call. Try again.");
+        return;
+      } finally {
+        setOpportunitySaving(undefined);
+      }
+    }
     setOpportunityPicker(false);
     editorTriggerRef.current =
       document.activeElement instanceof HTMLElement
@@ -2087,8 +2132,8 @@ export function CalendarWorkspace({
                   Add an opportunity
                 </h2>
                 <p>
-                  Find the opportunity you want to work on. We’ll add its
-                  deadline first.
+                  Find the opportunity you want to work on. A call that is
+                  not in your Tracker yet is saved first, with its deadline.
                 </p>
               </div>
               <button
@@ -2143,9 +2188,8 @@ export function CalendarWorkspace({
                               className={styles.opportunityItem}
                               key={item.id}
                               value={item}
-                              onClick={() =>
-                                chooseOpportunity(item, contextMenu?.day)
-                              }
+                              onClick={() => void chooseOpportunity(item)}
+                              aria-busy={opportunitySaving === item.id || undefined}
                             >
                               <OpportunityMark
                                 label={item.organizationName ?? item.title}
@@ -2182,11 +2226,13 @@ export function CalendarWorkspace({
                                       : styles.opportunityNew
                                   }
                                 >
-                                  {scheduled
-                                    ? "On your calendar"
-                                    : saved
-                                      ? "Saved"
-                                      : "Add to calendar"}
+                                  {opportunitySaving === item.id
+                                    ? "Saving…"
+                                    : scheduled
+                                      ? "On your calendar"
+                                      : saved
+                                        ? "Saved"
+                                        : "Save and add to calendar"}
                                 </em>
                               </span>
                             </AutocompleteItem>

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSessionAccount } from '@/lib/auth';
 import { getRelationalWorkspace, getWorkspaceEngine, persistWorkspace, workspaceCommandEnvelope, workspaceMutationError, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 import { getEngine, persistRadar } from '@/lib/engine';
+import { projectHostedStatusToTracker } from '@/lib/hosted-tracker-projection';
 
 export async function POST(request: Request, { params }: { params: Promise<{ submissionId: string }> }) {
   const session = await getSessionAccount(request.headers.get('cookie'));
@@ -23,6 +24,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ sub
           await persistRadar();
         }
       }
+      if (opportunityId) {
+        await projectHostedStatusToTracker({ accountId: session.account.id, opportunityId, status: 'withdrawn', source: 'user', note: `Missa submission ${submissionId}`, idempotencyKey: `hosted-submission:${submissionId}:withdrawn` });
+      }
       return NextResponse.json({ ...prior, status: 'withdrawn', revision: withdrawn.revision, receiptId: withdrawn.receiptId, idempotent: withdrawn.replayed });
     } catch (error) {
       const mapped = workspaceMutationError(error);
@@ -41,6 +45,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ sub
         radar.setMyStatus(session.account.userId, call.radarOpportunityId, 'withdrawn', { source: 'user', note: `Missa submission ${submission.id}` });
         await persistRadar();
       }
+    }
+    if (call?.radarOpportunityId) {
+      await projectHostedStatusToTracker({ accountId: session.account.id, opportunityId: call.radarOpportunityId, status: 'withdrawn', source: 'user', note: `Missa submission ${submission.id}`, idempotencyKey: `hosted-submission:${submission.id}:withdrawn` });
     }
     return NextResponse.json(submission);
   } catch (error) {

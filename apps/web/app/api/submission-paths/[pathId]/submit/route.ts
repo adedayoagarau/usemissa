@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSessionAccount } from '@/lib/auth';
 import { getRelationalWorkspace, getWorkspaceEngine, persistWorkspace, workspaceCommandEnvelope, workspaceMutationError, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 import { getEngine, persistRadar } from '@/lib/engine';
+import { projectHostedStatusToTracker } from '@/lib/hosted-tracker-projection';
 import { checkOpportunitySubmissionCap, recordSubmissionAgainstCap } from '@/lib/submission-caps';
 import { trackPlatformAnalytics } from '@/lib/platformAnalytics';
 import { deliverSubmissionReceipt } from '@/lib/account-letters';
@@ -174,6 +175,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
         radarDirty = true;
       }
       if (radarDirty) await persistRadar();
+      if (linkedOpportunityId) {
+        await projectHostedStatusToTracker({ accountId: session.account.id, opportunityId: linkedOpportunityId, status: 'submitted', source: 'user', note: `Missa submission ${created.resourceId}`, idempotencyKey: `hosted-submission:${created.resourceId}:submitted` });
+      }
       if (!created.replayed && openCall.radarOpportunityId) {
         await recordSubmissionAgainstCap(openCall.radarOpportunityId);
       }
@@ -223,6 +227,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
     }
     if (radarDirty) await persistRadar();
     if (linkedOpportunityId) {
+      await projectHostedStatusToTracker({ accountId: session.account.id, opportunityId: linkedOpportunityId, status: 'submitted', source: 'user', note: `Missa submission ${submission.id}`, idempotencyKey: `hosted-submission:${submission.id}:submitted` });
       await recordSubmissionAgainstCap(linkedOpportunityId);
     }
     await sendReceipt(submission.id, submission.id, organizationId ? radar.store.organizations.get(organizationId)?.name : undefined);
