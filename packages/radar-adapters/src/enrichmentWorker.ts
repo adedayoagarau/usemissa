@@ -5,6 +5,9 @@ import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from "./workerTel
 import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 import { fetchWithPolicy, USER_AGENT } from "./mediaFetcher.js";
 import { extractMediaCandidates } from "./mediaExtractor.js";
+import { insertMediaCandidate, promoteAttributedCandidate } from "./mediaCandidateStore.js";
+import { applyAutomaticRights } from "./mediaRightsRule.js";
+import { mirrorServedImages, vercelBlobImageStore } from "./mediaMirror.js";
 import type { SourceRole } from "./mediaExtractionContracts.js";
 import { OperationsUsage } from "@missa/decisions";
 import { HostHistoryTracker, logOperationsUsage, radarOperationsDecider, retryShouldWaitLongest, type OperationsDecider } from "./operationsDecisions.js";
@@ -23,6 +26,8 @@ export type ClaimedJob = {
   sourceKind?: string;
   sourceAuthorityKind?: string;
   organizationConfirmed?: boolean;
+  organizerName?: string | null;
+  organizerWebsiteUrl?: string | null;
 };
 
 const BACKLOG_DRAIN_DELAY_MS = 5_000;
@@ -133,7 +138,7 @@ async function seedJobs(client: PoolClient): Promise<void> {
        (case when o.deadline_date is not null and o.deadline_date <= current_date + 30 then 20 else 0 end) +
        (case when kinds.kind = 'media' and not exists (
          select 1 from opportunity_identity_assets a
-         where a.opportunity_id = o.id and a.rights_status in ('cleared', 'permitted')
+         where a.opportunity_id = o.id and a.rights_status in ('cleared', 'permitted', 'needs-attribution')
        ) and (
          o.status in ('open', 'closing-soon', 'deadline-extended') or
          (o.deadline_date is not null and o.deadline_date <= current_date + 30)
@@ -165,6 +170,8 @@ async function claimJobs(client: PoolClient, limit: number): Promise<ClaimedJob[
      from next_jobs n, opportunities o
      left join opportunity_sources s on s.id = o.source_id
      left join opportunity_source_evidence e on e.opportunity_id = o.id
+     left join radar_organizations org on org.id = o.organization_id
+     left join gary_profiles org_profile on org_profile.id = o.organization_id
      left join lateral (
        select true as confirmed
        from opportunity_profile_links link
@@ -179,7 +186,10 @@ async function claimJobs(client: PoolClient, limit: number): Promise<ClaimedJob[
        o.organization_id as "organizationId",
        s.kind as "sourceKind",
        s.authority_kind as "sourceAuthorityKind",
-       (coalesce(e.organization_confirmed, false) or coalesce(profile_identity.confirmed, false)) as "organizationConfirmed"`,
+       (coalesce(e.organization_confirmed, false) or coalesce(profile_identity.confirmed, false)) as "organizationConfirmed",
+       coalesce(org_profile.name, org.data->>'name') as "organizerName",
+       coalesce(org_profile.website_url, org.data->>'website_url', org.data->>'websiteUrl', org.data->>'website')
+         as "organizerWebsiteUrl"`,
     [limit],
   );
   return rows.filter((row) => Boolean(row.sourceUrl));
@@ -363,61 +373,26 @@ async function processJob(client: PoolClient, job: ClaimedJob): Promise<void> {
 
     let reviewableCount = 0;
     let rejectedCount = 0;
+    let attributedCount = 0;
 
-    for (const candidate of extraction.candidates) {
-      const candidateId = randomUUID();
-      await client.query(
-        `insert into opportunity_media_candidates
-           (id, opportunity_id, job_id, original_url, resolved_url, page_url,
-            source_role, candidate_kind, alt, caption, title, width, height,
-            mime_type, file_size, retrieved_at, http_status, redirect_chain,
-            content_hash, attribution_text, inheritance_level,
-            linked_organization_id, linked_program_id, extraction_method,
-            parser_version, confidence, rejection_reasons, status, rights_status,
-            metadata, created_at, updated_at)
-         values
-           ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-            now(), $16, $17::jsonb, $18, $19, $20, $21, $22, $23, $24, $25,
-            $26, $27, 'unknown', $28::jsonb, now(), now())
-         on conflict (opportunity_id, resolved_url) do update set
-           updated_at = now(),
-           http_status = excluded.http_status,
-           redirect_chain = excluded.redirect_chain,
-           rejection_reasons = excluded.rejection_reasons,
-           metadata = opportunity_media_candidates.metadata || excluded.metadata`,
-        [
-          candidateId,
-          job.opportunityId,
-          job.id,
-          candidate.originalUrl,
-          candidate.resolvedUrl,
-          candidate.pageUrl,
-          candidate.sourceRole,
-          candidate.candidateKind,
-          candidate.alt ?? null,
-          candidate.caption ?? null,
-          candidate.title ?? null,
-          candidate.width ?? null,
-          candidate.height ?? null,
-          candidate.mimeType ?? null,
-          candidate.fileSize ?? null,
-          candidate.httpStatus ?? null,
-          JSON.stringify(candidate.redirectChain ?? []),
-          candidate.contentHash ?? null,
-          candidate.attributionText ?? null,
-          candidate.inheritanceLevel,
-          candidate.linkedOrganizationId ?? null,
-          candidate.linkedProgramId ?? null,
-          candidate.extractionMethod,
-          candidate.parserVersion,
-          candidate.confidence,
-          candidate.rejectionReasons,
-          candidate.status,
-          JSON.stringify(candidate.metadata ?? {}),
-        ],
-      );
+    for (const extracted of extraction.candidates) {
+      // The automatic rule: an og:image from the organizer's own site is
+      // published credited to the organizer (docs/media-rights-review.md).
+      const candidate = applyAutomaticRights(extracted, {
+        organizerName: job.organizerName,
+        organizerWebsiteUrl: job.organizerWebsiteUrl,
+      });
+      await insertMediaCandidate(client, candidate, { opportunityId: job.opportunityId, jobId: job.id });
+      const publishedId = await promoteAttributedCandidate(client, candidate, { opportunityId: job.opportunityId, fallbackAlt: job.title });
+      if (publishedId) {
+        attributedCount++;
+        // Serve Missa's own copy rather than hotlinking, when storage is configured.
+        if (process.env.BLOB_READ_WRITE_TOKEN) {
+          await mirrorServedImages(client, { store: vercelBlobImageStore(), assetIds: [publishedId] });
+        }
+      }
 
-      if (candidate.status === "reviewable") {
+      if (candidate.status !== "rejected") {
         reviewableCount++;
         await client.query(
           `insert into radar_opportunity_enrichment_evidence
@@ -455,6 +430,7 @@ async function processJob(client: PoolClient, job: ClaimedJob): Promise<void> {
       rejected: rejectedCount,
       reviewable: reviewableCount,
       cleared: 0,
+      attributed: attributedCount,
       blocked: 0,
       failed: 0,
       checkedUrl: finalUrl,

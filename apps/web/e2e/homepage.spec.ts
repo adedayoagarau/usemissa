@@ -176,10 +176,21 @@ test("hero motion holds on tap or keyboard and stays still under reduced motion"
     viewport: { width: 1440, height: 900 },
   });
   const stillPage = await still.newPage();
+  const hydrationErrors: string[] = [];
+  stillPage.on("console", (message) => {
+    if (message.type() === "error" && /hydrat/i.test(message.text())) {
+      hydrationErrors.push(message.text());
+    }
+  });
+  stillPage.on("pageerror", (error) => {
+    if (/hydrat/i.test(String(error))) hydrationErrors.push(String(error));
+  });
   await stillPage.goto(page.url());
   await expect(stillPage.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(
     stillPage.getByRole("button", { name: /product animation$/ }),
   ).toHaveCount(0);
+  // The server cannot know the preference; the page must still hydrate cleanly.
+  expect(hydrationErrors).toEqual([]);
   await still.close();
 });

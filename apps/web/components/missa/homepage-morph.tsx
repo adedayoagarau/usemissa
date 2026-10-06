@@ -11,7 +11,11 @@ import {
 import { Play } from "lucide-react";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 
-import { setHeroMotionPaused, useHeroMotionPaused } from "./homepage-hero-motion";
+import {
+  setHeroMotionPaused,
+  useHeroMotionPaused,
+  useHydrated,
+} from "./homepage-hero-motion";
 import {
   CallCardVignette,
   ProfileVignette,
@@ -118,7 +122,11 @@ function Surface({ step, call }: { step: Step; call: VignetteCall }) {
 }
 
 export function HomepageMorph({ call }: { call: VignetteCall | null }) {
-  const reduced = useReducedMotion();
+  // The server cannot know the visitor's motion preference; until hydration
+  // finishes, render what the server rendered, then honour it.
+  const prefersReduced = useReducedMotion();
+  const hydrated = useHydrated();
+  const reduced = hydrated && Boolean(prefersReduced);
   const stage = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLDivElement>(null);
   const inView = useInView(stage, { amount: 0.4 });

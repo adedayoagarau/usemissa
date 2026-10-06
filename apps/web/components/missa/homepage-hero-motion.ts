@@ -29,3 +29,18 @@ export function useHeroMotionPaused() {
     () => false,
   );
 }
+
+const noopSubscribe = () => () => {};
+
+/**
+ * False on the server and during hydration, true once hydrated. Branch on a
+ * client-only fact (like prefers-reduced-motion) through this, so the first
+ * client render matches the server HTML and the switch happens right after.
+ */
+export function useHydrated() {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  );
+}

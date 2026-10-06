@@ -95,6 +95,10 @@ export function toPublicOpportunity<T extends OpportunityBrowseProjection & Publ
   if (listing.identityAssetUrl && isIntermediaryUrl(listing.identityAssetUrl)) {
     delete result.identityAssetUrl;
     delete result.identityAssetAlt;
+    delete result.identityAssetCredit;
+  }
+  if (listing.identityLogoUrl && isIntermediaryUrl(listing.identityLogoUrl)) {
+    delete result.identityLogoUrl;
   }
 
   const source = replaceIntermediaryUrls(listing.source, publicLink);

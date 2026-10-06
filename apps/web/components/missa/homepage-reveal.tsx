@@ -3,6 +3,8 @@
 import { motion, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
 
+import { useHydrated } from "./homepage-hero-motion";
+
 /**
  * One scroll-reveal for the homepage's lower sections: a short rise on the
  * enter curve, once, when the block is a fifth of the way into view. Reduced
@@ -17,7 +19,10 @@ export function Reveal({
   className?: string;
   delay?: number;
 }) {
-  const reduced = useReducedMotion();
+  // Match the server render during hydration, then honour the preference.
+  const prefersReduced = useReducedMotion();
+  const hydrated = useHydrated();
+  const reduced = hydrated && Boolean(prefersReduced);
   return (
     <motion.div
       className={className}

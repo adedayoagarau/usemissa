@@ -9,6 +9,7 @@ import type { OpportunityBrowseProjection } from "@missa/radar-engine";
 import { AddOpportunityToCalendarButton } from "@/components/add-opportunity-to-calendar-button";
 import { NativeBadge } from "@/components/uitripled/native-badge-carbon";
 import { CallCover } from "@/components/illustrations/missa-illustrations";
+import { OrganizationMark } from "@/components/missa/organization-mark";
 import styles from "./opportunity-browse-project-card.module.css";
 
 type OpportunityCardItem = Pick<
@@ -19,6 +20,7 @@ type OpportunityCardItem = Pick<
   | "organizationName"
   | "identityAssetUrl"
   | "identityAssetAlt"
+  | "identityLogoUrl"
   | "discipline"
   | "genres"
   | "deadline"
@@ -157,9 +159,14 @@ export function OpportunityBrowseProjectCard({
               onError={() => setFailedImage(cardImage)}
             />
           ) : (
-            // No cleared image: the illustrated cover for the call's type.
+            // No editorial image: the call type's illustrated cover, with the
+            // organization's mark on it when one is on file. The name is in
+            // the card body, so both are decorative.
             <span className={styles.cover} aria-hidden="true">
               <CallCover type={item.type} />
+              {item.identityLogoUrl ? (
+                <OrganizationMark src={item.identityLogoUrl} className={styles.coverMark} />
+              ) : null}
             </span>
           )}
         </Link>

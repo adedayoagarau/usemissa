@@ -58,6 +58,8 @@ interface OpportunityRow extends QueryResultRow {
   organization_verified: string | null;
   identity_asset_url: string | null;
   identity_asset_alt: string | null;
+  identity_asset_credit?: string | null;
+  identity_logo_url?: string | null;
   status: OpportunityBrowseProjection["status"];
   type: OpportunityBrowseProjection["type"];
   discipline: string | null;
@@ -193,11 +195,25 @@ const VALID_SOURCE_KINDS = new Set<OpportunityRepositorySource["kind"]>([
 // identity. This is deliberately a second line of defence after media
 // extraction/review: historical imports may have incorrectly marked portal
 // chrome as cleared, but it must never reach a public projection.
-// Logos, favicons and background-removed cutouts are not editorial images:
-// they crop badly as card covers, which then fall back to the call type's
-// illustrated cover instead.
+/**
+ * Rights an image needs before Missa shows it: a person cleared or permitted
+ * it, or it is the organizer's own og:image credited to the organizer
+ * (needs-attribution with the credit recorded). docs/media-rights-review.md.
+ */
+export const SERVABLE_ASSET_RIGHTS =
+  "(a.rights_status in ('cleared', 'permitted') or (a.rights_status = 'needs-attribution' and a.attribution_requirement is not null))";
+
+/** Missa's stored copy of the image when there is one, otherwise the original. */
+const SERVED_ASSET_URL = "coalesce(nullif(a.metadata->>'storedUrl', ''), a.url)";
+
 const NON_EDITORIAL_MEDIA_PATTERN =
-  "submittable|slideroom|callforentry|typeform|airtable|entrythingy|duotrope|duosuma|submit[-_]?button|powered[+%20_-]*by|wordpress[-_]?logo|automattic|wix.*(?:badge|banner)|squarespace.*logo|placeholder|editmysite|curatorspace|webclip([._/?-]|$)|logo|favi|apple-touch-icon|removebg";
+  "submittable|slideroom|callforentry|typeform|airtable|entrythingy|duotrope|duosuma|submit[-_]?button|powered[+%20_-]*by|wordpress[-_]?logo|automattic|wix.*(?:badge|banner)|squarespace.*logo|placeholder|editmysite|curatorspace|webclip([._/?-]|$)";
+
+// Older imports filed some logos, favicons and background-removed cutouts as
+// artwork. Whatever their recorded kind, an address that says so never fills
+// a card cover: the card shows the call type's illustrated cover and, when
+// one is on file, the organization's mark. Not applied to the mark lookup.
+const NON_COVER_MEDIA_PATTERN = "logo|favi|apple-touch-icon|removebg";
 
 // Values provisioned from stdin can carry a trailing newline in Vercel.
 // Normalize feature flags so a valid production configuration cannot silently
@@ -409,6 +425,8 @@ function baseSelect(
     coalesce(org.data->>'website_url', org.data->>'websiteUrl', org.data->>'website') as organization_data_website_url,
     asset.url as identity_asset_url,
     asset.alt as identity_asset_alt,
+    asset.credit as identity_asset_credit,
+    logo.url as identity_logo_url,
     o.status,
     o.type,
     o.discipline,
@@ -463,23 +481,36 @@ function baseFrom(
       limit 1
     ) intelligence on true`
     : "";
+  // Logos never fill a card cover: they are offered separately as the
+  // organization's mark (identity_logo_url).
   const garyVisualsSelect = garyVisualsReads
     ? `
         union all
         select v.image_url as url, coalesce(v.label, org.data->>'name') as alt,
+          null::text as credit,
           case v.asset_type
             when 'banner' then 1
-            when 'issue_cover' then 2
-            else 3
+            else 2
           end as priority,
           3 as tier,
           v.created_at
         from gary_profile_visuals v
         where o.organization_id is not null
           and v.profile_id = o.organization_id
-          and v.asset_type in ('banner', 'issue_cover', 'logo')
+          and v.asset_type in ('banner', 'issue_cover')
           and coalesce(v.image_url, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
-          and coalesce(v.label, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'`
+          and coalesce(v.label, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
+          and coalesce(v.image_url, '') !~* '${NON_COVER_MEDIA_PATTERN}'`
+    : "";
+  const garyLogoSelect = garyVisualsReads
+    ? `
+        union all
+        select v.image_url as url, 3 as tier, v.created_at
+        from gary_profile_visuals v
+        where o.organization_id is not null
+          and v.profile_id = o.organization_id
+          and v.asset_type = 'logo'
+          and coalesce(v.image_url, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'`
     : "";
   return `
     from opportunities o
@@ -487,9 +518,9 @@ function baseFrom(
     left join radar_organizations org on org.id = o.organization_id
     left join gary_profiles org_profile on org_profile.id = o.organization_id
     left join lateral (
-      select asset_candidate.url, asset_candidate.alt
+      select asset_candidate.url, asset_candidate.alt, asset_candidate.credit
       from (
-        select a.url, a.alt,
+        select ${SERVED_ASSET_URL} as url, a.alt, a.attribution_requirement as credit,
           case a.kind
             when 'opportunity-artwork' then 1
             when 'opportunity-cover' then 2
@@ -498,13 +529,15 @@ function baseFrom(
           1 as tier,
           a.created_at
         from opportunity_identity_assets a
-        where a.opportunity_id = o.id and a.rights_status in ('cleared', 'permitted')
+        where a.opportunity_id = o.id and ${SERVABLE_ASSET_RIGHTS}
           and a.kind in ('opportunity-artwork', 'opportunity-cover')
           and coalesce(a.url, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
           and coalesce(a.alt, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
           and coalesce(a.source_url, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
+          and coalesce(a.url, '') !~* '${NON_COVER_MEDIA_PATTERN}'
+          and coalesce(a.metadata->>'storedUrl', '') !~* '${NON_COVER_MEDIA_PATTERN}'
         union all
-        select a.url, a.alt,
+        select ${SERVED_ASSET_URL} as url, a.alt, a.attribution_requirement as credit,
           case a.kind
             when 'opportunity-artwork' then 1
             when 'opportunity-cover' then 2
@@ -515,11 +548,13 @@ function baseFrom(
         from opportunity_identity_assets a
         where o.organization_id is not null
           and a.linked_organization_id = o.organization_id
-          and a.rights_status in ('cleared', 'permitted')
+          and ${SERVABLE_ASSET_RIGHTS}
           and a.kind in ('opportunity-artwork', 'opportunity-cover', 'organization-banner')
           and coalesce(a.url, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
           and coalesce(a.alt, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
           and coalesce(a.source_url, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
+          and coalesce(a.url, '') !~* '${NON_COVER_MEDIA_PATTERN}'
+          and coalesce(a.metadata->>'storedUrl', '') !~* '${NON_COVER_MEDIA_PATTERN}'
         ${garyVisualsSelect}
       ) asset_candidate
       order by
@@ -528,6 +563,26 @@ function baseFrom(
         asset_candidate.created_at desc
       limit 1
     ) asset on true
+    left join lateral (
+      select logo_candidate.url
+      from (
+        select ${SERVED_ASSET_URL} as url,
+          case when a.opportunity_id = o.id then 1 else 2 end as tier,
+          a.created_at
+        from opportunity_identity_assets a
+        where a.kind = 'organization-mark'
+          and (a.opportunity_id = o.id
+            or (o.organization_id is not null and a.linked_organization_id = o.organization_id))
+          and ${SERVABLE_ASSET_RIGHTS}
+          -- Marks were never shown before; a mark cleared in bulk without a
+          -- reviewer is not one (docs/media-rights-review.md).
+          and (a.reviewer is not null or a.reviewed_at is not null or a.rights_status = 'needs-attribution')
+          and coalesce(a.url, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
+        ${garyLogoSelect}
+      ) logo_candidate
+      order by logo_candidate.tier asc, logo_candidate.created_at desc
+      limit 1
+    ) logo on true
     left join lateral (
       select e.checked_at, e.processing_succeeded_at, e.organization_confirmed, e.verified_until
       from opportunity_source_evidence e
@@ -1236,6 +1291,8 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
     organizationWebsiteUrl: firstOwnUrl(row.organization_profile_website_url, row.organization_data_website_url),
     identityAssetUrl: row.identity_asset_url ?? undefined,
     identityAssetAlt: row.identity_asset_alt ? cleanTitleOrLabel(row.identity_asset_alt) : undefined,
+    identityAssetCredit: row.identity_asset_credit ? cleanTitleOrLabel(row.identity_asset_credit) : undefined,
+    identityLogoUrl: row.identity_logo_url ?? undefined,
     status: row.status,
     type: (VALID_OPPORTUNITY_TYPES.has(row.type as OpportunityBrowseProjection["type"]) ? row.type as OpportunityBrowseProjection["type"] : "other"),
     openDate: row.open_date ?? undefined,
