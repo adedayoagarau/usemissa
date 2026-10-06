@@ -223,6 +223,10 @@ export interface OpportunityBrowseProjection {
   organizationWebsiteUrl?: string;
   identityAssetUrl?: string;
   identityAssetAlt?: string;
+  /** Credit owed for the identity image; recorded, not displayed. */
+  identityAssetCredit?: string;
+  /** The organization's logo, shown as a small mark, never as a cover. */
+  identityLogoUrl?: string;
   status: "opening-soon" | "open" | "closing-soon" | "deadline-extended" | "closed" | "archived";
   type: OpportunityType;
   openDate?: string;

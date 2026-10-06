@@ -8,6 +8,7 @@ import { CalendarDays, MapPin, Tag } from "lucide-react";
 import type { OpportunityBrowseProjection } from "@missa/radar-engine";
 import { AddOpportunityToCalendarButton } from "@/components/add-opportunity-to-calendar-button";
 import { NativeBadge } from "@/components/uitripled/native-badge-carbon";
+import { OrganizationMark } from "@/components/missa/organization-mark";
 import styles from "./opportunity-browse-project-card.module.css";
 
 type OpportunityCardItem = Pick<
@@ -18,6 +19,7 @@ type OpportunityCardItem = Pick<
   | "organizationName"
   | "identityAssetUrl"
   | "identityAssetAlt"
+  | "identityLogoUrl"
   | "discipline"
   | "genres"
   | "deadline"
@@ -151,6 +153,9 @@ export function OpportunityBrowseProjectCard({
             />
           ) : (
             <span className={styles.identityPlate} aria-hidden="true">
+              {item.identityLogoUrl ? (
+                <OrganizationMark src={item.identityLogoUrl} />
+              ) : null}
               <span className={styles.identityName}>
                 {item.organizationName || typeLabel(item.type)}
               </span>

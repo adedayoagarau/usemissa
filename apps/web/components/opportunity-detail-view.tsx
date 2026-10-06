@@ -197,7 +197,8 @@ export function OpportunityDetailView({
 
   const call = opportunity.callProfile;
 
-  // Photographic identity asset (if cleared/permitted)
+  // Identity image: cleared or permitted by a reviewer, or the organizer's own
+  // share image. Its credit is recorded in the page's structured data, not shown.
   const identityAssetUrl = opportunity.identityAssetUrl;
   const identityAssetAlt = opportunity.identityAssetAlt ?? opportunity.title;
 

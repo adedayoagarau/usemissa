@@ -14,7 +14,7 @@ import { taxonomyLabelFor } from '@/lib/opportunityTaxonomy';
 import { MissaSiteHeader } from '@/components/missa-site-header';
 import { OpportunityDetailView } from '@/components/opportunity-detail-view';
 import { PublicDiscoveryEvent } from '@/components/public-discovery-event';
-import { JsonLd, absoluteUrl, breadcrumbJsonLd, opportunityDescription, pageMetadata } from '@/lib/seo';
+import { JsonLd, absoluteUrl, breadcrumbJsonLd, identityImageJsonLd, opportunityDescription, pageMetadata } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 
@@ -102,6 +102,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
               ? `${opportunity.title} from ${opportunity.organizationName}`
               : opportunity.title,
           },
+          ...(opportunity.identityAssetUrl ? { primaryImageOfPage: identityImageJsonLd(opportunity) } : {}),
         }}
       />
       <JsonLd data={breadcrumbJsonLd([{ name: 'Missa', path: '/' }, { name: 'Opportunities', path: '/opportunities' }, { name: opportunity.title }])} />

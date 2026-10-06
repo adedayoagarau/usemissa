@@ -79,6 +79,37 @@ export function JsonLd({ data }: { data: Record<string, unknown> }): ReactNode {
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serialized }} />;
 }
 
+/**
+ * The opportunity's identity image for structured data. When the image is the
+ * organizer's own share image, its credit ("Image: <organizer>") goes here as
+ * `creditText` and `creator`: Missa records the credit for search engines
+ * and anyone inspecting the page, without printing it on the card.
+ */
+export function identityImageJsonLd(item: {
+  identityAssetUrl?: string;
+  identityAssetAlt?: string;
+  identityAssetCredit?: string;
+  organizationName?: string;
+  organizationWebsiteUrl?: string;
+}): Record<string, unknown> {
+  const credit = item.identityAssetCredit?.replace(/^image:\s*/iu, '').trim();
+  return {
+    '@type': 'ImageObject',
+    contentUrl: item.identityAssetUrl,
+    ...(item.identityAssetAlt ? { caption: cleanTitleOrLabel(item.identityAssetAlt) } : {}),
+    ...(credit
+      ? {
+          creditText: credit,
+          creator: {
+            '@type': 'Organization',
+            name: credit,
+            ...(item.organizationWebsiteUrl && credit === item.organizationName ? { url: item.organizationWebsiteUrl } : {}),
+          },
+        }
+      : {}),
+  };
+}
+
 export function breadcrumbJsonLd(items: Array<{ name: string; path?: string }>): Record<string, unknown> {
   return {
     '@context': 'https://schema.org',

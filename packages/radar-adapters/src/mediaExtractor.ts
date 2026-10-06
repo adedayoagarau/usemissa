@@ -260,6 +260,41 @@ function extractJsonLdCandidates(html: string, sourceUrl: string): RawCandidate[
   return candidates;
 }
 
+/**
+ * Share images (og:image, twitter:image) are often the site's logo rather than
+ * a picture of the call: 9 of 15 live card images on 6 October 2026 were logos
+ * or favicons. A share image is treated as a logo when its file name, alt text
+ * or shape says so, so it is stored as `organization-logo` and never becomes a
+ * card cover. A photograph and a poster both stay `opportunity-artwork`; the
+ * HTML cannot tell them apart.
+ */
+export function isLogoLikeImage(image: {
+  resolvedUrl: string;
+  alt?: string;
+  width?: number;
+  height?: number;
+}): boolean {
+  let fileName = image.resolvedUrl.toLowerCase();
+  try {
+    fileName = decodeURIComponent(new URL(image.resolvedUrl).pathname.split("/").pop() ?? "").toLowerCase();
+  } catch {
+    // Keep the whole URL when it cannot be parsed
+  }
+  const logoWords = /(?<!cata)logo|wordmark|brandmark|lockup|emblem|monogram|site[-_ ]?icon|favicon/;
+  if (logoWords.test(fileName) || logoWords.test((image.alt ?? "").toLowerCase())) return true;
+  // Square and small: app icons and avatar-style marks. Share photographs are
+  // landscape (1200x630 is the Open Graph default).
+  if (image.width && image.height) {
+    const ratio = image.width / image.height;
+    if (ratio > 0.9 && ratio < 1.1 && Math.max(image.width, image.height) <= 600) return true;
+  }
+  return false;
+}
+
+function shareImageKind(rawUrl: string, alt?: string, width?: number, height?: number): CandidateKind {
+  return isLogoLikeImage({ resolvedUrl: rawUrl, alt, width, height }) ? "organization-logo" : "opportunity-artwork";
+}
+
 // 2. Open Graph Discovery
 function extractMeta(html: string, property: string): string | undefined {
   const escaped = property.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -290,7 +325,7 @@ function extractOpenGraphCandidates(html: string): RawCandidate[] {
     candidates.push({
       rawUrl: ogImage,
       extractionMethod: "open-graph",
-      candidateKind: "opportunity-artwork",
+      candidateKind: shareImageKind(ogImage, alt, width, height),
       alt: cleanText(alt),
       width,
       height,
@@ -315,7 +350,7 @@ function extractTwitterCandidates(html: string): RawCandidate[] {
     candidates.push({
       rawUrl: twitterImage,
       extractionMethod: "twitter",
-      candidateKind: "opportunity-artwork",
+      candidateKind: shareImageKind(twitterImage, alt),
       alt: cleanText(alt),
       inheritanceLevel: "opportunity",
       confidence: "probable",

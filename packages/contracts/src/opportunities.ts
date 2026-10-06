@@ -349,6 +349,10 @@ const opportunityIdentitySchema = z.object({
   organizationVerified: z.boolean().optional(),
   identityAssetUrl: httpUrlSchema.optional(),
   identityAssetAlt: z.string().trim().max(240).optional(),
+  /** Credit owed for the identity image (for example "Image: Kalliope Arts"); recorded, not displayed. */
+  identityAssetCredit: z.string().trim().max(240).optional(),
+  /** The organization's logo, shown as a small mark, never as a cover. */
+  identityLogoUrl: httpUrlSchema.optional(),
 });
 
 export const opportunityBrowseItemSchema = opportunityIdentitySchema.extend({

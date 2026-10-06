@@ -828,6 +828,13 @@
       "implementation": "components/missa/deadline-badges.tsx",
       "boundary": "An entry fee or 'No fee'. Renders nothing when the fee is unknown."
     },
+    "OrganizationMark": {
+      "base": "Avatar",
+      "studioCandidates": [],
+      "motion": "never",
+      "implementation": "components/missa/organization-mark.tsx",
+      "boundary": "An organization's logo as a 48px contained mark (object-fit: contain on the card surface, radius-md), the treatment the directory already uses for organization icons. Shown on a card's plate only when the card has no official image; a logo never fills a cover. Decorative (alt=\"\", aria-hidden) because the organization's name is always in the card text. Renders nothing if the logo fails to load."
+    },
     "AuthorityBadge": {
       "base": "Badge",
       "studioCandidates": ["badge-10"],
@@ -1007,6 +1014,7 @@
     ],
     "OpportunityCard": [
       "ItemOrCard",
+      "OrganizationMark",
       "CategoryBadge",
       "OpportunityStatusBadge",
       "UrgencyBadge",
@@ -1014,6 +1022,7 @@
     ],
     "OpportunityBrowseProjectCard": [
       "Card",
+      "OrganizationMark",
       "NativeBadge",
       "SaveToTrackerButton",
       "AddOpportunityToCalendarButton"
