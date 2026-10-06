@@ -7,7 +7,7 @@ import {
   HomepageClose,
   HomepageFooterStandard,
   HomepageHero,
-  pickTourCall,
+  pickShowcaseCalls,
   HomepageProof,
   HomepageQuestionsSection,
 } from "@/components/missa/homepage-standard";
@@ -100,6 +100,7 @@ export default async function HomePage({
   const loadFailed = browse === null;
   const today = new Date().toISOString().slice(0, 10);
   const [result, facetCounts] = browse ?? EMPTY_BROWSE;
+  const showcase = pickShowcaseCalls(result.items, today);
 
   const activeFilters: ActiveFiltersState = {
     type: query.types[0] ?? null,
@@ -130,7 +131,7 @@ export default async function HomePage({
         <HomepageHero
           open={stats?.open ?? null}
           closingThisWeek={closing ? closing[1].total : null}
-          tourCall={pickTourCall(result.items, today)}
+          tourCall={showcase[0] ?? null}
         />
         <HomepageBrowse
           items={result.items}
@@ -142,9 +143,9 @@ export default async function HomePage({
           initialQuery={query.query ?? ""}
           locations={LOCATION_OPTIONS}
         />
-        <HomepageProof items={result.items} today={today} />
+        <HomepageProof calls={showcase} />
         <HomepageQuestionsSection />
-        <HomepageClose items={result.items} />
+        <HomepageClose calls={showcase} />
       </main>
       <ShortlistBar />
       <HomepageFooterStandard />

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowUpRight, BellRing, Bookmark } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BellRing, Bookmark } from "lucide-react";
+import type { ReactNode } from "react";
 import type { OpportunityBrowseProjection } from "@missa/radar-engine";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -9,12 +10,17 @@ import { contactMailto } from "@/lib/legalContact";
 import { categorySearch } from "@/lib/homepage-opportunity-categories";
 import { Reveal } from "./homepage-reveal";
 import { HomepageMorph } from "./homepage-morph";
+import { HeroWord } from "./homepage-hero-word";
+import { HomepageQuestions } from "./homepage-standard-client";
 import {
-  HomepageQuestions,
-  PortfolioTile,
-  RemindersTile,
-  TrackerTile,
-} from "./homepage-standard-client";
+  ProfileVignette,
+  ReminderEmailVignette,
+  TrackerItemVignette,
+  daysBetween,
+  longDate,
+  typeLabel,
+  type VignetteCall,
+} from "./homepage-vignettes";
 import styles from "./homepage-standard.module.css";
 
 type HomepageCall = Pick<
@@ -23,33 +29,38 @@ type HomepageCall = Pick<
 > &
   Partial<Pick<OpportunityBrowseProjection, "type">>;
 
-function tourTypeLabel(type: string | undefined) {
-  if (!type) return "Open call";
-  const label = type.replace(/-/g, " ");
-  return label.charAt(0).toUpperCase() + label.slice(1);
+
+/** Titles set in capitals read as shouting at vignette scale; skip them. */
+function shouts(title: string) {
+  const letters = title.replace(/[^A-Za-z]/g, "");
+  if (letters.length < 12) return false;
+  return letters.replace(/[^A-Z]/g, "").length / letters.length > 0.6;
 }
 
 /**
- * The call the hero tour and the reminder example are built from: the
- * soonest dated call whose week-before reminder is still ahead.
+ * The live calls the hero tour and the feature cards are drawn from: dated
+ * calls with at least one full day left, soonest first, so every date shown
+ * is still ahead of the visitor.
  */
-export function pickTourCall<T extends HomepageCall>(items: T[], today: string): T | null {
-  const ahead = new Date(`${today}T12:00:00Z`);
-  ahead.setUTCDate(ahead.getUTCDate() + 8);
-  const weekAhead = ahead.toISOString().slice(0, 10);
-  const dated = items
+export function pickShowcaseCalls(items: HomepageCall[], today: string): VignetteCall[] {
+  return items
     .filter(
       (item) =>
         item.deadline.kind === "exact" &&
         item.deadline.date &&
-        Number.isFinite(Date.parse(item.deadline.date)),
+        Number.isFinite(Date.parse(item.deadline.date)) &&
+        !shouts(item.title),
     )
-    .sort((a, b) => a.deadline.date!.localeCompare(b.deadline.date!));
-  return (
-    dated.find((item) => item.deadline.date!.slice(0, 10) >= weekAhead) ??
-    dated.at(-1) ??
-    null
-  );
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      typeLabel: typeLabel(item.type),
+      organizationName: item.organizationName ?? null,
+      date: item.deadline.date!.slice(0, 10),
+      daysLeft: daysBetween(today, item.deadline.date!),
+    }))
+    .filter((call) => call.daysLeft >= 1)
+    .sort((a, b) => a.daysLeft - b.daysLeft);
 }
 
 export function HomepageHero({
@@ -59,7 +70,7 @@ export function HomepageHero({
 }: {
   open: number | null;
   closingThisWeek: number | null;
-  tourCall: HomepageCall | null;
+  tourCall: VignetteCall | null;
 }) {
   const totals = visibleHomepageStats([
     { label: "open now", value: open ?? 0 },
@@ -68,11 +79,12 @@ export function HomepageHero({
   return (
     <header className={styles.hero}>
       <div className={styles.heroCopy}>
-      <h1 id="homepage-heading" className="font-heading">Find your next open call.</h1>
+      <h1 id="homepage-heading" className="font-heading">
+        Find your next open <HeroWord />
+      </h1>
       <p className={styles.lede}>
-        Grants, residencies, publications and prizes in one place. Get
-        automated reminders, find your artist circle, and become the artist you
-        dreamed of.
+        Get automated reminders, find your artist circle, and focus on
+        creating.
       </p>
       {totals.length ? (
         <p className={styles.totals} aria-label="Catalogue totals">
@@ -86,28 +98,59 @@ export function HomepageHero({
       </div>
       {tourCall ? (
         <div className={styles.heroTour}>
-          <HomepageMorph
-            call={{
-              title: tourCall.title,
-              typeLabel: tourTypeLabel(tourCall.type),
-              organizationName: tourCall.organizationName,
-              deadline: { date: tourCall.deadline.date ?? null },
-            }}
-          />
+          <HomepageMorph call={tourCall} />
         </div>
       ) : null}
     </header>
   );
 }
 
-export function HomepageProof({
-  items,
-  today,
+function FeatureCard({
+  id,
+  tone,
+  headline,
+  children,
+  href,
+  action,
+  caption,
+  stage,
+  delay = 0,
 }: {
-  items: HomepageCall[];
-  /** ISO date (YYYY-MM-DD) of this render. */
-  today: string;
+  id: string;
+  tone: "ochre" | "lichen" | "blue";
+  headline: string;
+  children: ReactNode;
+  href: string;
+  action: string;
+  caption: string;
+  stage: ReactNode;
+  delay?: number;
 }) {
+  return (
+    <Reveal className={styles.featureSlot} delay={delay}>
+      <article className={styles.feature} aria-labelledby={`homepage-feature-${id}`}>
+        <div className={styles.featureStage} data-tone={tone}>
+          <div className={styles.featureProduct} aria-hidden="true">
+            {stage}
+          </div>
+          <p className={styles.featureCaption}>{caption}</p>
+        </div>
+        <div className={styles.featureText}>
+          <h3 id={`homepage-feature-${id}`} className="font-heading">
+            {headline}
+          </h3>
+          <p>{children}</p>
+          <Link href={href} className={styles.textLink}>
+            {action} <ArrowRight aria-hidden="true" size={18} />
+          </Link>
+        </div>
+      </article>
+    </Reveal>
+  );
+}
+
+export function HomepageProof({ calls }: { calls: VignetteCall[] }) {
+  const [first, second] = calls;
   return (
     <section className={styles.section} aria-labelledby="homepage-proof-heading">
       <Reveal className={styles.sectionHead}>
@@ -124,10 +167,51 @@ export function HomepageProof({
           Create an account <ArrowUpRight aria-hidden="true" size={18} />
         </Link>
       </Reveal>
-      <div className={styles.tiles}>
-        <TrackerTile items={items} />
-        <PortfolioTile />
-        <RemindersTile call={pickTourCall(items, today)} />
+      <div className={styles.features}>
+        <FeatureCard
+          id="tracker"
+          tone="ochre"
+          headline="Keep every deadline in one view."
+          href="/tracker"
+          action="Open your Tracker"
+          caption="Example, built from calls open today"
+          stage={
+            first ? (
+              <div className={styles.trackerStack}>
+                <TrackerItemVignette call={first} />
+                {second ? <TrackerItemVignette call={second} /> : null}
+              </div>
+            ) : null
+          }
+        >
+          Save a call and it waits in your Tracker with its deadline, stage and
+          reminders.
+        </FeatureCard>
+        <FeatureCard
+          id="reminders"
+          tone="lichen"
+          headline="A nudge before it closes."
+          href="/tracker"
+          action="Choose your reminders"
+          caption="Example, built from a call open today"
+          delay={0.06}
+          stage={first ? <div className={styles.vignetteFrame}><ReminderEmailVignette call={first} /></div> : null}
+        >
+          Missa emails you before a saved call closes. You choose how early.
+        </FeatureCard>
+        <FeatureCard
+          id="portfolio"
+          tone="blue"
+          headline="One page for the work you make."
+          href="/profile/portfolio"
+          action="Build your portfolio"
+          caption="Example, a fictional creator"
+          delay={0.12}
+          stage={<div className={styles.vignetteFrame}><ProfileVignette /></div>}
+        >
+          Writing, images and audio on one page. Other creators can follow you
+          and get in touch.
+        </FeatureCard>
       </div>
     </section>
   );
@@ -158,24 +242,9 @@ export function HomepageQuestionsSection() {
   );
 }
 
-function closeCards(items: HomepageCall[]) {
-  const dated = items
-    .filter((item) => item.deadline.kind === "exact" && item.deadline.date)
-    .sort((a, b) => a.deadline.date!.localeCompare(b.deadline.date!));
-  const first = dated[0];
-  const second = dated[1] ?? items.find((item) => item.id !== first?.id);
-  const closes = (item: HomepageCall | undefined) =>
-    item?.deadline.date
-      ? new Date(`${item.deadline.date.slice(0, 10)}T12:00:00Z`).toLocaleDateString(
-          "en",
-          { day: "numeric", month: "short", timeZone: "UTC" },
-        )
-      : null;
-  return { first, second, firstCloses: closes(first) };
-}
-
-export function HomepageClose({ items }: { items: HomepageCall[] }) {
-  const { first, second, firstCloses } = closeCards(items);
+export function HomepageClose({ calls }: { calls: VignetteCall[] }) {
+  const [first, second] = calls;
+  const firstCloses = first ? longDate(first.date) : null;
   return (
     <section className={styles.close} aria-labelledby="homepage-close-heading">
       <Reveal className={styles.closePanel}>

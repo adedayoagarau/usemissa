@@ -27,7 +27,7 @@
 }
 
 .hero h1 {
-  max-width: 16ch;
+  max-width: 13em;
   margin: 0;
   font-size: clamp(2.25rem, 4.5vw, 3.5rem);
   font-weight: 400;
@@ -121,127 +121,100 @@
   text-wrap: pretty;
 }
 
-/* Feature tiles: tinted panels, one statement each, the product bleeding
-   out of the corner of the two large tiles. */
+/* Feature cards: a tinted stage holding a whole product vignette, then the
+   statement on the page below it. */
 
-.tiles {
+.features {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-gap);
 }
 
-.tileSlot {
+.featureSlot {
   display: flex;
   min-width: 0;
-  grid-column: span 2;
 }
 
-.tileSlot:has(.tile[data-size="large"]) {
-  grid-column: span 3;
-}
-
-.tileSlot:has(.tile[data-size="wide"]) {
-  grid-column: span 6;
-}
-
-.tile {
-  position: relative;
+.feature {
   display: flex;
   width: 100%;
   min-width: 0;
-  min-height: 300px;
   flex-direction: column;
+}
+
+.featureStage {
+  position: relative;
+  display: grid;
+  height: 380px;
+  place-items: center;
+  padding: var(--space-section) var(--space-group) calc(var(--space-section) + 8px);
   overflow: hidden;
-  padding: var(--space-inset);
   border-radius: var(--radius-xl);
   background: var(--surface-subtle);
-  transition:
-    transform 260ms cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.tile[data-size="large"] {
-  min-height: 520px;
-}
-
-/* The wide tile sets its copy beside the product, like a spread. */
-.tile[data-size="wide"] {
-  display: grid;
-  min-height: 0;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  column-gap: var(--space-section);
-  align-items: end;
-}
-
-.tile[data-size="wide"] .tileProduct {
-  margin-top: 0;
-  margin-left: 0;
-}
-
-.tileText {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.tile[data-tone="ochre"] {
+.featureStage[data-tone="ochre"] {
   background: var(--ochre-tint);
 }
 
-.tile[data-tone="blue"] {
-  background: var(--mineral-blue-tint);
-}
-
-.tile[data-tone="lichen"] {
+.featureStage[data-tone="lichen"] {
   background: var(--lichen-tint);
 }
 
-.tile:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 18px 40px -24px color-mix(in srgb, var(--ink) 35%, transparent);
+.featureStage[data-tone="blue"] {
+  background: var(--mineral-blue-tint);
 }
 
-.tileIcon {
+.featureProduct {
+  width: 100%;
+  max-width: 360px;
+  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.feature:hover .featureProduct {
+  transform: translateY(-4px);
+}
+
+.featureCaption {
+  position: absolute;
+  bottom: 14px;
+  left: 18px;
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 0.75rem;
+}
+
+.trackerStack {
   display: grid;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 auto;
-  place-items: center;
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  color: var(--primary);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 8%, transparent);
+  gap: 10px;
 }
 
-.tile[data-tone="ochre"] .tileIcon {
-  color: var(--ochre-deep);
+.trackerStack > *,
+.vignetteFrame {
+  overflow: hidden;
+  border-radius: 14px;
+  box-shadow: 0 16px 36px -24px color-mix(in srgb, var(--ink) 45%, transparent);
 }
 
-.tile[data-tone="blue"] .tileIcon {
-  color: var(--mineral-blue);
+.vignetteFrame {
+  border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
 }
 
-.tile[data-tone="lichen"] .tileIcon {
-  color: var(--green);
+.featureText {
+  padding: var(--space-group) 4px 0;
 }
 
-.tileHeadline {
-  max-width: 18ch;
-  margin: var(--space-group) 0 0;
-  color: var(--ink);
-  font-size: clamp(1.375rem, 1.9vw, 1.75rem);
-  font-weight: 600;
+.featureText h3 {
+  max-width: 20ch;
+  margin: 0;
+  font-size: clamp(1.375rem, 1.8vw, 1.625rem);
+  font-weight: 400;
   letter-spacing: -0.015em;
   line-height: 1.15;
   text-wrap: balance;
 }
 
-.tile[data-size="large"] .tileHeadline {
-  max-width: 22ch;
-}
-
-.tileCopy {
+.featureText p {
   max-width: 40ch;
   margin: var(--space-row) 0 0;
   color: var(--ink-2);
@@ -250,162 +223,8 @@
   text-wrap: pretty;
 }
 
-.tileCopy p {
-  margin: 0;
-}
-
-.tileLink {
-  display: inline-flex;
-  min-height: 44px;
-  align-items: center;
-  gap: 6px;
-  margin-top: var(--space-row);
-  color: var(--primary);
-  font-weight: 500;
-  text-decoration: none;
-}
-
-.tileLink svg {
-  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.tile:hover .tileLink svg,
-.tileLink:focus-visible svg {
-  transform: translateX(4px);
-}
-
-.tileLink:hover,
-.tileLink:focus-visible {
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
-.tileLink:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-
-/* The product crop hugs the bottom-right corner and bleeds out of it. */
-
-.tileProduct {
-  position: relative;
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  margin: var(--space-group) calc(-1 * var(--space-inset)) calc(-1 * var(--space-inset)) var(--space-group);
-  border-radius: var(--radius-lg) 0 0 0;
-  background: var(--surface);
-  box-shadow:
-    0 0 0 1px var(--border),
-    0 24px 48px -28px color-mix(in srgb, var(--ink) 40%, transparent);
-  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.tile:hover .tileProduct {
-  transform: translate(-6px, -6px);
-}
-
-.tileCaption {
-  margin: 0;
-  padding: var(--space-row) var(--space-inset) 0;
-  color: var(--ink-2);
-  font-size: 0.8125rem;
-}
-
-.portfolioFrame {
-  position: relative;
-  max-height: 320px;
-  overflow: hidden;
-  mask-image: linear-gradient(to bottom, var(--ink) 70%, transparent);
-}
-
-.reminderCrop {
-  display: grid;
-  gap: var(--space-row);
-  padding: var(--space-row) var(--space-inset) var(--space-inset);
-}
-
-.reminderCall {
-  display: grid;
-  gap: 2px;
-  padding-bottom: var(--space-row);
-  border-bottom: 1px solid var(--border);
-}
-
-.reminderCall strong {
-  font-weight: 600;
-  line-height: 1.3;
-}
-
-.reminderCall span {
-  color: var(--ink-2);
-  font-size: 0.875rem;
-}
-
-.reminderList {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.reminderList li {
-  display: flex;
-  min-height: 44px;
-  align-items: center;
-  gap: var(--space-row);
-  padding: 0 var(--space-row);
-  border-radius: var(--radius-md);
-  background: var(--lichen-tint);
-  font-size: 0.9375rem;
-}
-
-.reminderList li svg {
-  flex: 0 0 auto;
-  color: var(--green);
-}
-
-.reminderList time {
-  margin-inline-start: auto;
-  color: var(--ink-2);
-  font-variant-numeric: tabular-nums;
-}
-
-.deadlineTable {
-  font-variant-numeric: tabular-nums;
-}
-
-.excerptEmpty {
-  margin: 0;
-  padding: var(--space-group) var(--space-inset);
-  color: var(--ink-2);
-  font-size: 0.9375rem;
-}
-
-.deadlineCell {
-  width: 9rem;
-  white-space: nowrap;
-  color: var(--ink-2);
-}
-
-.deadlineTitle a {
-  color: var(--ink);
-  font-weight: 500;
-  text-decoration: none;
-}
-
-.deadlineTitle a:hover,
-.deadlineTitle a:focus-visible {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.deadlineTitle p {
-  margin: 2px 0 0;
-  color: var(--ink-2);
-  font-size: 0.8125rem;
+.featureText .textLink {
+  margin-top: 4px;
 }
 
 /* Questions: the statement on the left, the answers on the right. */
@@ -683,25 +502,14 @@
     display: none;
   }
 
-  .tileSlot,
-  .tileSlot:has(.tile[data-size="large"]) {
-    grid-column: span 6;
+  .features {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-section);
   }
 
-  .tile[data-size="wide"] {
-    display: flex;
-  }
-
-  .tile[data-size="wide"] .tileProduct {
-    margin: var(--space-group) calc(-1 * var(--space-inset)) calc(-1 * var(--space-inset)) var(--space-group);
-  }
-
-  .tile[data-size="large"] {
-    min-height: 0;
-  }
-
-  .tile {
-    min-height: 0;
+  .featureStage {
+    height: auto;
+    min-height: 320px;
   }
 
   .questionsLayout,
@@ -729,10 +537,6 @@
     padding: var(--space-group) var(--space-inset);
   }
 
-  .portfolioFrame {
-    max-height: 260px;
-  }
-
   .footerColumns {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -744,10 +548,6 @@
   .close,
   .footerInner {
     width: min(calc(100% - 32px), 1360px);
-  }
-
-  .tileProduct {
-    margin-left: var(--space-row);
   }
 
   .closeCard[data-back] {
@@ -776,20 +576,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tile,
-  .tileProduct,
-  .tileLink svg,
+  .featureProduct,
   .closeCard,
   .questionItem {
     transition: none;
   }
 
-  .tile:hover {
-    transform: none;
-  }
-
-  .tile:hover .tileProduct,
-  .tile:hover .tileLink svg {
+  .feature:hover .featureProduct {
     transform: none;
   }
 

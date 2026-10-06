@@ -123,13 +123,13 @@ test("product excerpts are labelled as examples and the page passes axe", async 
   await proof.scrollIntoViewIfNeeded();
   await expect(proof.getByRole("article", { name: "Keep every deadline in one view." })).toBeVisible();
   await expect(page.getByText("Example, built from calls open today")).toBeVisible();
-  await expect(page.getByText("Example, a fictional creator")).toBeVisible();
-  const reminders = proof.getByRole("article", { name: "A nudge before it closes." });
-  await expect(reminders.getByRole("listitem")).toHaveCount(2);
-  await expect(reminders).toContainText("A week before");
+  await expect(proof.getByRole("article", { name: "A nudge before it closes." })).toBeVisible();
   await expect(
-    reminders.getByRole("link", { name: "Choose your reminders" }),
+    proof.getByRole("link", { name: "Choose your reminders" }),
   ).toHaveAttribute("href", "/tracker");
+  await expect(
+    proof.getByRole("article", { name: "One page for the work you make." }),
+  ).toContainText("Example, a fictional creator");
   // A block jumped past still reveals: nothing stays at opacity 0.
   await page.getByRole("heading", { name: "Questions about Missa." }).scrollIntoViewIfNeeded();
   await expect
@@ -151,19 +151,25 @@ test("product excerpts are labelled as examples and the page passes axe", async 
   ).toEqual([]);
 });
 
-test("the hero tour can be paused and stays still under reduced motion", async ({
+test("hero motion holds on tap or keyboard and stays still under reduced motion", async ({
   page,
   browser,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
-  const pause = page.getByRole("button", { name: "Pause the tour" });
-  await expect(pause).toBeVisible();
-  await pause.click();
-  await expect(page.getByRole("button", { name: "Play the tour" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Find your next open call." }),
+  ).toBeVisible();
+  const tour = page.getByRole("button", { name: "Pause the product animation" });
+  await expect(tour).toHaveAttribute("aria-pressed", "false");
+  await tour.click();
+  const held = page.getByRole("button", { name: "Play the product animation" });
+  await expect(held).toHaveAttribute("aria-pressed", "true");
+  await held.focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    page.getByRole("button", { name: "Pause the product animation" }),
+  ).toHaveAttribute("aria-pressed", "false");
 
   const still = await browser.newContext({
     reducedMotion: "reduce",
@@ -172,6 +178,8 @@ test("the hero tour can be paused and stays still under reduced motion", async (
   const stillPage = await still.newPage();
   await stillPage.goto(page.url());
   await expect(stillPage.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(stillPage.getByRole("button", { name: /the tour$/ })).toHaveCount(0);
+  await expect(
+    stillPage.getByRole("button", { name: /product animation$/ }),
+  ).toHaveCount(0);
   await still.close();
 });
