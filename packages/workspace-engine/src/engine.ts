@@ -713,6 +713,18 @@ export class WorkspaceEngine {
     return assignment;
   }
 
+  /** Records that a reader read the round brief as it stood at `briefUpdatedAt`. */
+  acknowledgeRoundBrief(reviewRoundId: string, reviewerAccountId: string): void {
+    if (!this.store.reviewRounds.has(reviewRoundId)) throw new Error(`Unknown review round: ${reviewRoundId}`);
+    this.store.auditLog.push({ id: this.ids.next("audit"), at: this.now(), accountId: reviewerAccountId, action: "review-round.brief_acknowledged", targetType: "review_round", targetId: reviewRoundId });
+  }
+
+  /** True when the reader acknowledged the brief after its last change. */
+  hasAcknowledgedRoundBrief(reviewRoundId: string, reviewerAccountId: string, briefUpdatedAt: string): boolean {
+    const since = Date.parse(briefUpdatedAt);
+    return this.store.auditLog.some((entry) => entry.action === "review-round.brief_acknowledged" && entry.targetId === reviewRoundId && entry.accountId === reviewerAccountId && Date.parse(entry.at) >= since);
+  }
+
   /** The organization withdraws a reader's open reads in a round, for example before reassigning them. */
   withdrawOpenReads(organizationId: string, reviewRoundId: string, reviewerAccountId: string, reason: string, actorAccountId?: string): ReviewAssignment[] {
     if (!this.organizationScope(organizationId).reviewRound(reviewRoundId)) throw new Error("Review round is not part of this organization");

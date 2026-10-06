@@ -384,6 +384,10 @@ export interface OrganizationCustomization {
   statusTransparency?: "minimal" | "stages" | "full";
   /** Date (YYYY-MM-DD) each opportunity expects to decide by, keyed by open call id. Shown to submitters. */
   decisionDates?: Record<string, string>;
+  /** Per review round: what readers must read and acknowledge before scoring. */
+  roundBriefs?: Record<string, { text: string; updatedAt: string }>;
+  /** Per opportunity: what the organization chose to publish on its public results page. */
+  publishedResults?: Record<string, { stages: OrganizationSubmissionStage[]; includeWinners: boolean; introduction?: string; publishedAt: string }>;
   communications?: {
     senderName?: string;
     replyTo?: string;

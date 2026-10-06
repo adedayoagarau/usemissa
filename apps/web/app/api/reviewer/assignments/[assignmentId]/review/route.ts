@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getSessionAccount } from '@/lib/auth';
 import { recordReviewConsistency, WORKSPACE_DECISION_SCOPES } from '@missa/workspace-engine';
 import { recordDecisionsAfterResponse, workspaceDecisionContext } from '@/lib/jevDecisions';
+import { getEngine } from '@/lib/engine';
+import { roundBriefFor } from '@/lib/reviewerProduct';
 import { getRelationalWorkspace, getWorkspaceEngine, persistWorkspace, workspaceCommandEnvelope, workspaceMutationError, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
 /** Story 7.3: fixed small rubric (score + notes), not a rubric builder --
@@ -44,7 +46,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ ass
     return NextResponse.json({ error: 'You can only record your own reviews' }, { status: 403 });
   }
 
-  const recommendation = engine.recordReview(assignmentId, score, notes);
+  const round = engine.store.reviewRounds.get(assignment.reviewRoundId);
+  const openCall = round ? engine.store.openCalls.get(round.openCallId) : undefined;
+  const program = openCall ? engine.store.programs.get(openCall.programId) : undefined;
+  const team = program ? engine.store.entities.get(program.entityId) : undefined;
+  const organization = team ? (await getEngine()).store.organizations.get(team.organizationId) : undefined;
+  const brief = roundBriefFor(engine, organization, assignment.reviewRoundId, session.account.id);
+  if (brief && !brief.acknowledged) return NextResponse.json({ error: 'Read and acknowledge the round brief before recording a recommendation' }, { status: 409 });
+  let recommendation;
+  try {
+    recommendation = engine.recordReview(assignmentId, score, notes);
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to record review' }, { status: 409 });
+  }
   await persistWorkspace();
   recordReviewConsistencyAfterResponse(assignmentId, score, notes);
   return NextResponse.json(recommendation);

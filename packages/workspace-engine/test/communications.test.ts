@@ -211,3 +211,18 @@ test("approved letters can be scheduled and the scheduler finds them when due", 
   assert.equal(batch.scheduledFor, undefined, "sending clears the schedule");
   assert.deepEqual(engine.dueScheduledCommunicationBatches(), []);
 });
+
+test("round brief acknowledgements expire when the brief changes", () => {
+  let clock = "2026-10-01T10:00:00.000Z";
+  const engine = new WorkspaceEngine({ now: () => clock });
+  const team = engine.createEntity("org_1", "Editorial");
+  const program = engine.createProgram(team.id, "Prize");
+  const call = engine.createOpenCall(program.id, "Prize");
+  const round = engine.createReviewRound(call.id, "Readers");
+  assert.equal(engine.hasAcknowledgedRoundBrief(round.id, "acct_a", "2026-10-01T09:00:00.000Z"), false);
+  engine.acknowledgeRoundBrief(round.id, "acct_a");
+  assert.equal(engine.hasAcknowledgedRoundBrief(round.id, "acct_a", "2026-10-01T09:00:00.000Z"), true);
+  assert.equal(engine.hasAcknowledgedRoundBrief(round.id, "acct_b", "2026-10-01T09:00:00.000Z"), false, "per reader");
+  clock = "2026-10-02T10:00:00.000Z";
+  assert.equal(engine.hasAcknowledgedRoundBrief(round.id, "acct_a", "2026-10-02T09:00:00.000Z"), false, "an edited brief needs a fresh acknowledgement");
+});

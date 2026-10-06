@@ -13,6 +13,8 @@ export interface ReviewerAssignmentView {
   submittedAt: string;
   completedAt?: string;
   dueAt?: string;
+  /** The round brief the organization asked readers to read first, if any. */
+  brief?: { text: string; updatedAt: string; acknowledged: boolean };
   legacyRecommendation?: {
     score?: number;
     notes?: string;
@@ -70,6 +72,7 @@ export function reviewerAssignmentForAccount(
     submittedAt: submission.submittedAt,
     completedAt: assignment.completedAt,
     dueAt: assignment.expiresAt,
+    brief: roundBriefFor(workspace, organization, round.id, accountId),
     legacyRecommendation: recommendation ? {
       score: recommendation.score,
       notes: recommendation.notes,
@@ -80,4 +83,16 @@ export function reviewerAssignmentForAccount(
 
 export function reviewerAssignmentStateLabel(state: ReviewerAssignmentState): string {
   return state === 'legacy-submitted' ? 'Recommendation recorded' : 'Awaiting your recommendation';
+}
+
+/** The brief for a round and whether this reader has acknowledged its current version. */
+export function roundBriefFor(
+  workspace: WorkspaceEngine,
+  organization: { customization?: { roundBriefs?: Record<string, { text: string; updatedAt: string }> } } | undefined,
+  reviewRoundId: string,
+  accountId: string,
+): { text: string; updatedAt: string; acknowledged: boolean } | undefined {
+  const brief = organization?.customization?.roundBriefs?.[reviewRoundId];
+  if (!brief?.text.trim()) return undefined;
+  return { ...brief, acknowledged: workspace.hasAcknowledgedRoundBrief(reviewRoundId, accountId, brief.updatedAt) };
 }

@@ -20,7 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { CalibrationBadge } from '@/components/missa/operations-badges';
-import { DecisionDateControl, PromoteDialog, ReassignReadsDialog, RoundDueDateControl } from '@/components/reader-round-actions';
+import { DecisionDateControl, PromoteDialog, PublishResultsDialog, ReassignReadsDialog, RoundBriefDialog, RoundDueDateControl } from '@/components/reader-round-actions';
 
 const REFRESH_MS = 30_000;
 const OUTCOMES = ['accepted', 'declined', 'waitlisted'] as const;
@@ -47,7 +47,7 @@ function conflictLabel(reason: DistributionPlan['conflicts'][number]['reason']):
  * calibration, a ranked results desk with per-Work decisions, one-click
  * distribution with conflict-of-interest checks, reminders and score export.
  */
-export function ReaderOperations({ organizationId, initial, canManage }: { organizationId: string; initial: RoundOperationsView; canManage: boolean }) {
+export function ReaderOperations({ organizationId, initial, canManage, stageLabels }: { organizationId: string; initial: RoundOperationsView; canManage: boolean; stageLabels?: Record<string, string> }) {
   const router = useRouter();
   const [view, setView] = useState(initial);
   const [live, setLive] = useState(true);
@@ -84,6 +84,15 @@ export function ReaderOperations({ organizationId, initial, canManage }: { organ
     });
   };
 
+  const acceptFromWaitlist = (workId: string) => startTransition(async () => {
+    const response = await fetch(`${base}/works/${encodeURIComponent(workId)}/accept-from-waitlist`, { method: 'POST' });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) { toast.error(body.error ?? 'The Work could not be accepted.'); return; }
+    toast.success('Accepted. A decision letter draft is waiting in Messages.');
+    await refresh();
+    router.refresh();
+  });
+
   const totals = view.totals;
   const completion = totals.assignments ? Math.round((totals.completed / totals.assignments) * 100) : 0;
 
@@ -113,7 +122,11 @@ export function ReaderOperations({ organizationId, initial, canManage }: { organ
             <RoundDueDateControl key={view.round.dueAt ?? 'none'} base={base} roundId={roundId} dueAt={view.round.dueAt} onSaved={refresh} />
             <DecisionDateControl key={view.round.expectedDecisionBy ?? 'none'} base={base} openCallId={view.round.openCallId} date={view.round.expectedDecisionBy} onSaved={refresh} />
           </div>
-          <PromoteDialog base={base} roundId={roundId} organizationId={organizationId} scored={view.ranking.filter((row) => row.averageScore !== undefined).length} />
+          <div className="flex flex-wrap items-center gap-2">
+            <RoundBriefDialog base={base} roundId={roundId} brief={view.round.brief} onSaved={refresh} />
+            <PublishResultsDialog base={base} openCallId={view.round.openCallId} organizationId={organizationId} stageLabels={stageLabels ?? {}} published={view.round.publishedResults} onSaved={refresh} />
+            <PromoteDialog base={base} roundId={roundId} organizationId={organizationId} scored={view.ranking.filter((row) => row.averageScore !== undefined).length} />
+          </div>
         </div>
       ) : null}
 
@@ -234,6 +247,7 @@ export function ReaderOperations({ organizationId, initial, canManage }: { organ
                                   {OUTCOMES.map((outcome) => <NativeSelectOption key={outcome} value={outcome}>{outcome[0]!.toUpperCase()}{outcome.slice(1)}</NativeSelectOption>)}
                                 </select>
                               </NativeSelect>
+                              {work.outcome === 'waitlisted' && row.status !== 'withdrawn' ? <Button type="button" variant="ghost" size="xs" onClick={() => acceptFromWaitlist(work.id)} disabled={pending}>Accept from waitlist</Button> : null}
                             </label>
                           ))}
                         </div>

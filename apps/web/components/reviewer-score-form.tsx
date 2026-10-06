@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
  * private notes for the review team. Recording again replaces the earlier
  * recommendation, and the server stamps the assignment complete.
  */
-export function ReviewerScoreForm({ assignmentId, existing }: { assignmentId: string; existing?: { score?: number; notes?: string; recordedAt: string } }) {
+export function ReviewerScoreForm({ assignmentId, existing, locked = false }: { assignmentId: string; existing?: { score?: number; notes?: string; recordedAt: string }; locked?: boolean }) {
   const router = useRouter();
   const [score, setScore] = useState(existing?.score === undefined ? '' : String(existing.score));
   const [notes, setNotes] = useState(existing?.notes ?? '');
@@ -52,7 +52,8 @@ export function ReviewerScoreForm({ assignmentId, existing }: { assignmentId: st
       </Field>
       {error ? <Alert variant="destructive"><AlertTitle>Not saved</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={pending}>{pending ? 'Saving…' : existing ? 'Save changes' : 'Record recommendation'}</Button>
+        <Button type="submit" disabled={pending || locked}>{pending ? 'Saving…' : existing ? 'Save changes' : 'Record recommendation'}</Button>
+        {locked ? <span className="text-xs text-muted-foreground">Acknowledge the round brief above to record a score.</span> : null}
         {existing ? <span className="text-xs text-muted-foreground">Recorded {new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(existing.recordedAt))}</span> : null}
       </div>
     </form>
@@ -100,5 +101,28 @@ export function DeclareConflictButton({ assignmentId }: { assignmentId: string }
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+/** The organization's brief for this round; the reader acknowledges it before scoring. */
+export function RoundBriefPanel({ assignmentId, brief }: { assignmentId: string; brief: { text: string; updatedAt: string; acknowledged: boolean } }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const acknowledge = () => startTransition(async () => {
+    const response = await fetch(`/api/reviewer/assignments/${encodeURIComponent(assignmentId)}/brief`, { method: 'POST' });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) { toast.error(body.error ?? 'The acknowledgement could not be saved.'); return; }
+    toast.success('Thanks. You can record your recommendation now.');
+    router.refresh();
+  });
+  return (
+    <section aria-labelledby={`brief-title-${assignmentId}`} className="rounded-lg border border-border p-4">
+      <h3 id={`brief-title-${assignmentId}`} className="font-heading text-lg font-medium text-foreground">Brief for this round</h3>
+      <p className="mt-2 text-sm leading-6 whitespace-pre-line text-foreground">{brief.text}</p>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        {brief.acknowledged ? <span className="text-xs text-muted-foreground">You acknowledged this brief.</span> : <Button type="button" onClick={acknowledge} disabled={pending}>{pending ? 'Saving…' : 'I have read this brief'}</Button>}
+        <span className="text-xs text-muted-foreground">Updated {new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(brief.updatedAt))}</span>
+      </div>
+    </section>
   );
 }

@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowRightLeft, CalendarClock, Plus, Trophy } from 'lucide-react';
+import { ArrowRightLeft, CalendarClock, FileText, Globe, Plus, Trophy } from 'lucide-react';
 import type { RoundOperationsView } from '@/lib/readerOperationsData';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Textarea } from '@/components/ui/textarea';
 
 function dateInputValue(value?: string): string {
   return value ? value.slice(0, 10) : '';
@@ -236,5 +237,111 @@ export function NewRoundForm({ organizationId, openCalls }: { organizationId: st
       </Field>
       <Button type="submit" variant="outline" disabled={pending || !name.trim() || !openCallId}><Plus aria-hidden="true" />New round</Button>
     </form>
+  );
+}
+
+/** What readers must read and acknowledge before scoring in this round. */
+export function RoundBriefDialog({ base, roundId, brief, onSaved }: { base: string; roundId: string; brief?: string; onSaved: () => Promise<void> }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState(brief ?? '');
+  const [pending, startTransition] = useTransition();
+  const save = () => startTransition(async () => {
+    const response = await fetch(`${base}/review-rounds/${encodeURIComponent(roundId)}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ brief: text.trim() ? text : null }) });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) { toast.error(body.error ?? 'The brief could not be saved.'); return; }
+    toast.success(text.trim() ? 'Brief saved. Readers acknowledge it before their next score.' : 'Brief removed.');
+    setOpen(false);
+    await onSaved();
+  });
+  return (
+    <>
+      <Button type="button" variant="outline" size="sm" onClick={() => { setText(brief ?? ''); setOpen(true); }}><FileText aria-hidden="true" />{brief ? 'Edit reader brief' : 'Add reader brief'}</Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Reader brief for this round</DialogTitle>
+            <DialogDescription>What you want readers to weigh, what to ignore, and how to use the score. Readers see it first and must acknowledge it before they can record a score. Editing it asks them to acknowledge again.</DialogDescription>
+          </DialogHeader>
+          <Field>
+            <FieldLabel htmlFor={`brief-${roundId}`}>Brief</FieldLabel>
+            <Textarea id={`brief-${roundId}`} value={text} onChange={(event) => setText(event.target.value)} rows={10} maxLength={10_000} placeholder="Read for voice and ambition over polish. 80 and above means you would fight for it in the jury room." />
+          </Field>
+          <DialogFooter>
+            <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
+            <Button type="button" onClick={save} disabled={pending}>{pending ? 'Saving…' : 'Save brief'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+interface ResultsPreview { stages: Array<{ stage: string; label: string; entries: Array<{ name: string; workTitles: string[] }> }>; winners: Array<{ name: string; workTitles: string[] }> }
+
+/** Publish the stages and winners for an opportunity on a public page, after previewing exactly what is shown. */
+export function PublishResultsDialog({ base, openCallId, organizationId, stageLabels, published, onSaved }: { base: string; openCallId: string; organizationId: string; stageLabels: Record<string, string>; published?: { stages: string[]; includeWinners: boolean; introduction?: string; publishedAt: string }; onSaved: () => Promise<void> }) {
+  const [open, setOpen] = useState(false);
+  const [stages, setStages] = useState<Set<string>>(() => new Set(published?.stages ?? []));
+  const [includeWinners, setIncludeWinners] = useState(published?.includeWinners ?? false);
+  const [introduction, setIntroduction] = useState(published?.introduction ?? '');
+  const [preview, setPreview] = useState<ResultsPreview | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const url = `${base}/open-calls/${encodeURIComponent(openCallId)}/results`;
+  const config = () => ({ stages: ['longlist', 'shortlist', 'finalist'].filter((stage) => stages.has(stage)), includeWinners, ...(introduction.trim() ? { introduction } : {}) });
+  const check = () => startTransition(async () => {
+    setError(null);
+    const response = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(config()) });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) { setError(body.error ?? 'The preview could not be prepared.'); return; }
+    setPreview(body.preview as ResultsPreview);
+  });
+  const publish = () => startTransition(async () => {
+    const response = await fetch(url, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(config()) });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) { setError(body.error ?? 'The results could not be published.'); return; }
+    toast.success('Results published.');
+    setOpen(false);
+    await onSaved();
+  });
+  const unpublish = () => startTransition(async () => {
+    const response = await fetch(url, { method: 'DELETE' });
+    if (!response.ok) { toast.error('The results page could not be taken down.'); return; }
+    toast.success('Results page taken down.');
+    setOpen(false);
+    await onSaved();
+  });
+  const publicHref = `/org/${encodeURIComponent(organizationId)}/${encodeURIComponent(openCallId)}/results`;
+  return (
+    <>
+      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}><Globe aria-hidden="true" />{published ? 'Public results: live' : 'Publish results'}</Button>
+      <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) { setPreview(null); setError(null); } }}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Public results page</DialogTitle>
+            <DialogDescription>Shows names and Work titles only. A stage lists only people you have already sent that stage’s letter; winners are accepted Works. Preview before publishing.</DialogDescription>
+          </DialogHeader>
+          <fieldset className="grid gap-2 rounded-lg border border-border p-3">
+            <legend className="px-1 text-sm font-medium text-foreground">What to publish</legend>
+            {['longlist', 'shortlist', 'finalist'].map((stage) => <label key={stage} className="flex items-center gap-2 text-sm"><Checkbox checked={stages.has(stage)} onCheckedChange={(checked) => { setPreview(null); setStages((current) => { const next = new Set(current); if (checked) next.add(stage); else next.delete(stage); return next; }); }} />{stageLabels[stage] ?? stage}</label>)}
+            <label className="flex items-center gap-2 text-sm"><Checkbox checked={includeWinners} onCheckedChange={(checked) => { setPreview(null); setIncludeWinners(Boolean(checked)); }} />Selected Works (accepted)</label>
+          </fieldset>
+          <Field><FieldLabel htmlFor={`results-intro-${openCallId}`}>Introduction (optional)</FieldLabel><Textarea id={`results-intro-${openCallId}`} value={introduction} onChange={(event) => { setPreview(null); setIntroduction(event.target.value); }} rows={3} maxLength={2000} /></Field>
+          {preview ? (
+            <div className="max-h-56 overflow-auto rounded-lg border border-border p-3 text-sm">
+              {preview.winners.length ? <p className="font-medium text-foreground">Selected: {preview.winners.map((entry) => entry.name).join(', ')}</p> : null}
+              {preview.stages.map((stage) => <p key={stage.stage} className="mt-1 text-muted-foreground"><strong className="text-foreground">{stage.label}</strong> ({stage.entries.length}): {stage.entries.map((entry) => entry.name).join(', ') || 'nobody told yet'}</p>)}
+            </div>
+          ) : null}
+          {published ? <p className="text-xs text-muted-foreground">Live at <a className="text-primary underline-offset-4 hover:underline" href={publicHref} target="_blank" rel="noreferrer">{publicHref}</a></p> : null}
+          {error ? <Alert variant="destructive"><AlertTitle>Nothing changed</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
+          <DialogFooter>
+            {published ? <Button type="button" variant="ghost" onClick={unpublish} disabled={pending}>Take down</Button> : null}
+            <Button type="button" variant="outline" onClick={check} disabled={pending}>Preview</Button>
+            <Button type="button" onClick={publish} disabled={pending || !preview}>{published ? 'Update page' : 'Publish'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

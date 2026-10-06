@@ -24,6 +24,11 @@ import { renderOrganizationDigestEmail } from '@/emails/organization-digest';
 import { PATCH as setDecisionDate } from './open-calls/[openCallId]/decision-date/route';
 import { submissionHistory } from '@/lib/submissionHistory';
 import { organizationSetupSteps } from '@/lib/organizationSetup';
+import { POST as acknowledgeBrief } from '../../reviewer/assignments/[assignmentId]/brief/route';
+import { POST as recordReviewRoute } from '../../reviewer/assignments/[assignmentId]/review/route';
+import { POST as previewResults, PUT as publishResults, DELETE as unpublishResults } from './open-calls/[openCallId]/results/route';
+import { POST as acceptFromWaitlist } from './works/[workId]/accept-from-waitlist/route';
+import { publicResultsFor } from '@/lib/publicResults';
 
 const json = (body: unknown) => ({ method: 'POST', body: JSON.stringify(body) });
 
@@ -326,4 +331,59 @@ test('decision dates, readable history and the setup checklist reflect recorded 
   assert.equal(done.appearance, false, 'appearance is not done until something is set');
   radar.store.organizations.get(id)!.customization = { accent: 'ochre' };
   assert.equal(organizationSetupSteps({ radar, workspace, organizationId: id }).find((step) => step.id === 'appearance')!.done, true);
+});
+
+test('a round brief must be acknowledged before scoring, and edits ask again', async () => {
+  const { data, workspace, round } = await freshRound();
+  const owner = data.accounts.get('owner')!;
+  const reviewer = data.accounts.get('reviewer')!;
+  const radar = await getEngine();
+  radar.store.organizations.get(data.organizationId)!.customization = undefined;
+  const assignment = workspace.assignReviewer(round.id, data.unassigned.id, reviewer);
+  const roundParams = { params: Promise.resolve({ id: data.organizationId, roundId: round.id }) };
+  const assignmentParams = { params: Promise.resolve({ assignmentId: assignment.id }) };
+  const score = () => recordReviewRoute(requestAs(reviewer, '/review', json({ score: 70, notes: 'Good' })), assignmentParams);
+
+  assert.equal((await patchRound(requestAs(owner, `/review-rounds/${round.id}`, { method: 'PATCH', body: JSON.stringify({ brief: 'Read for voice over polish.' }) }), roundParams)).status, 200);
+  assert.equal((await score()).status, 409, 'scoring waits for the brief');
+  assert.equal((await acknowledgeBrief(requestAs(reviewer, '/brief', { method: 'POST' }), assignmentParams)).status, 200);
+  assert.equal((await score()).status, 200);
+  assert.equal((await acknowledgeBrief(requestAs(owner, '/brief', { method: 'POST' }), assignmentParams)).status, 404, 'only the assigned reader acknowledges');
+
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  await patchRound(requestAs(owner, `/review-rounds/${round.id}`, { method: 'PATCH', body: JSON.stringify({ brief: 'Updated: weigh ambition too.' }) }), roundParams);
+  assert.equal((await score()).status, 409, 'an edited brief needs a fresh acknowledgement');
+});
+
+test('waitlisted Works can be accepted with a drafted letter, and results publish only what was announced', async () => {
+  const data = await organizationRoleFixture();
+  const owner = data.accounts.get('owner')!;
+  const id = data.organizationId;
+  const radar = await getEngine();
+  const workspace = await getCompatibilityWorkspaceEngine();
+  radar.store.organizations.get(id)!.customization = undefined;
+  const work = workspace.worksForSubmission(data.unassigned.id)[0]!;
+  const workParams = { params: Promise.resolve({ id, workId: work.id }) };
+  assert.equal((await acceptFromWaitlist(requestAs(owner, '/accept', { method: 'POST' }), workParams)).status, 409, 'only from the waitlist');
+  workspace.recordDecision(id, work.id, 'waitlisted', owner);
+  const accepted = await acceptFromWaitlist(requestAs(owner, '/accept', { method: 'POST' }), workParams);
+  assert.equal(accepted.status, 201);
+  const { letterId } = await accepted.json() as { letterId: string };
+  assert.equal(workspace.decisionForWork(id, work.id)!.outcome, 'accepted');
+  assert.equal(workspace.communicationBatch(id, letterId)!.status, 'draft');
+
+  const callParams = { params: Promise.resolve({ id, openCallId: data.openCall.id }) };
+  const preview = await previewResults(requestAs(owner, '/results', json({ stages: ['shortlist'], includeWinners: true })), callParams);
+  const previewBody = await preview.json() as { preview: { winners: Array<{ workTitles: string[] }>; stages: Array<{ entries: unknown[] }> } };
+  assert.ok(previewBody.preview.winners.some((entry) => entry.workTitles.includes(work.title)));
+  assert.equal(previewBody.preview.stages[0]!.entries.length, 0, 'nobody is on a public shortlist until they were sent the shortlist letter');
+  assert.equal(radar.store.organizations.get(id)!.customization?.publishedResults?.[data.openCall.id], undefined, 'a preview publishes nothing');
+  assert.equal((await publishResults(requestAs(owner, '/results', { method: 'PUT', body: JSON.stringify({ stages: [], includeWinners: false }) }), callParams)).status, 400);
+  assert.equal((await publishResults(requestAs(owner, '/results', { method: 'PUT', body: JSON.stringify({ stages: ['shortlist'], includeWinners: true }) }), callParams)).status, 200);
+  assert.ok(radar.store.organizations.get(id)!.customization?.publishedResults?.[data.openCall.id]);
+  workspace.store.submissions.get(data.unassigned.id)!.status = 'withdrawn';
+  const after = publicResultsFor({ radar, workspace, organizationId: id, openCallId: data.openCall.id, config: { stages: ['shortlist'], includeWinners: true } })!;
+  assert.ok(!after.winners.some((entry) => entry.workTitles.includes(work.title)), 'withdrawn submissions never appear');
+  assert.equal((await unpublishResults(requestAs(owner, '/results', { method: 'DELETE' }), callParams)).status, 200);
+  assert.equal(radar.store.organizations.get(id)!.customization?.publishedResults?.[data.openCall.id], undefined);
 });
