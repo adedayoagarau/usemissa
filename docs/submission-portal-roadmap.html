@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Missa submission portal roadmap</title>
+<meta name="description" content="Checklist of everything the organization-side admin suite needs to be the strongest all-in-one submission portal, with build status." />
+<style>
+  :root {
+    --bg: #ffffff; --ink: #171418; --ink-2: #6d6670; --rule: #e3e7e5; --forest: #285649; --forest-deep: #1d4037; --tint: #e3ece8; --ochre: #a8762a; --ochre-tint: #f5ecd9; --muted: #f3f4f3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #171418; --ink: #f5f1f7; --ink-2: #b9afbd; --rule: #423746; --forest: #8cc0ad; --forest-deep: #a6d3c3; --tint: #22312c; --ochre: #d9a85a; --ochre-tint: #3a2e1b; --muted: #211b23; }
+  }
+  :root[data-theme="dark"] { --bg: #171418; --ink: #f5f1f7; --ink-2: #b9afbd; --rule: #423746; --forest: #8cc0ad; --forest-deep: #a6d3c3; --tint: #22312c; --ochre: #d9a85a; --ochre-tint: #3a2e1b; --muted: #211b23; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 "Instrument Sans", system-ui, sans-serif; }
+  main { width: min(100% - 32px, 920px); margin: 0 auto; padding: 40px 0 96px; }
+  h1 { margin: 0; font-family: Newsreader, Georgia, serif; font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 500; letter-spacing: -.02em; line-height: 1.05; }
+  .lede { margin: 14px 0 0; max-width: 680px; color: var(--ink-2); }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px 18px; margin: 22px 0 0; padding: 14px 16px; border: 1px solid var(--rule); border-radius: 12px; font-size: .86rem; color: var(--ink-2); }
+  .legend span::before, li[data-status]::marker { content: none; }
+  .progress { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 18px; }
+  .progress div { padding: 12px 14px; border: 1px solid var(--rule); border-radius: 10px; }
+  .progress dt { font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+  .progress dd { margin: 4px 0 0; font-family: "Fragment Mono", ui-monospace, monospace; font-size: 1.3rem; }
+  section { margin-top: 40px; }
+  h2 { margin: 0 0 4px; font-family: Newsreader, Georgia, serif; font-size: 1.6rem; font-weight: 500; }
+  section > p { margin: 0 0 14px; color: var(--ink-2); font-size: .92rem; }
+  ul { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); }
+  li { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+  li input { margin: 4px 0 0; width: 18px; height: 18px; accent-color: var(--forest); }
+  li label { cursor: default; }
+  li strong { font-weight: 600; }
+  li small { display: block; margin-top: 2px; color: var(--ink-2); font-size: .85rem; }
+  .tag { align-self: start; white-space: nowrap; padding: 3px 9px; border-radius: 999px; font-size: .7rem; font-weight: 650; letter-spacing: .02em; }
+  .tag.built { background: var(--tint); color: var(--forest-deep); }
+  .tag.partial { background: var(--ochre-tint); color: var(--ochre); }
+  .tag.next { background: var(--muted); color: var(--ink-2); }
+  .tag.exists { border: 1px solid var(--rule); color: var(--ink-2); }
+  li[data-status="built"] label strong { text-decoration: line-through; text-decoration-color: var(--forest); text-decoration-thickness: 1.5px; }
+  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--rule); color: var(--ink-2); font-size: .85rem; }
+  @media (max-width: 560px) { li { grid-template-columns: 24px minmax(0, 1fr); } .tag { grid-column: 2; justify-self: start; } }
+</style>
+</head>
+<body>
+<main>
+  <p style="margin:0;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--forest)">Organization admin suite</p>
+  <h1>Everything the strongest all-in-one submission portal needs</h1>
+  <p class="lede">A single checklist of what an organization running a prize, call, residency or fellowship needs from intake to outcome, graded against what Missa has today. Checked items are built and verified in this branch. Tags say whether the item was already in the codebase, was built in this pass, is partly done, or is queued next.</p>
+
+  <div class="legend"><span>☑ Built and verified in this branch</span><span>Built: landed in this pass</span><span>Partial: core shipped, scope noted</span><span>Existing: already in Missa before this pass</span><span>Next: specified, not yet built</span></div>
+
+  <dl class="progress" aria-label="Roadmap progress">
+    <div><dt>Items</dt><dd id="total">0</dd></div>
+    <div><dt>Done</dt><dd id="done">0</dd></div>
+    <div><dt>Built this pass</dt><dd id="built">0</dd></div>
+    <div><dt>Queued next</dt><dd id="next">0</dd></div>
+  </dl>
+
+  <section>
+    <h2>1. Reader operations hub</h2>
+    <p>Run a reading round from one screen: who has what, how far along they are, how they score, and one click to distribute fairly.</p>
+    <ul>
+      <li data-status="built"><input type="checkbox" checked disabled id="r1" /><label for="r1"><strong>Per-reader progress bars</strong><small>Assigned, completed, open, recused and overdue counts per reader, with a percent bar and last activity.</small></label><span class="tag built">Built</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="r2" /><label for="r2"><strong>Scoring averages and calibration</strong><small>Harsh, balanced or generous labels, computed against submissions shared with other readers first and the round mean second, with the basis explained in words.</small></label><span class="tag built">Built</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="r3" /><label for="r3"><strong>One-click multi-reader distribution</strong><small>Choose readers per submission and a reader pool; the planner balances load and shows exactly what it will assign before anything is written.</small></label><span class="tag built">Built</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="r4" /><label for="r4"><strong>Conflict-of-interest checks in distribution</strong><small>Self-submission, declared conflicts, prior recusal, shared private email domain, name match and capacity are reported pair by pair and never silently dropped.</small></label><span class="tag built">Built</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="r5" /><label for="r5"><strong>Live refresh of round health</strong><small>The round view re-reads progress on an interval the admin can pause, so a chair sees scores land without reloading.</small></label><span class="tag built">Built</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="r6" /><label for="r6"><strong>Reader scoring form</strong><small>Readers record a score and notes from their evidence desk; before this pass the desk was read-only even though the API existed.</small></label><span class="tag built">Built</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="r7" /><label for="r7"><strong>Ranked results desk</strong><small>Submissions ranked by average score with reader count and spread, and a per-Work decision control beside each row.</small></label><span class="tag built">Built</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="r8" /><label for="r8"><strong>Nudge open readers</strong><small>One action emails every reader with open assignments in the round a plain reminder through Resend, idempotent per round and day.</small></label><span class="tag built">Built</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="r9" /><label for="r9"><strong>Score export</strong><small>CSV of every assignment, reader, score and timestamp for a round, for juries that deliberate outside the product.</small></label><span class="tag built">Built</span></li>
+      <li data-status="exists"><input type="checkbox" checked disabled id="r10" /><label for="r10"><strong>Reader recusal and reassignment</strong><small>Recuse and reassign commands exist on the relational authority; the compatibility path records distribution conflicts instead.</small></label><span class="tag exists">Existing</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="r11" /><label for="r11"><strong>Rubric builder with criteria and versions</strong><small>Named criteria, weights and an immutable rubric version per round, replacing the fixed 0–100 score.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="r12" /><label for="r12"><strong>Reader due dates and automatic overdue</strong><small>A due date per round written to each assignment so overdue counts work on both persistence paths, not only relational.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="r13" /><label for="r13"><strong>Blind-review enforcement in reader views</strong><small>Hide submitter identity and identifying answers from readers according to the round's blind mode.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="r14" /><label for="r14"><strong>Reader self-declared conflicts</strong><small>A reader marks a conflict from their desk; the planner already honours declared conflicts once stored.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="r15" /><label for="r15"><strong>Multi-stage rounds with automatic promotion</strong><small>Readers round feeds a jury round; top-N by calibrated score promotes to the next stage with one confirmation.</small></label><span class="tag next">Next</span></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>2. Communications manager</h2>
+    <p>Every letter an organization sends, previewed, approved and dispatched from inside the dashboard, with a durable record of who got what.</p>
+    <ul>
+      <li data-status="built"><input type="checkbox" checked disabled id="c1" /><label for="c1"><strong>Letter catalogue</strong><small>Rejection with dignity, longlist, shortlist, finalists, decision letter and custom update, each with a humane default and a stated audience.</small></label><span class="tag built">Built</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="c2" /><label for="c2"><strong>Compose and customize with merge fields</strong><small>Subject and body editable with submitter name, Work titles, opportunity, stage label, outcome and sender name; unknown tags are flagged.</small></label><span class="tag built">Built</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="c3" /><label for="c3"><strong>Rendered preview per recipient</strong><small>See the exact HTML and plain-text letter a named recipient will receive before approving.</small></label><span class="tag built">Built</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="c4" /><label for="c4"><strong>Approval gate</strong><small>Draft → awaiting approval → approved → sending → sent. Approval is bound to the wording; an edit invalidates it. Organizations can require a different admin to approve.</small></label><span class="tag built">Built</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="c5" /><label for="c5"><strong>Resend dispatch with per-recipient results</strong><small>Sends through the durable mail service with suppression, idempotency and the effect id recorded per recipient; partial failures stay visible and resendable.</small></label><span class="tag built">Built</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="c6" /><label for="c6"><strong>Default recipient rules</strong><small>Rejection goes to declined Works, stage letters to undecided submissions not already told, decision letters to decided ones; admins adjust before approval.</small></label><span class="tag built">Built</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="c7" /><label for="c7"><strong>Sender identity</strong><small>Sender name, reply-to and sign-off per organization, used by every letter.</small></label><span class="tag built">Built</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="c8" /><label for="c8"><strong>Test send to yourself</strong><small>Send the rendered letter to the signed-in admin before approval.</small></label><span class="tag built">Built</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="c9" /><label for="c9"><strong>Batch history and audit</strong><small>Every batch, its approver, timestamps and recipient outcomes are kept and listed in Messages.</small></label><span class="tag built">Built</span></li>
+      <li data-status="exists"><input type="checkbox" checked disabled id="c10" /><label for="c10"><strong>Letter-versus-decision consistency check</strong><small>An advisory check holds a decision letter whose wording contradicts the recorded decision.</small></label><span class="tag exists">Existing</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="c11" /><label for="c11"><strong>Scheduled sends and embargoes</strong><small>Approve now, deliver at a chosen time, so results land at the announcement moment.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="c12" /><label for="c12"><strong>Delivery and open telemetry from Resend webhooks</strong><small>Show delivered, bounced and complained per recipient in the batch view using the provider events already stored.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="c13" /><label for="c13"><strong>Two-way replies</strong><small>Route submitter replies to a shared organization inbox linked to the submission.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="c14" /><label for="c14"><strong>Verified sending domain per organization</strong><small>Letters from the organization's own domain with DKIM, instead of Missa's shared sender.</small></label><span class="tag next">Next</span></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>3. Submitter status transparency</h2>
+    <p>Submitters see where they stand without emailing the organization, and only what the organization chose to tell them.</p>
+    <ul>
+      <li data-status="built"><input type="checkbox" checked disabled id="s1" /><label for="s1"><strong>Status timeline on the submission receipt</strong><small>Received → in review → longlist → shortlist → finalist → decision, derived from real events, never guessed.</small></label><span class="tag built">Built</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="s2" /><label for="s2"><strong>Stage summary on the submissions list</strong><small>Each hosted submission card shows its current stage in one line.</small></label><span class="tag built">Built</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="s3" /><label for="s3"><strong>Organization-controlled transparency</strong><small>Minimal, stages or full; the organization picks how much of the journey submitters see.</small></label><span class="tag built">Built</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="s4" /><label for="s4"><strong>Letters received on the receipt</strong><small>Subject and date of every letter the organization sent about this submission.</small></label><span class="tag built">Built</span></li>
+      <li data-status="exists"><input type="checkbox" checked disabled id="s5" /><label for="s5"><strong>Per-Work decisions and withdrawal</strong><small>Decisions attach to each Work; submitters can withdraw before a decision.</small></label><span class="tag exists">Existing</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="s6" /><label for="s6"><strong>Expected decision date</strong><small>An organization-declared date per opportunity shown on the timeline and used for "running late" honesty.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="s7" /><label for="s7"><strong>Submitter-side edits before the deadline</strong><small>Replace a file or fix an answer while the call is open, with a revision record the organization can see.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="s8" /><label for="s8"><strong>Public results page</strong><small>An organization-published longlist, shortlist and winners page generated from the same stage records.</small></label><span class="tag next">Next</span></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>4. Customizable interface per organization</h2>
+    <p>The dashboard, letters and submitter views carry the organization's name and accent without breaking Missa's accessibility floor.</p>
+    <ul>
+      <li data-status="built"><input type="checkbox" checked disabled id="u1" /><label for="u1"><strong>Accent, display name, logo and density</strong><small>Five named accents mapped to existing palette tokens, applied to the organization shell; compact or comfortable density.</small></label><span class="tag built">Built</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="u2" /><label for="u2"><strong>Stage vocabulary</strong><small>Rename longlist, shortlist and finalist to the organization's own words; used in letters and the submitter timeline.</small></label><span class="tag built">Built</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="u3" /><label for="u3"><strong>Brand and Communications settings become real</strong><small>The two placeholder settings sections now save the customization record with validation and audit.</small></label><span class="tag built">Built</span></li>
+      <li data-status="exists"><input type="checkbox" checked disabled id="u4" /><label for="u4"><strong>Versioned public portal configuration</strong><small>Name, intro, support email, policies and a brand record with draft → published lifecycle.</small></label><span class="tag exists">Existing</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="u5" /><label for="u5"><strong>Apply brand to the public portal and application form</strong><small>The published portal brand is stored but not yet rendered on the public organization page.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="u6" /><label for="u6"><strong>Custom domain for the portal</strong><small>submissions.yourprize.org serving the Missa-hosted portal.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="u7" /><label for="u7"><strong>Per-vertical vocabulary packs</strong><small>Awards, publication and residency wordings for stages, delivery and decisions.</small></label><span class="tag next">Next</span></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>5. Intake and forms</h2>
+    <p>Getting work in cleanly is where most portals lose people.</p>
+    <ul>
+      <li data-status="exists"><input type="checkbox" checked disabled id="i1" /><label for="i1"><strong>Hosted application form with drafts, fees and malware scanning</strong><small>Form builder, autosaved drafts, Stripe fees, scanned private uploads.</small></label><span class="tag exists">Existing</span></li>
+      <li data-status="exists"><input type="checkbox" checked disabled id="i2" /><label for="i2"><strong>CSV import of submissions and calls</strong><small>Bring history in from another platform with column mapping.</small></label><span class="tag exists">Existing</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="i3" /><label for="i3"><strong>Eligibility screening</strong><small>Rule-based checks (word count, category, geography, fee) that flag, never decide.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="i4" /><label for="i4"><strong>Duplicate and simultaneous-submission detection</strong><small>Same file or title across submissions and cycles surfaced to triage.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="i5" /><label for="i5"><strong>Fee waivers and discount codes</strong><small>Need-based waivers without a side channel.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="i6" /><label for="i6"><strong>Bulk triage actions</strong><small>Multi-select to route, tag or decline from the inbox.</small></label><span class="tag next">Next</span></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>6. Trust, governance and operations</h2>
+    <p>What a board, a funder or an auditor will ask about.</p>
+    <ul>
+      <li data-status="exists"><input type="checkbox" checked disabled id="g1" /><label for="g1"><strong>Role-based access with capability checks</strong><small>Owner, admin, team admin, program manager, reviewer, finance, legal, viewer.</small></label><span class="tag exists">Existing</span></li>
+      <li data-status="exists"><input type="checkbox" checked disabled id="g2" /><label for="g2"><strong>Retention policy and erasure requests</strong><small>Draft, upload, review and message retention; approved erasure.</small></label><span class="tag exists">Existing</span></li>
+      <li data-status="built"><input type="checkbox" checked disabled id="g3" /><label for="g3"><strong>Audit entries for distribution and letters</strong><small>Who distributed, approved, sent or cancelled, and when.</small></label><span class="tag built">Built</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="g4" /><label for="g4"><strong>Customer-safe history view per submission</strong><small>The dossier History tab still withholds raw audit rows; it needs a human-readable projection.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="g5" /><label for="g5"><strong>Team and program scope enforcement</strong><small>Team admins and program managers see only their scope instead of a withheld ledger.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="g6" /><label for="g6"><strong>Organization analytics</strong><small>Cycle-over-cycle volume, time to decision, reader throughput, acceptance by category.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="g7" /><label for="g7"><strong>Relational-authority parity for new records</strong><small>Letter batches and customization live on the compatibility store today; mirror them when relational authority becomes the default.</small></label><span class="tag next">Next</span></li>
+    </ul>
+  </section>
+
+  <footer>Source of truth for status: this branch. Checked items have code and tests in the pull request; "Next" items are specified here so the sequence is visible. Last updated 2026-10-06.</footer>
+</main>
+<script>
+  const items = [...document.querySelectorAll('li[data-status]')];
+  document.getElementById('total').textContent = items.length;
+  document.getElementById('done').textContent = items.filter((item) => item.querySelector('input').checked).length;
+  document.getElementById('built').textContent = items.filter((item) => item.dataset.status === 'built').length;
+  document.getElementById('next').textContent = items.filter((item) => item.dataset.status === 'next').length;
+</script>
+</body>
+</html>

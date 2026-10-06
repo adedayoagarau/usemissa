@@ -57,6 +57,30 @@
       "appearance": "white-editorial-with-refractive-forest-scene",
       "boundary": "Optional /welcome entry; finite gesture-driven artwork; real /onboarding and /opportunities links; does not alter account onboarding state."
     },
+    "composition.reader-operations": {
+      "semantic": "ReaderOperations",
+      "implementation": "apps/web/components/reader-operations.tsx",
+      "composition": ["Progress", "Table", "Tabs", "Dialog", "Field", "Input", "NativeSelect", "Checkbox", "Switch", "Button", "Alert", "Empty", "Sonner", "CalibrationBadge"],
+      "boundary": "One round at a time. Progress and calibration are derived from recorded assignments and scores; distribution previews a deterministic plan with conflict reasons before writing, and the commit applies only the previewed plan. Decisions remain per Work through the existing decision route."
+    },
+    "composition.communications-manager": {
+      "semantic": "CommunicationsManager",
+      "implementation": "apps/web/components/communications-manager.tsx",
+      "composition": ["Tabs", "Field", "Input", "Textarea", "NativeSelect", "Checkbox", "Button", "Dialog", "Alert", "Empty", "Sonner", "LetterStateBadge"],
+      "boundary": "Letters are organization words sent through Missa. A batch is sent only after approval bound to its wording; a test send goes to the admin only; per-recipient results come from the durable mail ledger and are never inferred."
+    },
+    "composition.organization-customization": {
+      "semantic": "OrganizationCustomizationForm",
+      "implementation": "apps/web/components/organization-customization-form.tsx",
+      "composition": ["Field", "Input", "RadioGroup", "Checkbox", "Switch", "Button", "Alert", "Sonner"],
+      "boundary": "Accent choices are names for existing palette mappings in components/design-system/organization-palette.css; no raw colour is accepted or stored. Stage labels and transparency change wording and visibility only, never the recorded facts."
+    },
+    "composition.submission-status-timeline": {
+      "semantic": "SubmissionStatusTimeline",
+      "implementation": "apps/web/components/submission-status-timeline.tsx",
+      "composition": ["SubmissionStageBadge"],
+      "boundary": "Submitter-facing journey derived from receipt, sent stage letters and recorded decisions under the organization's transparency setting. Never names readers, scores or notes."
+    },
     "composition.admin-publication-review": {
       "semantic": "PlatformAdminPublicationReview",
       "implementation": "apps/web/components/platform-admin-publication-review.tsx",
@@ -851,6 +875,24 @@
       "motion": "indicator-while-confirmed-active",
       "implementation": "components/missa/deadline-badges.tsx",
       "boundary": "Background process state (syncing, synced, waiting, not synced). A failed state is always paired with a recovery action."
+    },
+    "CalibrationBadge": {
+      "base": "Badge",
+      "motion": "never",
+      "implementation": "components/missa/operations-badges.tsx",
+      "boundary": "Labels a reader's scoring tendency (scores low, in line, scores high, too few scores) from the recorded calibration; the explanation sentence travels with it so the label never stands alone."
+    },
+    "LetterStateBadge": {
+      "base": "Badge",
+      "motion": "never",
+      "implementation": "components/missa/operations-badges.tsx",
+      "boundary": "Approval-gate state of an organization letter batch in customer language; sent is the only positive state and partly sent is a warning, never a success."
+    },
+    "SubmissionStageBadge": {
+      "base": "Badge",
+      "motion": "never",
+      "implementation": "components/missa/operations-badges.tsx",
+      "boundary": "Current step of a submitter's journey (received, in review, an announced stage, decision, withdrawn) derived from recorded events only."
     },
     "CountBadge": {
       "base": "Badge",

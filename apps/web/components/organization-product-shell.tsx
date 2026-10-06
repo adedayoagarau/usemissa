@@ -11,7 +11,9 @@ import styles from './organization-product-shell.module.css';
 type OrganizationOption = { id: string; name: string; roleLabel: string };
 type NavigationItem = { id: OrganizationDestination; label: string; href: string };
 
-export function OrganizationProductShell({ children, organization, organizations, roleLabel, navigation }: { children: React.ReactNode; organization: OrganizationOption; organizations: OrganizationOption[]; roleLabel: string; navigation: NavigationItem[] }) {
+type Appearance = { accent: string; density: 'compact' | 'comfortable'; displayName: string; logoUrl?: string };
+
+export function OrganizationProductShell({ children, organization, organizations, roleLabel, navigation, appearance }: { children: React.ReactNode; organization: OrganizationOption; organizations: OrganizationOption[]; roleLabel: string; navigation: NavigationItem[]; appearance?: Appearance }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -39,7 +41,7 @@ export function OrganizationProductShell({ children, organization, organizations
     return () => { document.removeEventListener('keydown', handleKeyDown); commandButton?.focus({ preventScroll: true }); };
   }, [commandOpen]);
 
-  return <div className={styles.product}>
+  return <div className={styles.product} data-org-accent={appearance?.accent && appearance.accent !== 'forest' ? appearance.accent : undefined} data-density={appearance?.density}>
     <a href="#organization-main" className={styles.skip}>Skip to Organization content</a>
     <header className={styles.topbar}>
       <MissaWordmark size="app" className={styles.wordmark} />
@@ -51,7 +53,10 @@ export function OrganizationProductShell({ children, organization, organizations
     <div className={styles.shell}>
       <aside className={styles.rail} data-open={mobileOpen} aria-label="Organization navigation">
         <label className={styles.organizationPicker}><span>Current Organization</span><select value={organization.id} aria-label="Switch Organization" onChange={(event) => router.push(`/organization/${encodeURIComponent(event.target.value)}/overview`)}>{organizations.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.roleLabel}</option>)}</select><ChevronDown aria-hidden="true" /></label>
-        <div className={styles.role}><strong>{organization.name}</strong><span>{roleLabel}</span></div>
+        <div className={styles.role}>{appearance?.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- organization-supplied https logo from an unknown host
+          <img src={appearance.logoUrl} alt="" className={styles.orgLogo} />
+        ) : null}<strong>{appearance?.displayName ?? organization.name}</strong><span>{roleLabel}</span></div>
         <nav aria-label="Organization destinations">{navigation.map((item) => <Link key={item.id} href={item.href} aria-current={active(item) ? 'page' : undefined} onClick={() => setMobileOpen(false)}>{item.label}</Link>)}</nav>
         <Link href="/organization" className={styles.switchLink}>Choose another Organization</Link>
       </aside>

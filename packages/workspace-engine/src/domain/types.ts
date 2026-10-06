@@ -213,3 +213,76 @@ export interface DeliveryTask {
   dueDate?: IsoDate;
   completedAt?: IsoDateTime;
 }
+
+// --- Organization communications ---------------------------------------------
+
+/** A stage a Submission can be told it has reached, between receipt and decision. */
+export type SubmissionStage = 'longlist' | 'shortlist' | 'finalist';
+
+/**
+ * The kinds of letter an organization sends through the Communications
+ * Manager. Each kind resolves to a default template and, where it marks a
+ * stage, to the SubmissionStage the recipient is told about.
+ */
+export type CommunicationKind =
+  | 'rejection-with-dignity'
+  | 'longlist'
+  | 'shortlist'
+  | 'finalists'
+  | 'decision'
+  | 'custom';
+
+/**
+ * Approval-gated batch lifecycle. Only an `approved` batch can be sent, and a
+ * batch that has started sending can no longer be edited or cancelled.
+ */
+export type CommunicationBatchStatus =
+  | 'draft'
+  | 'awaiting-approval'
+  | 'approved'
+  | 'sending'
+  | 'sent'
+  | 'partially-sent'
+  | 'failed'
+  | 'cancelled';
+
+export type CommunicationRecipientStatus = 'pending' | 'sent' | 'failed' | 'suppressed' | 'skipped';
+
+export interface CommunicationRecipient {
+  submissionId: string;
+  submitterAccountId: string;
+  /** Works the letter refers to; empty means the whole Submission. */
+  workIds: string[];
+  status: CommunicationRecipientStatus;
+  /** Durable message effect id when the provider accepted the send. */
+  effectId?: string;
+  reason?: string;
+  sentAt?: IsoDateTime;
+}
+
+export interface CommunicationBatch {
+  id: string;
+  organizationId: string;
+  openCallId: string;
+  kind: CommunicationKind;
+  /** Stage the recipients are told they reached; set for longlist/shortlist/finalists. */
+  stage?: SubmissionStage;
+  subject: string;
+  /** Body with merge fields such as {{submitterName}}, {{workTitles}}, {{opportunityTitle}}. */
+  body: string;
+  status: CommunicationBatchStatus;
+  recipients: CommunicationRecipient[];
+  createdByAccountId: string;
+  createdAt: IsoDateTime;
+  updatedAt: IsoDateTime;
+  approvalRequestedAt?: IsoDateTime;
+  approvedByAccountId?: string;
+  approvedAt?: IsoDateTime;
+  sendStartedAt?: IsoDateTime;
+  sentAt?: IsoDateTime;
+  cancelledAt?: IsoDateTime;
+  cancelledByAccountId?: string;
+  /** Hash of subject + body at approval time; a later edit invalidates approval. */
+  approvedContentHash?: string;
+}
+

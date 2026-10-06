@@ -11,6 +11,7 @@ import type {
   ReviewRecommendation,
   Decision,
   DeliveryTask,
+  CommunicationBatch,
 } from '../domain/types.js';
 import type { AuditEntry } from '@missa/radar-engine';
 
@@ -44,6 +45,8 @@ export interface WorkspaceStore {
   decisions: Map<string, Decision>;
   /** One delivery task per accepted Work in the MVP. */
   deliveryTasks: Map<string, DeliveryTask>;
+  /** Approval-gated organization letters (longlist, shortlist, decisions...). */
+  communicationBatches: Map<string, CommunicationBatch>;
 }
 
 export function createStore(): WorkspaceStore {
@@ -61,6 +64,7 @@ export function createStore(): WorkspaceStore {
     auditLog: [],
     decisions: new Map(),
     deliveryTasks: new Map(),
+    communicationBatches: new Map(),
   };
 }
 
@@ -83,5 +87,6 @@ export function cloneStore(source: WorkspaceStore): WorkspaceStore {
     auditLog: structuredClone(source.auditLog),
     decisions: cloneMap(source.decisions),
     deliveryTasks: cloneMap(source.deliveryTasks),
+    communicationBatches: cloneMap(source.communicationBatches ?? new Map()),
   };
 }

@@ -13,7 +13,13 @@ import type {
   Decision,
   DecisionOutcome,
   DeliveryTask,
+  CommunicationBatch,
+  CommunicationKind,
+  CommunicationRecipient,
+  CommunicationRecipientStatus,
+  SubmissionStage,
 } from "./domain/types.js";
+import { canTransitionCommunication, communicationContentHash, communicationEditable, stageForCommunicationKind } from "./communications.js";
 import { MISSA_TAXONOMY } from "@missa/taxonomy";
 import { createStore, type WorkspaceStore } from "./store/store.js";
 import { sequentialWorkspaceIds, type WorkspaceIdGenerator } from "./ids.js";
@@ -38,6 +44,7 @@ function* idsInStore(store: WorkspaceStore): Iterable<string> {
     store.reviewAssignments,
     store.decisions,
     store.deliveryTasks,
+    store.communicationBatches,
   ];
   for (const map of maps) yield* map.keys();
   for (const path of store.submissionPaths.values()) {
@@ -607,6 +614,286 @@ export class WorkspaceEngine {
     const byMonthMap = new Map<string, number>();
     for (const submission of submissions) { const month = submission.submittedAt.slice(0, 7); byMonthMap.set(month, (byMonthMap.get(month) ?? 0) + 1); }
     return { submissions: submissions.length, decisions: decisions.length, ...counts, conversionRate: decisions.length ? Math.round((counts.accepted / decisions.length) * 1000) / 1000 : 0, medianDaysToDecision, byMonth: [...byMonthMap.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([month, count]) => ({ month, submissions: count })) };
+  }
+
+
+  // --- Reader operations -------------------------------------------------------
+
+  /**
+   * Applies a planned multi-reader distribution for one round. Each pair is
+   * validated like assignReviewer; a pair that already exists is skipped, not
+   * duplicated. Submissions that receive their first reader move to
+   * `in-review`, which is the status the inbox and the submitter tracker show.
+   */
+  applyDistribution(
+    reviewRoundId: string,
+    pairs: Array<{ submissionId: string; reviewerAccountId: string }>,
+    actorAccountId?: string,
+  ): { created: ReviewAssignment[]; skipped: Array<{ submissionId: string; reviewerAccountId: string; reason: string }> } {
+    const round = this.store.reviewRounds.get(reviewRoundId);
+    if (!round) throw new Error(`Unknown review round: ${reviewRoundId}`);
+    const created: ReviewAssignment[] = [];
+    const skipped: Array<{ submissionId: string; reviewerAccountId: string; reason: string }> = [];
+    for (const pair of pairs) {
+      const duplicate = [...this.store.reviewAssignments.values()].some(
+        (assignment) => assignment.reviewRoundId === reviewRoundId && assignment.submissionId === pair.submissionId && assignment.reviewerAccountId === pair.reviewerAccountId,
+      );
+      if (duplicate) {
+        skipped.push({ ...pair, reason: "already assigned" });
+        continue;
+      }
+      try {
+        created.push(this.assignReviewer(reviewRoundId, pair.submissionId, pair.reviewerAccountId));
+        const submission = this.store.submissions.get(pair.submissionId);
+        if (submission && submission.status === "submitted") submission.status = "in-review";
+      } catch (error) {
+        skipped.push({ ...pair, reason: error instanceof Error ? error.message : "could not assign" });
+      }
+    }
+    if (created.length > 0) {
+      this.store.auditLog.push({
+        id: this.ids.next("audit"),
+        at: this.now(),
+        accountId: actorAccountId,
+        action: "review-assignment.distributed",
+        targetType: "review_round",
+        targetId: reviewRoundId,
+        detail: JSON.stringify({ created: created.length, skipped: skipped.length }),
+      });
+    }
+    return { created, skipped };
+  }
+
+  // --- Communications ------------------------------------------------------------
+
+  createCommunicationBatch(
+    organizationId: string,
+    input: {
+      openCallId: string;
+      kind: CommunicationKind;
+      subject: string;
+      body: string;
+      recipients: Array<{ submissionId: string; submitterAccountId: string; workIds: string[] }>;
+      createdByAccountId: string;
+    },
+  ): CommunicationBatch {
+    const scope = this.organizationScope(organizationId);
+    if (!scope.openCall(input.openCallId)) throw new Error("Opportunity is not part of this organization");
+    if (!input.subject.trim()) throw new Error("A subject is required");
+    if (!input.body.trim()) throw new Error("A body is required");
+    const seen = new Set<string>();
+    const recipients: CommunicationRecipient[] = [];
+    for (const recipient of input.recipients) {
+      const submission = scope.submission(recipient.submissionId);
+      if (!submission) throw new Error(`Submission is not part of this organization: ${recipient.submissionId}`);
+      const path = this.store.submissionPaths.get(submission.submissionPathId);
+      if (path?.openCallId !== input.openCallId) throw new Error(`Submission ${recipient.submissionId} belongs to a different opportunity`);
+      if (seen.has(submission.id)) continue;
+      seen.add(submission.id);
+      const workIds = new Set(this.worksForSubmission(submission.id).map((work) => work.id));
+      recipients.push({
+        submissionId: submission.id,
+        submitterAccountId: submission.submitterAccountId,
+        workIds: recipient.workIds.filter((workId) => workIds.has(workId)),
+        status: "pending",
+      });
+    }
+    const now = this.now();
+    const batch: CommunicationBatch = {
+      id: this.ids.next("communication"),
+      organizationId,
+      openCallId: input.openCallId,
+      kind: input.kind,
+      stage: stageForCommunicationKind(input.kind),
+      subject: input.subject.trim(),
+      body: input.body.trim(),
+      status: "draft",
+      recipients,
+      createdByAccountId: input.createdByAccountId,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.store.communicationBatches.set(batch.id, batch);
+    this.recordCommunicationAudit(batch, "communication.created", input.createdByAccountId);
+    return batch;
+  }
+
+  communicationBatch(organizationId: string, batchId: string): CommunicationBatch | undefined {
+    const batch = this.store.communicationBatches.get(batchId);
+    return batch?.organizationId === organizationId ? batch : undefined;
+  }
+
+  communicationBatchesForOrganization(organizationId: string): CommunicationBatch[] {
+    return [...this.store.communicationBatches.values()]
+      .filter((batch) => batch.organizationId === organizationId)
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  }
+
+  /** Edits wording or recipients while the batch is still a draft or awaiting approval. An edit sends it back to draft. */
+  updateCommunicationBatch(
+    organizationId: string,
+    batchId: string,
+    patch: { subject?: string; body?: string; recipients?: Array<{ submissionId: string; submitterAccountId: string; workIds: string[] }> },
+    actorAccountId: string,
+  ): CommunicationBatch {
+    const batch = this.requireCommunicationBatch(organizationId, batchId);
+    if (!communicationEditable(batch.status)) throw new Error("This letter can no longer be edited");
+    if (patch.subject !== undefined) {
+      if (!patch.subject.trim()) throw new Error("A subject is required");
+      batch.subject = patch.subject.trim();
+    }
+    if (patch.body !== undefined) {
+      if (!patch.body.trim()) throw new Error("A body is required");
+      batch.body = patch.body.trim();
+    }
+    if (patch.recipients) {
+      const scope = this.organizationScope(organizationId);
+      const seen = new Set<string>();
+      batch.recipients = patch.recipients.flatMap((recipient) => {
+        const submission = scope.submission(recipient.submissionId);
+        if (!submission || seen.has(submission.id)) return [];
+        const path = this.store.submissionPaths.get(submission.submissionPathId);
+        if (path?.openCallId !== batch.openCallId) return [];
+        seen.add(submission.id);
+        const workIds = new Set(this.worksForSubmission(submission.id).map((work) => work.id));
+        return [{ submissionId: submission.id, submitterAccountId: submission.submitterAccountId, workIds: recipient.workIds.filter((workId) => workIds.has(workId)), status: "pending" as const }];
+      });
+    }
+    if (batch.status === "awaiting-approval") batch.status = "draft";
+    batch.approvalRequestedAt = undefined;
+    batch.updatedAt = this.now();
+    this.recordCommunicationAudit(batch, "communication.updated", actorAccountId);
+    return batch;
+  }
+
+  requestCommunicationApproval(organizationId: string, batchId: string, actorAccountId: string): CommunicationBatch {
+    const batch = this.requireCommunicationBatch(organizationId, batchId);
+    this.transitionCommunication(batch, "awaiting-approval");
+    if (batch.recipients.length === 0) throw new Error("Add at least one recipient before requesting approval");
+    batch.approvalRequestedAt = this.now();
+    batch.updatedAt = batch.approvalRequestedAt;
+    this.recordCommunicationAudit(batch, "communication.approval_requested", actorAccountId);
+    return batch;
+  }
+
+  /**
+   * The approval gate. When the organization requires a second approver, the
+   * person approving must differ from the person who drafted the letter.
+   */
+  approveCommunicationBatch(
+    organizationId: string,
+    batchId: string,
+    approverAccountId: string,
+    options: { secondApproverRequired?: boolean } = {},
+  ): CommunicationBatch {
+    const batch = this.requireCommunicationBatch(organizationId, batchId);
+    if (batch.status === "draft") this.transitionCommunication(batch, "awaiting-approval");
+    this.transitionCommunication(batch, "approved");
+    if (options.secondApproverRequired && approverAccountId === batch.createdByAccountId) {
+      batch.status = "awaiting-approval";
+      throw new Error("This organization requires a different admin to approve a letter before it is sent");
+    }
+    if (batch.recipients.length === 0) {
+      batch.status = "awaiting-approval";
+      throw new Error("Add at least one recipient before approving");
+    }
+    batch.approvedByAccountId = approverAccountId;
+    batch.approvedAt = this.now();
+    batch.approvedContentHash = communicationContentHash(batch.subject, batch.body);
+    batch.updatedAt = batch.approvedAt;
+    this.recordCommunicationAudit(batch, "communication.approved", approverAccountId);
+    return batch;
+  }
+
+  cancelCommunicationBatch(organizationId: string, batchId: string, actorAccountId: string): CommunicationBatch {
+    const batch = this.requireCommunicationBatch(organizationId, batchId);
+    this.transitionCommunication(batch, "cancelled");
+    batch.cancelledAt = this.now();
+    batch.cancelledByAccountId = actorAccountId;
+    batch.updatedAt = batch.cancelledAt;
+    this.recordCommunicationAudit(batch, "communication.cancelled", actorAccountId);
+    return batch;
+  }
+
+  /** Locks the batch for sending. Fails if the approved wording changed or the batch is not approved. */
+  beginCommunicationSend(organizationId: string, batchId: string, actorAccountId: string): CommunicationBatch {
+    const batch = this.requireCommunicationBatch(organizationId, batchId);
+    if (batch.status !== "approved" && batch.status !== "partially-sent" && batch.status !== "failed") {
+      throw new Error("Only an approved letter can be sent");
+    }
+    if (batch.approvedContentHash !== communicationContentHash(batch.subject, batch.body)) {
+      throw new Error("The wording changed after approval; approve it again before sending");
+    }
+    this.transitionCommunication(batch, "sending");
+    batch.sendStartedAt = this.now();
+    batch.updatedAt = batch.sendStartedAt;
+    this.recordCommunicationAudit(batch, "communication.send_started", actorAccountId);
+    return batch;
+  }
+
+  recordCommunicationRecipientResult(
+    organizationId: string,
+    batchId: string,
+    submissionId: string,
+    result: { status: Exclude<CommunicationRecipientStatus, "pending">; effectId?: string; reason?: string },
+  ): CommunicationRecipient {
+    const batch = this.requireCommunicationBatch(organizationId, batchId);
+    const recipient = batch.recipients.find((item) => item.submissionId === submissionId);
+    if (!recipient) throw new Error("Recipient is not part of this letter");
+    recipient.status = result.status;
+    recipient.effectId = result.effectId;
+    recipient.reason = result.reason;
+    recipient.sentAt = result.status === "sent" ? this.now() : recipient.sentAt;
+    batch.updatedAt = this.now();
+    return recipient;
+  }
+
+  /** Derives the batch outcome from its recipients once a send pass finishes. */
+  finishCommunicationSend(organizationId: string, batchId: string, actorAccountId: string): CommunicationBatch {
+    const batch = this.requireCommunicationBatch(organizationId, batchId);
+    if (batch.status !== "sending") throw new Error("This letter is not being sent");
+    const sent = batch.recipients.filter((item) => item.status === "sent").length;
+    const unresolved = batch.recipients.filter((item) => item.status === "pending" || item.status === "failed").length;
+    const next = sent > 0 && unresolved === 0 ? "sent" : sent > 0 ? "partially-sent" : batch.recipients.every((item) => item.status === "skipped" || item.status === "suppressed") && batch.recipients.length > 0 ? "sent" : "failed";
+    this.transitionCommunication(batch, next);
+    batch.updatedAt = this.now();
+    if (next === "sent") batch.sentAt = batch.updatedAt;
+    this.recordCommunicationAudit(batch, `communication.${next}`, actorAccountId);
+    return batch;
+  }
+
+  /** Stage announcements actually delivered to a submission, for the submitter tracker. */
+  stageEventsForSubmission(submissionId: string): Array<{ stage: SubmissionStage; at: string; batchId: string }> {
+    const events: Array<{ stage: SubmissionStage; at: string; batchId: string }> = [];
+    for (const batch of this.store.communicationBatches.values()) {
+      if (!batch.stage) continue;
+      const recipient = batch.recipients.find((item) => item.submissionId === submissionId && item.status === "sent");
+      if (recipient) events.push({ stage: batch.stage, at: recipient.sentAt ?? batch.sentAt ?? batch.updatedAt, batchId: batch.id });
+    }
+    return events.sort((left, right) => left.at.localeCompare(right.at));
+  }
+
+  private requireCommunicationBatch(organizationId: string, batchId: string): CommunicationBatch {
+    const batch = this.communicationBatch(organizationId, batchId);
+    if (!batch) throw new Error("Letter is not part of this organization");
+    return batch;
+  }
+
+  private transitionCommunication(batch: CommunicationBatch, to: CommunicationBatch["status"]): void {
+    if (!canTransitionCommunication(batch.status, to)) throw new Error(`A ${batch.status} letter cannot move to ${to}`);
+    batch.status = to;
+  }
+
+  private recordCommunicationAudit(batch: CommunicationBatch, action: string, accountId?: string): void {
+    this.store.auditLog.push({
+      id: this.ids.next("audit"),
+      at: this.now(),
+      accountId,
+      action,
+      targetType: "communication_batch",
+      targetId: batch.id,
+      detail: JSON.stringify({ kind: batch.kind, status: batch.status, recipients: batch.recipients.length }),
+    });
   }
 
   private recordDecisionAudit(decision: Decision, action: string): void {

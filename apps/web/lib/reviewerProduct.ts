@@ -76,5 +76,5 @@ export function reviewerAssignmentForAccount(
 }
 
 export function reviewerAssignmentStateLabel(state: ReviewerAssignmentState): string {
-  return state === 'legacy-submitted' ? 'Legacy recommendation submitted' : 'Review setup incomplete';
+  return state === 'legacy-submitted' ? 'Recommendation recorded' : 'Awaiting your recommendation';
 }

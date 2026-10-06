@@ -19,6 +19,8 @@ import {
 } from "@/components/tracker-product";
 import { parseApplicationId, parseTrackerView } from "@/lib/trackerViews";
 import { emailIntegrationFlags } from "@/lib/email-integrations";
+import { submissionStatusTimeline } from "@missa/workspace-engine";
+import { resolveOrganizationCustomization } from "@/lib/organizationCustomization";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -109,6 +111,19 @@ export default async function TrackerPage({
         entity?.organizationId ?? "",
         submission.id,
       );
+      const works = workspace.worksForSubmission(submission.id);
+      const customization = organization ? resolveOrganizationCustomization(organization) : undefined;
+      const timeline = submissionStatusTimeline({
+        status: submission.status,
+        submittedAt: submission.submittedAt,
+        hasActiveReview: submission.status === "in-review",
+        stageEvents: workspace.stageEventsForSubmission(submission.id),
+        decisions,
+        works,
+        transparency: customization?.statusTransparency ?? "stages",
+        declaredStages: customization?.declaredStages,
+        stageLabels: customization?.stageLabels,
+      });
       return {
         id: submission.id,
         title: call?.title ?? "Submission",
@@ -118,7 +133,8 @@ export default async function TrackerPage({
         submittedAt: submission.submittedAt,
         category: submission.category,
         radarOpportunityId: call?.radarOpportunityId,
-        works: workspace.worksForSubmission(submission.id).map((work) => ({
+        stageSummary: timeline.summary,
+        works: works.map((work) => ({
           id: work.id,
           title: work.title,
           outcome: decisions.find((decision) => decision.workId === work.id)

@@ -8,6 +8,9 @@ import { getRelationalWorkspace, getWorkspaceEngine, workspaceRelationalAuthorit
 import type { Decision, OpenCall, SubmissionField, SubmissionPath, Work } from '@missa/workspace-engine';
 import { WithdrawSubmissionButton } from '@/components/withdraw-submission-button';
 import styles from './submission-detail.module.css';
+import { communicationTemplate, submissionStatusTimeline, type SubmissionStage } from '@missa/workspace-engine';
+import { SubmissionStatusTimeline } from '@/components/submission-status-timeline';
+import { resolveOrganizationCustomization } from '@/lib/organizationCustomization';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +61,10 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
   let organizationName: string | undefined;
   let works: ReceiptWork[];
   let decisions: ReceiptDecision[];
+  let organizationId: string | undefined;
+  let hasActiveReview = false;
+  let stageEvents: Array<{ stage: SubmissionStage; at: string }> = [];
+  let letters: Array<{ id: string; subject: string; kindLabel: string; at: string }> = [];
 
   if (workspaceRelationalAuthorityEnabled()) {
     const detail = await (await getRelationalWorkspace()).submissionForOwner(session.account.id, submissionId);
@@ -66,8 +73,10 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
     path = detail.path;
     call = { title: detail.openCallTitle, ...(detail.radarOpportunityId ? { radarOpportunityId: detail.radarOpportunityId } : {}) };
     organizationName = radar.store.organizations.get(detail.organizationId)?.name;
+    organizationId = detail.organizationId;
     works = detail.works;
     decisions = detail.decisions;
+    hasActiveReview = detail.status === 'in-review';
   } else {
     const workspace = await getWorkspaceEngine();
     const found = workspace.store.submissions.get(submissionId);
@@ -83,9 +92,30 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
     organizationName = entity ? radar.store.organizations.get(entity.organizationId)?.name ?? entity.name : undefined;
     works = workspace.worksForSubmission(found.id);
     decisions = workspace.decisionsForSubmission(entity?.organizationId ?? '', found.id);
+    organizationId = entity?.organizationId;
+    hasActiveReview = found.status === 'in-review' || workspace.reviewAssignmentsForSubmission(found.id).some((assignment) => !(assignment as { recusedAt?: string }).recusedAt);
+    stageEvents = workspace.stageEventsForSubmission(found.id).map((event) => ({ stage: event.stage, at: event.at }));
+    letters = [...workspace.store.communicationBatches.values()].flatMap((batch) => {
+      const recipient = batch.recipients.find((item) => item.submissionId === found.id && item.status === 'sent');
+      return recipient ? [{ id: batch.id, subject: communicationTemplate(batch.kind).label, kindLabel: batch.stage ? 'Stage announcement' : 'Letter', at: recipient.sentAt ?? batch.updatedAt }] : [];
+    }).sort((a, b) => a.at.localeCompare(b.at));
   }
 
   const organization = organizationName;
+  const organizationRecord = organizationId ? radar.store.organizations.get(organizationId) : undefined;
+  const customization = organizationRecord ? resolveOrganizationCustomization(organizationRecord) : undefined;
+  const timeline = submissionStatusTimeline({
+    status: submission.status,
+    submittedAt: submission.submittedAt,
+    hasActiveReview,
+    stageEvents,
+    decisions,
+    works,
+    transparency: customization?.statusTransparency ?? 'stages',
+    declaredStages: customization?.declaredStages,
+    stageLabels: customization?.stageLabels,
+    organizationName: customization?.displayName ?? organization,
+  });
   const fields = new Map((path.fields ?? []).map((field: SubmissionField) => [field.id, field]));
   const answers = Object.entries(submission.answers ?? {});
   const paymentLabel = submission.paymentStatus
@@ -116,6 +146,8 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
         <dl><div><dt>Receipt</dt><dd>{submission.id}</dd></div>{submission.category ? <div><dt>Category</dt><dd>{submission.category}</dd></div> : null}</dl>
       </section>
 
+      <SubmissionStatusTimeline timeline={timeline} organizationName={customization?.displayName ?? organization} />
+
       <div className={styles.layout}>
         <div className={styles.mainColumn}>
           <section className={styles.section} aria-labelledby="submitted-works-title">
@@ -140,6 +172,7 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
             <header><div><p>Recorded events</p><h2 id="submission-history-title">History</h2></div></header>
             <ol className={styles.history}>
               <li><span><ReceiptText aria-hidden="true" /></span><div><strong>Submission received by Missa</strong><time>{formatDate(submission.submittedAt)}</time></div></li>
+              {letters.map((letter) => <li key={letter.id}><span><ReceiptText aria-hidden="true" /></span><div><strong>{letter.kindLabel} · {letter.subject}</strong><time>{formatDate(letter.at)}</time></div></li>)}
               {decisions.sort((a, b) => a.decidedAt.localeCompare(b.decidedAt)).map((decision) => {
                 const work = works.find((candidate) => candidate.id === decision.workId);
                 return <li key={decision.id}><span><Landmark aria-hidden="true" /></span><div><strong>{work?.title ?? 'Submitted Work'} · {statusLabel(decision.outcome)}</strong><time>{formatDate(decision.decidedAt)}</time></div></li>;

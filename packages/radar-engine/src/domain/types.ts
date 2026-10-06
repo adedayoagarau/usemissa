@@ -355,6 +355,40 @@ export interface Organization {
   billingCancelAtPeriodEnd?: boolean;
   stripeConnectAccountId?: string;
   stripeConnectStatus?: "not-connected" | "pending" | "connected";
+  /** How the organization's own surfaces look and speak; absent means Missa defaults. */
+  customization?: OrganizationCustomization;
+}
+
+/** Accent choices are names for existing palette mappings, never raw colors. */
+export type OrganizationAccent = "forest" | "ochre" | "mineral" | "moss" | "ink";
+
+export type OrganizationSubmissionStage = "longlist" | "shortlist" | "finalist";
+
+/**
+ * Per-organization presentation and communication defaults. Everything here
+ * is optional and validated by apps/web before it is written; the fields are
+ * deliberately small so a theme can never override Missa's accessibility floor.
+ */
+export interface OrganizationCustomization {
+  /** Name shown in the organization dashboard and letters when it differs from the public name. */
+  displayName?: string;
+  /** Logo shown in the organization dashboard rail; the public portal keeps its own brand record. */
+  logoUrl?: string;
+  accent?: OrganizationAccent;
+  density?: "compact" | "comfortable";
+  /** What the organization calls each stage, e.g. "Long list" or "Honour roll". */
+  stageLabels?: Partial<Record<OrganizationSubmissionStage, string>>;
+  /** Stages this organization runs, shown to submitters as upcoming. */
+  declaredStages?: OrganizationSubmissionStage[];
+  /** How much of the review journey submitters can see. */
+  statusTransparency?: "minimal" | "stages" | "full";
+  communications?: {
+    senderName?: string;
+    replyTo?: string;
+    signoff?: string;
+    /** Whether a different admin must approve a letter batch before it is sent. */
+    secondApproverRequired?: boolean;
+  };
 }
 
 export type OrganizationBillingTier =
