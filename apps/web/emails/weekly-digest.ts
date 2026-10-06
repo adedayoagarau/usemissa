@@ -138,7 +138,7 @@ export function renderWeeklyDigestEmail(props: WeeklyDigestEmailProps): { subjec
       <td class="m-pad" style="padding:36px 40px 56px;">
         <table role="presentation" border="0" cellpadding="0" cellspacing="0">
           <tr>
-            <td bgcolor="${c.citron}" style="background-color:${c.citron};border-radius:999px;">
+            <td bgcolor="${c.citron}" style="background-color:${c.citron};border-radius:999px;mso-padding-alt:15px 26px;">
               <a href="${escapeHtml(forYou)}" style="display:inline-block;padding:15px 26px;font-family:${f.interface};font-size:15px;line-height:20px;font-weight:600;color:${c.forestDeep};text-decoration:none;">See everything selected for you</a>
             </td>
           </tr>
