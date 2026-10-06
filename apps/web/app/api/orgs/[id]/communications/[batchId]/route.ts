@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { unknownMergeFields } from '@missa/workspace-engine';
 import { persistOrganizationMutation, requireOrganizationAccess } from '@/lib/organizationAccess';
 import { batchSummary, COMMUNICATIONS_UNAVAILABLE } from '@/lib/communicationsData';
+import { deliveryStatusByEffect } from '@/lib/communicationsSend';
 import { resolveOrganizationCustomization } from '@/lib/organizationCustomization';
 import { workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
@@ -18,6 +19,7 @@ const patchSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('request-approval') }),
   z.object({ action: z.literal('approve') }),
   z.object({ action: z.literal('cancel') }),
+  z.object({ action: z.literal('schedule'), scheduledFor: z.string().datetime({ offset: true }).nullable() }),
 ]);
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string; batchId: string }> }) {
@@ -27,7 +29,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: COMMUNICATIONS_UNAVAILABLE }, { status: 503, headers });
   const batch = result.access.workspace.communicationBatch(id, batchId);
   if (!batch) return NextResponse.json({ error: 'Unknown letter for this organization' }, { status: 404, headers });
-  return NextResponse.json(batchSummary(batch, result.access.radar), { headers });
+  return NextResponse.json(batchSummary(batch, result.access.radar, await deliveryStatusByEffect(process.env.DATABASE_URL, id)), { headers });
 }
 
 /**
@@ -41,7 +43,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status, headers });
   if (workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: COMMUNICATIONS_UNAVAILABLE }, { status: 503, headers });
   const parsed = patchSchema.safeParse(await request.json().catch(() => ({})));
-  if (!parsed.success) return NextResponse.json({ error: 'Choose update, request-approval, approve or cancel', issues: parsed.error.flatten().fieldErrors }, { status: 400, headers });
+  if (!parsed.success) return NextResponse.json({ error: 'Choose update, request-approval, approve, schedule or cancel', issues: parsed.error.flatten().fieldErrors }, { status: 400, headers });
   const workspace = result.access.workspace;
   const actor = result.access.session.account.id;
   if (!workspace.communicationBatch(id, batchId)) return NextResponse.json({ error: 'Unknown letter for this organization' }, { status: 404, headers });
@@ -57,6 +59,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       const organization = result.access.radar.store.organizations.get(id);
       const customization = resolveOrganizationCustomization(organization ?? { name: id });
       workspace.approveCommunicationBatch(id, batchId, actor, { secondApproverRequired: customization.communications.secondApproverRequired });
+    } else if (input.action === 'schedule') {
+      workspace.scheduleCommunicationBatch(id, batchId, input.scheduledFor ?? undefined, actor);
     } else {
       workspace.cancelCommunicationBatch(id, batchId, actor);
     }

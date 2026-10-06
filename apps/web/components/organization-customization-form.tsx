@@ -35,13 +35,14 @@ export function OrganizationCustomizationForm({ organizationId, section, stored,
   const [replyTo, setReplyTo] = useState(stored.communications?.replyTo ?? '');
   const [signoff, setSignoff] = useState(stored.communications?.signoff ?? '');
   const [secondApprover, setSecondApprover] = useState(resolved.communications.secondApproverRequired);
+  const [adminDigest, setAdminDigest] = useState(resolved.communications.adminDigest);
 
   const save = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     const payload = section === 'brand'
       ? { displayName, logoUrl, accent, density, stageLabels, declaredStages: [...declaredStages], statusTransparency: transparency }
-      : { communications: { senderName, replyTo, signoff, secondApproverRequired: secondApprover } };
+      : { communications: { senderName, replyTo, signoff, secondApproverRequired: secondApprover, adminDigest } };
     startTransition(async () => {
       const response = await fetch(`/api/orgs/${encodeURIComponent(organizationId)}/customization`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
       const body = await response.json().catch(() => ({}));
@@ -148,6 +149,10 @@ export function OrganizationCustomizationForm({ organizationId, section, stored,
         <label className="flex items-start justify-between gap-4 rounded-lg border border-border p-4 sm:col-span-2">
           <span><span className="block text-sm font-medium text-foreground">Require a second approver</span><span className="mt-1 block text-xs text-muted-foreground">A letter batch can only be approved by an admin who did not draft it. Recommended once more than one admin is on the team.</span></span>
           <Switch checked={secondApprover} onCheckedChange={(checked) => setSecondApprover(Boolean(checked))} aria-label="Require a second approver" />
+        </label>
+        <label className="flex items-start justify-between gap-4 rounded-lg border border-border p-4 sm:col-span-2">
+          <span><span className="block text-sm font-medium text-foreground">Daily summary for owners and admins</span><span className="mt-1 block text-xs text-muted-foreground">One morning email with new submissions, completed and overdue reads, and letters waiting on you. Quiet days send nothing.</span></span>
+          <Switch checked={adminDigest} onCheckedChange={(checked) => setAdminDigest(Boolean(checked))} aria-label="Daily summary for owners and admins" />
         </label>
       </fieldset>
       {error ? <Alert variant="destructive"><AlertTitle>Not saved</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}

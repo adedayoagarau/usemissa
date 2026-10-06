@@ -7,6 +7,8 @@
     { "path": "/api/cron/submission-cleanup", "schedule": "17 * * * *" },
     { "path": "/api/cron/observability", "schedule": "*/15 * * * *" },
     { "path": "/api/cron/weekly-digest", "schedule": "53 7 * * 1" },
-    { "path": "/api/cron/magazine-rankings", "schedule": "37 6 3 * *" }
+    { "path": "/api/cron/magazine-rankings", "schedule": "37 6 3 * *" },
+    { "path": "/api/cron/organization-letters", "schedule": "*/15 * * * *" },
+    { "path": "/api/cron/organization-digest", "schedule": "41 7 * * *" }
   ]
 }

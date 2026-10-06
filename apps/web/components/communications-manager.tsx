@@ -52,6 +52,15 @@ const MERGE_FIELDS: Array<{ token: string; meaning: string }> = [
   { token: '{{senderName}}', meaning: 'your sender name' },
 ];
 
+function deliveryWords(status: string): string {
+  if (status === 'delivered') return 'delivered';
+  if (status === 'accepted') return 'accepted by the provider';
+  if (status === 'bounced') return 'bounced';
+  if (status === 'suppressed') return 'suppressed';
+  if (status === 'failed') return 'failed at the provider';
+  return 'delivery pending';
+}
+
 function when(value?: string): string {
   if (!value) return '';
   const date = new Date(value);
@@ -246,6 +255,7 @@ function BatchDetail({ base, batch, callTitle, canManage, currentAccountId, seco
   const [body, setBody] = useState(batch.body);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
+  const [scheduleAt, setScheduleAt] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const editable = batch.status === 'draft' || batch.status === 'awaiting-approval';
@@ -253,7 +263,7 @@ function BatchDetail({ base, batch, callTitle, canManage, currentAccountId, seco
   const approvalBlocked = batch.status === 'awaiting-approval' && secondApproverRequired && selfDrafted;
   const canRetry = batch.status === 'partially-sent' || batch.status === 'failed';
 
-  const patch = (action: 'update' | 'request-approval' | 'approve' | 'cancel', extra: Record<string, unknown> = {}) => startTransition(async () => {
+  const patch = (action: 'update' | 'request-approval' | 'approve' | 'cancel' | 'schedule', extra: Record<string, unknown> = {}) => startTransition(async () => {
     setError(null);
     const response = await fetch(`${base}/communications/${encodeURIComponent(batch.id)}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, ...extra }) });
     const payload = await response.json().catch(() => ({}));
@@ -262,6 +272,7 @@ function BatchDetail({ base, batch, callTitle, canManage, currentAccountId, seco
     if (action === 'request-approval') toast.success('Approval requested.');
     if (action === 'approve') toast.success('Approved. It can be sent now.');
     if (action === 'cancel') toast.success('Letter cancelled.');
+    if (action === 'schedule') toast.success(extra.scheduledFor ? 'Scheduled. It will send automatically.' : 'Schedule removed.');
     onChange(payload as CommunicationBatchSummary);
   });
 
@@ -312,16 +323,36 @@ function BatchDetail({ base, batch, callTitle, canManage, currentAccountId, seco
           {editable || batch.status === 'approved' || batch.status === 'failed' ? <Button type="button" variant="ghost" size="sm" onClick={() => patch('cancel')} disabled={pending}>Cancel letter</Button> : null}
         </div>
       ) : null}
+      {canManage && batch.status === 'approved' ? (
+        <div className="mt-3 flex flex-wrap items-end gap-2 rounded-lg border border-border p-3">
+          {batch.scheduledFor ? (
+            <>
+              <p className="text-sm text-foreground">Scheduled to send <strong className="font-mono text-xs">{when(batch.scheduledFor)}</strong></p>
+              <Button type="button" size="sm" variant="ghost" onClick={() => patch('schedule', { scheduledFor: null })} disabled={pending}>Remove schedule</Button>
+            </>
+          ) : (
+            <>
+              <Field className="w-auto">
+                <FieldLabel htmlFor={`schedule-${batch.id}`}>Send later at</FieldLabel>
+                <Input id={`schedule-${batch.id}`} type="datetime-local" size="compact" value={scheduleAt} onChange={(event) => setScheduleAt(event.target.value)} className="w-56" />
+              </Field>
+              <Button type="button" size="sm" variant="outline" onClick={() => patch('schedule', { scheduledFor: new Date(scheduleAt).toISOString() })} disabled={pending || !scheduleAt}>Schedule</Button>
+              <span className="text-xs text-muted-foreground">Your local time. Sends within 15 minutes of it.</span>
+            </>
+          )}
+        </div>
+      ) : null}
       {approvalBlocked ? <p className="mt-2 text-xs text-muted-foreground">You drafted this letter. Your organization requires a different admin to approve it.</p> : null}
       {error ? <div className="mt-3"><Alert variant="destructive"><AlertTitle>Nothing changed</AlertTitle><AlertDescription>{error}</AlertDescription></Alert></div> : null}
 
       <section className="mt-5" aria-label="Recipients">
         <h4 className="text-sm font-semibold text-foreground">Recipients <span className="ml-1 font-mono text-xs font-normal text-muted-foreground">{batch.recipients.length}</span></h4>
+        {batch.sentAt || batch.status === 'partially-sent' ? <p className="mt-1 text-xs text-muted-foreground">{batch.deliveryKnown ? 'Delivery status comes from the provider’s receipts; accepted is not yet delivered.' : 'Delivery receipts appear here when the durable message ledger is connected.'}</p> : null}
         <ul className="mt-2 max-h-64 divide-y divide-border overflow-auto rounded-lg border border-border text-sm">
           {batch.recipients.map((recipient) => (
             <li key={recipient.submissionId} className="flex items-center justify-between gap-3 px-3 py-2">
               <span className="min-w-0 truncate text-foreground">{recipient.submitterLabel}</span>
-              <span className="shrink-0 text-xs text-muted-foreground">{recipient.status === 'pending' ? 'Not sent' : recipient.status === 'sent' ? `Sent ${when(recipient.sentAt)}` : recipient.status === 'suppressed' ? 'Suppressed (bounced or complained before)' : recipient.status === 'skipped' ? recipient.reason ?? 'Skipped' : `Failed${recipient.reason ? `: ${recipient.reason}` : ''}`}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">{recipient.status === 'pending' ? 'Not sent' : recipient.status === 'sent' ? `Sent ${when(recipient.sentAt)}${recipient.delivery ? ` · ${deliveryWords(recipient.delivery)}` : batch.deliveryKnown ? '' : ''}` : recipient.status === 'suppressed' ? 'Suppressed (bounced or complained before)' : recipient.status === 'skipped' ? recipient.reason ?? 'Skipped' : `Failed${recipient.reason ? `: ${recipient.reason}` : ''}`}</span>
             </li>
           ))}
           {batch.recipients.length === 0 ? <li className="px-3 py-3 text-xs text-muted-foreground">No recipients. Edit the letter to add some.</li> : null}

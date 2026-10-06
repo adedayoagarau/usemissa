@@ -868,9 +868,39 @@ export class WorkspaceEngine {
     return batch;
   }
 
+  /**
+   * Schedules (or unschedules) an approved letter. Scheduling never bypasses
+   * the gate: only an approved batch can be scheduled, and an edit after
+   * approval still invalidates the send.
+   */
+  scheduleCommunicationBatch(organizationId: string, batchId: string, scheduledFor: string | undefined, actorAccountId: string): CommunicationBatch {
+    const batch = this.requireCommunicationBatch(organizationId, batchId);
+    if (batch.status !== "approved") throw new Error("Only an approved letter can be scheduled");
+    if (scheduledFor !== undefined) {
+      const at = Date.parse(scheduledFor);
+      if (Number.isNaN(at)) throw new Error("Choose a valid send time");
+      if (at <= Date.parse(this.now())) throw new Error("Choose a send time in the future");
+      batch.scheduledFor = new Date(at).toISOString();
+    } else {
+      batch.scheduledFor = undefined;
+    }
+    batch.updatedAt = this.now();
+    this.recordCommunicationAudit(batch, scheduledFor ? "communication.scheduled" : "communication.unscheduled", actorAccountId);
+    return batch;
+  }
+
+  /** Approved batches whose scheduled time has arrived, oldest first. */
+  dueScheduledCommunicationBatches(now: string = this.now()): CommunicationBatch[] {
+    const at = Date.parse(now);
+    return [...this.store.communicationBatches.values()]
+      .filter((batch) => batch.status === "approved" && batch.scheduledFor && Date.parse(batch.scheduledFor) <= at)
+      .sort((left, right) => left.scheduledFor!.localeCompare(right.scheduledFor!));
+  }
+
   cancelCommunicationBatch(organizationId: string, batchId: string, actorAccountId: string): CommunicationBatch {
     const batch = this.requireCommunicationBatch(organizationId, batchId);
     this.transitionCommunication(batch, "cancelled");
+    batch.scheduledFor = undefined;
     batch.cancelledAt = this.now();
     batch.cancelledByAccountId = actorAccountId;
     batch.updatedAt = batch.cancelledAt;
@@ -888,6 +918,7 @@ export class WorkspaceEngine {
       throw new Error("The wording changed after approval; approve it again before sending");
     }
     this.transitionCommunication(batch, "sending");
+    batch.scheduledFor = undefined;
     batch.sendStartedAt = this.now();
     batch.updatedAt = batch.sendStartedAt;
     this.recordCommunicationAudit(batch, "communication.send_started", actorAccountId);

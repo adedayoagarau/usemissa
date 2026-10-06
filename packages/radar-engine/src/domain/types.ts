@@ -388,6 +388,8 @@ export interface OrganizationCustomization {
     signoff?: string;
     /** Whether a different admin must approve a letter batch before it is sent. */
     secondApproverRequired?: boolean;
+    /** Morning summary email to owners and admins; on unless turned off. */
+    adminDigest?: boolean;
   };
 }
 

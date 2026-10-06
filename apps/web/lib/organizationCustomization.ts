@@ -34,6 +34,7 @@ export const organizationCustomizationSchema = z
         replyTo: z.string().trim().email().optional(),
         signoff: z.string().trim().max(200).optional(),
         secondApproverRequired: z.boolean().optional(),
+        adminDigest: z.boolean().optional(),
       })
       .strict()
       .optional(),
@@ -50,7 +51,7 @@ export interface ResolvedOrganizationCustomization {
   stageLabels: Record<OrganizationSubmissionStage, string>;
   declaredStages: OrganizationSubmissionStage[];
   statusTransparency: StatusTransparency;
-  communications: { senderName: string; replyTo?: string; signoff: string; secondApproverRequired: boolean };
+  communications: { senderName: string; replyTo?: string; signoff: string; secondApproverRequired: boolean; adminDigest: boolean };
 }
 
 /** Removes empty strings so a cleared field falls back to the default instead of saving "". */
@@ -90,6 +91,7 @@ export function resolveOrganizationCustomization(organization: Pick<Organization
       replyTo: stored.communications?.replyTo,
       signoff: stored.communications?.signoff?.trim() || `The team at ${stored.displayName?.trim() || organization.name}`,
       secondApproverRequired: stored.communications?.secondApproverRequired ?? false,
+      adminDigest: stored.communications?.adminDigest ?? true,
     },
   };
 }

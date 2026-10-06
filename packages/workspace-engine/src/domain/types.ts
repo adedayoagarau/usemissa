@@ -283,6 +283,8 @@ export interface CommunicationBatch {
   approvalRequestedAt?: IsoDateTime;
   approvedByAccountId?: string;
   approvedAt?: IsoDateTime;
+  /** When set on an approved batch, the scheduler sends it at or after this time. */
+  scheduledFor?: IsoDateTime;
   sendStartedAt?: IsoDateTime;
   sentAt?: IsoDateTime;
   cancelledAt?: IsoDateTime;

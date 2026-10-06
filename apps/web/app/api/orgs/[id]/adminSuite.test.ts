@@ -17,6 +17,10 @@ import { POST as reassign } from './review-rounds/[roundId]/reassign/route';
 import { POST as promote } from './review-rounds/[roundId]/promote/route';
 import { POST as declareConflict } from '../../reviewer/assignments/[assignmentId]/conflict/route';
 import { reviewerAssignmentsForAccount } from '@/lib/reviewerProduct';
+import { GET as runScheduledLetters } from '../../cron/organization-letters/route';
+import { GET as runDigest } from '../../cron/organization-digest/route';
+import { digestHasNews, organizationDigestFacts } from '@/lib/organizationDigest';
+import { renderOrganizationDigestEmail } from '@/emails/organization-digest';
 
 const json = (body: unknown) => ({ method: 'POST', body: JSON.stringify(body) });
 
@@ -233,4 +237,55 @@ test('promotion opens a new round from the top scores and can draft the stage le
   assert.equal(letter.status, 'draft', 'promotion never tells anyone by itself');
   assert.deepEqual(letter.recipients.map((recipient) => recipient.submissionId), [data.assigned.id]);
   assert.equal((await promote(requestAs(reviewer, `/review-rounds/${round.id}/promote`, json({ name: 'Jury' })), roundParams)).status, 403);
+});
+
+test('approved letters can be scheduled and the scheduler sends them through the same gate', async () => {
+  const data = await organizationRoleFixture();
+  const owner = data.accounts.get('owner')!;
+  const id = data.organizationId;
+  const radar = await getEngine();
+  radar.store.organizations.get(id)!.customization = undefined;
+  const workspace = await getCompatibilityWorkspaceEngine();
+  const created = await createLetter(requestAs(owner, '/communications', json({ openCallId: data.openCall.id, kind: 'custom', body: 'Our timeline moved by a week.', recipients: [{ submissionId: data.unassigned.id, submitterAccountId: workspace.store.submissions.get(data.unassigned.id)!.submitterAccountId, workIds: [] }] })), { params: Promise.resolve({ id }) });
+  const batch = await created.json() as { id: string };
+  const params = { params: Promise.resolve({ id, batchId: batch.id }) };
+  const patch = (body: Record<string, unknown>) => patchLetter(requestAs(owner, `/communications/${batch.id}`, { method: 'PATCH', body: JSON.stringify(body) }), params);
+  assert.equal((await patch({ action: 'schedule', scheduledFor: '2099-01-01T09:00:00.000Z' })).status, 409, 'a draft cannot be scheduled');
+  await patch({ action: 'request-approval' });
+  await patch({ action: 'approve' });
+  const scheduled = await patch({ action: 'schedule', scheduledFor: '2099-01-01T09:00:00.000Z' });
+  assert.equal(scheduled.status, 200);
+  assert.equal((await scheduled.json() as { scheduledFor: string }).scheduledFor, '2099-01-01T09:00:00.000Z');
+
+  process.env.CRON_SECRET = 'cron-secret-for-tests';
+  const cron = () => runScheduledLetters(new Request('https://usemissa.test/api/cron/organization-letters', { headers: { authorization: 'Bearer cron-secret-for-tests' } }));
+  assert.equal((await runScheduledLetters(new Request('https://usemissa.test/api/cron/organization-letters'))).status, 401);
+  const notYet = await (await cron()).json() as { results: Array<{ batchId: string }> };
+  assert.ok(!notYet.results.some((result) => result.batchId === batch.id), 'not sent before its time');
+  workspace.communicationBatch(id, batch.id)!.scheduledFor = '2020-01-01T00:00:00.000Z';
+  const due = await (await cron()).json() as { results: Array<{ batchId: string; status: string }> };
+  assert.equal(due.results.find((result) => result.batchId === batch.id)?.status, 'sent');
+  assert.equal(workspace.communicationBatch(id, batch.id)!.status, 'sent');
+});
+
+test('the admin digest counts the last day and skips quiet or opted-out organizations', async () => {
+  const data = await organizationRoleFixture();
+  const radar = await getEngine();
+  const workspace = await getCompatibilityWorkspaceEngine();
+  const facts = organizationDigestFacts({ radar, workspace, organizationId: data.organizationId });
+  assert.ok(facts.newSubmissions >= 2, 'fixture submissions arrived today');
+  assert.ok(digestHasNews(facts));
+  const quiet = organizationDigestFacts({ radar, workspace, organizationId: data.organizationId, now: '2099-01-01T00:00:00.000Z' });
+  assert.equal(quiet.newSubmissions, 0);
+  const email = renderOrganizationDigestEmail({ organizationName: 'Role Prize', recipientName: 'Ada', facts });
+  assert.match(email.text, /New submissions in the last day/);
+  assert.doesNotMatch(email.html, /submitter_|@role-access\.test/, 'no submitter identity in the digest');
+
+  process.env.CRON_SECRET = 'cron-secret-for-tests';
+  radar.store.organizations.get(data.organizationId)!.customization = { communications: { adminDigest: false } };
+  const optedOut = await (await runDigest(new Request('https://usemissa.test/api/cron/organization-digest', { headers: { authorization: 'Bearer cron-secret-for-tests' } }))).json() as { optedOut: number };
+  assert.ok(optedOut.optedOut >= 1);
+  radar.store.organizations.get(data.organizationId)!.customization = undefined;
+  const sent = await (await runDigest(new Request('https://usemissa.test/api/cron/organization-digest', { headers: { authorization: 'Bearer cron-secret-for-tests' } }))).json() as { sent: number };
+  assert.ok(sent.sent >= 2, 'owner and admin each receive one');
 });

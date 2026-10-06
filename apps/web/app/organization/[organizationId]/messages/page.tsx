@@ -10,6 +10,7 @@ import styles from '../outcome-desk.module.css';
 import { COMMUNICATION_TEMPLATES } from '@missa/workspace-engine';
 import { CommunicationsManager } from '@/components/communications-manager';
 import { batchSummary, COMMUNICATIONS_UNAVAILABLE } from '@/lib/communicationsData';
+import { deliveryStatusByEffect } from '@/lib/communicationsSend';
 import { resolveOrganizationCustomization } from '@/lib/organizationCustomization';
 import { getEngine } from '@/lib/engine';
 import { getCompatibilityWorkspaceEngine, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
@@ -40,6 +41,7 @@ export default async function OrganizationMessagesPage({ params, searchParams }:
   const relational = workspaceRelationalAuthorityEnabled();
   const compatibility = relational ? undefined : await getCompatibilityWorkspaceEngine();
   const openCalls = compatibility ? compatibility.entitiesForOrganization(organizationId).flatMap((team) => compatibility.programsForEntity(team.id).flatMap((program) => compatibility.openCallsForProgram(program.id).map((call) => ({ id: call.id, title: call.title })))) : [];
+  const delivery = compatibility ? await deliveryStatusByEffect(process.env.DATABASE_URL, organizationId) : undefined;
   const manager = <CommunicationsManager
     organizationId={organizationId}
     canManage={membership.role === 'owner' || membership.role === 'admin'}
@@ -48,7 +50,7 @@ export default async function OrganizationMessagesPage({ params, searchParams }:
     openCalls={openCalls}
     templates={COMMUNICATION_TEMPLATES.map((template) => ({ kind: template.kind, label: template.label, description: template.description, stage: template.stage, defaultSubject: template.defaultSubject, defaultBody: template.defaultBody }))}
     stageLabels={customization.stageLabels}
-    initialBatches={compatibility ? compatibility.communicationBatchesForOrganization(organizationId).map((batch) => batchSummary(batch, radar)) : []}
+    initialBatches={compatibility ? compatibility.communicationBatchesForOrganization(organizationId).map((batch) => batchSummary(batch, radar, delivery)) : []}
     available={!relational}
     unavailableReason={relational ? COMMUNICATIONS_UNAVAILABLE : undefined}
   />;

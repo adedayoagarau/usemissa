@@ -101,7 +101,7 @@ export function batchTemplateVersion(batch: Pick<CommunicationBatch, 'subject' |
 }
 
 /** Summary shape sent to the client; recipients keep ids and states, never addresses. */
-export function batchSummary(batch: CommunicationBatch, radar: Radar) {
+export function batchSummary(batch: CommunicationBatch, radar: Radar, delivery?: Map<string, string>) {
   const counts = batch.recipients.reduce((totals, recipient) => { totals[recipient.status] = (totals[recipient.status] ?? 0) + 1; return totals; }, {} as Record<string, number>);
   const label = (accountId?: string) => (accountId ? submitterIdentity(radar, accountId).label : undefined);
   return {
@@ -117,11 +117,13 @@ export function batchSummary(batch: CommunicationBatch, radar: Radar) {
     updatedAt: batch.updatedAt,
     approvalRequestedAt: batch.approvalRequestedAt,
     approvedAt: batch.approvedAt,
+    scheduledFor: batch.scheduledFor,
     sentAt: batch.sentAt,
+    deliveryKnown: Boolean(delivery),
     createdBy: label(batch.createdByAccountId),
     createdByAccountId: batch.createdByAccountId,
     approvedBy: label(batch.approvedByAccountId),
-    recipients: batch.recipients.map((recipient) => ({ submissionId: recipient.submissionId, submitterLabel: submitterIdentity(radar, recipient.submitterAccountId).label, workIds: recipient.workIds, status: recipient.status, reason: recipient.reason, sentAt: recipient.sentAt })),
+    recipients: batch.recipients.map((recipient) => ({ submissionId: recipient.submissionId, submitterLabel: submitterIdentity(radar, recipient.submitterAccountId).label, workIds: recipient.workIds, status: recipient.status, reason: recipient.reason, sentAt: recipient.sentAt, delivery: recipient.effectId ? delivery?.get(recipient.effectId) : undefined })),
     counts,
   };
 }

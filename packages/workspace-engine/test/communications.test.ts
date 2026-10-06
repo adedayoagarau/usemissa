@@ -190,3 +190,24 @@ test("withdrawing a reader's open reads leaves completed reads alone", () => {
   assert.equal(open.recusalReason, "Reader away");
   assert.equal(done.recusedAt, undefined);
 });
+
+test("approved letters can be scheduled and the scheduler finds them when due", () => {
+  let clock = "2026-10-01T10:00:00.000Z";
+  const engine = new WorkspaceEngine({ now: () => clock });
+  const team = engine.createEntity("org_1", "Editorial");
+  const program = engine.createProgram(team.id, "Prize");
+  const call = engine.createOpenCall(program.id, "Prize");
+  const path = engine.createSubmissionPath(call.id, [], []);
+  const submission = engine.createSubmission(path.id, "acct_rosa", [{ title: "Saltwater" }]);
+  const batch = engine.createCommunicationBatch("org_1", { openCallId: call.id, kind: "shortlist", subject: "s", body: "b", recipients: [{ submissionId: submission.id, submitterAccountId: "acct_rosa", workIds: [] }], createdByAccountId: "acct_admin" });
+  assert.throws(() => engine.scheduleCommunicationBatch("org_1", batch.id, "2026-10-02T09:00:00.000Z", "acct_admin"), /Only an approved letter/);
+  engine.approveCommunicationBatch("org_1", batch.id, "acct_admin");
+  assert.throws(() => engine.scheduleCommunicationBatch("org_1", batch.id, "2026-09-30T09:00:00.000Z", "acct_admin"), /future/);
+  engine.scheduleCommunicationBatch("org_1", batch.id, "2026-10-02T09:00:00.000Z", "acct_admin");
+  assert.deepEqual(engine.dueScheduledCommunicationBatches(), []);
+  clock = "2026-10-02T09:00:01.000Z";
+  assert.deepEqual(engine.dueScheduledCommunicationBatches().map((item) => item.id), [batch.id]);
+  engine.beginCommunicationSend("org_1", batch.id, "acct_admin");
+  assert.equal(batch.scheduledFor, undefined, "sending clears the schedule");
+  assert.deepEqual(engine.dueScheduledCommunicationBatches(), []);
+});
