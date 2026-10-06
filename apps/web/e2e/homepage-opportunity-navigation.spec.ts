@@ -5,22 +5,14 @@ test("homepage opportunity entry points use the catalogue route", async ({
 }) => {
   await page.goto("/");
 
-  await expect(page.locator(".missa-homepage-hero img")).toHaveAttribute(
-    "src",
-    /hero-artist-studio\.webp/,
-  );
-
   await expect(
-    page.getByRole("link", { name: "Browse opportunities", exact: true }).first(),
-  ).toHaveAttribute("href", "/opportunities");
-  await expect(
-    page.getByRole("navigation", { name: "Primary" }).getByRole("link", {
+    page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", {
       name: "Opportunities",
       exact: true,
     }),
   ).toHaveAttribute("href", "/opportunities");
   await expect(
-    page.getByRole("link", { name: "Browse all calls", exact: true }),
+    page.getByRole("link", { name: /See all .* open opportunities|Open the full catalogue/ }),
   ).toHaveAttribute("href", "/opportunities");
   await expect(
     page
@@ -29,8 +21,7 @@ test("homepage opportunity entry points use the catalogue route", async ({
   ).toHaveAttribute("href", "/opportunities");
 
   await page
-    .getByRole("link", { name: "Browse opportunities", exact: true })
-    .first()
+    .getByRole("link", { name: /See all .* open opportunities|Open the full catalogue/ })
     .click();
   await expect(page).toHaveURL(/\/opportunities$/, { timeout: 30_000 });
   await expect(
@@ -43,23 +34,9 @@ test("mobile homepage menu opens the opportunities catalogue", async ({
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await page.getByRole("button", { name: "Open menu" }).click();
-
-  const wordmark = page
-    .locator('[aria-labelledby="homepage-hero-heading"]')
-    .getByRole("link", { name: "Missa beta home" });
-  const closeButton = page.getByRole("button", { name: "Close menu" });
-  const [wordmarkBox, closeButtonBox] = await Promise.all([
-    wordmark.boundingBox(),
-    closeButton.boundingBox(),
-  ]);
-
-  expect(wordmarkBox).not.toBeNull();
-  expect(closeButtonBox).not.toBeNull();
-  expect(Math.abs(wordmarkBox!.y - closeButtonBox!.y)).toBeLessThanOrEqual(16);
-
+  await page.getByRole("button", { name: "Open navigation" }).click();
   await page
-    .locator("#homepage-hero-menu")
+    .getByRole("navigation", { name: "Mobile navigation" })
     .getByRole("link", { name: "Opportunities", exact: true })
     .click();
   await expect(page).toHaveURL(/\/opportunities$/, { timeout: 30_000 });

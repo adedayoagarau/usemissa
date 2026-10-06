@@ -11,13 +11,11 @@ test("public Home leads with useful Opportunities and no operational theatre", a
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: "Opportunities and grants for every creator",
+      name: "Find your next open call.",
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", {
-      name: "Opportunities are scattered across the web.",
-    }),
+    page.getByRole("region", { name: "Open opportunities" }).getByRole("article").first(),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Browse opportunities" }).first(),

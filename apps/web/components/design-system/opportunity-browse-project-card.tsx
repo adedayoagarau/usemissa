@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
 import { SaveOpportunityButton } from "@/components/save-opportunity-button";
 import { CalendarDays, MapPin, Tag } from "lucide-react";
@@ -109,9 +109,12 @@ function statusBadge(
 export function OpportunityBrowseProjectCard({
   item,
   signedIn,
+  saveAction,
 }: {
   signedIn?: boolean;
   item: OpportunityCardItem;
+  /** Replaces the default save control; a surface-specific save keeps the card's layout. */
+  saveAction?: ReactNode;
 }) {
   const practices = Array.from(
     new Set(
@@ -180,7 +183,9 @@ export function OpportunityBrowseProjectCard({
             </NativeBadge>
           ) : null}
         </div>
-        {signedIn === undefined ? (
+        {saveAction !== undefined ? (
+          <div className={styles.saveAction}>{saveAction}</div>
+        ) : signedIn === undefined ? (
           <SaveOpportunityButton
             opportunityId={item.id}
             className={styles.saveAction}
