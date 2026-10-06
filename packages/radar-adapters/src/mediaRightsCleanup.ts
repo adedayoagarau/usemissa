@@ -22,6 +22,7 @@ export const UNREVIEWED_CLEARED_WHERE =
 export const RIGHTS_REVERT_BACKUP_TABLE = "media_rights_revert_backup_2026_10";
 
 type Queryable = Pick<PoolClient | Pool, "query">;
+type Connection = Queryable & { release?: () => void };
 
 const CARD_KINDS = "('opportunity-artwork', 'opportunity-cover')";
 
@@ -184,17 +185,26 @@ type RecheckOpportunity = {
  *
  * Cards whose organizer has a qualifying og:image keep an image throughout.
  * With `dryRun`, pages are fetched and the result is computed, but nothing is
- * written. Pass a dedicated client, not a pool.
+ * written. Fetching every page takes a while, so pass `connect` (for example
+ * `() => pool.connect()`) to run the transaction on a fresh connection rather
+ * than one left idle the whole time; otherwise `client` must be a dedicated
+ * client, not a pool.
  */
 export async function recheckUnreviewedClearedAssets(
-  client: Queryable,
-  options: { approvedBy: string; dryRun?: boolean; fetchPage?: RecheckPageFetcher; concurrency?: number },
+  reader: Queryable,
+  options: {
+    approvedBy: string;
+    dryRun?: boolean;
+    fetchPage?: RecheckPageFetcher;
+    concurrency?: number;
+    connect?: () => Promise<Connection>;
+  },
 ): Promise<RecheckResult> {
   const approvedBy = options.approvedBy.trim();
   if (!approvedBy && !options.dryRun) throw new Error("The owner's approval is required: pass the approver's name.");
   const fetchPage = options.fetchPage ?? fetchRecheckPage;
 
-  const { rows: opportunities } = await client.query<RecheckOpportunity>(
+  const { rows: opportunities } = await reader.query<RecheckOpportunity>(
     `select o.id, o.title,
             case when o.guidelines_url ~* '^https?://' then o.guidelines_url
                  when o.submission_url ~* '^https?://' then o.submission_url end as page_url,
@@ -264,7 +274,7 @@ export async function recheckUnreviewedClearedAssets(
   const attributedLogos = [...attributed.values()].filter((c) => c.candidateKind === "organization-logo").length;
   const titles = new Map(opportunities.map((row) => [row.id, row.title]));
 
-  const { rows: countRows } = await client.query<{ n: string }>(
+  const { rows: countRows } = await reader.query<{ n: string }>(
     `select count(*) as n from opportunity_identity_assets a where ${UNREVIEWED_CLEARED_WHERE}`,
   );
   const summary = {
@@ -279,6 +289,7 @@ export async function recheckUnreviewedClearedAssets(
   }
 
   // 2. One transaction: back up, revert, record candidates, publish credited og:images.
+  const client: Connection = options.connect ? await options.connect() : reader;
   await client.query("begin");
   try {
     await client.query(
@@ -359,6 +370,8 @@ export async function recheckUnreviewedClearedAssets(
   } catch (error) {
     await client.query("rollback");
     throw error;
+  } finally {
+    if (options.connect) client.release?.();
   }
 }
 

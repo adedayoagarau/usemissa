@@ -31,17 +31,24 @@ const restore = args.includes("--restore");
 const approvedBy = args.find((arg) => arg.startsWith("--approved-by="))?.slice("--approved-by=".length) ?? "";
 
 const pool = new pg.Pool({ connectionString: dbUrl, max: 2 });
+// Fetching every organizer page takes a while; an idle connection the server
+// closes meanwhile must not crash the run. Each step takes a fresh one.
+pool.on("error", (error) => console.warn("Idle database connection closed:", error.message));
 
 async function run() {
-  const client = await pool.connect();
   try {
     if (restore) {
-      console.log("Restored:", await restoreRevertedAssets(client));
+      const client = await pool.connect();
+      try {
+        console.log("Restored:", await restoreRevertedAssets(client));
+      } finally {
+        client.release();
+      }
       return;
     }
-    console.log("Unreviewed cleared assets:", await reportUnreviewedClearedAssets(client));
+    console.log("Unreviewed cleared assets:", await reportUnreviewedClearedAssets(pool));
     if (dryRun) {
-      console.log("Preview (nothing written):", await recheckUnreviewedClearedAssets(client, { approvedBy, dryRun: true }));
+      console.log("Preview (nothing written):", await recheckUnreviewedClearedAssets(pool, { approvedBy, dryRun: true }));
       return;
     }
     if (!apply) {
@@ -53,14 +60,13 @@ async function run() {
       process.exitCode = 1;
       return;
     }
-    console.log("Re-checked:", await recheckUnreviewedClearedAssets(client, { approvedBy }));
+    console.log("Re-checked:", await recheckUnreviewedClearedAssets(pool, { approvedBy, connect: () => pool.connect() }));
     if (process.env.BLOB_READ_WRITE_TOKEN) {
-      console.log("Stored copies:", await mirrorServedImages(client, { store: vercelBlobImageStore() }));
+      console.log("Stored copies:", await mirrorServedImages(pool, { store: vercelBlobImageStore() }));
     } else {
       console.log("BLOB_READ_WRITE_TOKEN is not set: run media:mirror-images to stop hotlinking.");
     }
   } finally {
-    client.release();
     await pool.end();
   }
 }

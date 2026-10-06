@@ -231,6 +231,8 @@ test("cards show the organizer's credited og:image, and logos only as a mark", (
   assert.doesNotMatch(cover, /organization-mark|'logo'/);
   const logo = text.slice(text.indexOf("select logo_candidate.url"), text.indexOf(") logo on true"));
   assert.match(logo, /a\.kind = 'organization-mark'/);
+  // A mark cleared in bulk with no reviewer is never shown.
+  assert.ok(logo.includes("(a.reviewer is not null or a.reviewed_at is not null or a.rights_status = 'needs-attribution')"));
   assert.ok(logo.includes(servable));
   assert.match(text, /asset\.credit as identity_asset_credit/);
   assert.match(text, /logo\.url as identity_logo_url/);
@@ -399,7 +401,14 @@ test("the re-check needs a named approver, and a dry run changes nothing", async
 
 test("the re-check keeps the organizer's own og:image, credited, and hides the rest", async () => {
   const { db, client, rights } = await cleanupDatabase();
-  const result = await recheckUnreviewedClearedAssets(client as never, { approvedBy: "Owner Name", fetchPage });
+  // The transaction runs on a fresh connection, released afterwards.
+  let released = 0;
+  const result = await recheckUnreviewedClearedAssets(client as never, {
+    approvedBy: "Owner Name",
+    fetchPage,
+    connect: async () => ({ query: client.query, release: () => { released++; } }) as never,
+  });
+  assert.equal(released, 1);
   assert.deepEqual(result, {
     opportunities: 4,
     attributedImages: 2,

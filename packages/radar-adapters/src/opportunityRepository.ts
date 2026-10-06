@@ -563,6 +563,9 @@ function baseFrom(
           and (a.opportunity_id = o.id
             or (o.organization_id is not null and a.linked_organization_id = o.organization_id))
           and ${SERVABLE_ASSET_RIGHTS}
+          -- Marks were never shown before; a mark cleared in bulk without a
+          -- reviewer is not one (docs/media-rights-review.md).
+          and (a.reviewer is not null or a.reviewed_at is not null or a.rights_status = 'needs-attribution')
           and coalesce(a.url, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
         ${garyLogoSelect}
       ) logo_candidate

@@ -35,6 +35,7 @@ const limit = Number.isFinite(limitArg) && limitArg > 0 ? Math.floor(limitArg) :
 
 const { Pool } = pg;
 const pool = new Pool({ connectionString: dbUrl, max: 10 });
+pool.on("error", (error) => console.warn("Idle database connection closed:", error.message));
 
 type MissingRow = {
   id: string;

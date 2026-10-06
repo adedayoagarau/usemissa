@@ -23,6 +23,7 @@ const limitArg = Number(process.argv.slice(2).find((arg) => arg.startsWith("--li
 const limit = Number.isFinite(limitArg) && limitArg > 0 ? Math.floor(limitArg) : undefined;
 
 const pool = new pg.Pool({ connectionString: dbUrl, max: 2 });
+pool.on("error", (error) => console.warn("Idle database connection closed:", error.message));
 
 mirrorServedImages(pool, { store: vercelBlobImageStore(), limit })
   .then((result) => console.log("Stored copies:", result))
