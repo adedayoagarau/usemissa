@@ -33,6 +33,7 @@ import { POST as triage } from './submissions/triage/route';
 import { PATCH as setScreeningRules } from './open-calls/[openCallId]/eligibility/route';
 import { GET as searchRecords } from './search/route';
 import { organizationIntakeFlags } from '@/lib/intakeData';
+import { organizationAnalytics } from '@/lib/organizationAnalytics';
 
 const json = (body: unknown) => ({ method: 'POST', body: JSON.stringify(body) });
 
@@ -442,4 +443,23 @@ test('record search finds submissions by submitter and Work, for ledger roles on
   assert.equal(opportunity.results[0]!.kind, 'opportunity');
   assert.deepEqual((await (await search(data.accounts.get('owner')!, 'x')).json() as { results: unknown[] }).results, [], 'one letter is too short');
   assert.equal((await search(data.accounts.get('reviewer')!, 'poem')).status, 403);
+});
+
+test('analytics count reads, overdue work, outcomes by category and letters for the scope', async () => {
+  const { data, workspace, round } = await freshRound();
+  const reviewer = data.accounts.get('reviewer')!;
+  const radar = await getEngine();
+  const done = workspace.assignReviewer(round.id, data.unassigned.id, reviewer);
+  workspace.recordReview(done.id, 64);
+  const late = workspace.assignReviewer(round.id, data.assigned.id, data.accounts.get('admin')!);
+  late.expiresAt = '2020-01-01T00:00:00.000Z';
+  workspace.store.submissions.get(data.unassigned.id)!.category = 'Poetry';
+  const scope = new Set([data.assigned.id, data.unassigned.id]);
+  const result = organizationAnalytics({ radar, workspace, organizationId: data.organizationId, submissionIds: scope });
+  const reader = result.readers.find((row) => row.reviewerAccountId === reviewer)!;
+  assert.ok(reader.completed >= 1);
+  assert.ok(result.readers.find((row) => row.reviewerAccountId === data.accounts.get('admin'))!.overdue >= 1);
+  const poetry = result.categories.find((row) => row.category === 'Poetry')!;
+  assert.equal(poetry.submissions, 1);
+  assert.ok(result.categories.some((row) => row.category === 'No category'));
 });
