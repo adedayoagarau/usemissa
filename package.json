@@ -21,6 +21,7 @@
     "test:language": "node --test scripts/tests/check-missa-language.test.mjs",
   "check:design-system": "node scripts/check-design-system.mjs",
   "check:creator-migration-boundary": "node scripts/verify-creator-migration-boundary.mjs",
+    "check:public-media": "node scripts/check-public-media-sidecars.mjs",
     "design-system:catalogue": "node scripts/check-design-system.mjs --write-catalogue",
     "test:e2e": "npm run test:e2e --workspace=@missa/web",
     "dev:web:live-data": "railway run npm run dev --workspace=@missa/web",

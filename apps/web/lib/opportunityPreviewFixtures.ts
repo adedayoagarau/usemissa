@@ -165,6 +165,26 @@ export const PUBLIC_OPPORTUNITY_PREVIEW_ITEMS: OpportunityBrowseProjection[] = [
     location: "Hybrid",
     summary: "A supported fellowship for designers working on civic systems, services, and public space.",
   }),
+  // An organizer with only a logo: the card keeps its plate and shows the
+  // logo as a small mark, never as a cropped cover.
+  previewOpportunity({
+    id: "preview-harbour",
+    slug: "preview-harbour-arts-residency",
+    title: "Harbour Arts Trust Coastal Residency",
+    organizationName: "Harbour Arts Trust",
+    organizationVerified: true,
+    identityLogoUrl: "/media/opportunities/preview-harbour-arts-mark.svg",
+    status: "open",
+    type: "residency",
+    discipline: "Visual art",
+    genres: ["Residency", "Landscape"],
+    taxonomy: { schemeVersion: 1, termIds: [practice.visual], primaryTermIds: [practice.visual] },
+    deadline: { kind: "exact", date: "2026-12-01", timezone: "Europe/London" },
+    fee: { status: "no-fee", amountCents: 0, currency: "GBP" },
+    prize: "Four-week studio and stipend",
+    location: "Cornwall, United Kingdom",
+    summary: "A four-week residency for visual artists working with coast, weather, and place.",
+  }),
   previewOpportunity({
     id: "preview-music",
     slug: "preview-listening-room",
