@@ -5,6 +5,7 @@ import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from "./workerTel
 import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 import { fetchWithPolicy, USER_AGENT } from "./mediaFetcher.js";
 import { extractMediaCandidates } from "./mediaExtractor.js";
+import { insertMediaCandidate } from "./mediaCandidateStore.js";
 import type { SourceRole } from "./mediaExtractionContracts.js";
 import { OperationsUsage } from "@missa/decisions";
 import { HostHistoryTracker, logOperationsUsage, radarOperationsDecider, retryShouldWaitLongest, type OperationsDecider } from "./operationsDecisions.js";
@@ -365,57 +366,7 @@ async function processJob(client: PoolClient, job: ClaimedJob): Promise<void> {
     let rejectedCount = 0;
 
     for (const candidate of extraction.candidates) {
-      const candidateId = randomUUID();
-      await client.query(
-        `insert into opportunity_media_candidates
-           (id, opportunity_id, job_id, original_url, resolved_url, page_url,
-            source_role, candidate_kind, alt, caption, title, width, height,
-            mime_type, file_size, retrieved_at, http_status, redirect_chain,
-            content_hash, attribution_text, inheritance_level,
-            linked_organization_id, linked_program_id, extraction_method,
-            parser_version, confidence, rejection_reasons, status, rights_status,
-            metadata, created_at, updated_at)
-         values
-           ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-            now(), $16, $17::jsonb, $18, $19, $20, $21, $22, $23, $24, $25,
-            $26, $27, 'unknown', $28::jsonb, now(), now())
-         on conflict (opportunity_id, resolved_url) do update set
-           updated_at = now(),
-           http_status = excluded.http_status,
-           redirect_chain = excluded.redirect_chain,
-           rejection_reasons = excluded.rejection_reasons,
-           metadata = opportunity_media_candidates.metadata || excluded.metadata`,
-        [
-          candidateId,
-          job.opportunityId,
-          job.id,
-          candidate.originalUrl,
-          candidate.resolvedUrl,
-          candidate.pageUrl,
-          candidate.sourceRole,
-          candidate.candidateKind,
-          candidate.alt ?? null,
-          candidate.caption ?? null,
-          candidate.title ?? null,
-          candidate.width ?? null,
-          candidate.height ?? null,
-          candidate.mimeType ?? null,
-          candidate.fileSize ?? null,
-          candidate.httpStatus ?? null,
-          JSON.stringify(candidate.redirectChain ?? []),
-          candidate.contentHash ?? null,
-          candidate.attributionText ?? null,
-          candidate.inheritanceLevel,
-          candidate.linkedOrganizationId ?? null,
-          candidate.linkedProgramId ?? null,
-          candidate.extractionMethod,
-          candidate.parserVersion,
-          candidate.confidence,
-          candidate.rejectionReasons,
-          candidate.status,
-          JSON.stringify(candidate.metadata ?? {}),
-        ],
-      );
+      await insertMediaCandidate(client, candidate, { opportunityId: job.opportunityId, jobId: job.id });
 
       if (candidate.status === "reviewable") {
         reviewableCount++;

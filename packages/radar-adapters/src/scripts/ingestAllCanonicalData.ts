@@ -1023,14 +1023,15 @@ export async function ingestAllCanonicalData(options: { databaseUrl?: string; po
 
       // 4. Ingest Opportunities, Windows, Call Profiles, and Identity Assets
       for (const opp of org.opportunities) {
-        // A. Identity Asset
+        // A. Identity Asset. Rights stay unknown until a person reviews the
+        // image (docs/media-rights-review.md).
         if (opp.heroImageUrl) {
           const assetId = `asset:hero:${opp.opportunityId}`;
           try {
             await client.query(`
               INSERT INTO opportunity_identity_assets (
                 id, opportunity_id, url, alt, kind, rights_status, source_url, width, height, created_at
-              ) VALUES ($1, $2, $3, $4, 'hero', 'cleared', $5, 1200, 800, now())
+              ) VALUES ($1, $2, $3, $4, 'hero', 'unknown', $5, 1200, 800, now())
               ON CONFLICT (id) DO UPDATE SET url = EXCLUDED.url;
             `, [assetId, opp.opportunityId, opp.heroImageUrl, `${opp.title} Hero Visual`, org.websiteUrl]);
             stats.identityAssetsInserted++;

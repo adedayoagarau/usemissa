@@ -1,4 +1,23 @@
 import pg from "pg";
+import { fetchWithPolicy } from "../mediaFetcher.js";
+import { extractMediaCandidates, inferSourceRole } from "../mediaExtractor.js";
+import { applyAutomaticRights } from "../mediaRightsRule.js";
+import { insertMediaCandidate } from "../mediaCandidateStore.js";
+import type { CandidateStatus } from "../mediaExtractionContracts.js";
+
+/**
+ * Finds images for published opportunities that have none and queues them
+ * for rights review in opportunity_media_candidates.
+ *
+ * This script never clears rights and never writes opportunity_identity_assets.
+ * An image reaches a card only after a person records a `cleared` or
+ * `permitted` decision through reviewMediaCandidate. The one automatic rule,
+ * an og:image from the organizer's own site, marks a candidate
+ * `needs-attribution` with the organizer as the credit; that state is not
+ * served publicly either. See docs/media-rights-review.md.
+ *
+ * Usage: npx tsx src/scripts/backfillRealOpportunityImages.ts [--dry-run] [--limit=250]
+ */
 
 const dbUrl = process.env.DATABASE_URL;
 if (!dbUrl) {
@@ -6,95 +25,106 @@ if (!dbUrl) {
   process.exit(1);
 }
 
+const args = process.argv.slice(2);
+const dryRun = args.includes("--dry-run");
+const limitArg = Number(args.find((arg) => arg.startsWith("--limit="))?.split("=")[1] ?? 250);
+const limit = Number.isFinite(limitArg) && limitArg > 0 ? Math.floor(limitArg) : 250;
+
 const { Pool } = pg;
 const pool = new Pool({ connectionString: dbUrl, max: 10 });
 
+type MissingRow = {
+  id: string;
+  title: string;
+  page_url: string;
+  organization_id: string | null;
+  organization_confirmed: boolean;
+  source_kind: string | null;
+  source_authority_kind: string | null;
+  organizer_name: string | null;
+  organizer_website_url: string | null;
+};
+
 async function run() {
-  console.log("=== BACKFILLING REAL IDENTITY IMAGES & CLEARING RIGHTS ===");
+  console.log(`=== QUEUEING OPPORTUNITY IMAGES FOR RIGHTS REVIEW${dryRun ? " (dry run)" : ""} ===`);
 
-  // 1. Clear rights_status for existing non-spam identity assets
-  const cleared = await pool.query(`
-    UPDATE opportunity_identity_assets
-    SET rights_status = 'cleared'
-    WHERE rights_status = 'unknown'
-      AND url IS NOT NULL
-      AND url ~* '^https?://'
-      AND url NOT ILIKE '%scorecardresearch%'
-      AND url NOT ILIKE '%top-banner%'
-      AND url NOT ILIKE '%og-default%'
-      AND url NOT ILIKE '%pixel%'
-      AND url NOT ILIKE '%analytics%'
-      AND url NOT ILIKE '%tracking%'
-  `);
-  console.log(`✓ Cleared rights on ${cleared.rowCount} high-quality identity assets in opportunity_identity_assets.`);
+  // Published opportunities with no identity asset and nothing already queued.
+  const missing = await pool.query<MissingRow>(
+    `select o.id, o.title,
+            case when o.guidelines_url ~* '^https?://' then o.guidelines_url else o.submission_url end as page_url,
+            o.organization_id,
+            coalesce(e.organization_confirmed, false) as organization_confirmed,
+            s.kind as source_kind,
+            s.authority_kind as source_authority_kind,
+            coalesce(org_profile.name, org.data->>'name') as organizer_name,
+            coalesce(org_profile.website_url, org.data->>'website_url', org.data->>'websiteUrl', org.data->>'website')
+              as organizer_website_url
+     from opportunities o
+     left join opportunity_sources s on s.id = o.source_id
+     left join radar_organizations org on org.id = o.organization_id
+     left join gary_profiles org_profile on org_profile.id = o.organization_id
+     left join lateral (
+       select organization_confirmed from opportunity_source_evidence
+       where opportunity_id = o.id order by checked_at desc limit 1
+     ) e on true
+     where o.publication_state = 'published'
+       and (o.guidelines_url ~* '^https?://' or o.submission_url ~* '^https?://')
+       and not exists (select 1 from opportunity_identity_assets a where a.opportunity_id = o.id)
+       and not exists (select 1 from opportunity_media_candidates c where c.opportunity_id = o.id)
+     limit $1`,
+    [limit],
+  );
 
-  // 2. Extract og:image from guidelines/submission URLs for published opportunities that have no asset
-  const missing = await pool.query(`
-    SELECT o.id, o.title, o.submission_url, o.guidelines_url
-    FROM opportunities o
-    LEFT JOIN opportunity_identity_assets a ON a.opportunity_id = o.id
-    WHERE o.publication_state = 'published' AND a.id IS NULL
-      AND (o.submission_url ~* '^https?://' OR o.guidelines_url ~* '^https?://')
-    LIMIT 250
-  `);
+  console.log(`Extracting images for ${missing.rows.length} opportunities without one...`);
 
-  console.log(`Attempting og:image extraction for ${missing.rows.length} opportunities missing photos...`);
+  const byStatus: Partial<Record<CandidateStatus, number>> = {};
+  let pagesFailed = 0;
 
-  let added = 0;
-
-  async function fetchOgImage(url: string): Promise<string | null> {
+  async function queueImagesFor(row: MissingRow) {
+    let fetched;
     try {
-      const res = await fetch(url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-          "Accept": "text/html,application/xhtml+xml"
-        },
-        signal: AbortSignal.timeout(3500)
-      });
-      if (!res.ok) return null;
-      const html = await res.text();
-      const match = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i) ||
-                    html.match(/<meta\s+content=["']([^"']+)["']\s+property=["']og:image["']/i) ||
-                    html.match(/<meta\s+name=["']twitter:image["']\s+content=["']([^"']+)["']/i);
-      if (match && match[1]) {
-        let imgUrl = match[1].trim();
-        if (imgUrl.startsWith("//")) imgUrl = "https:" + imgUrl;
-        if (!imgUrl.startsWith("http")) return null;
-        if (imgUrl.includes("submittable-logo") || imgUrl.includes("default") || imgUrl.includes("favicon")) return null;
-        return imgUrl;
-      }
+      fetched = await fetchWithPolicy(row.page_url, { expectedType: "html", checkRobots: true });
     } catch {
-      // timeout
+      pagesFailed++;
+      return;
     }
-    return null;
+    const html = typeof fetched.body === "string" ? fetched.body : fetched.body.toString("utf-8");
+    const extraction = extractMediaCandidates(
+      html,
+      {
+        opportunityId: row.id,
+        title: row.title,
+        pageUrl: fetched.finalUrl,
+        sourceRole: inferSourceRole(fetched.finalUrl, {
+          sourceKind: row.source_kind ?? undefined,
+          sourceAuthorityKind: row.source_authority_kind ?? undefined,
+          organizationId: row.organization_id ?? undefined,
+        }),
+        organizationId: row.organization_id ?? undefined,
+        organizationConfirmed: row.organization_confirmed,
+      },
+      fetched.redirectChain,
+      fetched.httpStatus,
+    );
+
+    for (const extracted of extraction.candidates) {
+      const candidate = applyAutomaticRights(extracted, {
+        organizerName: row.organizer_name,
+        organizerWebsiteUrl: row.organizer_website_url,
+      });
+      byStatus[candidate.status] = (byStatus[candidate.status] ?? 0) + 1;
+      if (!dryRun) await insertMediaCandidate(pool, candidate, { opportunityId: row.id });
+    }
   }
 
   // Concurrent batches of 15
   for (let i = 0; i < missing.rows.length; i += 15) {
-    const batch = missing.rows.slice(i, i + 15);
-    await Promise.all(batch.map(async (row) => {
-      const url = row.submission_url || row.guidelines_url;
-      if (!url) return;
-      const img = await fetchOgImage(url);
-      if (img) {
-        await pool.query(`
-          INSERT INTO opportunity_identity_assets (id, opportunity_id, url, alt, rights_status, kind, created_at)
-          VALUES ($1, $2, $3, $4, 'cleared', 'opportunity-artwork', NOW())
-          ON CONFLICT (id) DO UPDATE SET url = EXCLUDED.url, rights_status = 'cleared'
-        `, [`asset_${row.id}`, row.id, img, `${row.title} visual`]);
-        added++;
-      }
-    }));
+    await Promise.all(missing.rows.slice(i, i + 15).map(queueImagesFor));
   }
 
-  console.log(`✓ Harvested and saved ${added} fresh real images directly from organizers' sites.`);
-
-  const finalCount = await pool.query(`
-    SELECT count(DISTINCT opportunity_id) 
-    FROM opportunity_identity_assets 
-    WHERE rights_status IN ('cleared', 'permitted')
-  `);
-  console.log(`Total opportunities with real verified images now: ${finalCount.rows[0].count}`);
+  console.log(`${dryRun ? "Would queue" : "Queued"} candidates by status:`, byStatus);
+  console.log(`Pages that could not be fetched (or robots.txt disallowed): ${pagesFailed}`);
+  console.log("No rights were cleared. Review queued candidates before they appear on cards.");
 
   await pool.end();
 }
