@@ -20,7 +20,7 @@ test('Messages reports the durable ledger unavailable without a database on a ph
   expect(accessibility.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);
 });
 
-test('Delivery begins only with accepted Work and withholds unsafe completion controls', async ({ page }) => {
+test('Delivery begins only with accepted Work', async ({ page }) => {
   const organizationId = await organizationSession(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/organization/${organizationId}/delivery`);
@@ -31,8 +31,9 @@ test('Delivery begins only with accepted Work and withholds unsafe completion co
   } else {
     await expect(page.getByRole('heading', { name: 'Accepted Works' })).toBeVisible();
     await expect(page.locator('dd').filter({ hasText: /^Accepted/ }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Set up delivery|Mark delivery complete|Reopen delivery/u }).first()).toBeVisible();
   }
-  await expect(page.getByRole('button', { name: /complete|set up|assign/iu })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /assign/iu })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);

@@ -220,6 +220,101 @@
       "appearance": "compact-organization-editor-with-adjacent-applicant-preview",
       "boundary": "Relational, versioned Organization configuration. Save and lifecycle actions use optimistic concurrency; preview is explicitly an unsaved applicant projection."
     },
+    "composition.organization-structure-actions": {
+      "semantic": "OrganizationStructureActions",
+      "implementation": "apps/web/components/organization-structure-actions.tsx",
+      "composition": [
+        "Dialog",
+        "Field",
+        "Input",
+        "Button",
+        "Alert",
+        "Spinner",
+        "Sonner"
+      ],
+      "appearance": "compact-organization-focused-task-dialog",
+      "boundary": "Owners and Admins create Teams and Programs from Settings, under Structure. Rename, move, and archive stay withheld."
+    },
+    "composition.organization-form-builder": {
+      "semantic": "OrganizationFormBuilder",
+      "implementation": "apps/web/components/organization-form-builder.tsx",
+      "composition": [
+        "Field",
+        "FieldSet",
+        "Input",
+        "NativeSelect",
+        "Checkbox",
+        "Button",
+        "Alert",
+        "Spinner",
+        "Sonner"
+      ],
+      "appearance": "labelled-question-list-with-icon-reorder",
+      "boundary": "Compatibility-workspace submission form inside the Opportunity editor. Field identity is preserved on save so applicant drafts stay matched; the relational workspace keeps using PortalStudio."
+    },
+    "composition.organization-opportunity-lifecycle": {
+      "semantic": "OrganizationOpportunityLifecycle",
+      "implementation": "apps/web/components/organization-opportunity-lifecycle.tsx",
+      "composition": [
+        "AlertDialog",
+        "Button",
+        "Alert",
+        "Spinner",
+        "Sonner"
+      ],
+      "boundary": "Publish and close are confirmed state transitions; closing uses the destructive variant and keeps received Submissions."
+    },
+    "composition.organization-people-actions": {
+      "semantic": "OrganizationPeopleActions",
+      "implementation": "apps/web/components/organization-people-actions.tsx",
+      "composition": [
+        "Dialog",
+        "AlertDialog",
+        "Field",
+        "Input",
+        "NativeSelect",
+        "Button",
+        "Alert",
+        "Spinner",
+        "Sonner"
+      ],
+      "boundary": "Add, change role, and remove access. Server owner and last-admin safeguards decide every change; the invite response never reveals whether an email has a Missa account."
+    },
+    "composition.organization-submission-actions": {
+      "semantic": "OrganizationSubmissionActions",
+      "implementation": "apps/web/components/organization-submission-actions.tsx",
+      "composition": [
+        "Dialog",
+        "Field",
+        "FieldSet",
+        "Input",
+        "NativeSelect",
+        "RadioGroup",
+        "Button",
+        "Alert",
+        "Spinner",
+        "Sonner"
+      ],
+      "boundary": "Assign one eligible member per round (duplicates refused client and server side), record one Work outcome per dialog with its consequence stated, and set up or complete a delivery task. Recording a decision never sends email."
+    },
+    "composition.organization-decision-emails": {
+      "semantic": "EmailDecisionsDialog",
+      "implementation": "apps/web/components/organization-decision-emails.tsx",
+      "composition": [
+        "Dialog",
+        "Checkbox",
+        "Field",
+        "FieldSet",
+        "Input",
+        "Textarea",
+        "Button",
+        "Alert",
+        "Spinner",
+        "Sonner"
+      ],
+      "appearance": "compose-then-review-every-letter",
+      "boundary": "Decision correspondence separate from recording. Every recipient letter is previewed before sending; one idempotency key covers a reviewed batch; held letters need an explicit send-anyway confirmation."
+    },
     "disclosure.organization-media": {
       "semantic": "InstitutionMediaGallery",
       "composition": ["Button", "Dialog", "Tabs"]

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { recordReviewerConflict, WORKSPACE_DECISION_SCOPES } from '@missa/workspace-engine';
 import { persistOrganizationMutation, requireOrganizationAccess } from '@/lib/organizationAccess';
 import { recordDecisionsAfterResponse, workspaceDecisionContext } from '@/lib/jevDecisions';
+import { reviewerAlreadyAssigned } from '@/lib/organizationActions';
 import { getRelationalWorkspace, workspaceCommandEnvelope, workspaceMutationError, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string; roundId: string }> }) {
@@ -12,7 +13,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Unknown review round for this organization' }, { status: 404 });
   }
 
-  const body = await request.json();
+  const body = await request.json().catch(() => ({}));
   if (typeof body.submissionId !== 'string' || typeof body.reviewerAccountId !== 'string') {
     return NextResponse.json({ error: 'submissionId and reviewerAccountId are required' }, { status: 400 });
   }
@@ -41,6 +42,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
   }
   const engine = result.access.workspace;
+  if (reviewerAlreadyAssigned(engine.reviewAssignmentsForSubmission(body.submissionId), { reviewRoundId: roundId, reviewerAccountId: body.reviewerAccountId })) {
+    return NextResponse.json({ error: 'This reviewer is already assigned to this Submission in this round.' }, { status: 409 });
+  }
   try {
     const assignment = engine.assignReviewer(roundId, body.submissionId, body.reviewerAccountId);
     await persistOrganizationMutation(result.access, {
