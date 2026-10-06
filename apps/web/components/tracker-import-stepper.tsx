@@ -316,15 +316,15 @@ export function TrackerImportStepper() {
       <div className={styles.shell}>
         <header className={styles.heading}>
           <Link href="/tracker"><ArrowLeft aria-hidden="true" />Back to Tracker</Link>
-          <p>Private Tracker utility</p>
-          <h1>Import your tracker</h1>
-          <span>Review every match, conflict, and field value before anything changes.</span>
+          <p>Import</p>
+          <h1>Bring your spreadsheet. Yes, even that one.</h1>
+          <span>You check every match and clash before anything changes.</span>
         </header>
         <ImportSteps step={step} />
         {error ? <div ref={errorRef} tabIndex={-1}><Alert variant="destructive"><AlertTriangle aria-hidden="true" /><AlertTitle>Import needs attention</AlertTitle><AlertDescription>{error}</AlertDescription></Alert></div> : null}
 
         {step === 'upload' ? <section className={styles.panel} aria-labelledby="upload-heading">
-          <header><p>Step 1</p><h2 id="upload-heading">Choose your CSV</h2><span>CSV only, up to 5 MiB and 10,000 rows. The file stays private and is not sent to Organizations.</span></header>
+          <header><p>Step 1</p><h2 id="upload-heading">Choose your CSV</h2><span>CSV only, up to 5 MiB and 10,000 rows. The file stays private. No organization sees it.</span></header>
           <div className={styles.dropzone} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); chooseFile(event.dataTransfer.files[0]); }}>
             <FileUp aria-hidden="true" /><strong>{file?.name ?? 'Drop your CSV here'}</strong><span>{file ? `${Math.max(1, Math.ceil(file.size / 1024))} KB · ready to preview` : 'or choose a file from your device'}</span>
             <input ref={inputRef} type="file" accept=".csv,text/csv" className="sr-only" onChange={(event) => chooseFile(event.target.files?.[0])} />
@@ -334,7 +334,7 @@ export function TrackerImportStepper() {
         </section> : null}
 
         {step === 'mapping' && preview && mapping ? <section className={styles.panel} aria-labelledby="mapping-heading">
-          <header><p>Step 2</p><h2 id="mapping-heading">Map columns</h2><span>Source columns remain visible. Opportunity, Organization, and Tracker status are required.</span></header>
+          <header><p>Step 2</p><h2 id="mapping-heading">Map columns</h2><span>Your columns stay visible. You need one for the call, the organization and the status.</span></header>
           <div className={styles.mapping}>{FIELDS.map(([field, label, required]) => <label key={field} htmlFor={`mapping-${field}`}><span><strong>{label}</strong><small>{required ? 'Required' : 'Optional'}</small></span><select id={`mapping-${field}`} value={mapping[field] ?? ''} onChange={(event) => setMapping({ ...mapping, [field]: event.target.value || null })}><option value="">Not mapped</option>{preview.columns.map((column) => <option key={column} value={column}>{column}</option>)}</select></label>)}</div>
           <Alert><Tags aria-hidden="true" /><AlertTitle>Legacy field values receive their own review</AlertTitle><AlertDescription>A Genre or legacy Field column never silently becomes Missa taxonomy. You will confirm a facet and term—or keep the value explicitly unresolved.</AlertDescription></Alert>
           <div className={styles.actions}><Button type="button" variant="outline" onClick={() => setStep('upload')}>Back</Button><Button type="button" disabled={busy} onClick={startReview}>{busy ? 'Refreshing…' : <>Review rows <ArrowRight aria-hidden="true" /></>}</Button></div>
@@ -369,7 +369,7 @@ export function TrackerImportStepper() {
         </section> : null}
 
         {step === 'result' && result ? <section className={`${styles.panel} ${styles.receipt}`} aria-labelledby="receipt-heading">
-          <CheckCircle2 aria-hidden="true" /><header><p>Import receipt · {result.importId}</p><h2 id="receipt-heading">{result.imported > 0 ? 'Import complete' : 'Review complete — no changes'}</h2><span>{result.imported > 0 ? `${result.imported} reviewed rows changed your private Tracker.` : 'Every row was skipped, so your Tracker stayed exactly as it was.'} Nothing was shared with Organizations.</span></header>
+          <CheckCircle2 aria-hidden="true" /><header><p>Import receipt · {result.importId}</p><h2 id="receipt-heading">{result.imported > 0 ? 'Import complete' : 'Review complete — no changes'}</h2><span>{result.imported > 0 ? `${result.imported} rows imported. Your spreadsheet can retire now.` : 'Every row was skipped, so your Tracker stayed exactly as it was.'} Nothing was shared with any organization.</span></header>
           <dl className={styles.counts}><div><dt>Matched</dt><dd>{result.matched}</dd></div><div><dt>Manual items</dt><dd>{result.createdManual}</dd></div><div><dt>Skipped</dt><dd>{result.skipped}</dd></div><div><dt>Unresolved field text</dt><dd>{result.unresolvedTaxonomy}</dd></div></dl>
           <div className={styles.actions}>{result.imported > 0 ? <Button render={<Link href={`/tracker?import=${encodeURIComponent(result.importId)}`} />}>Review imported rows <ArrowRight aria-hidden="true" /></Button> : null}<Button variant="outline" render={<Link href="/tracker" />}>Back to Tracker</Button></div>
         </section> : null}

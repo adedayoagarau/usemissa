@@ -63,7 +63,7 @@ export default async function OrganizationSettingsPage({ params, searchParams }:
   const base = `/organization/${encodeURIComponent(organizationId)}/settings`;
 
   return <main id="organization-main" className={styles.main}>
-    <header className={styles.header}><div><p className={styles.eyebrow}>Organization control centre</p><h1>Settings & billing</h1><p>Review the Organization’s current identity, structure, commercial state, and missing governance contracts without mixing them into one ambiguous settings form.</p></div><span className={styles.role}>{projection.label}</span></header>
+    <header className={styles.header}><div><p className={styles.eyebrow}>Your organization</p><h1>Settings & billing</h1><p>Your organization’s details, teams, review privacy and billing, each in its own section. Anything that isn’t built yet says so.</p></div><span className={styles.role}>{projection.label}</span></header>
     <aside className={styles.boundary}><ShieldCheck aria-hidden="true" /><div><strong>Read-only local route</strong><p>The current APIs include live billing mutations, but this redesign does not expose them. Authoritative previews, action-level capabilities, optimistic concurrency, and recovery contracts must exist before settings changes are promoted.</p></div></aside>
     <form className={styles.mobilePicker}><label><span>Settings section</span><select name="section" defaultValue={activeId}>{sections.map((section) => <option key={section.id} value={section.id}>{section.label}</option>)}</select></label><button type="submit">Open</button></form>
     <div className={styles.control}>

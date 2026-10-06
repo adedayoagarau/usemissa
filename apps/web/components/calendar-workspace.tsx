@@ -2082,7 +2082,7 @@ export function CalendarWorkspace({
                 sizes="600px"
               />
               <div className={styles.opportunityPickerHeading}>
-                <span>Missa catalogue</span>
+                <span>Missa catalog</span>
                 <h2 id="opportunity-picker-title" className="font-heading">
                   Add an opportunity
                 </h2>

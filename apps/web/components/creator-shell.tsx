@@ -227,7 +227,7 @@ export function CreatorShell({
             </button>
           </div>
           {logoutError ? (
-            <p role="alert">Could not log out. Try again.</p>
+            <p role="alert">Couldn’t log out. Try again.</p>
           ) : null}
         </div>
       </aside>

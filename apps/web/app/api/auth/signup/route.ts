@@ -16,6 +16,8 @@ import { clientAddress, consumeAuthRateLimit } from "@/lib/auth-rate-limit";
 import { deliverWelcomeEmail } from "@/emails/welcome";
 import { isNeonAuthConfigured } from "@/lib/neon-auth/server";
 import { signupIdentity } from "@/lib/signupIdentity";
+import { requestCountry } from "@/lib/creatorBilling";
+import { spellingForCountry } from "@/lib/spelling";
 
 export async function POST(request: Request) {
   // Production password signup belongs to Neon Auth so email ownership cannot
@@ -169,6 +171,7 @@ export async function POST(request: Request) {
       accountId: account.id,
       email: account.email,
       givenName: identity.givenName,
+      spelling: spellingForCountry(requestCountry(request.headers)),
     },
     process.env.DATABASE_URL,
   ).catch((err) => {

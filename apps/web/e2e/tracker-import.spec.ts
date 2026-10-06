@@ -117,7 +117,7 @@ test('an all-skipped import returns a replayable no-change receipt', async ({ pa
 test('import stepper is reachable from the authenticated Passport shell', async ({ page }) => {
   await account(page);
   await page.goto('/import');
-  await expect(page.getByRole('heading', { name: 'Import your tracker' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bring your spreadsheet. Yes, even that one.' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Download CSV template' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Download template' })).toBeVisible();
   await page.locator('input[type="file"]').setInputFiles({ name: 'tracker.csv', mimeType: 'text/csv', buffer: Buffer.from('Title,Organization,Status\nA call,An organization,Saved\n') });

@@ -83,7 +83,7 @@ test('selected Creator utilities route keeps Option 02 and all utilities availab
   await expect(page.getByText('Selected · local only')).toHaveCount(1)
   await expect(page.getByRole('group', { name: 'Creator utility direction' })).toHaveCount(0)
   await page.getByLabel('Creator utility', { exact: true }).selectOption('import')
-  await expect(page.getByRole('heading', { name: 'Import your tracker' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Bring your spreadsheet. Yes, even that one.' })).toBeVisible()
   await page.getByLabel('Creator utility', { exact: true }).selectOption('ask')
   await expect(page.getByRole('heading', { name: 'Ask Missa' })).toBeVisible()
 })

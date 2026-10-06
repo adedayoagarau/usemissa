@@ -13,6 +13,7 @@ import { dateLine, factsLine, label, opportunityUrl, placard, sectionHeading } f
 import { digestPlanningSummary, planningRows, planningText } from './components/planning-wall';
 import { buildUnsubscribeUrl } from '../lib/email-tokens';
 import { siteUrl } from '../lib/siteUrl';
+import { sp, type Spelling } from '../lib/spelling';
 
 export interface WeeklyDigestEmailProps {
   accountId: string;
@@ -20,6 +21,8 @@ export interface WeeklyDigestEmailProps {
   digest: WeeklyDigest;
   /** Render time; defaults to now. */
   now?: Date;
+  /** UK readers get UK spelling (lib/spelling.ts). */
+  spelling?: Spelling;
 }
 
 const f = EMAIL_FONTS;
@@ -150,7 +153,7 @@ export function renderWeeklyDigestEmail(props: WeeklyDigestEmailProps): { subjec
     </tr>
     ${renderEmailFooter({
       tone: 'forest',
-      reason: "Selected from the disciplines and genres you chose, leaving out anything you excluded. Dates come from each organisation's official page. You get The Sunday List because the weekly digest is on.",
+      reason: sp("Selected from the disciplines and genres you chose, leaving out anything you excluded. Dates come from each organization's official page. You get The Sunday List because the weekly digest is on.", props.spelling),
       unsubscribeUrl: buildUnsubscribeUrl({ accountId: props.accountId, email: props.email, category: 'notification_digest' }),
     })}`;
 

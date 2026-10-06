@@ -192,7 +192,7 @@ export const PUBLIC_OPPORTUNITY_PREVIEW_ITEMS: OpportunityBrowseProjection[] = [
     organizationName: "Bosphorus Arts Lab",
     organizationVerified: true,
     identityAssetUrl: "/media/missa-bosphorus-poster.jpg",
-    identityAssetAlt: "Editorial poster for an arts programme",
+    identityAssetAlt: "Editorial poster for an arts program",
     status: "open",
     type: "commission",
     discipline: "Music & sound",

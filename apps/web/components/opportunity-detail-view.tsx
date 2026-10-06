@@ -348,7 +348,7 @@ export function OpportunityDetailView({
                 {opportunity.organizationVerified ? (
                   <span className={styles.verifiedBadge}>
                     <ShieldCheck aria-hidden="true" />
-                    Verified Host
+                    Organizer checked
                   </span>
                 ) : null}
                 {opportunity.organizationId &&

@@ -1082,7 +1082,7 @@ export function ShelfEditor({ draft, update, upload, onError }: EditorProps) {
                   book: "Book",
                   chapbook: "Chapbook",
                   record: "Record or album",
-                  catalogue: "Catalogue",
+                  catalogue: "Catalog",
                   other: "Other edition",
                 }[value],
               }))}

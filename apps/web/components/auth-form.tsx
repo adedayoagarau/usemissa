@@ -694,8 +694,8 @@ export function AuthForm({
     ? "Check your email"
     : firstSaveContext
       ? mode === "login"
-        ? "Log in to save this Opportunity"
-        : "Create an account to save this Opportunity"
+        ? "Log in to save this call"
+        : "Create an account to save this call"
       : mode === "login"
         ? "Welcome back"
         : "Create your account";
@@ -754,11 +754,11 @@ export function AuthForm({
               </>
             )
           ) : firstSaveContext ? (
-            "Your account keeps this Opportunity in your private Tracker and brings you back to its current details."
+            "Your account keeps this call in your private Tracker and brings you back to it."
           ) : mode === "login" ? (
-            "Log in to see your saved opportunities and deadlines."
+            "Log in to see your saved calls and deadlines."
           ) : (
-            "Free to join. Save opportunities and keep every deadline in view."
+            "Free. Save calls, get reminders, keep track of what you sent."
           )}
         </p>
 
@@ -1264,8 +1264,8 @@ export function AuthForm({
             ) : null}
             {firstSaveContext ? (
               <p className="text-xs leading-relaxed text-muted-foreground">
-                You can update Profile details later. They are not required to
-                save this Opportunity.
+                You can fill in your profile later. You don’t need it to save
+                this call.
               </p>
             ) : null}
           </form>

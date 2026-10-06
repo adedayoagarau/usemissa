@@ -67,7 +67,7 @@ Each one is true today. Keep the proof current before you use it.
    `apps/web/emails/alert-digest.ts`.
 2. **Check the details.** The fee, who can apply and what to send, with the
    organizer's own page one tap away. If the page doesn't say, neither do we.
-   Proof: catalogue labels such as "No fee" and "Fee not listed"; `apps/web/app/methodology`.
+   Proof: catalog labels such as "No fee" and "Fee not listed"; `apps/web/app/methodology`.
 3. **Get reminded.** Two weeks before, a week before, three days before, the day
    before. In your time zone, never during your quiet hours. If a deadline moves
    or a call closes early, you'll hear.
@@ -101,7 +101,7 @@ to make the marketing pages sound like the inbox.
 ## Fun
 
 Missa should make people smile a few times a week. Use the jokes creators
-already make about the submission life: the open tabs, the colour-coded
+already make about the submission life: the open tabs, the color-coded
 spreadsheet, the nine-month wait, the goal of 100 rejections a year. Laugh with
 them about the admin. Never laugh at the work or at the person.
 
@@ -111,7 +111,7 @@ them about the admin. Never laugh at the work or at the person.
 3. **One per screen.** If it needs explaining, cut it.
 4. **Never when it costs something.** No jokes near money, eligibility, a
    deadline that's today, or a "no".
-5. **The joke can't bend a fact.** Only say "we did the maths" if we did.
+5. **The joke can't bend a fact.** Only say "we did the math" if we did.
 6. **Exclamation marks are for acceptances.** No emoji in the product UI.
 
 ### How much fun, where
@@ -130,7 +130,7 @@ them about the admin. Never laugh at the work or at the person.
 | Empty Tracker | Nothing saved yet. Your open tabs can finally rest. |
 | First save | Saved. One less tab. |
 | Marked as sent | Marked as sent. Go make something while they read. |
-| Reminder set | Reminder set for 14 March. We'll do the remembering. |
+| Reminder set | Reminder set for March 14. We'll do the remembering. |
 | Import | Bring your spreadsheet. Yes, even that one. |
 | Import done | 47 submissions imported. Your spreadsheet can retire now. |
 | Onboarding, "What do you make?" | Pick everything. Poets who paint are welcome. |
@@ -163,9 +163,30 @@ Why not "creator": to many writers and artists it now reads as "content
 creator", and some reject it loudly. People call themselves writers, poets,
 artists and filmmakers. When one word has to cover all of them, use "you".
 
-"Opportunities" stays as the catalogue name and nav label. It's also the
+"Opportunities" stays as the catalog name and nav label. It's also the
 everyday search word in Nigeria and across Africa ("opportunities", "fully
 funded"). In sentences to a person, say "call".
+
+## Spelling
+
+Write Missa's own copy in US spelling: organization, catalog, program, color,
+canceled. UK readers get UK spelling, decided in this order:
+
+1. A signed-in account whose profile country is the UK, the Isle of Man,
+   Jersey or Guernsey.
+2. Otherwise, a visitor whose IP country is one of those.
+3. Everyone else reads US spelling.
+
+How it works: `sp(text, spelling)` in `apps/web/lib/spelling.ts` converts a
+string. In the browser, `useSp()` and `<Sp>` from
+`apps/web/components/missa/spelling.tsx` use the reader's spelling. Pages render
+in US spelling first, so they stay cacheable, and switch after they load.
+Emails take a `spelling` prop, set from the recipient's account country (the
+welcome email uses the sign-up IP). Only wrap Missa's own words. Never convert
+data: organization names, call titles, quotes or URLs.
+
+Copy that isn't wrapped stays in US spelling for everyone. Wrap a line when
+it's likely to be read in the UK and has a word that differs.
 
 ## Microcopy
 
@@ -174,7 +195,7 @@ funded"). In sentences to a person, say "call".
 | Search | The placeholder teaches what you can search | Search calls, organizations or "no fee" |
 | Buttons | One or two words. Say exactly what happens | Save · Remind me · Mark as sent · Log a reply · Withdraw |
 | Status | One word each, and the same word everywhere | Saved · Sent · Heard back · Accepted · Declined · Withdrawn · Closed |
-| Toasts | What happened, plus the one detail that matters | Reminder set for 14 March. We'll do the remembering. |
+| Toasts | What happened, plus the one detail that matters | Reminder set for March 14. We'll do the remembering. |
 | Empty states | What goes here, and how to add the first one | Nothing saved yet. Your open tabs can finally rest. |
 | Form hints | A plain example instead of a rule | Two or three sentences, the way you'd say it before a reading. |
 | Unknowns | Exact and short. Never guess | Fee not listed · Deadline not confirmed |
@@ -208,15 +229,21 @@ Use these only once Plus is live.
 
 These would make the new words untrue.
 
+Fixed with the copy rewrite:
+
+- The matcher and rankings no longer say "Odds", "Smart", "✨" or "Editorial
+  Intelligence & Market Telemetry". The odds score is shown as "Openness".
+- "Verified Host" is now "Organizer checked". The waitlist FAQ, with "Can I
+  trust Missa? Yes.", is gone.
+- About and `llms.txt` now match `/for-organizations`, which marks what's
+  available, limited and planned.
+- `/waitlist` and `/thank-you` redirect to sign-up and are out of the sitemap.
+  `/welcome` stays as an optional entry screen, rewritten.
+
+Still open:
+
 - The homepage and sign-up images are AI-generated, and their prompt files in
   `apps/web/public/media/home/generated/*.webp.json` are publicly served.
-- "Odds", "Smart", "✨" and "Editorial Intelligence & Market Telemetry" on the
-  matcher and rankings.
-- "Can I trust Missa? Yes.", "Verified Host" and "checked against each
-  organisation's official page" claim more than Methodology does.
-- About, the waitlist FAQ and `llms.txt` describe the full organization
-  workflow. `/for-organizations` marks delivery as planned and review as limited.
-- `/waitlist` and `/welcome` are live and in the sitemap, though sign-up is open.
 - `landing/` has invented testimonials and stats, and the root `vercel.json`
   still points at it.
 - Plus and text reminders appear on `/plan`, in Terms and in Privacy, while the
@@ -246,15 +273,16 @@ When you add a word to "Don't say", add a rule to
 `scripts/missa-language-rules.mjs` and a case to
 `scripts/tests/check-missa-language.test.mjs`.
 
-## Open decisions
+## Decisions
 
-1. **Homepage headline.** Recommended: "Find the call. Make the deadline." The
-   alternatives are "Making the work is half the job." (now proposed for About)
-   and "The art world runs on deadlines." (from the film).
-2. **"Creator" in the film end card and the site title.** Recommended: replace
-   it with the tagline.
-3. **US or UK spelling.** The app uses US spelling; the emails use UK. Pick one.
-4. **A founder note on About.** Recommended: yes, in the founder's own words.
+1. **Homepage headline.** Decided: "Find the call. Make the deadline."
+   "Making the work is half the job." leads About.
+2. **"Creator" in the film end card and the site title.** Decided: both use the
+   tagline. The film's closing line was re-recorded in the same voice.
+3. **US or UK spelling.** Decided: US, with UK spelling for UK accounts and UK
+   visitors. See "Spelling" above.
+4. **A founder note on About.** Still open. Recommended: yes, in the founder's
+   own words.
 
 ## Evidence
 
@@ -265,7 +293,7 @@ When you add a word to "Don't say", add a rule to
 - **Creators:** about 2,400 public Bluesky posts on calls, deadlines, fees,
   tracking and rejection. Recurring themes are hearing about calls too late,
   open tabs as a filing system, time-zone misses, hidden "tip jar" fees, stale
-  listings, colour-coded spreadsheets, months of waiting, rejection goals, and
+  listings, color-coded spreadsheets, months of waiting, rejection goals, and
   "i promise you i know how to write."
 - **Market:** writers have deep single-discipline tools (Duotrope, Chill Subs).
   Artists have broad listings with little workflow. No product covers every

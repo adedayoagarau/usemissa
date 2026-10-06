@@ -34,7 +34,7 @@ export function SaveOpportunityButton({ opportunityId, className }: { userId?: s
         return;
       }
       setSaved(true);
-      toast.success('Saved to Tracker');
+      toast.success('Saved to your Tracker. One less tab.');
       router.refresh();
       } catch {
         toast.error("Could not save this opportunity. Please try again.");

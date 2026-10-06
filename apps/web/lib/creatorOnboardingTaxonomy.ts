@@ -62,11 +62,11 @@ export const ONBOARDING_PRACTICES: readonly OnboardingPracticeDefinition[] = [
   },
   {
     label: "Performance",
-    description: "You make theatre, dance, performance, or live work.",
+    description: "You make theater, dance, performance or live work.",
     practiceFamilyTermId: "taxterm_pf-performance-and-live-art",
     refinements: [
       { label: "Dance", termId: "taxterm_pf-dance-and-choreography" },
-      { label: "Theatre", termId: "taxterm_pf-theatre-and-dramatic-arts" },
+      { label: "Theater", termId: "taxterm_pf-theatre-and-dramatic-arts" },
       { label: "Live art", termId: "taxterm_disc-live-art" },
     ],
   },

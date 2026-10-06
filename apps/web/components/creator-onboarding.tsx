@@ -111,7 +111,7 @@ const STEPS: readonly OnboardingStepMeta[] = [
   {
     label: "Your work",
     title: "What do you make?",
-    lede: "Choose everything that applies. Missa looks for calls written for work like yours.",
+    lede: "Pick everything. Poets who paint are welcome.",
   },
   {
     label: "Opportunities",
@@ -121,12 +121,12 @@ const STEPS: readonly OnboardingStepMeta[] = [
   {
     label: "Location",
     title: "Where are you based?",
-    lede: "Many calls have location rules. Missa uses this to explain which ones fit.",
+    lede: "Lots of calls care where you live. We’ll tell you which ones.",
   },
   {
     label: "Profile",
     title: "Confirm your name",
-    lede: "This is how Missa introduces you. Nothing is public until you publish your Profile.",
+    lede: "This is how Missa introduces you. Nothing’s public until you say so.",
   },
 ];
 
@@ -155,7 +155,7 @@ const CAREER_STAGES = [
   {
     value: "student",
     label: "Student",
-    description: "In school or a degree programme",
+    description: "In school or a degree program",
   },
   {
     value: "emerging",
@@ -170,7 +170,7 @@ const CAREER_STAGES = [
   {
     value: "established",
     label: "Established",
-    description: "Widely recognised work",
+    description: "Widely recognized work",
   },
   { value: "any", label: "Show me all", description: "Don’t narrow by stage" },
 ] as const;

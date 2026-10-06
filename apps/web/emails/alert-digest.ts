@@ -5,6 +5,7 @@ import { CREATOR_EMAIL_COLORS as c, keepLight, renderEmailDocument, renderEmailF
 import { dateLine, factsLine, label, opportunityUrl, sectionHeading, type WallItem } from './components/wall';
 import { buildUnsubscribeUrl } from '../lib/email-tokens';
 import { siteUrl } from '../lib/siteUrl';
+import { sp, type Spelling } from '../lib/spelling';
 
 export interface AlertDigestEmailProps {
   alerts: Alert[];
@@ -12,12 +13,14 @@ export interface AlertDigestEmailProps {
   email: string;
   /**
    * What Missa holds about each alert's opportunity, so a label can show its
-   * organisation, type, fee and deadline. Alerts without one show their own
+   * organization, type, fee and deadline. Alerts without one show their own
    * title and reason only.
    */
   opportunity?: (opportunityId: string) => Omit<WallItem, 'reason'> | undefined;
   /** Render time; defaults to now. */
   now?: Date;
+  /** UK readers get UK spelling (lib/spelling.ts). */
+  spelling?: Spelling;
 }
 
 const f = EMAIL_FONTS;
@@ -47,11 +50,12 @@ function item(alert: Alert, props: AlertDigestEmailProps, reason: string, titleF
 
 /**
  * Selected for you: the alert digest on the Forest wall. New calls from saved
- * searches and followed organisations come first, then changes to calls the
+ * searches and followed organizations come first, then changes to calls the
  * creator already follows. Every label links to its opportunity.
  */
 export function renderAlertDigestEmail(props: AlertDigestEmailProps): { subject: string; html: string; text: string } {
   const now = props.now ?? new Date();
+  const s = (text: string) => sp(text, props.spelling);
   const matches = props.alerts.filter((alert) => alert.kind === 'new-match');
   const followed = props.alerts.filter((alert) => alert.kind === 'followed-org-new-call');
   const updates = props.alerts.filter((alert) => alert.kind !== 'new-match' && alert.kind !== 'followed-org-new-call');
@@ -59,7 +63,7 @@ export function renderAlertDigestEmail(props: AlertDigestEmailProps): { subject:
   const searches = [...new Set(matches.map(savedSearchName).filter((name): name is string => Boolean(name)))];
   const matchItems = matches.map((alert) => item(alert, props, 'Matches your saved search'));
   const followedItems = followed.map((alert) => {
-    const entry = item(alert, props, 'You follow this organisation');
+    const entry = item(alert, props, s('You follow this organization'));
     return entry.organizationName ? { ...entry, reason: `You follow ${entry.organizationName}` } : entry;
   });
   const updateItems = updates.map((alert) => item(alert, props, capitalise(alert.reason), true));
@@ -73,8 +77,8 @@ export function renderAlertDigestEmail(props: AlertDigestEmailProps): { subject:
     const org = followedItems[0]?.organizationName;
     clauses.push(
       followed.length === 1 && org
-        ? `${org}, an organisation you follow, posted a new call`
-        : `organisations you follow posted ${calls(followed.length)}`,
+        ? `${org}, ${s('an organization you follow')}, posted a new call`
+        : `${s('organizations you follow')} posted ${calls(followed.length)}`,
     );
   }
   if (updates.length) clauses.push(`${numberWord(updates.length)} ${updates.length === 1 ? 'call' : 'calls'} you follow changed`);
@@ -96,7 +100,7 @@ export function renderAlertDigestEmail(props: AlertDigestEmailProps): { subject:
     for (const entry of matchItems) rows.push(label(entry, index++, false, now));
   }
   if (followedItems.length) {
-    rows.push(sectionHeading('From organisations you follow'));
+    rows.push(sectionHeading(s('From organizations you follow')));
     for (const entry of followedItems) rows.push(label(entry, index++, false, now));
   }
   if (updateItems.length) {
@@ -141,7 +145,7 @@ export function renderAlertDigestEmail(props: AlertDigestEmailProps): { subject:
     </tr>
     ${renderEmailFooter({
       tone: 'forest',
-      reason: "You get these because saved-search and following alerts are on. Dates come from each organisation's official page.",
+      reason: s("You get these because saved-search and following alerts are on. Dates come from each organization's official page."),
       unsubscribeUrl: buildUnsubscribeUrl({ accountId: props.accountId, email: props.email, category: 'notification_digest' }),
     })}`;
 
@@ -158,7 +162,7 @@ export function renderAlertDigestEmail(props: AlertDigestEmailProps): { subject:
     '',
     lede,
     ...textSection('From your saved search', matchItems),
-    ...textSection('From organisations you follow', followedItems),
+    ...textSection(s('From organizations you follow'), followedItems),
     ...textSection('Updates on calls you follow', updateItems),
     '',
     `See them in Missa: ${inbox}`,

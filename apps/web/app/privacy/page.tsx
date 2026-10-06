@@ -24,7 +24,7 @@ export default function PrivacyPage() {
       <div className="mt-10 space-y-8 text-base leading-7 text-muted-foreground">
         <section>
           <h2 className="font-heading text-2xl font-medium text-foreground">Browsing without an account</h2>
-          <p className="mt-3">You can browse the catalogue, directory and rankings without signing in. Detailed product analytics only start if you accept them, and declining changes nothing about what you can use. If you accept, Missa records a first-party session identifier and basic product analytics, such as which pages and filters are used, so we can tell what is working. We do not use it to build a public profile of you, and we do not sell personal data or run advertising.</p>
+          <p className="mt-3">You can browse the catalog, directory and rankings without signing in. Detailed product analytics only start if you accept them, and declining changes nothing about what you can use. If you accept, Missa records a first-party session identifier and basic product analytics, such as which pages and filters are used, so we can tell what is working. We do not use it to build a public profile of you, and we do not sell personal data or run advertising.</p>
         </section>
         <section>
           <h2 className="font-heading text-2xl font-medium text-foreground">Cookies and analytics</h2>

@@ -18,7 +18,7 @@ export function renderEmailChoiceConfirmationEmail(): { subject: string; html: s
       {
         kind: 'steps',
         steps: [
-          { title: 'Deadline reminders you set', line: 'Sent at the time you chose, in your timezone, never during your quiet hours.' },
+          { title: 'Deadline reminders you set', line: 'Sent at the time you chose, in your time zone, never during your quiet hours.' },
           { title: 'The Sunday List', line: 'Every Sunday evening: your Tracker deadlines and calls selected for you.' },
         ],
       },

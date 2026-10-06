@@ -23,10 +23,10 @@ test("keyboard reveal, repeat, and real destination links", async ({
     page.getByRole("button", { name: "Close the possibilities" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Find my next step" }),
+    page.getByRole("link", { name: "Tell us what you make" }),
   ).toHaveAttribute("href", "/onboarding");
   await expect(
-    page.getByRole("link", { name: "Explore Missa" }),
+    page.getByRole("link", { name: "Browse open calls" }),
   ).toHaveAttribute("href", "/opportunities");
 });
 
@@ -86,10 +86,10 @@ test("390px, short viewport, zoom and long copy remain reachable", async ({
       ),
     ).toBe(true);
     await page
-      .getByRole("link", { name: "Find my next step" })
+      .getByRole("link", { name: "Tell us what you make" })
       .scrollIntoViewIfNeeded();
     await expect(
-      page.getByRole("link", { name: "Find my next step" }),
+      page.getByRole("link", { name: "Tell us what you make" }),
     ).toBeVisible();
     if (viewport.width === 390) {
       await page.getByRole("button", { name: "Or, tap to open" }).click();
@@ -118,10 +118,10 @@ test("390px, short viewport, zoom and long copy remain reachable", async ({
     ),
   ).toBe(true);
   await page
-    .getByRole("link", { name: "Find my next step" })
+    .getByRole("link", { name: "Tell us what you make" })
     .scrollIntoViewIfNeeded();
   await expect(
-    page.getByRole("link", { name: "Find my next step" }),
+    page.getByRole("link", { name: "Tell us what you make" }),
   ).toBeInViewport();
   await page.waitForTimeout(800);
   await page.screenshot({
@@ -181,9 +181,9 @@ test("failed graphics and missing images preserve an operable welcome", async ({
   await expect(
     page.getByRole("button", { name: "Close the possibilities" }),
   ).toBeVisible();
-  await expect(page.getByText("A new chapter", { exact: true })).toBeVisible();
+  await expect(page.getByText("Residencies", { exact: true })).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Find my next step" }),
+    page.getByRole("link", { name: "Tell us what you make" }),
   ).toBeVisible();
 });
 

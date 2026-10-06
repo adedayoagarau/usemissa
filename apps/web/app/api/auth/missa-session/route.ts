@@ -13,6 +13,8 @@ import { trackPlatformAnalytics } from "@/lib/platformAnalytics";
 import { recordSiteGoal } from "@/lib/siteTracking";
 import { deliverWelcomeEmail } from "@/emails/welcome";
 import { signupIdentity } from "@/lib/signupIdentity";
+import { requestCountry } from "@/lib/creatorBilling";
+import { spellingForCountry } from "@/lib/spelling";
 
 export const dynamic = "force-dynamic";
 
@@ -78,6 +80,7 @@ export async function POST(request: Request) {
           accountId: account.id,
           email: account.email,
           givenName: account.givenName,
+          spelling: spellingForCountry(requestCountry(request.headers)),
         },
         process.env.DATABASE_URL,
       ).catch((error) => {

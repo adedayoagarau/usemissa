@@ -196,7 +196,7 @@ function CandidateReview({ candidate, busy, onBack, onReview }: { candidate: Can
         )}
         <div><Label htmlFor={`${candidate.id}-status`}>What does the email say?</Label><select id={`${candidate.id}-status`} value={status} onChange={(event) => setStatus(event.target.value)}>{statuses.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
       </div>
-      <p className={styles.consequence}><strong>What will happen</strong>{manual ? 'Missa will create a private Tracker record from the details above. The Opportunity catalogue and your Work remain unchanged.' : 'Missa will update only this private Tracker record. The Opportunity catalogue and your Work remain unchanged.'}</p>
+      <p className={styles.consequence}><strong>What will happen</strong>{manual ? 'Missa will create a private Tracker record from the details above. The Missa listing and your work stay as they are.' : 'Missa will update only this private Tracker record. The Missa listing and your work stay as they are.'}</p>
       <div className={styles.actions}>
         <Button type="button" disabled={busy || (!manual && !opportunityId) || (manual && (!title.trim() || !organizationName.trim()))} onClick={() => void onReview(candidate, manual ? { kind: 'create-manual', title, organizationName, status } : { kind: 'confirm', opportunityId, status })}>{busy ? 'Saving…' : manual ? 'Create private record' : 'Confirm update'}</Button>
         <Button type="button" variant="outline" disabled={busy} onClick={() => void onReview(candidate, { kind: 'ignore' })}>Ignore update</Button>

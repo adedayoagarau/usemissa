@@ -96,7 +96,7 @@ export default function TermsPage() {
             <li>break the law or infringe someone else&apos;s rights;</li>
             <li>post reviews, claims, or content that is false, misleading, or written as someone else;</li>
             <li>upload malware or try to get around security, rate limits, or access controls;</li>
-            <li>scrape, resell, or bulk-copy the catalogue without our written permission;</li>
+            <li>scrape, resell, or bulk-copy the catalog without our written permission;</li>
             <li>harass Organizations, reviewers, or other creators.</li>
           </ul>
           <p>
@@ -157,7 +157,7 @@ export default function TermsPage() {
         <Section title="Changes and availability">
           <p>
             We keep improving Missa, so features may change, and some may be
-            labelled as early or limited. We aim to keep Missa available but
+            labeled as early or limited. We aim to keep Missa available but
             cannot promise it will always be uninterrupted or error-free. If we
             make a material change to these terms, we will tell you by email or
             in Missa before it takes effect.

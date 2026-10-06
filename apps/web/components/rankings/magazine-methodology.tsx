@@ -160,9 +160,9 @@ export function MagazineMethodology({
               Honours, up to {PILLAR_MAX.accolades} points.
             </strong>{" "}
             A magazine’s Pushcart Prize recognition over the past ten years,
-            with recent years counting more. The most recognised magazine in
+            with recent years counting more. The most recognized magazine in
             each index earns the full {PILLAR_MAX.accolades}; others earn points
-            in proportion, on a curve that keeps a single honour visible. Pieces
+            in proportion, on a curve that keeps a single honor visible. Pieces
             chosen for Best Small Fictions (
             {ANTHOLOGY_CITATION_POINTS["Best Small Fictions"]} points) and Best
             Microfiction ({ANTHOLOGY_CITATION_POINTS["Best Microfiction"]}{" "}
@@ -336,7 +336,7 @@ export function MagazineMethodology({
             fiction, {coverage.magazineCounts.poetry.toLocaleString()} in poetry
             and {coverage.magazineCounts.nonfiction.toLocaleString()} in
             nonfiction. A magazine joins a genre’s index when it has been
-            recognised in that genre.
+            recognized in that genre.
           </Prose>
         ) : (
           <Prose>The index has not been published yet.</Prose>
@@ -358,7 +358,7 @@ export function MagazineMethodology({
               ],
               [
                 `${analytics.honours.singleRecognition.toLocaleString()}`,
-                `of ${analytics.honours.magazines.toLocaleString()} recognised magazines have a single honour`,
+                `of ${analytics.honours.magazines.toLocaleString()} recognized magazines have a single honor`,
               ],
             ].map(([figure, label]) => (
               <div

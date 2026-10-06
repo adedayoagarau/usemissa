@@ -84,7 +84,7 @@ const LANES: Array<{ key: LaneKey; label: string; description?: string }> = [
     key: "dreamReach",
     label: "Reach",
     description:
-      "Top-tier magazines. The odds are long, so send your strongest work.",
+      "Top-tier magazines. They say no a lot, so send your strongest work.",
   },
   {
     key: "debutChampions",

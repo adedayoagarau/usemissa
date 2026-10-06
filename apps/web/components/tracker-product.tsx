@@ -1524,11 +1524,11 @@ export function TrackerProduct({
               <FolderKanban aria-hidden="true" />
               <h2>Nothing saved right now</h2>
               <p>
-                Opportunities you save stay here until you record a
-                submission.
+                Your open tabs can finally rest. Calls you save stay here until
+                you send something.
               </p>
               <Link href="/opportunities" className={styles.primaryLink}>
-                Browse Opportunities
+                Browse open calls
               </Link>
             </section>
           )}
