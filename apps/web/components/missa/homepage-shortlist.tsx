@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Bookmark, X } from "lucide-react";
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -151,55 +151,79 @@ export function ShortlistBar() {
   const signedIn = useSignedIn();
   const { state, remove, clear } = useShortlist();
   const count = state.items.length;
-  if (signedIn || count === 0) {
+  const present = !signedIn && count > 0;
+  // The bar transitions in from its first frame; the grid above never moves.
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!present) return;
+    const frame = window.requestAnimationFrame(() => setOpen(true));
+    return () => {
+      window.cancelAnimationFrame(frame);
+      setOpen(false);
+    };
+  }, [present]);
+
+  if (!present) {
     return (
       <p className="sr-only" role="status" aria-live="polite">
         {signedIn ? "" : "Your shortlist is empty."}
       </p>
     );
   }
+  const shown = state.items.slice(0, 3);
+  const extra = count - shown.length;
   return (
-    <section className={styles.bar} aria-labelledby="homepage-shortlist-heading">
-      <div className={styles.summary}>
-        <Bookmark aria-hidden="true" className={styles.summaryIcon} />
-        <h2 id="homepage-shortlist-heading" className={styles.heading}>
-          Shortlist
-        </h2>
-        <p role="status" aria-live="polite" className={styles.count}>
-          {shortlistCountLabel(count)} on this device. Create an account to keep
-          {count === 1 ? " it and its deadline." : " them and their deadlines."}
-        </p>
-      </div>
-      <ul className={styles.items} aria-label="Shortlisted calls">
-        {state.items.map((item) => (
-          <li key={item.id} className={styles.item}>
-            <Link href={`/opportunities/${encodeURIComponent(item.id)}`}>
-              {item.title}
-            </Link>
-            <button
-              type="button"
-              className={styles.remove}
-              aria-label={`Remove ${item.title}`}
-              onClick={() => remove(item.id)}
-            >
-              <X aria-hidden="true" />
-            </button>
-          </li>
-        ))}
-      </ul>
-      <div className={styles.actions}>
-        <Link
-          href={`/signup?next=${KEEP_SHORTLIST_NEXT}`}
-          className={buttonVariants({ variant: "default" })}
-        >
-          {count === 1 ? "Create an account to keep it" : "Create an account to keep them"}
-        </Link>
-        <Link href={`/login?next=${KEEP_SHORTLIST_NEXT}`} className={styles.textLink}>
-          Log in
-        </Link>
-        <button type="button" className={styles.textLink} onClick={clear}>
-          Clear
-        </button>
+    <section
+      className={styles.bar}
+      data-open={open || undefined}
+      aria-labelledby="homepage-shortlist-heading"
+    >
+      <div className={styles.barInner}>
+        <div className={styles.summary}>
+          <Bookmark aria-hidden="true" className={styles.summaryIcon} />
+          <h2 id="homepage-shortlist-heading" className={styles.heading}>
+            Shortlist
+          </h2>
+          <p role="status" aria-live="polite" className={styles.count}>
+            {shortlistCountLabel(count)} on this device.
+          </p>
+        </div>
+        <ul className={styles.items} aria-label="Shortlisted calls">
+          {shown.map((item) => (
+            <li key={item.id} className={styles.item}>
+              <Link href={`/opportunities/${encodeURIComponent(item.id)}`}>
+                {item.title}
+              </Link>
+              <button
+                type="button"
+                className={styles.remove}
+                aria-label={`Remove ${item.title}`}
+                onClick={() => remove(item.id)}
+              >
+                <X aria-hidden="true" />
+              </button>
+            </li>
+          ))}
+          {extra > 0 ? <li className={styles.more}>and {extra} more</li> : null}
+        </ul>
+        <div className={styles.actions}>
+          <Link
+            href={`/signup?next=${KEEP_SHORTLIST_NEXT}`}
+            className={buttonVariants({ variant: "default" })}
+          >
+            {count === 1 ? "Create an account to keep it" : "Create an account to keep them"}
+          </Link>
+          <Link href={`/login?next=${KEEP_SHORTLIST_NEXT}`} className={styles.textLink}>
+            Log in
+          </Link>
+          <button
+            type="button"
+            className={`${styles.textLink} ${styles.clear}`}
+            onClick={clear}
+          >
+            Clear
+          </button>
+        </div>
       </div>
     </section>
   );

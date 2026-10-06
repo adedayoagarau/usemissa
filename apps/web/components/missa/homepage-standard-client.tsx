@@ -90,12 +90,12 @@ export function TrackerExcerpt({ items }: { items: DatedCall[] }) {
             them.
           </p>
         )}
+      </div>
+      <div className={styles.excerptFoot}>
         <p className={styles.excerptNote}>
           Save a call and its deadline stays here, on your calendar if you want
           it, with your notes beside it.
         </p>
-      </div>
-      <div className={styles.excerptFoot}>
         <Link href="/tracker" className={styles.textLink}>
           Open your Tracker <ArrowUpRight aria-hidden="true" size={18} />
         </Link>

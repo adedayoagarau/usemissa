@@ -119,7 +119,7 @@ test("product excerpts are labelled as examples and the page passes axe", async 
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Keep what you find." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Track your deadlines. Share your work." })).toBeVisible();
   await expect(page.getByText("Example, built from calls open today")).toBeVisible();
   await expect(page.getByText("Example, a fictional creator")).toBeVisible();
   await page.getByRole("button", { name: "Do I need an account?" }).click();

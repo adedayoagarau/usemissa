@@ -10,10 +10,7 @@ import {
   OpportunitiesBrowse,
   type ActiveFiltersState,
 } from "@/components/missa/opportunities-browse";
-import {
-  ShortlistBar,
-  ShortlistSaveControl,
-} from "@/components/missa/homepage-shortlist";
+import { ShortlistSaveControl } from "@/components/missa/homepage-shortlist";
 import { useSignedIn } from "@/lib/browserSession";
 import type { OpportunityFacetCounts } from "@/lib/opportunityFacetCounts";
 import styles from "./homepage-standard.module.css";
@@ -74,7 +71,8 @@ export function HomepageBrowse({
           appearance="index"
         />
       }
-      beforeResults={<ShortlistBar />}
+      searchLabelVisible={false}
+      showCalendarAction={false}
       renderSaveAction={(item) => (
         <ShortlistSaveControl item={item} signedIn={signedIn} />
       )}

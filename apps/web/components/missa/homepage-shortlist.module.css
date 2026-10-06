@@ -16,17 +16,40 @@
   flex: 0 0 auto;
 }
 
+/*
+ * The bar is anchored to the bottom of the viewport so shortlisting never
+ * moves the grid the visitor is reading. It enters once, from its first
+ * frame, on the enter curve; reduced motion shows it in place.
+ */
 .bar {
+  position: fixed;
+  z-index: 40;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bar[data-open] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.barInner {
   display: flex;
+  width: min(calc(100% - 48px), 1360px);
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-row) var(--space-group);
-  margin: var(--space-group) 0 var(--space-row);
-  padding: var(--space-inset);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--accent-tint);
-  color: var(--ink);
+  margin: 0 auto;
+  padding: var(--space-row) 0 max(var(--space-row), env(safe-area-inset-bottom));
 }
 
 .summary {
@@ -59,9 +82,11 @@
 
 .items {
   display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-row);
-  width: 100%;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -69,14 +94,14 @@
 
 .item {
   display: inline-flex;
-  align-items: center;
-  gap: 2px;
   max-width: 100%;
   min-height: 40px;
+  align-items: center;
+  gap: 2px;
   padding-inline-start: 12px;
   border: 1px solid var(--border);
   border-radius: 9999px;
-  background: var(--surface);
+  background: var(--surface-subtle);
   font-size: 0.875rem;
 }
 
@@ -93,6 +118,11 @@
 .item a:focus-visible {
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+.more {
+  color: var(--ink-2);
+  font-size: 0.875rem;
 }
 
 .remove {
@@ -152,9 +182,29 @@
   text-underline-offset: 4px;
 }
 
-@media (max-width: 639px) {
+@media (max-width: 767px) {
+  .items,
+  .clear {
+    display: none;
+  }
+
+  .barInner {
+    width: min(calc(100% - 32px), 1360px);
+  }
+
   .actions {
     width: 100%;
     margin-inline-start: 0;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar,
+  .toggle svg {
+    transition: none;
+  }
+}
+
+.clear {
+  display: inline-flex;
 }

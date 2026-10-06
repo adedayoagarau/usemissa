@@ -7,15 +7,11 @@ import {
   HomepageClose,
   HomepageFooterStandard,
   HomepageHero,
-  HomepageOrganizations,
   HomepageProof,
   HomepageQuestionsSection,
 } from "@/components/missa/homepage-standard";
+import { ShortlistBar } from "@/components/missa/homepage-shortlist";
 import type { ActiveFiltersState } from "@/components/missa/opportunities-browse";
-import {
-  getHomepageOrganizations,
-  type HomepageOrganization,
-} from "@/lib/homepageOrganizations";
 import { getHomepageStats, type HomepageStats } from "@/lib/homepageStats";
 import { parseOpportunityBrowseQuery } from "@/lib/opportunityQuery";
 import { LOCATION_OPTIONS } from "@/lib/opportunityTaxonomy";
@@ -91,7 +87,7 @@ export default async function HomePage({
     limit: 1,
   };
 
-  const [browse, closing, stats, organizations] = await Promise.all([
+  const [browse, closing, stats] = await Promise.all([
     getPublicOpportunityBrowse(query).catch(
       (): OpportunityBrowseWithFacets | null => null,
     ),
@@ -99,7 +95,6 @@ export default async function HomePage({
       (): OpportunityBrowseWithFacets | null => null,
     ),
     getHomepageStats().catch((): HomepageStats | null => null),
-    getHomepageOrganizations().catch((): HomepageOrganization[] => []),
   ]);
   const loadFailed = browse === null;
   const [result, facetCounts] = browse ?? EMPTY_BROWSE;
@@ -124,7 +119,7 @@ export default async function HomePage({
 
   return (
     <div className={styles.page} data-density="spacious">
-      <MissaSiteHeader current="Home" />
+      <MissaSiteHeader current="Home" omitLinks={["For organizations"]} />
       <PublicDiscoveryEvent
         eventName="public.discovery_view"
         properties={{ surface: "home", resultCount: result.items.length }}
@@ -133,7 +128,6 @@ export default async function HomePage({
         <HomepageHero
           open={stats?.open ?? null}
           closingThisWeek={closing ? closing[1].total : null}
-          organizations={stats?.organizations ?? null}
         />
         <HomepageBrowse
           items={result.items}
@@ -146,10 +140,10 @@ export default async function HomePage({
           locations={LOCATION_OPTIONS}
         />
         <HomepageProof items={result.items} />
-        <HomepageOrganizations organizations={organizations} />
         <HomepageQuestionsSection />
         <HomepageClose />
       </main>
+      <ShortlistBar />
       <HomepageFooterStandard />
     </div>
   );

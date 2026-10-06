@@ -4,7 +4,6 @@ import type { OpportunityBrowseProjection } from "@missa/radar-engine";
 
 import { buttonVariants } from "@/components/ui/button";
 import { MissaWordmark } from "@/components/missa-wordmark";
-import type { HomepageOrganization } from "@/lib/homepageOrganizations";
 import { visibleHomepageStats } from "@/lib/homepageStatDisplay";
 import { contactMailto } from "@/lib/legalContact";
 import { categorySearch } from "@/lib/homepage-opportunity-categories";
@@ -18,23 +17,21 @@ import styles from "./homepage-standard.module.css";
 export function HomepageHero({
   open,
   closingThisWeek,
-  organizations,
 }: {
   open: number | null;
   closingThisWeek: number | null;
-  organizations: number | null;
 }) {
   const totals = visibleHomepageStats([
     { label: "open now", value: open ?? 0 },
     { label: "closing this week", value: closingThisWeek ?? 0 },
-    { label: "organizations", value: organizations ?? 0 },
   ]);
   return (
     <header className={styles.hero}>
       <h1 id="homepage-heading" className="font-heading">Find your next open call.</h1>
       <p className={styles.lede}>
-        Grants, residencies, publications and prizes in one place, each checked
-        at its source. Shortlist the ones you want, then share your work.
+        Grants, residencies, publications and prizes in one place. Get
+        automated reminders, find your artist circle, and become the artist you
+        dreamed of.
       </p>
       {totals.length ? (
         <p className={styles.totals} aria-label="Catalogue totals">
@@ -61,10 +58,12 @@ export function HomepageProof({
     <section className={styles.section} aria-labelledby="homepage-proof-heading">
       <div className={styles.sectionHead}>
         <div>
-          <h2 id="homepage-proof-heading" className="font-heading">Keep what you find.</h2>
+          <h2 id="homepage-proof-heading" className="font-heading">
+            Track your deadlines. Share your work.
+          </h2>
           <p className={styles.sectionLede}>
-            An account turns a shortlist into a Tracker with every deadline, and
-            gives your work one page to share.
+            Save a call and its deadline stays with you, with reminders when you
+            want them. Your portfolio gives your work one page to share.
           </p>
         </div>
         <Link href="/signup" className={styles.textLink}>
@@ -75,68 +74,6 @@ export function HomepageProof({
         <TrackerExcerpt items={items} />
         <PortfolioExcerpt />
       </div>
-    </section>
-  );
-}
-
-const PROFILE_KINDS: Record<string, { label: string; path: string }> = {
-  residency_center: { label: "Artist residency", path: "/residency/" },
-  literary_magazine: { label: "Literary magazine", path: "/journal/" },
-  small_press: { label: "Independent press", path: "/press/" },
-  grant_foundation: { label: "Foundation", path: "/grant/" },
-  visual_arts_organization: { label: "Arts organization", path: "/org/" },
-};
-
-export function HomepageOrganizations({
-  organizations,
-}: {
-  organizations: HomepageOrganization[];
-}) {
-  return (
-    <section
-      className={styles.section}
-      aria-labelledby="homepage-organizations-heading"
-    >
-      <div className={styles.sectionHead}>
-        <div>
-          <h2 id="homepage-organizations-heading" className="font-heading">
-            The organizations behind the calls.
-          </h2>
-          <p className={styles.sectionLede}>
-            Every call links to the organization that runs it and to its
-            official page.
-          </p>
-        </div>
-        <Link href="/directory" className={styles.textLink}>
-          Browse the directory <ArrowUpRight aria-hidden="true" size={18} />
-        </Link>
-      </div>
-      {organizations.length ? (
-        <ul className={styles.organizations}>
-          {organizations.map((profile) => {
-            const kind = PROFILE_KINDS[profile.kind];
-            return (
-              <li key={profile.slug}>
-                <Link
-                  href={`${kind?.path ?? "/org/"}${encodeURIComponent(profile.slug)}`}
-                  className={styles.organization}
-                >
-                  <span className={`font-heading ${styles.organizationName}`}>{profile.name}</span>
-                  <span className={styles.organizationKind}>
-                    {kind?.label ?? "Organization"}
-                    {profile.city ? ` · ${profile.city}` : ""}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className={styles.sectionLede}>
-          Residencies, magazines, presses and foundations each have a page with
-          their open calls.
-        </p>
-      )}
     </section>
   );
 }
@@ -206,7 +143,7 @@ export function HomepageFooterStandard() {
             <Link href={`/opportunities?${categorySearch(["festival"])}`}>
               Festivals
             </Link>
-            <Link href="/directory">Organization directory</Link>
+            <Link href="/directory">Directory</Link>
           </div>
           <div>
             <span className={styles.footerHeading}>Your work</span>
@@ -217,7 +154,6 @@ export function HomepageFooterStandard() {
             <span className={styles.footerHeading}>Tools and guides</span>
             <Link href="/rankings/magazines">Magazine rankings</Link>
             <Link href="/methodology">How Missa works</Link>
-            <Link href="/for-organizations">For organizations</Link>
             <Link href="/about">About us</Link>
             <a href={contactMailto()}>Get in touch</a>
           </div>

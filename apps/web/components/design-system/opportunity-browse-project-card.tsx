@@ -110,11 +110,14 @@ export function OpportunityBrowseProjectCard({
   item,
   signedIn,
   saveAction,
+  showCalendarAction = true,
 }: {
   signedIn?: boolean;
   item: OpportunityCardItem;
   /** Replaces the default save control; a surface-specific save keeps the card's layout. */
   saveAction?: ReactNode;
+  /** Off where the save already keeps the deadline, so one ask per card. */
+  showCalendarAction?: boolean;
 }) {
   const practices = Array.from(
     new Set(
@@ -232,14 +235,16 @@ export function OpportunityBrowseProjectCard({
           ) : null}
         </div>
       </div>
-      <div className={styles.footer}>
-        <AddOpportunityToCalendarButton
-          item={item}
-          showLabel
-          signedIn={Boolean(signedIn)}
-          tracked={item.personal?.tracked}
-          returnTo={`/opportunities/${item.id}`}
-        />
+      <div className={styles.footer} data-single={!showCalendarAction || undefined}>
+        {showCalendarAction ? (
+          <AddOpportunityToCalendarButton
+            item={item}
+            showLabel
+            signedIn={Boolean(signedIn)}
+            tracked={item.personal?.tracked}
+            returnTo={`/opportunities/${item.id}`}
+          />
+        ) : null}
         <Link href={`/opportunities/${item.id}`} className={styles.view}>
           View opportunity
         </Link>

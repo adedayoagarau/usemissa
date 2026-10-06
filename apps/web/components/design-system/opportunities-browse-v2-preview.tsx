@@ -127,6 +127,8 @@ export function OpportunitiesBrowseV2Preview({
   beforeResults,
   resultsFooter,
   renderSaveAction,
+  showCalendarAction = true,
+  searchLabelVisible = true,
   filterControls,
   activeFilterContent,
   toolbarActions,
@@ -156,6 +158,9 @@ export function OpportunitiesBrowseV2Preview({
   resultsFooter?: ReactNode;
   /** Surface-specific save control per card (the homepage shortlist). */
   renderSaveAction?: (item: OpportunityBrowseProjection) => ReactNode;
+  showCalendarAction?: boolean;
+  /** Off where the host page already names the catalogue; the label stays for assistive technology. */
+  searchLabelVisible?: boolean;
   filterControls?: ReactNode;
   activeFilterContent?: ReactNode;
   toolbarActions?: ReactNode;
@@ -327,7 +332,7 @@ export function OpportunitiesBrowseV2Preview({
 
         <div className={styles.browse}>
           <div className={styles.searchGroup}>
-            <label className={styles.searchLabel} htmlFor="opportunity-search">
+            <label className={searchLabelVisible ? styles.searchLabel : "sr-only"} htmlFor="opportunity-search">
               Search opportunities
             </label>
             <form
@@ -703,6 +708,7 @@ export function OpportunitiesBrowseV2Preview({
                 item={item}
                 signedIn={signedIn}
                 saveAction={renderSaveAction ? renderSaveAction(item) : undefined}
+                showCalendarAction={showCalendarAction}
               />
             ))}
           </div>
