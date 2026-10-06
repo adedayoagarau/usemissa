@@ -77,6 +77,9 @@
       <li data-status="next"><input type="checkbox" disabled id="r13" /><label for="r13"><strong>Blind-review enforcement in reader views</strong><small>Hide submitter identity and identifying answers from readers according to the round's blind mode.</small></label><span class="tag next">Next</span></li>
       <li data-status="next"><input type="checkbox" disabled id="r14" /><label for="r14"><strong>Reader self-declared conflicts</strong><small>A reader marks a conflict from their desk; the planner already honours declared conflicts once stored.</small></label><span class="tag next">Next</span></li>
       <li data-status="next"><input type="checkbox" disabled id="r15" /><label for="r15"><strong>Multi-stage rounds with automatic promotion</strong><small>Readers round feeds a jury round; top-N by calibrated score promotes to the next stage with one confirmation.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="r16" /><label for="r16"><strong>Round setup from the Reviews page</strong><small>Create a reading round for an opportunity without leaving Reader operations.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="r17" /><label for="r17"><strong>Reassign stalled reads in one step</strong><small>Move every open read from a reader who is away to the least-loaded eligible readers, with the same conflict checks.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="r18" /><label for="r18"><strong>Reader onboarding brief</strong><small>A per-round brief and guidelines readers acknowledge before their first read, shown at the top of their queue.</small></label><span class="tag next">Next</span></li>
     </ul>
   </section>
 
@@ -98,6 +101,8 @@
       <li data-status="next"><input type="checkbox" disabled id="c12" /><label for="c12"><strong>Delivery and open telemetry from Resend webhooks</strong><small>Show delivered, bounced and complained per recipient in the batch view using the provider events already stored.</small></label><span class="tag next">Next</span></li>
       <li data-status="next"><input type="checkbox" disabled id="c13" /><label for="c13"><strong>Two-way replies</strong><small>Route submitter replies to a shared organization inbox linked to the submission.</small></label><span class="tag next">Next</span></li>
       <li data-status="next"><input type="checkbox" disabled id="c14" /><label for="c14"><strong>Verified sending domain per organization</strong><small>Letters from the organization's own domain with DKIM, instead of Missa's shared sender.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="c15" /><label for="c15"><strong>Waitlist promotion letters</strong><small>When an accepted Work withdraws, promote the next waitlisted Work and draft its letter in one action.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="c16" /><label for="c16"><strong>Admin daily digest</strong><small>One morning email per admin: new submissions, reads completed, overdue readers, letters awaiting approval.</small></label><span class="tag next">Next</span></li>
     </ul>
   </section>
 
@@ -113,6 +118,7 @@
       <li data-status="next"><input type="checkbox" disabled id="s6" /><label for="s6"><strong>Expected decision date</strong><small>An organization-declared date per opportunity shown on the timeline and used for "running late" honesty.</small></label><span class="tag next">Next</span></li>
       <li data-status="next"><input type="checkbox" disabled id="s7" /><label for="s7"><strong>Submitter-side edits before the deadline</strong><small>Replace a file or fix an answer while the call is open, with a revision record the organization can see.</small></label><span class="tag next">Next</span></li>
       <li data-status="next"><input type="checkbox" disabled id="s8" /><label for="s8"><strong>Public results page</strong><small>An organization-published longlist, shortlist and winners page generated from the same stage records.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="s9" /><label for="s9"><strong>Submitter questions channel</strong><small>A submitter can ask about their submission from the receipt; the question lands in Messages linked to it.</small></label><span class="tag next">Next</span></li>
     </ul>
   </section>
 
@@ -127,6 +133,7 @@
       <li data-status="next"><input type="checkbox" disabled id="u5" /><label for="u5"><strong>Apply brand to the public portal and application form</strong><small>The published portal brand is stored but not yet rendered on the public organization page.</small></label><span class="tag next">Next</span></li>
       <li data-status="next"><input type="checkbox" disabled id="u6" /><label for="u6"><strong>Custom domain for the portal</strong><small>submissions.yourprize.org serving the Missa-hosted portal.</small></label><span class="tag next">Next</span></li>
       <li data-status="next"><input type="checkbox" disabled id="u7" /><label for="u7"><strong>Per-vertical vocabulary packs</strong><small>Awards, publication and residency wordings for stages, delivery and decisions.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="u8" /><label for="u8"><strong>Organization setup checklist</strong><small>A first-run checklist on Overview: team, program, opportunity, form, readers, letters, appearance, each linked and ticked from real records.</small></label><span class="tag next">Next</span></li>
     </ul>
   </section>
 
@@ -140,6 +147,7 @@
       <li data-status="next"><input type="checkbox" disabled id="i4" /><label for="i4"><strong>Duplicate and simultaneous-submission detection</strong><small>Same file or title across submissions and cycles surfaced to triage.</small></label><span class="tag next">Next</span></li>
       <li data-status="next"><input type="checkbox" disabled id="i5" /><label for="i5"><strong>Fee waivers and discount codes</strong><small>Need-based waivers without a side channel.</small></label><span class="tag next">Next</span></li>
       <li data-status="next"><input type="checkbox" disabled id="i6" /><label for="i6"><strong>Bulk triage actions</strong><small>Multi-select to route, tag or decline from the inbox.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="i7" /><label for="i7"><strong>Search across submissions, Works and submitters</strong><small>Command search in the organization shell that finds records, not only destinations.</small></label><span class="tag next">Next</span></li>
     </ul>
   </section>
 
@@ -154,10 +162,12 @@
       <li data-status="next"><input type="checkbox" disabled id="g5" /><label for="g5"><strong>Team and program scope enforcement</strong><small>Team admins and program managers see only their scope instead of a withheld ledger.</small></label><span class="tag next">Next</span></li>
       <li data-status="next"><input type="checkbox" disabled id="g6" /><label for="g6"><strong>Organization analytics</strong><small>Cycle-over-cycle volume, time to decision, reader throughput, acceptance by category.</small></label><span class="tag next">Next</span></li>
       <li data-status="next"><input type="checkbox" disabled id="g7" /><label for="g7"><strong>Relational-authority parity for new records</strong><small>Letter batches and customization live on the compatibility store today; mirror them when relational authority becomes the default.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="g8" /><label for="g8"><strong>Outbound webhooks and API keys</strong><small>Notify an organization system when a submission arrives, a decision is recorded or a letter is sent.</small></label><span class="tag next">Next</span></li>
+      <li data-status="next"><input type="checkbox" disabled id="g9" /><label for="g9"><strong>Prize payout and contract tracking for winners</strong><small>Delivery tasks carry contract, payment and publication evidence for accepted Work.</small></label><span class="tag next">Next</span></li>
     </ul>
   </section>
 
-  <footer>Source of truth for status: this branch. Checked items have code and tests in the pull request; "Next" items are specified here so the sequence is visible. Last updated 2026-10-06.</footer>
+  <footer>Source of truth for status: this branch. Checked items have code and tests in the pull request; "Next" items are specified here so the sequence is visible. Last updated 2026-10-06. The list grows as gaps are found; nothing here is a promise until it is checked.</footer>
 </main>
 <script>
   const items = [...document.querySelectorAll('li[data-status]')];
