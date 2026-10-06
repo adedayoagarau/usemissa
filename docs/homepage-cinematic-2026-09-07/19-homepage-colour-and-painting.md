@@ -21,7 +21,7 @@ The dominant homepage relationship is photographic cobalt and terracotta with ci
 
 ## Component and source evidence
 
-Intents: composition, navigation, selection and data display. Policy entries: `composition.homepage-workspace`, `composition.homepage-continuation` and `composition.homepage-next-opening`. The retained full-bleed hero structure is `HomepageHeroPreview`; its campaign plate is the licensed documentary photograph `/media/home/hero-artist-studio.webp`, credited to Sandro Lopes Art with source and license details in the adjacent JSON sidecar.
+Intents: composition, navigation, selection and data display. Policy entries: `composition.homepage-workspace`, `composition.homepage-continuation` and `composition.homepage-next-opening`. The retained full-bleed hero structure is `HomepageHeroPreview`; its campaign plate is the licensed documentary photograph `/media/home/hero-artist-studio.webp`, credited to Sandro Lopes Art with source and license details in `apps/web/media-provenance/media/home/hero-artist-studio.webp.json`.
 
 Installed components: Button, Tabs/Studio tabs-09, Table/table-01, Switch/switch-01, Accordion, Avatar and Skeleton. Existing semantic components: CreatorPortfolioStudio, GoalSubmissionProgress, OpportunityBrowseProjectCard and MissaWordmark. No registry installation or vendor theme was necessary.
 
@@ -43,7 +43,7 @@ A wide panoramic watercolour and gouache painting on clean white cotton paper, a
 
 Generate a set, choose the strongest composition, and send the individual full-resolution image. A screenshot of the Midjourney grid is not the production asset. Do not add another website screenshot as an image prompt: it can introduce layout, text and logos. If using a visual reference, use only the painting crop as a style reference.
 
-Placement: below the footer navigation, full bleed, with copyright and legal links remaining on a clean white ground above the detailed painting. The selected user-supplied Midjourney panorama is shipped as `apps/web/public/media/home/generated/missa-coastal-village.webp`, with prompt and origin in its adjacent `.json` sidecar. Its generated top edge is intentionally retained; the supplied image does not have a true paper fade. On mobile it uses a deliberate landscape crop that retains the studios and a boat. No copied reference painting or artist attribution has been added.
+Placement: below the footer navigation, full bleed, with copyright and legal links remaining on a clean white ground above the detailed painting. The selected user-supplied Midjourney panorama is shipped as `apps/web/public/media/home/generated/missa-coastal-village.webp`, with prompt and origin in `apps/web/media-provenance/media/home/generated/missa-coastal-village.webp.json`. Its generated top edge is intentionally retained; the supplied image does not have a true paper fade. On mobile it uses a deliberate landscape crop that retains the studios and a boat. No copied reference painting or artist attribution has been added.
 
 Parameters were checked against official documentation:
 - [Aspect ratio](https://docs.midjourney.com/hc/en-us/articles/31894244298125-Aspect-Ratio): `--ar 3:1` sets composition shape, not pixel size.
