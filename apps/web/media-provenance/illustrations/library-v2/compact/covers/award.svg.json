@@ -1,0 +1,15 @@
+{
+  "asset": "public/illustrations/library-v2/compact/covers/award.svg",
+  "library": "Missa illustration library v2, 6 October 2026",
+  "export": "compact web SVG",
+  "method": "Built-in image generation; approved hero used as style reference in every call; contours traced with Potrace and optimised with SVGO.",
+  "styleReference": "sources/hero.png",
+  "prompt": "Use case: illustration-story. Create ONE original standalone editorial illustration for Missa's creative opportunity platform. The attached image is the APPROVED STYLE REFERENCE: match its confident black-ink cartoon drawing, supple organic contours, generous solid black shapes and warm observed character. Draw the new subject described below, not the reference scene. Premium professional illustration craft, not thin technical diagrams or generic corporate vector art. Crisp flat shapes on pure white background. Very clear black/white silhouettes. No grey, gradients, shading, texture, hatching, stippling, borders, typography, lettering, logos or watermark. Keep all objects distinct and anatomically convincing; no ambiguous intersections. At most ONE simple flat muted green accent as specified, deliberately separated from black ink so it can become an editable vector layer. The finished deliverable will be converted to themeable SVG so use solid colours and elegantly simplified closed contours. No extra objects beyond the brief.\nSubject: An original painting in a slightly irregular black picture frame propped at an angle, with an elegant rosette ribbon pinned to one corner. Painting is a very simple abstract botanical stem with bold black leaves. No stars or trophies. One flat muted green ribbon accent.\nComposition: landscape 4:3, 1200x900. Entire artwork must fit in central 75% with generous white margins and quiet upper corners. Object illustration, no people.",
+  "sourceRaster": "sources/award.png",
+  "viewBox": "-14.2 -11.9 614.4 460.8",
+  "bytes": 4790,
+  "layers": {
+    "accent": 16,
+    "ink": 2
+  }
+}

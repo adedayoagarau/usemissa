@@ -10,7 +10,7 @@ import { categorySearch } from "@/lib/homepage-opportunity-categories";
 import { Reveal } from "./homepage-reveal";
 import { HomepageMorph } from "./homepage-morph";
 import { HeroWord } from "./homepage-hero-word";
-import { CloseScene } from "@/components/illustrations/missa-illustrations";
+import { MissaArt } from "@/components/illustrations/missa-illustrations";
 import { HomepageQuestions } from "./homepage-standard-client";
 import {
   ProfileVignette,
@@ -71,6 +71,7 @@ export function HomepageHero({
 function FeatureCard({
   id,
   tone,
+  spot,
   headline,
   children,
   href,
@@ -81,6 +82,7 @@ function FeatureCard({
 }: {
   id: string;
   tone: "ochre" | "lichen" | "blue";
+  spot: "spot-tracker" | "spot-reminders" | "spot-portfolio";
   headline: string;
   children: ReactNode;
   href: string;
@@ -93,6 +95,7 @@ function FeatureCard({
     <Reveal className={styles.featureSlot} delay={delay}>
       <article className={styles.feature} aria-labelledby={`homepage-feature-${id}`}>
         <div className={styles.featureStage} data-tone={tone}>
+          <MissaArt id={spot} className={styles.featureSpot} />
           <div className={styles.featureProduct} aria-hidden="true">
             {stage}
           </div>
@@ -129,15 +132,17 @@ export function HomepageProof({ showcase }: { showcase: Showcase }) {
             Shortlist it from this page. Keep the deadline, get a reminder
             before it closes, and share the work you make.
           </p>
+          <Link href="/signup" className={styles.textLink}>
+            Create an account <ArrowUpRight aria-hidden="true" size={18} />
+          </Link>
         </div>
-        <Link href="/signup" className={styles.textLink}>
-          Create an account <ArrowUpRight aria-hidden="true" size={18} />
-        </Link>
+        <MissaArt id="scene-after-find" className={styles.sectionArt} />
       </Reveal>
       <div className={styles.features}>
         <FeatureCard
           id="tracker"
           tone="ochre"
+          spot="spot-tracker"
           headline="Keep every deadline in one view."
           href="/tracker"
           action="Open your Tracker"
@@ -157,6 +162,7 @@ export function HomepageProof({ showcase }: { showcase: Showcase }) {
         <FeatureCard
           id="reminders"
           tone="lichen"
+          spot="spot-reminders"
           headline="A nudge before it closes."
           href="/tracker"
           action="Choose your reminders"
@@ -175,6 +181,7 @@ export function HomepageProof({ showcase }: { showcase: Showcase }) {
         <FeatureCard
           id="portfolio"
           tone="blue"
+          spot="spot-portfolio"
           headline="One page for the work you make."
           href="/profile/portfolio"
           action="Build your portfolio"
@@ -208,6 +215,7 @@ export function HomepageQuestionsSection() {
           <a href={contactMailto()} className={styles.textLink}>
             Contact us <ArrowUpRight aria-hidden="true" size={18} />
           </a>
+          <MissaArt id="scene-questions" className={styles.questionsArt} />
         </div>
         <HomepageQuestions />
       </Reveal>
@@ -240,7 +248,7 @@ export function HomepageClose({ showcase }: { showcase: Showcase }) {
         </div>
         <div className={styles.closeCards} aria-hidden="true">
           <span className={styles.closeScene}>
-            <CloseScene />
+            <MissaArt id="scene-close" reverse />
           </span>
           <div className={styles.closeCard} data-back>
             <span className={styles.closeCardLabel}>

@@ -112,6 +112,17 @@
   text-wrap: balance;
 }
 
+/* A scene beside a section statement, sitting on the same baseline. */
+.sectionArt {
+  width: min(360px, 34%);
+  flex: 0 0 auto;
+  margin-bottom: calc(-1 * var(--space-row));
+}
+
+.sectionHead .textLink {
+  margin-top: var(--space-row);
+}
+
 .sectionLede {
   max-width: 56ch;
   margin: var(--space-row) 0 0;
@@ -145,9 +156,10 @@
 .featureStage {
   position: relative;
   display: grid;
-  height: 380px;
+  height: 420px;
   place-items: center;
-  padding: var(--space-section) var(--space-group) calc(var(--space-section) + 8px);
+  /* The top band holds the feature's object; the product sits below it. */
+  padding: 92px var(--space-group) calc(var(--space-section) + 8px);
   overflow: hidden;
   border-radius: var(--radius-xl);
   background: var(--surface-subtle);
@@ -173,6 +185,15 @@
 
 .feature:hover .featureProduct {
   transform: translateY(-4px);
+}
+
+/* The feature's object, a small drawing in the stage's corner. */
+.featureSpot {
+  position: absolute;
+  top: 18px;
+  left: 20px;
+  width: 72px;
+  pointer-events: none;
 }
 
 .featureCaption {
@@ -243,6 +264,11 @@
 
 .questionsIntro .textLink {
   margin-top: var(--space-row);
+}
+
+.questionsArt {
+  max-width: 300px;
+  margin-top: var(--space-section);
 }
 
 .questions {
@@ -357,17 +383,11 @@
 .closeScene {
   position: absolute;
   top: 50%;
-  right: -6%;
-  width: min(460px, 115%);
-  color: var(--primary-foreground);
-  transform: translateY(-24%);
+  right: -8%;
+  width: min(440px, 112%);
+  opacity: 0.5;
+  transform: translateY(-30%);
   pointer-events: none;
-}
-
-.closeScene svg {
-  display: block;
-  width: 100%;
-  height: auto;
 }
 
 .closeCard {
@@ -550,6 +570,16 @@
 }
 
 @media (max-width: 767px) {
+  .sectionArt {
+    width: min(260px, 70%);
+    margin: var(--space-row) 0 0;
+  }
+
+  .questionsArt {
+    max-width: 220px;
+    margin-top: var(--space-group);
+  }
+
   .closePanel {
     padding: var(--space-group) var(--space-inset);
   }

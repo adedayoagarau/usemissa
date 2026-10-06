@@ -1,5 +1,11 @@
 # Homepage illustration packet
 
+> Superseded on 6 October 2026 by the Missa illustration library v2
+> (`apps/web/public/illustrations/library-v2/`, provenance in
+> `apps/web/media-provenance/illustrations/library-v2/`). The site draws it
+> from sprites built by `npm run build:illustrations` in `apps/web`. This
+> brief is kept for the record.
+
 Brief for the art the homepage needs to read as premium. Today the page
 has no imagery of its own: the hero cards show a pale tint with the
 organization's name repeated, and the lower sections are tinted panels
