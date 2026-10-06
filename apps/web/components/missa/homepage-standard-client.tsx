@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowRight, CalendarCheck, LayoutTemplate } from "lucide-react";
+import type { ReactNode } from "react";
 import type { OpportunityBrowseProjection } from "@missa/radar-engine";
 
 import {
@@ -20,6 +21,7 @@ import {
 } from "@/components/ui/table";
 import { PublicCreatorProfile } from "@/components/creator-profile/public-profile";
 import { sampleCreatorPortfolio } from "@/lib/creator-profile-sample";
+import { Reveal } from "./homepage-reveal";
 import styles from "./homepage-standard.module.css";
 
 type DatedCall = Pick<
@@ -29,8 +31,76 @@ type DatedCall = Pick<
 
 const SAMPLE = sampleCreatorPortfolio();
 
+export type TileTone = "ochre" | "blue" | "lichen" | "forest" | "neutral";
+
+/**
+ * One feature tile: a tinted panel with a labelled icon, a statement, one
+ * link and, for the two product tiles, a crop of the real product bleeding
+ * out of the corner. The tile lifts on hover; the crop follows a touch later.
+ */
+export function FeatureTile({
+  id,
+  tone,
+  size = "small",
+  icon,
+  label,
+  headline,
+  children,
+  href,
+  action,
+  caption,
+  product,
+  delay = 0,
+}: {
+  id: string;
+  tone: TileTone;
+  size?: "small" | "large";
+  icon: ReactNode;
+  label: string;
+  headline: string;
+  children?: ReactNode;
+  href: string;
+  action: string;
+  caption?: string;
+  product?: ReactNode;
+  delay?: number;
+}) {
+  const headingId = `homepage-tile-${id}`;
+  return (
+    <Reveal className={styles.tileSlot} delay={delay}>
+      <article
+        className={styles.tile}
+        data-tone={tone}
+        data-size={size}
+        aria-labelledby={headingId}
+      >
+        <div className={styles.tileHead}>
+          <span className={styles.tileIcon} aria-hidden="true">
+            {icon}
+          </span>
+          <span className={styles.tileLabel}>{label}</span>
+        </div>
+        <h3 id={headingId} className={styles.tileHeadline}>
+          {headline}
+        </h3>
+        {children ? <div className={styles.tileCopy}>{children}</div> : null}
+        <Link href={href} className={styles.tileLink}>
+          {action}
+          <ArrowRight aria-hidden="true" size={18} />
+        </Link>
+        {product ? (
+          <div className={styles.tileProduct}>
+            {caption ? <p className={styles.tileCaption}>{caption}</p> : null}
+            {product}
+          </div>
+        ) : null}
+      </article>
+    </Reveal>
+  );
+}
+
 /** The Tracker's deadline view, built from today's catalogue and labelled as such. */
-export function TrackerExcerpt({ items }: { items: DatedCall[] }) {
+export function TrackerTile({ items }: { items: DatedCall[] }) {
   const dated = items
     .filter(
       (item) =>
@@ -42,15 +112,18 @@ export function TrackerExcerpt({ items }: { items: DatedCall[] }) {
     .slice(0, 3);
 
   return (
-    <article className={styles.excerpt} aria-labelledby="homepage-tracker-heading">
-      <div className={styles.excerptHead}>
-        <h3 id="homepage-tracker-heading">Tracker</h3>
-        <p className={styles.excerptLabel}>
-          Example, built from calls open today
-        </p>
-      </div>
-      <div className={styles.excerptBody}>
-        {dated.length ? (
+    <FeatureTile
+      id="tracker"
+      tone="ochre"
+      size="large"
+      icon={<CalendarCheck size={20} />}
+      label="Tracker"
+      headline="Keep every deadline in one view."
+      href="/tracker"
+      action="Open your Tracker"
+      caption="Example, built from calls open today"
+      product={
+        dated.length ? (
           <Table className={styles.deadlineTable}>
             <TableHeader>
               <TableRow>
@@ -89,48 +162,48 @@ export function TrackerExcerpt({ items }: { items: DatedCall[] }) {
             Calls with a dated deadline appear here with the date kept beside
             them.
           </p>
-        )}
-      </div>
-      <div className={styles.excerptFoot}>
-        <p className={styles.excerptNote}>
-          Save a call and its deadline stays here, on your calendar if you want
-          it, with your notes beside it.
-        </p>
-        <Link href="/tracker" className={styles.textLink}>
-          Open your Tracker <ArrowUpRight aria-hidden="true" size={18} />
-        </Link>
-      </div>
-    </article>
+        )
+      }
+    >
+      <p>
+        Save a call and its deadline stays here, on your calendar if you want
+        it, with your notes beside it.
+      </p>
+    </FeatureTile>
   );
 }
 
-/** One framed excerpt of the sample portfolio, never the whole page. */
-export function PortfolioExcerpt() {
+/** One framed crop of the sample portfolio, never the whole page. */
+export function PortfolioTile() {
   return (
-    <article className={styles.excerpt} aria-labelledby="homepage-portfolio-heading">
-      <div className={styles.excerptHead}>
-        <h3 id="homepage-portfolio-heading">Portfolio</h3>
-        <p className={styles.excerptLabel}>Example, a fictional creator</p>
-      </div>
-      <div className={styles.excerptFrame} aria-hidden="true" inert>
-        <PublicCreatorProfile
-          portfolio={SAMPLE}
-          mode="embedded"
-          sample
-          theme="white"
-          workLimit={1}
-        />
-      </div>
-      <div className={styles.excerptFoot}>
-        <p className={styles.excerptNote}>
-          One page for your writing, images and audio. You decide when it is
-          public.
-        </p>
-        <Link href="/profile/portfolio" className={styles.textLink}>
-          Build your portfolio <ArrowUpRight aria-hidden="true" size={18} />
-        </Link>
-      </div>
-    </article>
+    <FeatureTile
+      id="portfolio"
+      tone="blue"
+      size="large"
+      icon={<LayoutTemplate size={20} />}
+      label="Portfolio"
+      headline="One page for the work you make."
+      href="/profile/portfolio"
+      action="Build your portfolio"
+      caption="Example, a fictional creator"
+      delay={0.08}
+      product={
+        <div className={styles.portfolioFrame} aria-hidden="true" inert>
+          <PublicCreatorProfile
+            portfolio={SAMPLE}
+            mode="embedded"
+            sample
+            theme="white"
+            workLimit={1}
+          />
+        </div>
+      }
+    >
+      <p>
+        Writing, images and audio on one page you can share. You decide when
+        it is public.
+      </p>
+    </FeatureTile>
   );
 }
 
@@ -165,7 +238,7 @@ export function HomepageQuestions() {
   return (
     <Accordion className={styles.questions}>
       {QUESTIONS.map(({ q, a }, index) => (
-        <AccordionItem key={q} value={`question-${index}`}>
+        <AccordionItem key={q} value={`question-${index}`} className={styles.questionItem}>
           <AccordionTrigger className={styles.questionTrigger}>{q}</AccordionTrigger>
           <AccordionContent className={styles.questionContent}>
             <p>{a}</p>

@@ -141,7 +141,7 @@ export default async function HomePage({
         />
         <HomepageProof items={result.items} />
         <HomepageQuestionsSection />
-        <HomepageClose />
+        <HomepageClose items={result.items} />
       </main>
       <ShortlistBar />
       <HomepageFooterStandard />

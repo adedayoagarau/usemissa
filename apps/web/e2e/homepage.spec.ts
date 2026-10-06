@@ -119,9 +119,24 @@ test("product excerpts are labelled as examples and the page passes axe", async 
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Track your deadlines. Share your work." })).toBeVisible();
+  const proof = page.getByRole("region", { name: "Everything after you find the call." });
+  await proof.scrollIntoViewIfNeeded();
+  await expect(proof.getByRole("article", { name: "Keep every deadline in one view." })).toBeVisible();
   await expect(page.getByText("Example, built from calls open today")).toBeVisible();
   await expect(page.getByText("Example, a fictional creator")).toBeVisible();
+  await expect(
+    proof.getByRole("link", { name: "Browse the directory" }),
+  ).toHaveAttribute("href", "/directory");
+  // A block jumped past still reveals: nothing stays at opacity 0.
+  await page.getByRole("heading", { name: "Questions about Missa." }).scrollIntoViewIfNeeded();
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        [...document.querySelectorAll("section[aria-labelledby='homepage-proof-heading'] article")]
+          .map((el) => getComputedStyle(el.parentElement!).opacity),
+      ),
+    )
+    .toEqual(["1", "1", "1", "1", "1"]);
   await page.getByRole("button", { name: "Do I need an account?" }).click();
   await expect(page.getByText("Browse opportunities and read the details without an account.")).toBeVisible();
 

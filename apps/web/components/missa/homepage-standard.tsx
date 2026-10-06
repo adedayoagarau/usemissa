@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, BellRing, Bookmark, Users } from "lucide-react";
 import type { OpportunityBrowseProjection } from "@missa/radar-engine";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -7,12 +7,19 @@ import { MissaWordmark } from "@/components/missa-wordmark";
 import { visibleHomepageStats } from "@/lib/homepageStatDisplay";
 import { contactMailto } from "@/lib/legalContact";
 import { categorySearch } from "@/lib/homepage-opportunity-categories";
+import { Reveal } from "./homepage-reveal";
 import {
+  FeatureTile,
   HomepageQuestions,
-  PortfolioExcerpt,
-  TrackerExcerpt,
+  PortfolioTile,
+  TrackerTile,
 } from "./homepage-standard-client";
 import styles from "./homepage-standard.module.css";
+
+type HomepageCall = Pick<
+  OpportunityBrowseProjection,
+  "id" | "title" | "organizationName" | "deadline"
+>;
 
 export function HomepageHero({
   open,
@@ -46,33 +53,62 @@ export function HomepageHero({
   );
 }
 
-export function HomepageProof({
-  items,
-}: {
-  items: Pick<
-    OpportunityBrowseProjection,
-    "id" | "title" | "organizationName" | "deadline"
-  >[];
-}) {
+export function HomepageProof({ items }: { items: HomepageCall[] }) {
   return (
     <section className={styles.section} aria-labelledby="homepage-proof-heading">
-      <div className={styles.sectionHead}>
+      <Reveal className={styles.sectionHead}>
         <div>
           <h2 id="homepage-proof-heading" className="font-heading">
-            Track your deadlines. Share your work.
+            Everything after you find the call.
           </h2>
           <p className={styles.sectionLede}>
-            Save a call and its deadline stays with you, with reminders when you
-            want them. Your portfolio gives your work one page to share.
+            Shortlist it from this page. Keep the deadline, get a reminder
+            before it closes, and share the work you make.
           </p>
         </div>
         <Link href="/signup" className={styles.textLink}>
           Create an account <ArrowUpRight aria-hidden="true" size={18} />
         </Link>
-      </div>
-      <div className={styles.excerpts}>
-        <TrackerExcerpt items={items} />
-        <PortfolioExcerpt />
+      </Reveal>
+      <div className={styles.tiles}>
+        <TrackerTile items={items} />
+        <PortfolioTile />
+        <FeatureTile
+          id="reminders"
+          tone="lichen"
+          icon={<BellRing size={20} />}
+          label="Reminders"
+          headline="A nudge before it closes."
+          href="/tracker"
+          action="Set up reminders"
+          delay={0.04}
+        >
+          <p>Automated email reminders for every saved call, as early as you choose.</p>
+        </FeatureTile>
+        <FeatureTile
+          id="circle"
+          tone="forest"
+          icon={<Users size={20} />}
+          label="Directory"
+          headline="Find your artist circle."
+          href="/directory"
+          action="Browse the directory"
+          delay={0.1}
+        >
+          <p>Creators by discipline and place, with the work they choose to share.</p>
+        </FeatureTile>
+        <FeatureTile
+          id="shortlist"
+          tone="neutral"
+          icon={<Bookmark size={20} />}
+          label="Shortlist"
+          headline="Start without an account."
+          href="/opportunities"
+          action="Browse all calls"
+          delay={0.16}
+        >
+          <p>Shortlist calls from this page. They come with you when you sign up.</p>
+        </FeatureTile>
       </div>
     </section>
   );
@@ -84,31 +120,79 @@ export function HomepageQuestionsSection() {
       className={styles.section}
       aria-labelledby="homepage-questions-heading"
     >
-      <div className={styles.sectionHead}>
-        <h2 id="homepage-questions-heading" className="font-heading">Questions about Missa.</h2>
-        <a href={contactMailto()} className={styles.textLink}>
-          Contact us <ArrowUpRight aria-hidden="true" size={18} />
-        </a>
-      </div>
-      <HomepageQuestions />
+      <Reveal className={styles.questionsLayout}>
+        <div className={styles.questionsIntro}>
+          <h2 id="homepage-questions-heading" className="font-heading">
+            Questions about Missa.
+          </h2>
+          <p className={styles.sectionLede}>
+            Short answers to what creators ask first. Anything else, write to
+            us.
+          </p>
+          <a href={contactMailto()} className={styles.textLink}>
+            Contact us <ArrowUpRight aria-hidden="true" size={18} />
+          </a>
+        </div>
+        <HomepageQuestions />
+      </Reveal>
     </section>
   );
 }
 
-export function HomepageClose() {
+function closeCards(items: HomepageCall[]) {
+  const dated = items
+    .filter((item) => item.deadline.kind === "exact" && item.deadline.date)
+    .sort((a, b) => a.deadline.date!.localeCompare(b.deadline.date!));
+  const first = dated[0];
+  const second = dated[1] ?? items.find((item) => item.id !== first?.id);
+  const closes = (item: HomepageCall | undefined) =>
+    item?.deadline.date
+      ? new Date(`${item.deadline.date.slice(0, 10)}T12:00:00Z`).toLocaleDateString(
+          "en",
+          { day: "numeric", month: "short", timeZone: "UTC" },
+        )
+      : null;
+  return { first, second, firstCloses: closes(first) };
+}
+
+export function HomepageClose({ items }: { items: HomepageCall[] }) {
+  const { first, second, firstCloses } = closeCards(items);
   return (
     <section className={styles.close} aria-labelledby="homepage-close-heading">
-      <h2 id="homepage-close-heading" className="font-heading">
-        Shortlist calls. Keep every deadline. Share your work.
-      </h2>
-      <div className={styles.closeActions}>
-        <Link href="/signup" className={buttonVariants({ variant: "default" })}>
-          Create an account
-        </Link>
-        <Link href="/opportunities" className={styles.textLink}>
-          Browse opportunities <ArrowUpRight aria-hidden="true" size={18} />
-        </Link>
-      </div>
+      <Reveal className={styles.closePanel}>
+        <div className={styles.closeCopy}>
+          <h2 id="homepage-close-heading" className="font-heading">
+            Shortlist calls. Keep every deadline. Share your work.
+          </h2>
+          <p className={styles.closeLede}>
+            Your shortlist comes with you the moment you create an account.
+          </p>
+          <div className={styles.closeActions}>
+            <Link href="/signup" className={`${buttonVariants({ variant: "default" })} ${styles.closePrimary}`}>
+              Create an account
+            </Link>
+            <Link href="/opportunities" className={styles.closeLink}>
+              Browse opportunities <ArrowUpRight aria-hidden="true" size={18} />
+            </Link>
+          </div>
+        </div>
+        <div className={styles.closeCards} aria-hidden="true">
+          <div className={styles.closeCard} data-back>
+            <span className={styles.closeCardLabel}>
+              <Bookmark size={14} /> Shortlisted
+            </span>
+            <strong>{second?.title ?? "A call you want to come back to"}</strong>
+            {second?.organizationName ? <span>{second.organizationName}</span> : null}
+          </div>
+          <div className={styles.closeCard}>
+            <span className={styles.closeCardLabel}>
+              <BellRing size={14} /> Reminder set
+            </span>
+            <strong>{first?.title ?? "Your next deadline"}</strong>
+            <span>{firstCloses ? `Closes ${firstCloses}` : "Closes on the date you save"}</span>
+          </div>
+        </div>
+      </Reveal>
     </section>
   );
 }
@@ -119,6 +203,7 @@ export function HomepageFooterStandard() {
       <div className={styles.footerInner}>
         <div className={styles.footerBrand}>
           <MissaWordmark size="marketing" />
+          <p className={styles.footerTagline}>Open calls for creators, in one place.</p>
         </div>
         <nav aria-label="Homepage footer navigation" className={styles.footerColumns}>
           <div>
