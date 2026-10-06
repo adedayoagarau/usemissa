@@ -32,7 +32,7 @@ The acceptance bar is an unmistakable improvement over the supplied screenshots:
 
 Opportunity cards remain `OpportunityBrowseProjectCard`, and deadlines remain validated public API records. Directory names, kinds, slugs, media and location are parsed from `/api/journals`.
 
-`feature-studio.webp` is an original AI-generated campaign photograph, a fictional artist, not a real creator profile. Its exact prompt and original file path are in its JSON sidecar. Existing original publications/community campaign assets provide the other feature images. The actual embedded CreatorPortfolioStudio continues to label its fictional portfolio sample.
+`feature-studio.webp` is an original AI-generated campaign photograph, a fictional artist, not a real creator profile. Its exact prompt and original file path are in `apps/web/media-provenance/media/home/generated/feature-studio.webp.json`. Existing original publications/community campaign assets provide the other feature images. The actual embedded CreatorPortfolioStudio continues to label its fictional portfolio sample.
 
 Headlands' API banner was checked and found to be a generic Unsplash image with a campus label. It is not used. The featured photograph is Building 945 from [Headlands' official About page](https://www.headlands.org/about/), credited there to Andria Lo and credited beside the image on Missa. Its URL is `https://www.headlands.org/wp-content/uploads/2022/02/HCA_Campus_AndriaLo_1-1024x682.jpg`. Organization imagery is not generated. Logos use the actual backend media fields through installed Avatar with a typographic fallback when absent or unavailable. No claim of affiliation or partnership is made.
 
