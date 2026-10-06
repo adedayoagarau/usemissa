@@ -11,33 +11,15 @@ import {
   ILLUSTRATION_SPRITE_ROOT,
   type IllustrationId,
 } from "./library-v2.generated";
+import { coverKey, type CoverKey } from "@/lib/callCover";
 import styles from "./missa-illustrations.module.css";
 
 function href(id: IllustrationId) {
   return `${ILLUSTRATION_SPRITE_ROOT}/${ILLUSTRATIONS[id].sprite}#${id}`;
 }
 
-/**
- * Which cover each call type uses (types from radar-engine OpportunityType);
- * rfp, commission, job and other fall back to the open-call pinboard.
- */
-const COVER_FOR_TYPE: Record<string, string> = {
-  "open-call": "open-call",
-  magazine: "magazine",
-  pitch: "publication",
-  grant: "grant",
-  scholarship: "grant",
-  award: "award",
-  contest: "contest",
-  fellowship: "fellowship",
-  conference: "fellowship",
-  residency: "residency",
-  festival: "festival",
-  exhibition: "exhibition",
-};
-
 /** The paper tint behind each cover, so a grid of cards reads as a set. */
-const COVER_TONE: Record<string, "ochre" | "lichen" | "accent" | "mineral"> = {
+const COVER_TONE: Record<CoverKey, "ochre" | "lichen" | "accent" | "mineral"> = {
   magazine: "ochre",
   publication: "ochre",
   award: "ochre",
@@ -50,13 +32,18 @@ const COVER_TONE: Record<string, "ochre" | "lichen" | "accent" | "mineral"> = {
   exhibition: "mineral",
 };
 
-export function coverKey(type: string | null | undefined) {
-  return COVER_FOR_TYPE[type ?? ""] ?? "open-call";
-}
-
-/** The call type's cover: the 4:3 drawing whole and centred on its tint. */
-export function CallCover({ type }: { type: string | null | undefined }) {
-  const key = coverKey(type);
+/**
+ * The call's cover: the 4:3 drawing whole and centred on its tint. The type
+ * decides it, or the title when the call is filed only as an open call.
+ */
+export function CallCover({
+  type,
+  title,
+}: {
+  type: string | null | undefined;
+  title?: string | null;
+}) {
+  const key = coverKey(type, title);
   return (
     <svg
       className={styles.cover}

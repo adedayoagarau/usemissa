@@ -100,7 +100,7 @@ export function CallCardVignette({
     <div className={styles.card}>
       <div className={styles.plate}>
         <span className={styles.plateArt}>
-          <CallCover type={call.type} />
+          <CallCover type={call.type} title={call.title} />
         </span>
         <span className={styles.badges}>
           <span className={styles.badge}>{call.typeLabel}</span>

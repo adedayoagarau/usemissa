@@ -163,7 +163,7 @@ export function OpportunityBrowseProjectCard({
             // organization's mark on it when one is on file. The name is in
             // the card body, so both are decorative.
             <span className={styles.cover} aria-hidden="true">
-              <CallCover type={item.type} />
+              <CallCover type={item.type} title={item.title} />
               {item.identityLogoUrl ? (
                 <OrganizationMark src={item.identityLogoUrl} className={styles.coverMark} />
               ) : null}
