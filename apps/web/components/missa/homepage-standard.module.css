@@ -9,9 +9,21 @@
 }
 
 .hero {
+  display: grid;
   width: min(calc(100% - 48px), 1360px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 520px);
+  gap: var(--space-section);
+  align-items: center;
   margin: 0 auto;
   padding: var(--space-group) 0 0;
+}
+
+.heroCopy {
+  min-width: 0;
+}
+
+.heroTour {
+  min-width: 0;
 }
 
 .hero h1 {
@@ -662,6 +674,15 @@
 }
 
 @media (max-width: 1023px) {
+  /* The tour is a desktop flourish; phones go straight to the calls. */
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .heroTour {
+    display: none;
+  }
+
   .tileSlot,
   .tileSlot:has(.tile[data-size="large"]) {
     grid-column: span 6;

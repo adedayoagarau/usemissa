@@ -150,3 +150,28 @@ test("product excerpts are labelled as examples and the page passes axe", async 
     ),
   ).toEqual([]);
 });
+
+test("the hero tour can be paused and stays still under reduced motion", async ({
+  page,
+  browser,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  const pause = page.getByRole("button", { name: "Pause the tour" });
+  await expect(pause).toBeVisible();
+  await pause.click();
+  await expect(page.getByRole("button", { name: "Play the tour" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  const still = await browser.newContext({
+    reducedMotion: "reduce",
+    viewport: { width: 1440, height: 900 },
+  });
+  const stillPage = await still.newPage();
+  await stillPage.goto(page.url());
+  await expect(stillPage.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(stillPage.getByRole("button", { name: /the tour$/ })).toHaveCount(0);
+  await still.close();
+});

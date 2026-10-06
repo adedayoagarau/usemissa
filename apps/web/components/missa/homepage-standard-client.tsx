@@ -214,33 +214,10 @@ function shortDate(iso: string, offsetDays = 0) {
 
 /**
  * The reminder schedule Missa adds when a call is saved: email a week before
- * and the day before. Built from the soonest dated call open today.
+ * and the day before. Built from a call open today whose reminders are still
+ * ahead (see pickTourCall).
  */
-export function RemindersTile({
-  items,
-  today,
-}: {
-  items: DatedCall[];
-  /** ISO date (YYYY-MM-DD) from the server render. */
-  today: string;
-}) {
-  // The soonest call whose week-before reminder is still ahead, so both
-  // dates in the example are ones a creator could actually receive.
-  const ahead = new Date(`${today}T12:00:00Z`);
-  ahead.setUTCDate(ahead.getUTCDate() + 8);
-  const weekAhead = ahead.toISOString().slice(0, 10);
-  const dated = items
-    .filter(
-      (item) =>
-        item.deadline.kind === "exact" &&
-        item.deadline.date &&
-        Number.isFinite(Date.parse(item.deadline.date)),
-    )
-    .sort((a, b) => a.deadline.date!.localeCompare(b.deadline.date!));
-  const call =
-    dated.find((item) => item.deadline.date!.slice(0, 10) >= weekAhead) ??
-    dated.at(-1);
-
+export function RemindersTile({ call }: { call: DatedCall | null }) {
   return (
     <FeatureTile
       id="reminders"

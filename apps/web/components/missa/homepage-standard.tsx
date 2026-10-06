@@ -8,6 +8,7 @@ import { visibleHomepageStats } from "@/lib/homepageStatDisplay";
 import { contactMailto } from "@/lib/legalContact";
 import { categorySearch } from "@/lib/homepage-opportunity-categories";
 import { Reveal } from "./homepage-reveal";
+import { HomepageMorph } from "./homepage-morph";
 import {
   HomepageQuestions,
   PortfolioTile,
@@ -19,14 +20,46 @@ import styles from "./homepage-standard.module.css";
 type HomepageCall = Pick<
   OpportunityBrowseProjection,
   "id" | "title" | "organizationName" | "deadline"
->;
+> &
+  Partial<Pick<OpportunityBrowseProjection, "type">>;
+
+function tourTypeLabel(type: string | undefined) {
+  if (!type) return "Open call";
+  const label = type.replace(/-/g, " ");
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+/**
+ * The call the hero tour and the reminder example are built from: the
+ * soonest dated call whose week-before reminder is still ahead.
+ */
+export function pickTourCall<T extends HomepageCall>(items: T[], today: string): T | null {
+  const ahead = new Date(`${today}T12:00:00Z`);
+  ahead.setUTCDate(ahead.getUTCDate() + 8);
+  const weekAhead = ahead.toISOString().slice(0, 10);
+  const dated = items
+    .filter(
+      (item) =>
+        item.deadline.kind === "exact" &&
+        item.deadline.date &&
+        Number.isFinite(Date.parse(item.deadline.date)),
+    )
+    .sort((a, b) => a.deadline.date!.localeCompare(b.deadline.date!));
+  return (
+    dated.find((item) => item.deadline.date!.slice(0, 10) >= weekAhead) ??
+    dated.at(-1) ??
+    null
+  );
+}
 
 export function HomepageHero({
   open,
   closingThisWeek,
+  tourCall,
 }: {
   open: number | null;
   closingThisWeek: number | null;
+  tourCall: HomepageCall | null;
 }) {
   const totals = visibleHomepageStats([
     { label: "open now", value: open ?? 0 },
@@ -34,6 +67,7 @@ export function HomepageHero({
   ]);
   return (
     <header className={styles.hero}>
+      <div className={styles.heroCopy}>
       <h1 id="homepage-heading" className="font-heading">Find your next open call.</h1>
       <p className={styles.lede}>
         Grants, residencies, publications and prizes in one place. Get
@@ -48,6 +82,19 @@ export function HomepageHero({
             </span>
           ))}
         </p>
+      ) : null}
+      </div>
+      {tourCall ? (
+        <div className={styles.heroTour}>
+          <HomepageMorph
+            call={{
+              title: tourCall.title,
+              typeLabel: tourTypeLabel(tourCall.type),
+              organizationName: tourCall.organizationName,
+              deadline: { date: tourCall.deadline.date ?? null },
+            }}
+          />
+        </div>
       ) : null}
     </header>
   );
@@ -80,7 +127,7 @@ export function HomepageProof({
       <div className={styles.tiles}>
         <TrackerTile items={items} />
         <PortfolioTile />
-        <RemindersTile items={items} today={today} />
+        <RemindersTile call={pickTourCall(items, today)} />
       </div>
     </section>
   );
