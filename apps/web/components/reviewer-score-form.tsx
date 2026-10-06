@@ -8,14 +8,81 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
+import type { RubricCriterion } from '@missa/workspace-engine';
+import { previewRubricScore } from '@/lib/rubricClient';
 
 /**
  * The reader's recommendation: one whole-number score from 0 to 100 and
  * private notes for the review team. Recording again replaces the earlier
  * recommendation, and the server stamps the assignment complete.
  */
-export function ReviewerScoreForm({ assignmentId, existing, locked = false }: { assignmentId: string; existing?: { score?: number; notes?: string; recordedAt: string }; locked?: boolean }) {
+type ExistingRecommendation = { score?: number; notes?: string; recordedAt: string; criterionScores?: Record<string, number>; rubricVersion?: number };
+
+export function ReviewerScoreForm({ assignmentId, existing, locked = false, rubric }: { assignmentId: string; existing?: ExistingRecommendation; locked?: boolean; rubric?: { version: number; criteria: RubricCriterion[] } }) {
+  if (rubric) return <RubricScoreForm assignmentId={assignmentId} existing={existing} locked={locked} rubric={rubric} />;
+  return <SingleScoreForm assignmentId={assignmentId} existing={existing} locked={locked} />;
+}
+
+/**
+ * Rubric scoring: one whole number per criterion, weighted into the 0 to 100
+ * score by the server. Scores from an earlier rubric version are not carried
+ * over, so a re-score always uses the current criteria.
+ */
+function RubricScoreForm({ assignmentId, existing, locked, rubric }: { assignmentId: string; existing?: ExistingRecommendation; locked: boolean; rubric: { version: number; criteria: RubricCriterion[] } }) {
+  const router = useRouter();
+  const sameVersion = existing?.rubricVersion === rubric.version;
+  const [scores, setScores] = useState<Record<string, number | undefined>>(() => (sameVersion ? { ...existing?.criterionScores } : {}));
+  const [notes, setNotes] = useState(existing?.notes ?? '');
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const total = previewRubricScore(rubric.criteria, scores);
+  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+    const missing = rubric.criteria.filter((criterion) => scores[criterion.id] === undefined);
+    if (missing.length) { setError(`Score ${missing.map((criterion) => criterion.label).join(', ')}.`); return; }
+    startTransition(async () => {
+      const response = await fetch(`/api/reviewer/assignments/${encodeURIComponent(assignmentId)}/review`, { method: 'POST', headers: { 'content-type': 'application/json', 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ criteria: scores, notes: notes.trim() || undefined }) });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) { setError(body.error ?? 'Your recommendation could not be saved.'); return; }
+      toast.success(existing ? 'Recommendation updated.' : 'Recommendation recorded.');
+      router.refresh();
+    });
+  };
+  return (
+    <form onSubmit={submit} className="grid gap-4" aria-labelledby="reviewer-score-form-title">
+      <h3 id="reviewer-score-form-title" className="font-heading text-lg font-medium text-foreground">{existing ? 'Update your recommendation' : 'Record your recommendation'}</h3>
+      <p className="text-sm text-muted-foreground">This round uses a rubric (version {rubric.version}). Score each criterion; Missa weights them into a 0 to 100 score. Your notes stay with the review team and are never shown to the submitter.</p>
+      {existing && existing.rubricVersion !== undefined && !sameVersion ? <Alert><AlertTitle>The rubric changed</AlertTitle><AlertDescription>You scored this on version {existing.rubricVersion}. That score still counts. Re-score to use version {rubric.version}.</AlertDescription></Alert> : null}
+      <div className="grid gap-3 sm:grid-cols-2">
+        {rubric.criteria.map((criterion) => (
+          <Field key={criterion.id}>
+            <FieldLabel htmlFor={`criterion-${assignmentId}-${criterion.id}`}>{criterion.label}{criterion.weight > 1 ? <span className="font-normal text-muted-foreground"> · weight {criterion.weight}</span> : null}</FieldLabel>
+            <NativeSelect className="w-full"><select id={`criterion-${assignmentId}-${criterion.id}`} value={scores[criterion.id] === undefined ? '' : String(scores[criterion.id])} onChange={(event) => setScores((current) => ({ ...current, [criterion.id]: event.target.value === '' ? undefined : Number(event.target.value) }))}>
+              <NativeSelectOption value="">Not scored</NativeSelectOption>
+              {Array.from({ length: criterion.maxScore + 1 }, (_, value) => <NativeSelectOption key={value} value={String(value)}>{value} of {criterion.maxScore}</NativeSelectOption>)}
+            </select></NativeSelect>
+            {criterion.description ? <FieldDescription>{criterion.description}</FieldDescription> : null}
+          </Field>
+        ))}
+      </div>
+      <p className="text-sm text-foreground" aria-live="polite">{total === undefined ? 'Weighted score appears once every criterion is scored.' : `Weighted score: ${total} of 100`}</p>
+      <Field>
+        <FieldLabel htmlFor={`notes-${assignmentId}`}>Notes for the review team</FieldLabel>
+        <Textarea id={`notes-${assignmentId}`} value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={5000} rows={6} placeholder="What stood out, what held it back, and anything the chair should know." />
+      </Field>
+      {error ? <Alert variant="destructive"><AlertTitle>Not saved</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="submit" disabled={pending || locked}>{pending ? 'Saving…' : existing ? 'Save changes' : 'Record recommendation'}</Button>
+        {locked ? <span className="text-xs text-muted-foreground">Acknowledge the round brief above to record a score.</span> : null}
+      </div>
+    </form>
+  );
+}
+
+function SingleScoreForm({ assignmentId, existing, locked }: { assignmentId: string; existing?: ExistingRecommendation; locked: boolean }) {
   const router = useRouter();
   const [score, setScore] = useState(existing?.score === undefined ? '' : String(existing.score));
   const [notes, setNotes] = useState(existing?.notes ?? '');

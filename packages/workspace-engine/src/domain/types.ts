@@ -219,6 +219,61 @@ export interface DeliveryTask {
   completedAt?: IsoDateTime;
 }
 
+// --- Rubrics -----------------------------------------------------------------
+
+/** One named thing readers score, on a whole-number scale from 0 to maxScore. */
+export interface RubricCriterion {
+  id: string;
+  label: string;
+  description?: string;
+  /** Relative importance, 1-10. */
+  weight: number;
+  /** Top of the scale, 3-10. */
+  maxScore: number;
+}
+
+/**
+ * An immutable rubric version for one review round. Changing the rubric adds
+ * a new version; reads already scored keep the version they were scored on.
+ * A version with no criteria means the round went back to the single score.
+ */
+export interface RoundRubric {
+  id: string;
+  organizationId: string;
+  reviewRoundId: string;
+  version: number;
+  criteria: RubricCriterion[];
+  createdAt: IsoDateTime;
+  createdByAccountId: string;
+}
+
+/** A reader's per-criterion scores for one assignment, tied to the rubric version used. */
+export interface CriterionScores {
+  reviewAssignmentId: string;
+  organizationId: string;
+  rubricId: string;
+  rubricVersion: number;
+  scores: Record<string, number>;
+  recordedAt: IsoDateTime;
+}
+
+// --- Submission revisions -----------------------------------------------------
+
+export type SubmissionRevisionChange =
+  | { kind: 'work-title'; workId: string; before: string; after: string }
+  | { kind: 'work-files'; workId: string; before: string[]; after: string[] }
+  | { kind: 'answer'; fieldId: string; before?: string | string[]; after?: string | string[] };
+
+/** A change a submitter made to their own submission before reading began. */
+export interface SubmissionRevision {
+  id: string;
+  organizationId: string;
+  submissionId: string;
+  submitterAccountId: string;
+  at: IsoDateTime;
+  changes: SubmissionRevisionChange[];
+}
+
 // --- Submitter questions -------------------------------------------------------
 
 /** A question a submitter asks the organization about their own submission. */

@@ -116,3 +116,10 @@ export { WORKSPACE_DECISION_SCOPES, mapWithConcurrency, type WorkspaceDecisionCo
 export { checkDecisionLetters, decisionLetterMismatch, recordSubmissionTriage, recordReviewerConflict, recordReviewConsistency, recordGuidelineClauses, splitGuidelineClauses, recordClaimEvidence, orderClaimReviewQueue, type DecisionLetterCheckInput, type DecisionLetterCheckResult, type RecordedFlags } from './decisionChecks.js';
 export { SUBMISSION_IMPORT_TARGETS, OPEN_CALL_IMPORT_TARGETS, IMPORT_COLUMN_IGNORE, describeImportColumns, resolveTargetIndexes, sanitizeImportColumnMapping, importTargetsFor, suggestImportColumnMapping, type ImportColumn, type ImportColumnMapping, type ImportColumnSource, type ImportColumnSuggestions, type ImportKind, type ImportTargets } from './importColumns.js';
 export { backfillWorkspaceLaunchSlice, reconcileWorkspaceLaunchSlice, writeWorkspaceParityArtifact, type WorkspaceBackfillResult, type WorkspaceParityMismatch, type WorkspaceParityReport, type WorkspaceParityReason } from './reconciliation/workspaceParity.js';
+export {
+  RUBRIC_LIMITS,
+  normalizeRubricCriteria,
+  validateCriterionScores,
+  weightedRubricScore,
+  type RubricCriterionInput,
+} from "./rubric.js";

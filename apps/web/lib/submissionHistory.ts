@@ -1,7 +1,8 @@
 import type { RadarEngine } from '@missa/radar-engine';
 import { communicationTemplate, type WorkspaceEngine } from '@missa/workspace-engine';
+import { describeRevision } from './submissionEdits';
 
-export type SubmissionHistoryKind = 'received' | 'review' | 'conflict' | 'decision' | 'letter' | 'delivery' | 'withdrawn';
+export type SubmissionHistoryKind = 'received' | 'review' | 'conflict' | 'decision' | 'letter' | 'delivery' | 'withdrawn' | 'revision';
 
 export interface SubmissionHistoryEvent {
   at: string;
@@ -14,7 +15,8 @@ export interface SubmissionHistoryEvent {
  * A readable, organization-facing history for one submission, built only
  * from recorded facts: receipt, reader recommendations and declared
  * conflicts, per-Work decisions (from the audit trail, so changes show),
- * letters actually sent, delivery tasks and withdrawal. No raw identifiers.
+ * letters actually sent, delivery tasks, submitter revisions and withdrawal.
+ * No raw identifiers.
  */
 export function submissionHistory(input: { radar: Pick<RadarEngine, 'store'>; workspace: WorkspaceEngine; organizationId: string; submissionId: string }): SubmissionHistoryEvent[] {
   const { radar, workspace, organizationId, submissionId } = input;
@@ -56,6 +58,11 @@ export function submissionHistory(input: { radar: Pick<RadarEngine, 'store'>; wo
     const recipient = batch.recipients.find((item) => item.submissionId === submissionId);
     if (!recipient || recipient.status !== 'sent') continue;
     events.push({ at: recipient.sentAt ?? batch.sentAt ?? batch.updatedAt, kind: 'letter', title: `${communicationTemplate(batch.kind).label} sent`, detail: `Approved by ${person(batch.approvedByAccountId)}` });
+  }
+
+  const fields = workspace.store.submissionPaths.get(submission.submissionPathId)?.fields ?? [];
+  for (const revision of workspace.revisionsForSubmission(submissionId)) {
+    events.push({ at: revision.at, kind: 'revision', title: 'The submitter changed their submission', detail: describeRevision(revision, works, fields).join('; ') });
   }
 
   for (const task of workspace.deliveryTasksForOrganization(organizationId)) {

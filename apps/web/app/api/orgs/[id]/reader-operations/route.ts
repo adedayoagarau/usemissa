@@ -30,7 +30,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (url.searchParams.get('format') === 'csv') {
     const assignments = [...workspace.store.reviewAssignments.values()]
       .filter((assignment) => assignment.reviewRoundId === roundId && result.access.scope.submission(assignment.submissionId))
-      .map((assignment) => { const recommendation = workspace.recommendationForAssignment(assignment.id); return { submissionId: assignment.submissionId, reviewerAccountId: assignment.reviewerAccountId, completedAt: assignment.completedAt, recusedAt: (assignment as { recusedAt?: string }).recusedAt, score: recommendation?.score, recordedAt: recommendation?.recordedAt }; });
+      .map((assignment) => { const recommendation = workspace.recommendationForAssignment(assignment.id); const criterion = workspace.criterionScoresForAssignment(assignment.id); return { submissionId: assignment.submissionId, reviewerAccountId: assignment.reviewerAccountId, completedAt: assignment.completedAt, recusedAt: (assignment as { recusedAt?: string }).recusedAt, score: recommendation?.score, recordedAt: recommendation?.recordedAt, rubricVersion: criterion?.rubricVersion, criterionScores: criterion?.scores }; });
     const filename = `${view.round.openCallTitle} - ${view.round.name} - scores.csv`.replace(/[^\w .-]+/g, '_');
     return new Response(roundScoresCsv(view, assignments), { headers: { ...headers, 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="${filename}"` } });
   }

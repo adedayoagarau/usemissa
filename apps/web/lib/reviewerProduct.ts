@@ -1,5 +1,5 @@
 import type { RadarEngine } from '@missa/radar-engine';
-import type { WorkspaceEngine } from '@missa/workspace-engine';
+import type { RubricCriterion, WorkspaceEngine } from '@missa/workspace-engine';
 
 export type ReviewerAssignmentState = 'awaiting-review-contract' | 'legacy-submitted';
 
@@ -15,10 +15,15 @@ export interface ReviewerAssignmentView {
   dueAt?: string;
   /** The round brief the organization asked readers to read first, if any. */
   brief?: { text: string; updatedAt: string; acknowledged: boolean };
+  /** The rubric readers score against now, when the round uses one. */
+  rubric?: { version: number; criteria: RubricCriterion[] };
   legacyRecommendation?: {
     score?: number;
     notes?: string;
     recordedAt: string;
+    /** Per-criterion scores and the rubric version they were recorded on. */
+    criterionScores?: Record<string, number>;
+    rubricVersion?: number;
   };
 }
 
@@ -62,6 +67,8 @@ export function reviewerAssignmentForAccount(
   if (round.openCallId !== opportunity.id) return undefined;
 
   const recommendation = workspace.recommendationForAssignment(assignment.id);
+  const rubric = workspace.rubricForRound(round.id);
+  const criterionScores = workspace.criterionScoresForAssignment(assignment.id);
   return {
     id: assignment.id,
     organizationName: organization.name,
@@ -73,10 +80,12 @@ export function reviewerAssignmentForAccount(
     completedAt: assignment.completedAt,
     dueAt: assignment.expiresAt,
     brief: roundBriefFor(workspace, organization, round.id, accountId),
+    ...(rubric ? { rubric: { version: rubric.version, criteria: rubric.criteria } } : {}),
     legacyRecommendation: recommendation ? {
       score: recommendation.score,
       notes: recommendation.notes,
       recordedAt: recommendation.recordedAt,
+      ...(criterionScores ? { criterionScores: criterionScores.scores, rubricVersion: criterionScores.rubricVersion } : {}),
     } : undefined,
   };
 }

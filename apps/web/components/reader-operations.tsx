@@ -20,7 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { CalibrationBadge } from '@/components/missa/operations-badges';
-import { DecisionDateControl, PromoteDialog, PublishResultsDialog, ReassignReadsDialog, RoundBriefDialog, RoundDueDateControl } from '@/components/reader-round-actions';
+import { DecisionDateControl, PromoteDialog, PublishResultsDialog, ReassignReadsDialog, RoundBriefDialog, RoundDueDateControl, RubricDialog } from '@/components/reader-round-actions';
 
 const REFRESH_MS = 30_000;
 const OUTCOMES = ['accepted', 'declined', 'waitlisted'] as const;
@@ -124,6 +124,7 @@ export function ReaderOperations({ organizationId, initial, canManage, stageLabe
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <RoundBriefDialog base={base} roundId={roundId} brief={view.round.brief} onSaved={refresh} />
+            <RubricDialog key={`${roundId}:${view.round.rubric?.version ?? 0}`} base={base} roundId={roundId} rubric={view.round.rubric} onSaved={refresh} />
             <PublishResultsDialog base={base} openCallId={view.round.openCallId} organizationId={organizationId} stageLabels={stageLabels ?? {}} published={view.round.publishedResults} onSaved={refresh} />
             <PromoteDialog base={base} roundId={roundId} organizationId={organizationId} scored={view.ranking.filter((row) => row.averageScore !== undefined).length} />
           </div>

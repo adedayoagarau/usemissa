@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowRightLeft, CalendarClock, FileText, Globe, Plus, Trophy } from 'lucide-react';
+import { ArrowRightLeft, CalendarClock, FileText, Globe, ListChecks, Plus, Trash2, Trophy } from 'lucide-react';
 import type { RoundOperationsView } from '@/lib/readerOperationsData';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
+import { RUBRIC_UI_LIMITS } from '@/lib/rubricClient';
 
 function dateInputValue(value?: string): string {
   return value ? value.slice(0, 10) : '';
@@ -339,6 +340,80 @@ export function PublishResultsDialog({ base, openCallId, organizationId, stageLa
             {published ? <Button type="button" variant="ghost" onClick={unpublish} disabled={pending}>Take down</Button> : null}
             <Button type="button" variant="outline" onClick={check} disabled={pending}>Preview</Button>
             <Button type="button" onClick={publish} disabled={pending || !preview}>{published ? 'Update page' : 'Publish'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+type RubricRow = { key: string; id?: string; label: string; description: string; weight: string; maxScore: string };
+type RubricValue = NonNullable<RoundOperationsView['round']['rubric']>;
+
+function rubricRows(rubric?: RubricValue): RubricRow[] {
+  return rubric?.criteria.map((criterion) => ({ key: criterion.id, id: criterion.id, label: criterion.label, description: criterion.description ?? '', weight: String(criterion.weight), maxScore: String(criterion.maxScore) })) ?? [];
+}
+
+/**
+ * Named criteria with weights and a scale per round. Saving adds a new
+ * version; reads already scored keep the version they were scored on.
+ */
+export function RubricDialog({ base, roundId, rubric, onSaved }: { base: string; roundId: string; rubric?: RubricValue; onSaved: () => Promise<void> }) {
+  const [open, setOpen] = useState(false);
+  const [rows, setRows] = useState<RubricRow[]>(() => rubricRows(rubric));
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const update = (key: string, patch: Partial<RubricRow>) => setRows((current) => current.map((row) => (row.key === key ? { ...row, ...patch } : row)));
+  const save = (criteria: RubricRow[]) => startTransition(async () => {
+    setError(null);
+    const body = { criteria: criteria.map((row) => ({ ...(row.id ? { id: row.id } : {}), label: row.label, ...(row.description.trim() ? { description: row.description } : {}), weight: Number(row.weight), maxScore: Number(row.maxScore) })) };
+    const response = await fetch(`${base}/review-rounds/${encodeURIComponent(roundId)}/rubric`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) { setError(payload.error ?? 'The rubric could not be saved.'); return; }
+    toast.success(!criteria.length ? 'Rubric removed. Readers record a single score again.' : payload.changed ? `Rubric version ${payload.version} saved. New reads use it.` : 'No changes to save.');
+    setOpen(false);
+    await onSaved();
+  });
+  return (
+    <>
+      <Button type="button" variant="outline" size="sm" onClick={() => { setRows(rubricRows(rubric)); setError(null); setOpen(true); }}><ListChecks aria-hidden="true" />{rubric ? `Rubric v${rubric.version}` : 'Add rubric'}</Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Rubric for this round</DialogTitle>
+            <DialogDescription>Readers score each criterion. Missa weights them into the 0 to 100 score used for ranking and calibration. Saving creates a new version; reads already scored keep the version they used.</DialogDescription>
+          </DialogHeader>
+          {rows.length ? (
+            <ol className="grid max-h-[60vh] gap-3 overflow-y-auto">
+              {rows.map((row, index) => (
+                <li key={row.key} className="grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-[1fr_6rem_6rem_auto] sm:items-end">
+                  <Field>
+                    <FieldLabel htmlFor={`criterion-label-${row.key}`}>Criterion {index + 1}</FieldLabel>
+                    <Input id={`criterion-label-${row.key}`} value={row.label} maxLength={80} onChange={(event) => update(row.key, { label: event.target.value })} placeholder="Voice" />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor={`criterion-weight-${row.key}`}>Weight</FieldLabel>
+                    <Input id={`criterion-weight-${row.key}`} type="number" min={RUBRIC_UI_LIMITS.minWeight} max={RUBRIC_UI_LIMITS.maxWeight} value={row.weight} onChange={(event) => update(row.key, { weight: event.target.value })} />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor={`criterion-scale-${row.key}`}>Scale 0 to</FieldLabel>
+                    <Input id={`criterion-scale-${row.key}`} type="number" min={RUBRIC_UI_LIMITS.minScale} max={RUBRIC_UI_LIMITS.maxScale} value={row.maxScore} onChange={(event) => update(row.key, { maxScore: event.target.value })} />
+                  </Field>
+                  <Button type="button" variant="ghost" size="icon" aria-label={`Remove criterion ${index + 1}`} onClick={() => setRows((current) => current.filter((item) => item.key !== row.key))}><Trash2 aria-hidden="true" /></Button>
+                  <Field className="sm:col-span-4">
+                    <FieldLabel htmlFor={`criterion-description-${row.key}`}>Guidance for readers</FieldLabel>
+                    <Input id={`criterion-description-${row.key}`} value={row.description} maxLength={400} onChange={(event) => update(row.key, { description: event.target.value })} placeholder="Optional. What a top score looks like." />
+                  </Field>
+                </li>
+              ))}
+            </ol>
+          ) : <p className="text-sm text-muted-foreground">No criteria yet. Readers record a single 0 to 100 score until you add some.</p>}
+          {rows.length < RUBRIC_UI_LIMITS.maxCriteria ? <div><Button type="button" variant="outline" size="sm" onClick={() => setRows((current) => [...current, { key: `new-${Date.now()}-${current.length}`, label: '', description: '', weight: '1', maxScore: '5' }])}><Plus aria-hidden="true" />Add criterion</Button></div> : null}
+          {error ? <Alert variant="destructive"><AlertTitle>Not saved</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
+          <DialogFooter>
+            {rubric ? <Button type="button" variant="ghost" disabled={pending} onClick={() => save([])}>Remove rubric</Button> : null}
+            <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
+            <Button type="button" onClick={() => save(rows)} disabled={pending || !rows.length}>{pending ? 'Saving…' : 'Save rubric'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

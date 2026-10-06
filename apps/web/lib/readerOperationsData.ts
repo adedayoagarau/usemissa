@@ -44,7 +44,7 @@ export interface RoundOperationsView {
   authority: 'compatibility' | 'relational';
   scoresAvailable: boolean;
   generatedAt: string;
-  round: { id: string; name: string; openCallId: string; openCallTitle: string; dueAt?: string; expectedDecisionBy?: string; brief?: string; publishedResults?: { stages: string[]; includeWinners: boolean; introduction?: string; publishedAt: string } };
+  round: { id: string; name: string; openCallId: string; openCallTitle: string; dueAt?: string; expectedDecisionBy?: string; brief?: string; rubric?: { version: number; criteria: Array<{ id: string; label: string; description?: string; weight: number; maxScore: number }> }; publishedResults?: { stages: string[]; includeWinners: boolean; introduction?: string; publishedAt: string } };
   totals: { submissions: number; eligibleSubmissions: number; assignments: number; completed: number; open: number; recused: number };
   readers: RoundReaderRow[];
   calibration: ScoreCalibration;
@@ -124,12 +124,13 @@ export function compatibilityRoundOperationsView(input: { radar: Radar; workspac
       spread: scores.length >= 2 ? Math.max(...scores) - Math.min(...scores) : undefined,
     };
   }));
+  const rubric = workspace.rubricForRound(round.id);
   return {
     organizationId,
     authority: 'compatibility',
     scoresAvailable: true,
     generatedAt: now,
-    round: { id: round.id, name: round.name, openCallId: openCall.id, openCallTitle: openCall.title, dueAt: workspace.roundDueDate(round.id), expectedDecisionBy: radar.store.organizations.get(organizationId)?.customization?.decisionDates?.[openCall.id], brief: radar.store.organizations.get(organizationId)?.customization?.roundBriefs?.[round.id]?.text, publishedResults: radar.store.organizations.get(organizationId)?.customization?.publishedResults?.[openCall.id] },
+    round: { id: round.id, name: round.name, openCallId: openCall.id, openCallTitle: openCall.title, dueAt: workspace.roundDueDate(round.id), expectedDecisionBy: radar.store.organizations.get(organizationId)?.customization?.decisionDates?.[openCall.id], brief: radar.store.organizations.get(organizationId)?.customization?.roundBriefs?.[round.id]?.text, ...(rubric ? { rubric: { version: rubric.version, criteria: rubric.criteria } } : {}), publishedResults: radar.store.organizations.get(organizationId)?.customization?.publishedResults?.[openCall.id] },
     totals: {
       submissions: submissions.length,
       eligibleSubmissions: submissions.filter((submission) => submission.status !== 'withdrawn').length,
@@ -221,15 +222,16 @@ export function compatibilityDistributionInputs(input: { radar: Radar; workspace
 }
 
 /** CSV of every assignment in the round: submission, reader, state, score, recorded time. */
-export function roundScoresCsv(view: RoundOperationsView, assignments: Array<{ submissionId: string; reviewerAccountId: string; completedAt?: string; recusedAt?: string; score?: number; recordedAt?: string }>): string {
+export function roundScoresCsv(view: RoundOperationsView, assignments: Array<{ submissionId: string; reviewerAccountId: string; completedAt?: string; recusedAt?: string; score?: number; recordedAt?: string; rubricVersion?: number; criterionScores?: Record<string, number> }>): string {
   const escape = (value: string | number | undefined) => { const text = value === undefined ? '' : String(value); return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text; };
   const readerLabel = new Map(view.readers.map((reader) => [reader.reviewerAccountId, reader.label]));
   const submissionLabel = new Map(view.ranking.map((row) => [row.submissionId, row]));
-  const lines = ['round,opportunity,submission_id,submitter,works,reader,state,score,recorded_at'];
+  const criteria = view.round.rubric?.criteria ?? [];
+  const lines = [['round', 'opportunity', 'submission_id', 'submitter', 'works', 'reader', 'state', 'score', 'recorded_at', ...(criteria.length ? ['rubric_version', ...criteria.map((criterion) => `${criterion.label} (0-${criterion.maxScore}, weight ${criterion.weight})`)] : [])].map(escape).join(',')];
   for (const assignment of assignments) {
     const row = submissionLabel.get(assignment.submissionId);
     const state = assignment.recusedAt ? 'recused' : assignment.completedAt ? 'complete' : 'open';
-    lines.push([view.round.name, view.round.openCallTitle, assignment.submissionId, row?.submitterLabel, row?.works.map((work) => work.title).join(' | '), readerLabel.get(assignment.reviewerAccountId) ?? assignment.reviewerAccountId, state, assignment.score, assignment.recordedAt].map(escape).join(','));
+    lines.push([view.round.name, view.round.openCallTitle, assignment.submissionId, row?.submitterLabel, row?.works.map((work) => work.title).join(' | '), readerLabel.get(assignment.reviewerAccountId) ?? assignment.reviewerAccountId, state, assignment.score, assignment.recordedAt, ...(criteria.length ? [assignment.rubricVersion, ...criteria.map((criterion) => assignment.rubricVersion === view.round.rubric?.version ? assignment.criterionScores?.[criterion.id] : undefined)] : [])].map(escape).join(','));
   }
   return `${lines.join('\n')}\n`;
 }

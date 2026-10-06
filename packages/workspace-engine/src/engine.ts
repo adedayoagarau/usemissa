@@ -19,11 +19,16 @@ import type {
   CommunicationRecipientStatus,
   SubmissionStage,
   SubmitterQuestion,
+  RoundRubric,
+  CriterionScores,
+  SubmissionRevision,
+  SubmissionRevisionChange,
 } from "./domain/types.js";
 import { canTransitionCommunication, communicationContentHash, communicationEditable, stageForCommunicationKind } from "./communications.js";
 import { MISSA_TAXONOMY } from "@missa/taxonomy";
 import { createStore, type WorkspaceStore } from "./store/store.js";
 import { sequentialWorkspaceIds, type WorkspaceIdGenerator } from "./ids.js";
+import { normalizeRubricCriteria, validateCriterionScores, weightedRubricScore, type RubricCriterionInput } from "./rubric.js";
 import { organizationScope, type OrganizationScope } from "./organizationScope.js";
 
 export interface WorkspaceEngineOptions {
@@ -739,6 +744,132 @@ export class WorkspaceEngine {
     }
     if (withdrawn.length) this.store.auditLog.push({ id: this.ids.next("audit"), at: this.now(), accountId: actorAccountId, action: "review-assignment.withdrawn", targetType: "review_round", targetId: reviewRoundId, detail: JSON.stringify({ reviewerAccountId, withdrawn: withdrawn.length }) });
     return withdrawn;
+  }
+
+  // --- Rubrics -----------------------------------------------------------------------
+
+  /** Adds a new rubric version for a round. An empty list returns the round to the single score. */
+  setRoundRubric(organizationId: string, reviewRoundId: string, criteria: RubricCriterionInput[], actorAccountId: string): RoundRubric {
+    if (!this.organizationScope(organizationId).reviewRound(reviewRoundId)) throw new Error("Review round is not part of this organization");
+    const normalized = normalizeRubricCriteria(criteria);
+    const current = this.rubricVersionsForRound(reviewRoundId).at(-1);
+    if (!current && !normalized.length) throw new Error("Add at least one criterion");
+    if (current && JSON.stringify(current.criteria) === JSON.stringify(normalized)) return current;
+    const rubric: RoundRubric = { id: this.ids.next("rubric"), organizationId, reviewRoundId, version: (current?.version ?? 0) + 1, criteria: normalized, createdAt: this.now(), createdByAccountId: actorAccountId };
+    this.store.roundRubrics.set(rubric.id, rubric);
+    this.store.auditLog.push({ id: this.ids.next("audit"), at: rubric.createdAt, accountId: actorAccountId, action: "review-round.rubric_set", targetType: "review_round", targetId: reviewRoundId, detail: JSON.stringify({ version: rubric.version, criteria: normalized.length }) });
+    return rubric;
+  }
+
+  rubricVersionsForRound(reviewRoundId: string): RoundRubric[] {
+    return [...this.store.roundRubrics.values()].filter((rubric) => rubric.reviewRoundId === reviewRoundId).sort((left, right) => left.version - right.version);
+  }
+
+  /** The rubric readers score against now, or undefined when the round uses the single score. */
+  rubricForRound(reviewRoundId: string): RoundRubric | undefined {
+    const latest = this.rubricVersionsForRound(reviewRoundId).at(-1);
+    return latest && latest.criteria.length ? latest : undefined;
+  }
+
+  /** Records a rubric read: each criterion scored, the weighted 0-100 result stored as the recommendation score. */
+  recordRubricReview(reviewAssignmentId: string, scores: Record<string, unknown>, notes?: string): { recommendation: ReviewRecommendation; criterionScores: CriterionScores } {
+    const assignment = this.store.reviewAssignments.get(reviewAssignmentId);
+    if (!assignment) throw new Error(`Unknown review assignment: ${reviewAssignmentId}`);
+    const rubric = this.rubricForRound(assignment.reviewRoundId);
+    if (!rubric) throw new Error("This round has no rubric; record a single score instead");
+    const clean = validateCriterionScores(rubric.criteria, scores);
+    const recommendation = this.recordReview(reviewAssignmentId, weightedRubricScore(rubric.criteria, clean), notes);
+    const criterionScores: CriterionScores = { reviewAssignmentId, organizationId: rubric.organizationId, rubricId: rubric.id, rubricVersion: rubric.version, scores: clean, recordedAt: recommendation.recordedAt };
+    this.store.criterionScores.set(reviewAssignmentId, criterionScores);
+    return { recommendation, criterionScores };
+  }
+
+  criterionScoresForAssignment(reviewAssignmentId: string): CriterionScores | undefined {
+    return this.store.criterionScores.get(reviewAssignmentId);
+  }
+
+  // --- Submission revisions ------------------------------------------------------------
+
+  private organizationIdForSubmission(submission: Submission): string | undefined {
+    const path = this.store.submissionPaths.get(submission.submissionPathId);
+    const call = path ? this.store.openCalls.get(path.openCallId) : undefined;
+    const program = call ? this.store.programs.get(call.programId) : undefined;
+    return program ? this.store.entities.get(program.entityId)?.organizationId : undefined;
+  }
+
+  /**
+   * Whether the submitter can still change this submission: the call is open,
+   * the submission is unread and undecided, and the organization allows it.
+   */
+  submissionEditability(submissionId: string, submitterAccountId: string, options: { allowedByOrganization?: boolean } = {}): { editable: boolean; reason?: string } {
+    const submission = this.store.submissions.get(submissionId);
+    if (!submission || submission.submitterAccountId !== submitterAccountId) return { editable: false, reason: "Submission not found" };
+    if (options.allowedByOrganization === false) return { editable: false, reason: "This organization does not take changes after submission" };
+    if (submission.status !== "submitted") return { editable: false, reason: submission.status === "withdrawn" ? "This submission was withdrawn" : "Reading has started, so this submission is locked" };
+    const path = this.store.submissionPaths.get(submission.submissionPathId);
+    const call = path ? this.store.openCalls.get(path.openCallId) : undefined;
+    if (call?.status !== "published") return { editable: false, reason: "This call has closed, so this submission is locked" };
+    if (this.reviewAssignmentsForSubmission(submissionId).some((assignment) => !assignment.recusedAt)) return { editable: false, reason: "Reading has started, so this submission is locked" };
+    if ([...this.store.decisions.values()].some((decision) => this.store.works.get(decision.workId)?.submissionId === submissionId)) return { editable: false, reason: "A decision has been recorded, so this submission is locked" };
+    return { editable: true };
+  }
+
+  /**
+   * Applies a submitter's own changes to Work titles, Work files and text or
+   * file answers, and records exactly what changed. File ownership and form
+   * rules are checked by the caller; this enforces scope and lock rules.
+   */
+  editSubmission(
+    submissionId: string,
+    submitterAccountId: string,
+    edit: { works?: Array<{ workId: string; title?: string; fileUrls?: string[] }>; answers?: Record<string, string | string[] | null> },
+    options: { allowedByOrganization?: boolean } = {},
+  ): SubmissionRevision {
+    const editability = this.submissionEditability(submissionId, submitterAccountId, options);
+    if (!editability.editable) throw new Error(editability.reason ?? "This submission cannot be changed");
+    const submission = this.store.submissions.get(submissionId)!;
+    const organizationId = this.organizationIdForSubmission(submission);
+    if (!organizationId) throw new Error("Submission not found");
+    const changes: SubmissionRevisionChange[] = [];
+    const filesOf = (work: Work) => [...new Set([...(work.fileUrl ? [work.fileUrl] : []), ...(work.fileUrls ?? [])])];
+    for (const item of edit.works ?? []) {
+      const work = this.store.works.get(item.workId);
+      if (!work || work.submissionId !== submissionId) throw new Error("That Work is not part of this submission");
+      if (item.title !== undefined) {
+        const title = item.title.trim();
+        if (!title) throw new Error("Each Work needs a title");
+        if (title.length > 300) throw new Error("Keep Work titles under 300 characters");
+        if (title !== work.title) { changes.push({ kind: "work-title", workId: work.id, before: work.title, after: title }); work.title = title; }
+      }
+      if (item.fileUrls !== undefined) {
+        const before = filesOf(work);
+        const after = [...new Set(item.fileUrls.filter((url) => typeof url === "string" && url.trim()))];
+        if (after.length > 10) throw new Error("A Work can have at most 10 files");
+        if (JSON.stringify(before) !== JSON.stringify(after)) {
+          changes.push({ kind: "work-files", workId: work.id, before, after });
+          if (after[0]) work.fileUrl = after[0]; else delete work.fileUrl;
+          if (after.length > 1) work.fileUrls = after.slice(1); else delete work.fileUrls;
+        }
+      }
+    }
+    for (const [fieldId, value] of Object.entries(edit.answers ?? {})) {
+      const answers = { ...(submission.answers ?? {}) };
+      const before = answers[fieldId];
+      const after = value === null || (Array.isArray(value) ? value.length === 0 : !value.trim()) ? undefined : Array.isArray(value) ? value : value.trim();
+      if (JSON.stringify(before) === JSON.stringify(after)) continue;
+      changes.push({ kind: "answer", fieldId, ...(before !== undefined ? { before } : {}), ...(after !== undefined ? { after } : {}) });
+      if (after === undefined) delete answers[fieldId]; else answers[fieldId] = after;
+      submission.answers = answers;
+    }
+    if (!changes.length) throw new Error("Nothing changed");
+    const revision: SubmissionRevision = { id: this.ids.next("revision"), organizationId, submissionId, submitterAccountId, at: this.now(), changes };
+    this.store.submissionRevisions.set(revision.id, revision);
+    this.store.auditLog.push({ id: this.ids.next("audit"), at: revision.at, accountId: submitterAccountId, action: "submission.revised", targetType: "submission", targetId: submissionId, detail: JSON.stringify({ changes: changes.length }) });
+    return revision;
+  }
+
+  revisionsForSubmission(submissionId: string): SubmissionRevision[] {
+    return [...this.store.submissionRevisions.values()].filter((revision) => revision.submissionId === submissionId).sort((left, right) => left.at.localeCompare(right.at));
   }
 
   // --- Submitter questions ---------------------------------------------------------

@@ -37,6 +37,8 @@ import { organizationAnalytics } from '@/lib/organizationAnalytics';
 import { GET as listOwnQuestions, POST as askQuestion } from '../../me/submissions/[submissionId]/questions/route';
 import { GET as listQuestions } from './questions/route';
 import { PATCH as patchQuestion } from './questions/[questionId]/route';
+import { GET as getRubric, PUT as putRubric } from './review-rounds/[roundId]/rubric/route';
+import { GET as getEditState, PATCH as editSubmission } from '../../me/submissions/[submissionId]/edit/route';
 
 const json = (body: unknown) => ({ method: 'POST', body: JSON.stringify(body) });
 
@@ -508,4 +510,77 @@ test('submitters ask about their own submission; the organization answers or clo
   assert.equal((await closed.json() as { question: { status: string } }).question.status, 'closed');
   const unknown = await patchQuestion(requestAs(owner, '/q', { method: 'PATCH', body: JSON.stringify({ action: 'close' }) }), { params: Promise.resolve({ id: data.organizationId, questionId: 'question_missing' }) });
   assert.equal(unknown.status, 404);
+});
+
+test('rubric versions are set by managers, scored per criterion by readers, and exported per criterion', async () => {
+  const { data, workspace, round } = await freshRound();
+  const owner = data.accounts.get('owner')!;
+  const reviewer = data.accounts.get('reviewer')!;
+  const params = { params: Promise.resolve({ id: data.organizationId, roundId: round.id }) };
+  const put = (accountId: string, criteria: unknown) => putRubric(requestAs(accountId, '/rubric', { method: 'PUT', body: JSON.stringify({ criteria }) }), params);
+  assert.equal((await put(reviewer, [{ label: 'Voice' }])).status, 403);
+  assert.equal((await put(owner, [{ label: 'Voice', maxScore: 50 }])).status, 400);
+  const saved = await (await put(owner, [{ label: 'Voice', weight: 3, maxScore: 5 }, { label: 'Craft', weight: 1, maxScore: 10 }])).json() as { version: number; changed: boolean };
+  assert.deepEqual([saved.version, saved.changed], [1, true]);
+  const listed = await (await getRubric(requestAs(owner, '/rubric'), params)).json() as { current: { criteria: Array<{ id: string }> }; versions: unknown[] };
+  assert.deepEqual(listed.current.criteria.map((criterion) => criterion.id), ['voice', 'craft']);
+
+  const assignment = workspace.assignReviewer(round.id, data.unassigned.id, reviewer);
+  const review = (body: unknown) => recordReviewRoute(requestAs(reviewer, '/review', json(body)), { params: Promise.resolve({ assignmentId: assignment.id }) });
+  assert.equal((await review({ score: 70 })).status, 400, 'a rubric round needs criterion scores');
+  assert.equal((await review({ criteria: { voice: 5 } })).status, 400, 'every criterion is scored');
+  const scored = await review({ criteria: { voice: 5, craft: 0 }, notes: 'Voice carries it' });
+  assert.equal(scored.status, 200);
+  assert.equal((await scored.json() as { score: number }).score, 75);
+  const view = reviewerAssignmentsForAccount(workspace, await getEngine(), reviewer).find((item) => item.id === assignment.id)!;
+  assert.equal(view.rubric?.version, 1);
+  assert.deepEqual(view.legacyRecommendation?.criterionScores, { voice: 5, craft: 0 });
+
+  const csv = await (await getReaderOperations(requestAs(owner, `/reader-operations?roundId=${round.id}&format=csv`), { params: Promise.resolve({ id: data.organizationId }) })).text();
+  const [header, ...rows] = csv.trim().split('\n');
+  assert.ok(header!.includes('rubric_version') && header!.includes('Voice (0-5, weight 3)'));
+  assert.ok(rows.some((row) => row.endsWith(',1,5,0')), 'the scored read lists its version and criterion scores');
+
+  const removed = await (await put(owner, [])).json() as { current: unknown; version: number };
+  assert.deepEqual([removed.current, removed.version], [null, 2]);
+  assert.equal((await review({ criteria: { voice: 1, craft: 1 } })).status, 400, 'no rubric now; criteria are refused');
+});
+
+test('submitters change their own submission until reading starts, and the organization sees each change', async () => {
+  const data = await organizationRoleFixture();
+  const workspace = await getCompatibilityWorkspaceEngine();
+  const radar = await getEngine();
+  const submitter = data.accounts.get('submitter')!;
+  workspace.publishOpenCall(data.openCall.id);
+  const path = workspace.createSubmissionPath(data.openCall.id, [], [{ type: 'text', label: 'Statement', required: true }]);
+  const fieldId = path.fields[0]!.id;
+  const submission = workspace.createSubmission(path.id, submitter, [{ title: 'Draft title' }]);
+  submission.answers = { [fieldId]: 'First statement' };
+  const work = workspace.worksForSubmission(submission.id)[0]!;
+  const params = { params: Promise.resolve({ submissionId: submission.id }) };
+  const patch = (accountId: string, body: unknown) => editSubmission(requestAs(accountId, '/edit', { method: 'PATCH', body: JSON.stringify(body) }), params);
+
+  const state = await (await getEditState(requestAs(submitter, '/edit'), params)).json() as { editable: boolean; fields: Array<{ id: string; value: unknown }> };
+  assert.equal(state.editable, true);
+  assert.equal(state.fields[0]!.value, 'First statement');
+  assert.equal((await patch(data.accounts.get('owner')!, { works: [{ workId: work.id, title: 'X' }] })).status, 404, 'only the submitter');
+  assert.equal((await patch(submitter, { works: [{ workId: work.id, fileUrls: ['https://store.example/missa/submissions/someone-else/a.pdf'] }] })).status, 400, 'files must be the submitter’s own uploads');
+  assert.equal((await patch(submitter, { answers: { [fieldId]: '' } })).status, 400, 'a required answer cannot be cleared');
+  const saved = await patch(submitter, { works: [{ workId: work.id, title: 'Final title', fileUrls: [`https://store.example/missa/submissions/${submitter}/final.pdf`] }], answers: { [fieldId]: 'Second statement' } });
+  assert.equal(saved.status, 200);
+  assert.equal(workspace.store.works.get(work.id)!.title, 'Final title');
+  const history = submissionHistory({ radar, workspace, organizationId: data.organizationId, submissionId: submission.id });
+  const revision = history.find((event) => event.kind === 'revision')!;
+  assert.match(revision.detail!, /Retitled “Draft title” to “Final title”/);
+  assert.match(revision.detail!, /final\.pdf/);
+  assert.match(revision.detail!, /Changed the answer to Statement/);
+
+  const organization = radar.store.organizations.get(data.organizationId)!;
+  organization.customization = { ...(organization.customization ?? {}), eligibilityRules: { ...(organization.customization?.eligibilityRules ?? {}), [data.openCall.id]: { lockAfterSubmit: true } } };
+  assert.equal((await patch(submitter, { works: [{ workId: work.id, title: 'Locked' }] })).status, 409, 'the organization locked edits');
+  organization.customization = { ...organization.customization, eligibilityRules: {} };
+  workspace.assignReviewer(workspace.createReviewRound(data.openCall.id, 'Edit lock round').id, submission.id, data.accounts.get('reviewer')!);
+  const locked = await patch(submitter, { works: [{ workId: work.id, title: 'Too late' }] });
+  assert.equal(locked.status, 409);
+  assert.match((await locked.json() as { error: string }).error, /Reading has started/);
 });

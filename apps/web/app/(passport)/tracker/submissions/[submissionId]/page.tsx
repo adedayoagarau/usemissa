@@ -13,6 +13,8 @@ import { SubmissionStatusTimeline } from '@/components/submission-status-timelin
 import { resolveOrganizationCustomization } from '@/lib/organizationCustomization';
 import { SubmitterQuestionsPanel, type OwnQuestion } from '@/components/submitter-questions';
 import { submitterOwnQuestion } from '@/lib/submitterQuestionsData';
+import { EditSubmissionDialog } from '@/components/edit-submission-dialog';
+import { submissionEditsAllowed } from '@/lib/submissionEdits';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,6 +71,8 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
   let stageEvents: Array<{ stage: SubmissionStage; at: string }> = [];
   let letters: Array<{ id: string; subject: string; kindLabel: string; at: string }> = [];
   let questions: OwnQuestion[] | undefined;
+  let editability: { editable: boolean; reason?: string } | undefined;
+  let revisionCount = 0;
 
   if (workspaceRelationalAuthorityEnabled()) {
     const detail = await (await getRelationalWorkspace()).submissionForOwner(session.account.id, submissionId);
@@ -106,6 +110,8 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
       return recipient ? [{ id: batch.id, subject: communicationTemplate(batch.kind).label, kindLabel: batch.stage ? 'Stage announcement' : 'Letter', at: recipient.sentAt ?? batch.updatedAt }] : [];
     }).sort((a, b) => a.at.localeCompare(b.at));
     questions = workspace.submitterQuestionsForSubmission(found.id).map(submitterOwnQuestion);
+    editability = workspace.submissionEditability(found.id, session.account.id, { allowedByOrganization: submissionEditsAllowed(entity ? radar.store.organizations.get(entity.organizationId) : undefined, foundCall.id) });
+    revisionCount = workspace.revisionsForSubmission(found.id).length;
   }
 
   const organization = organizationName;
@@ -199,6 +205,7 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
         <aside className={styles.sideColumn}>
           <section aria-labelledby="submission-summary-title"><p>Receipt summary</p><h2 id="submission-summary-title">Submission</h2><dl><div><dt>Status</dt><dd>{statusLabel(submission.status)}</dd></div><div><dt>Submitted</dt><dd>{formatDate(submission.submittedAt)}</dd></div><div><dt>Works</dt><dd>{works.length}</dd></div><div><dt>Decisions</dt><dd>{decisions.length}</dd></div></dl></section>
           <section aria-labelledby="payment-record-title"><p>Separate record</p><h2 id="payment-record-title">Payment</h2><strong>{paymentLabel}</strong>{submission.feeCents ? <span>{new Intl.NumberFormat('en', { style: 'currency', currency: 'USD' }).format(submission.feeCents / 100)}</span> : null}<small>Payment state does not change the Submission or Work decision.</small></section>
+          {editability && submission.status === 'submitted' ? <section aria-labelledby="edit-submission-title"><p>Before reading starts</p><h2 id="edit-submission-title">Change</h2><span>{editability.editable ? 'Fix a title, replace a file or update an answer. The organization sees what changed.' : editability.reason}</span>{revisionCount ? <small>{revisionCount === 1 ? 'Changed once since sending.' : `Changed ${revisionCount} times since sending.`}</small> : null}{editability.editable ? <EditSubmissionDialog submissionId={submission.id} organizationName={customization?.displayName ?? organization ?? 'The organization'} /> : null}</section> : null}
           {['submitted', 'in-review'].includes(submission.status) ? <section aria-labelledby="withdraw-submission-title"><p>Submission action</p><h2 id="withdraw-submission-title">Withdraw</h2><span>Withdrawal applies to this complete Missa-hosted submission.</span><WithdrawSubmissionButton submissionId={submission.id} /></section> : null}
         </aside>
       </div>

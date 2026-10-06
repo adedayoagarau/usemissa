@@ -9,9 +9,14 @@ const schema = z.object({
   allowedCategories: z.array(z.string().trim().min(1).max(80)).max(50).optional(),
   requireFiles: z.boolean().optional(),
   maxSubmissionsPerSubmitter: z.number().int().min(1).max(50).nullable().optional(),
+  lockAfterSubmit: z.boolean().optional(),
 }).strict();
 
-/** Screening rules for one opportunity. They raise flags for a person to look at; they never decline anyone. */
+/**
+ * Screening rules for one opportunity. They raise flags for a person to look
+ * at; they never decline anyone. `lockAfterSubmit` stops submitters changing a
+ * submission after sending it; by default they can until reading starts.
+ */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string; openCallId: string }> }) {
   const { id, openCallId } = await params;
   const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
@@ -26,6 +31,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     ...(parsed.data.allowedCategories?.length ? { allowedCategories: [...new Set(parsed.data.allowedCategories)] } : {}),
     ...(parsed.data.requireFiles ? { requireFiles: true } : {}),
     ...(parsed.data.maxSubmissionsPerSubmitter ? { maxSubmissionsPerSubmitter: parsed.data.maxSubmissionsPerSubmitter } : {}),
+    ...(parsed.data.lockAfterSubmit ? { lockAfterSubmit: true } : {}),
   };
   if (Object.keys(next).length) rules[openCallId] = next;
   else delete rules[openCallId];

@@ -98,18 +98,19 @@ export function BulkTriageBar({ organizationId }: { organizationId: string }) {
 }
 
 /** Screening rules for one opportunity; they raise flags in the queue and never decline anyone. */
-export function ScreeningRulesDialog({ organizationId, openCallId, opportunityTitle, rules }: { organizationId: string; openCallId: string; opportunityTitle: string; rules: { maxWorks?: number; allowedCategories?: string[]; requireFiles?: boolean; maxSubmissionsPerSubmitter?: number } }) {
+export function ScreeningRulesDialog({ organizationId, openCallId, opportunityTitle, rules }: { organizationId: string; openCallId: string; opportunityTitle: string; rules: { maxWorks?: number; allowedCategories?: string[]; requireFiles?: boolean; maxSubmissionsPerSubmitter?: number; lockAfterSubmit?: boolean } }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [maxWorks, setMaxWorks] = useState(rules.maxWorks ? String(rules.maxWorks) : '');
   const [categories, setCategories] = useState((rules.allowedCategories ?? []).join(', '));
   const [requireFiles, setRequireFiles] = useState(Boolean(rules.requireFiles));
   const [perPerson, setPerPerson] = useState(rules.maxSubmissionsPerSubmitter ? String(rules.maxSubmissionsPerSubmitter) : '');
+  const [allowEdits, setAllowEdits] = useState(!rules.lockAfterSubmit);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const save = () => startTransition(async () => {
     setError(null);
-    const body = { maxWorks: maxWorks.trim() ? Number(maxWorks) : null, allowedCategories: categories.split(',').map((value) => value.trim()).filter(Boolean), requireFiles, maxSubmissionsPerSubmitter: perPerson.trim() ? Number(perPerson) : null };
+    const body = { maxWorks: maxWorks.trim() ? Number(maxWorks) : null, allowedCategories: categories.split(',').map((value) => value.trim()).filter(Boolean), requireFiles, maxSubmissionsPerSubmitter: perPerson.trim() ? Number(perPerson) : null, lockAfterSubmit: !allowEdits };
     const response = await fetch(`/api/orgs/${encodeURIComponent(organizationId)}/open-calls/${encodeURIComponent(openCallId)}/eligibility`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) { setError(payload.error ?? 'The rules could not be saved.'); return; }
@@ -131,6 +132,7 @@ export function ScreeningRulesDialog({ organizationId, openCallId, opportunityTi
             <Field><FieldLabel htmlFor="rule-per-person">Most submissions per person</FieldLabel><Input id="rule-per-person" type="number" min={1} max={50} value={perPerson} onChange={(event) => setPerPerson(event.target.value)} placeholder="1" /><FieldDescription>More than this raises a repeat-submitter flag.</FieldDescription></Field>
             <Field className="sm:col-span-2"><FieldLabel htmlFor="rule-categories">Accepted categories</FieldLabel><Input id="rule-categories" value={categories} onChange={(event) => setCategories(event.target.value)} placeholder="Poetry, Fiction" /><FieldDescription>Comma-separated. Leave empty to accept any category.</FieldDescription></Field>
             <label className="flex items-center gap-2 text-sm sm:col-span-2"><Checkbox checked={requireFiles} onCheckedChange={(checked) => setRequireFiles(Boolean(checked))} />Every Work must have a file</label>
+            <label className="flex items-start gap-2 text-sm sm:col-span-2"><Checkbox checked={allowEdits} onCheckedChange={(checked) => setAllowEdits(Boolean(checked))} /><span>Submitters can fix titles, files and answers until reading starts<span className="block text-xs text-muted-foreground">Every change is recorded in the submission’s history. Once a reader is assigned, a decision is made or the call closes, the submission is locked.</span></span></label>
           </div>
           {error ? <Alert variant="destructive"><AlertTitle>Not saved</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
           <DialogFooter>

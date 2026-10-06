@@ -6,8 +6,11 @@ import { getEngine } from '@/lib/engine';
 import { roundBriefFor } from '@/lib/reviewerProduct';
 import { getRelationalWorkspace, getWorkspaceEngine, persistWorkspace, workspaceCommandEnvelope, workspaceMutationError, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
-/** Story 7.3: fixed small rubric (score + notes), not a rubric builder --
- * out of MVP scope per the AC. */
+/**
+ * Records a reader's recommendation. A round without a rubric takes a single
+ * 0-100 score; a round with a rubric takes `criteria` (criterion id to whole
+ * number) and stores the weighted 0-100 result as the score.
+ */
 export async function POST(request: Request, { params }: { params: Promise<{ assignmentId: string }> }) {
   const { assignmentId } = await params;
   const session = await getSessionAccount(request.headers.get('cookie'));
@@ -23,7 +26,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ ass
     return NextResponse.json({ error: 'Review notes must be 5,000 characters or fewer' }, { status: 400 });
   }
 
+  const criteria = body.criteria && typeof body.criteria === 'object' && !Array.isArray(body.criteria) ? body.criteria as Record<string, unknown> : undefined;
   if (workspaceRelationalAuthorityEnabled()) {
+    if (criteria) return NextResponse.json({ error: 'Rubric scoring is not available while relational authority is enabled' }, { status: 503 });
     try {
       const workspace = await getRelationalWorkspace();
       const organizationId = await workspace.organizationForReviewAssignment(session.account.id, assignmentId);
@@ -53,14 +58,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ ass
   const organization = team ? (await getEngine()).store.organizations.get(team.organizationId) : undefined;
   const brief = roundBriefFor(engine, organization, assignment.reviewRoundId, session.account.id);
   if (brief && !brief.acknowledged) return NextResponse.json({ error: 'Read and acknowledge the round brief before recording a recommendation' }, { status: 409 });
+  const rubric = engine.rubricForRound(assignment.reviewRoundId);
+  if (rubric && !criteria) return NextResponse.json({ error: 'This round uses a rubric; score each criterion' }, { status: 400 });
+  if (!rubric && criteria) return NextResponse.json({ error: 'This round has no rubric; record a single score' }, { status: 400 });
   let recommendation;
   try {
-    recommendation = engine.recordReview(assignmentId, score, notes);
+    if (rubric && criteria) {
+      const recorded = engine.recordRubricReview(assignmentId, criteria, notes);
+      recommendation = { ...recorded.recommendation, criterionScores: recorded.criterionScores.scores, rubricVersion: recorded.criterionScores.rubricVersion };
+    } else {
+      recommendation = engine.recordReview(assignmentId, score, notes);
+    }
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to record review' }, { status: 409 });
+    const message = error instanceof Error ? error.message : 'Unable to record review';
+    return NextResponse.json({ error: message }, { status: /^Score /.test(message) ? 400 : 409 });
   }
   await persistWorkspace();
-  recordReviewConsistencyAfterResponse(assignmentId, score, notes);
+  recordReviewConsistencyAfterResponse(assignmentId, recommendation.score, notes);
   return NextResponse.json(recommendation);
 }
 

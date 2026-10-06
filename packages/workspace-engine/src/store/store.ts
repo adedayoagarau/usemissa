@@ -13,6 +13,9 @@ import type {
   DeliveryTask,
   CommunicationBatch,
   SubmitterQuestion,
+  RoundRubric,
+  CriterionScores,
+  SubmissionRevision,
 } from '../domain/types.js';
 import type { AuditEntry } from '@missa/radar-engine';
 
@@ -50,6 +53,12 @@ export interface WorkspaceStore {
   communicationBatches: Map<string, CommunicationBatch>;
   /** Questions submitters asked about their own submissions. */
   submitterQuestions: Map<string, SubmitterQuestion>;
+  /** Immutable rubric versions per review round. */
+  roundRubrics: Map<string, RoundRubric>;
+  /** Per-criterion scores keyed by review assignment id. */
+  criterionScores: Map<string, CriterionScores>;
+  /** Changes submitters made to their own submissions before reading began. */
+  submissionRevisions: Map<string, SubmissionRevision>;
 }
 
 export function createStore(): WorkspaceStore {
@@ -69,6 +78,9 @@ export function createStore(): WorkspaceStore {
     deliveryTasks: new Map(),
     communicationBatches: new Map(),
     submitterQuestions: new Map(),
+    roundRubrics: new Map(),
+    criterionScores: new Map(),
+    submissionRevisions: new Map(),
   };
 }
 
@@ -93,5 +105,8 @@ export function cloneStore(source: WorkspaceStore): WorkspaceStore {
     deliveryTasks: cloneMap(source.deliveryTasks),
     communicationBatches: cloneMap(source.communicationBatches ?? new Map()),
     submitterQuestions: cloneMap(source.submitterQuestions ?? new Map()),
+    roundRubrics: cloneMap(source.roundRubrics ?? new Map()),
+    criterionScores: cloneMap(source.criterionScores ?? new Map()),
+    submissionRevisions: cloneMap(source.submissionRevisions ?? new Map()),
   };
 }
