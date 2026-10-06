@@ -139,7 +139,7 @@ export default async function HomePage({
           initialQuery={query.query ?? ""}
           locations={LOCATION_OPTIONS}
         />
-        <HomepageProof items={result.items} />
+        <HomepageProof items={result.items} today={new Date().toISOString().slice(0, 10)} />
         <HomepageQuestionsSection />
         <HomepageClose items={result.items} />
       </main>

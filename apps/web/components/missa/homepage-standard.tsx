@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, BellRing, Bookmark, Users } from "lucide-react";
+import { ArrowUpRight, BellRing, Bookmark } from "lucide-react";
 import type { OpportunityBrowseProjection } from "@missa/radar-engine";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -9,9 +9,9 @@ import { contactMailto } from "@/lib/legalContact";
 import { categorySearch } from "@/lib/homepage-opportunity-categories";
 import { Reveal } from "./homepage-reveal";
 import {
-  FeatureTile,
   HomepageQuestions,
   PortfolioTile,
+  RemindersTile,
   TrackerTile,
 } from "./homepage-standard-client";
 import styles from "./homepage-standard.module.css";
@@ -53,7 +53,14 @@ export function HomepageHero({
   );
 }
 
-export function HomepageProof({ items }: { items: HomepageCall[] }) {
+export function HomepageProof({
+  items,
+  today,
+}: {
+  items: HomepageCall[];
+  /** ISO date (YYYY-MM-DD) of this render. */
+  today: string;
+}) {
   return (
     <section className={styles.section} aria-labelledby="homepage-proof-heading">
       <Reveal className={styles.sectionHead}>
@@ -73,42 +80,7 @@ export function HomepageProof({ items }: { items: HomepageCall[] }) {
       <div className={styles.tiles}>
         <TrackerTile items={items} />
         <PortfolioTile />
-        <FeatureTile
-          id="reminders"
-          tone="lichen"
-          icon={<BellRing size={20} />}
-          label="Reminders"
-          headline="A nudge before it closes."
-          href="/tracker"
-          action="Set up reminders"
-          delay={0.04}
-        >
-          <p>Automated email reminders for every saved call, as early as you choose.</p>
-        </FeatureTile>
-        <FeatureTile
-          id="circle"
-          tone="forest"
-          icon={<Users size={20} />}
-          label="Directory"
-          headline="Find your artist circle."
-          href="/directory"
-          action="Browse the directory"
-          delay={0.1}
-        >
-          <p>Creators by discipline and place, with the work they choose to share.</p>
-        </FeatureTile>
-        <FeatureTile
-          id="shortlist"
-          tone="neutral"
-          icon={<Bookmark size={20} />}
-          label="Shortlist"
-          headline="Start without an account."
-          href="/opportunities"
-          action="Browse all calls"
-          delay={0.16}
-        >
-          <p>Shortlist calls from this page. They come with you when you sign up.</p>
-        </FeatureTile>
+        <RemindersTile items={items} today={today} />
       </div>
     </section>
   );
