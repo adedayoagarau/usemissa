@@ -22,6 +22,12 @@ const buttonVariantClasses = cva(
         /** A control that opens a picker and shows its value, drawn like a text field. */
         field:
           "w-full justify-start border-border-strong bg-background font-normal text-foreground shadow-control hover:border-foreground/30 aria-expanded:border-ring aria-expanded:ring-3 aria-expanded:ring-ring/15 [&_svg:not([class*='text-'])]:text-muted-foreground",
+        /** The header of a collapsible list section: bold, no fill when open. */
+        disclosure:
+          "font-semibold text-foreground hover:bg-muted [&_svg:not([class*='text-'])]:text-muted-foreground",
+        /** The name of a row in a list, opening that row's details. */
+        rowTitle:
+          "min-w-0 max-w-full justify-start truncate text-start text-foreground underline-offset-4 hover:underline",
         account:
           "text-muted-foreground hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
         accentOutline:
@@ -45,6 +51,8 @@ const buttonVariantClasses = cva(
         "icon-lg": "size-11",
         account: "h-9 gap-2 px-3",
         choice: "h-auto min-h-24 w-full justify-start gap-4 p-4",
+        /** No box of its own: text-height, for a control set inside a line of text or a table cell. */
+        inline: "h-auto gap-1 rounded-sm p-0",
       },
     },
     defaultVariants: {

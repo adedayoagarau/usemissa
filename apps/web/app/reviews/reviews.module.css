@@ -56,15 +56,16 @@
 .backLink { display: inline-flex; min-height: 44px; align-items: center; gap: 7px; margin-bottom: 12px; color: var(--muted-foreground); font-size: .72rem; text-decoration: none; }
 .backLink svg { width: 16px; }
 .assignmentHeader { align-items: center; padding-bottom: 20px; }
-.assignmentHeader h1 { font-size: clamp(2rem, 4vw, 3.8rem); }
+.assignmentHeader h1 { font-size: clamp(1.75rem, 3vw, 2.4rem); letter-spacing: -.025em; line-height: 1.1; }
 .assignmentHeader div > p:last-child { margin-top: 9px; }
 .desk { display: grid; grid-template-columns: 230px minmax(0, 1fr) minmax(280px, 360px); min-height: 680px; margin-top: 22px; overflow: hidden; border: 1px solid var(--border); border-radius: 13px; background: var(--background); }
 .assignmentRail { min-width: 0; padding: 17px 11px; border-right: 1px solid var(--border); background: color-mix(in srgb, var(--muted) 42%, #fff); }
 .assignmentRail header { padding: 3px 8px 12px; }
 .assignmentRail h2, .assignmentRail p { margin: 0; }
 .assignmentRail h2 { margin-top: 4px; font-size: .83rem; }
-.assignmentRail > a { display: grid; min-height: 82px; align-content: center; gap: 3px; padding: 10px; border-radius: 8px; color: var(--muted-foreground); text-decoration: none; }
-.assignmentRail > a[aria-current='page'] { background: color-mix(in srgb, var(--primary) 8%, #fff); color: var(--accent-deep); box-shadow: inset 3px 0 var(--primary); }
+.assignmentRail > a { display: grid; min-height: 64px; align-content: center; gap: 3px; padding: 10px; border-radius: 8px; color: var(--muted-foreground); text-decoration: none; }
+.assignmentRail > a[aria-current='page'] { background: color-mix(in srgb, var(--primary) 8%, var(--background)); color: var(--accent-deep); }
+.assignmentRail > a:hover { background: var(--muted); }
 .assignmentRail strong { overflow-wrap: anywhere; font-size: .66rem; }
 .assignmentRail span { overflow-wrap: anywhere; color: var(--foreground); font-size: .7rem; font-weight: 680; }
 .assignmentRail small { font-size: .59rem; }
@@ -75,7 +76,7 @@
 .workPane > header > span { display: inline-flex; align-items: center; gap: 5px; color: var(--accent-deep); font-size: .62rem; font-weight: 700; }
 .workPane > header svg { width: 15px; }
 .workList { display: grid; margin-top: 14px; border-top: 1px solid var(--border); }
-.workList article { display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 14px; padding: 22px 0; border-bottom: 1px solid var(--border); }
+.workList article { display: grid; gap: 4px; padding: 18px 0; border-bottom: 1px solid var(--border); }
 .workList article > span { font-family: var(--font-mono), monospace; color: var(--muted-foreground); font-size: .65rem; }
 .workList h3, .workList p { margin: 0; }
 .workList h3 { margin-top: 4px; overflow-wrap: anywhere; font-family: var(--font-heading), Georgia, serif; font-size: 1.35rem; font-weight: 570; }
@@ -110,7 +111,7 @@
   .main, .deskMain { width: min(100% - 32px, 600px); padding: 28px 0 68px; }
   .pageHeader, .assignmentHeader { display: grid; align-items: start; gap: 16px; }
   .pageHeader h1 { font-size: 3.2rem; }
-  .assignmentHeader h1 { font-size: 2.2rem; line-height: 1; }
+  .assignmentHeader h1 { font-size: 1.75rem; line-height: 1.1; }
   .scopeBadge, .assignmentHeader .state { width: fit-content; white-space: normal; }
   .queueSummary { grid-template-columns: 1fr; }
   .queueSummary div { grid-template-columns: auto 1fr; align-items: center; border-right: 0; border-bottom: 1px solid var(--border); }
@@ -131,6 +132,5 @@
   .workPane, .reviewPane { padding: 20px; border: 0; }
   .desk[data-mobile-pane='work'] .reviewPane { display: none; }
   .desk[data-mobile-pane='review'] .workPane { display: none; }
-  .workList article { grid-template-columns: 31px minmax(0, 1fr); gap: 10px; }
 }
 @media (prefers-reduced-motion: reduce) { .queueRows > a { transition: none; } }

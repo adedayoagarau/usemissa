@@ -53,6 +53,7 @@ test('Review operations show reader evidence and distribution safeguards', async
   await page.goto(`/organization/${fixture.organizationId}/reviews`);
   await expect(page.getByRole('heading', { name: 'Reviews', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: fixture.roundName })).toBeVisible();
+  await page.getByRole('tab', { name: 'Distribute' }).click();
   await expect(page.getByRole('heading', { name: 'How distribution stays safe' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Assign reviewer/u })).toHaveCount(0);
   const accessibility = await new AxeBuilder({ page }).analyze();

@@ -60,7 +60,7 @@
     "composition.reader-operations": {
       "semantic": "ReaderOperations",
       "implementation": "apps/web/components/reader-operations.tsx",
-      "composition": ["Progress", "Table", "Tabs", "Dialog", "Field", "Input", "NativeSelect", "Checkbox", "Switch", "Button", "Alert", "Empty", "Sonner", "CalibrationBadge"],
+      "composition": ["Progress", "Table", "Tabs", "Sheet", "DropdownMenu", "Popover", "Dialog", "Field", "Input", "Avatar", "Checkbox", "Switch", "Button", "Alert", "Empty", "Sonner", "CountBadge", "CalibrationBadge", "WorkDecisionBadge", "SegmentedChoice"],
       "boundary": "One round at a time. Progress and calibration are derived from recorded assignments and scores; distribution previews a deterministic plan with conflict reasons before writing, and the commit applies only the previewed plan. Decisions remain per Work through the existing decision route."
     },
     "composition.communications-manager": {
@@ -78,7 +78,7 @@
     "composition.round-rubric": {
       "semantic": "RubricDialog",
       "implementation": "apps/web/components/reader-round-actions.tsx",
-      "composition": ["Dialog", "Field", "Input", "Button", "Alert", "Sonner"],
+      "composition": ["Dialog", "Field", "Input", "Textarea", "SegmentedChoice", "Button", "Alert", "Sonner"],
       "boundary": "Each save creates an immutable rubric version; reads already scored keep their version. Readers score whole numbers per criterion in the reviewer score form, and the server computes the weighted 0 to 100 score used for ranking and calibration."
     },
     "composition.submitter-questions": {
@@ -1014,6 +1014,25 @@
       "motion": "never",
       "implementation": "components/missa/date-picker-field.tsx",
       "boundary": "Chooses an ISO calendar date from a calendar popover in place of the browser's date input; optional Clear. The trigger is a field-style Button showing the formatted date or a placeholder."
+    },
+    "SegmentedChoice": {
+      "base": "RadioGroup",
+      "variant": "segmented",
+      "motion": "never",
+      "implementation": "components/missa/segmented-choice.tsx",
+      "boundary": "One visible choice from a short ordered set: a rubric score from 0 to the criterion's scale, a rubric's scale, or a Work decision. It is a radio group, so arrow keys move between options and each option has an accessible name; it never commits a destructive action on its own."
+    },
+    "WorkDecisionBadge": {
+      "base": "Badge",
+      "motion": "never",
+      "implementation": "components/missa/operations-badges.tsx",
+      "boundary": "Labels the recorded decision on one Work (Accepted, Waitlisted, Declined). It reflects a recorded decision only and never implies a letter was sent."
+    },
+    "HueTile": {
+      "base": "span",
+      "motion": "never",
+      "implementation": "components/missa/hue-tile.tsx",
+      "boundary": "A small colour tile marking a record (a review round, a rubric criterion) with an icon or number on a categorical hue derived from the record's identity. Decorative and aria-hidden; the record's name always sits beside it."
     },
     "CalibrationBadge": {
       "base": "Badge",
