@@ -221,6 +221,20 @@
       ],
       "embeddedBoundary": "Embedded samples show identity and selected work only, keep the fictional sample label, and disable contact actions."
     },
+    "composition.creator-profile-addons": {
+      "semantic": "ADDON_SECTIONS",
+      "implementation": "components/creator-profile/sections",
+      "composition": [
+        "Button",
+        "EnquireButton",
+        "EditionAvailability",
+        "ShowKindTag"
+      ],
+      "appearance": "ruled-rows-in-the-profile-grammar-with-type-only-plates",
+      "sections": ["editions", "shows", "services", "teaching", "support"],
+      "boundary": "Visitor sections for the Editions, Shows and performances, Services, Teaching and Support add-ons. Enquiries open the profile's message form with a topic and a first line naming the item; there is no checkout and no price on Editions. Places left show only when stated. Support is one outbound link that says it leaves Missa and opens in a new tab. Embedded mode never shows them.",
+      "customRationale": "Installed Item, Card and Table were inspected and not used for the rows: they fix a density and type scale that the profile's editorial rows (Newsreader titles, ruled lists, mono facts) do not share, and Badge is reachable only through the two semantic wrappers above. The rows follow the Track record and Upcoming grammar in public-profile.module.css."
+    },
     "composition.creator-profile-inbox": {
       "semantic": "ProfileInbox",
       "implementation": "components/creator-profile/profile-inbox.tsx",
@@ -1271,6 +1285,20 @@
       "implementation": "components/missa/availability-chip.tsx",
       "states": ["open", "from", "booked"],
       "rule": "A 'from' entry whose date has passed reads as open; meaning never depends on colour alone.",
+      "motion": "never"
+    },
+    "EditionAvailability": {
+      "base": "Badge",
+      "implementation": "components/missa/addon-badges.tsx",
+      "states": ["available", "last", "sold-out"],
+      "rule": "Shown only when the edition size and the number left are both stated and agree: '4 of 12 available', or 'Sold out' at none. The label carries the meaning; the dot and tone only help the eye. No price, no checkout.",
+      "motion": "never"
+    },
+    "ShowKindTag": {
+      "base": "Badge",
+      "implementation": "components/missa/addon-badges.tsx",
+      "states": ["solo", "group", "premiere", "screening", "performance"],
+      "rule": "A tiny read-only tag for the kind of show; a show of kind 'other' has no tag.",
       "motion": "never"
     },
     "DateConfidenceBadge": {
