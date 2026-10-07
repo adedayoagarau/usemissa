@@ -82,9 +82,8 @@ export function MissaArt({
 }
 
 /**
- * A drawing for an empty state, with the one-line AI label that
- * docs/missa-messaging.md requires wherever an AI illustration appears.
- * "scene" for a whole empty page, "spot" for a small empty list.
+ * A drawing for an empty state: "scene" for a whole empty page, "spot" for
+ * a small empty list. Decorative; the empty state's own words carry it.
  */
 export function EmptyStateArt({
   id,
@@ -94,9 +93,8 @@ export function EmptyStateArt({
   size?: "scene" | "spot";
 }) {
   return (
-    <figure className={styles.emptyArt} data-size={size}>
+    <span className={styles.emptyArt} data-size={size}>
       <MissaArt id={id} />
-      <figcaption>Illustration made with AI.</figcaption>
-    </figure>
+    </span>
   );
 }

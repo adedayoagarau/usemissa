@@ -193,13 +193,12 @@ it's likely to be read in the UK and has a word that differs.
 Missa shows three kinds of image:
 - **Licensed photos:** credited where they appear.
 - **Organizers' own images:** credited to the organizer.
-- **Illustrations made with AI:** labeled where they appear.
+- **Missa's own illustrations:** no caption or label.
 
-Label every AI illustration where it appears: "Illustration made with AI.", or
-one line per page when a page has several. Never present one as an artist's
-work, a real place or a real person, and never call it a painting or a
-photograph in alt text. Provenance for each generated file lives in
-`apps/web/media-provenance`.
+Decided 7 October 2026: Missa's illustrations carry no "made with AI" line.
+Never present one as an artist's work, a real place or a real person, and
+never call it a painting or a photograph in alt text. Provenance for each
+generated file lives in `apps/web/media-provenance`.
 
 ## Microcopy
 
@@ -250,8 +249,7 @@ These would have made the new words untrue. All are fixed:
   available, limited and planned.
 - `/waitlist` and `/thank-you` redirect to sign-up and are out of the sitemap.
   `/welcome` stays as an optional entry screen, rewritten.
-- The AI illustrations on the homepage, sign-up and onboarding are labeled,
-  and their prompt files are no longer publicly served.
+- The illustrations' prompt files are no longer publicly served.
 - `landing/` and its invented testimonials are gone, along with the root
   `vercel.json` that pointed at it. The film's fonts moved to
   `video/launch/public/fonts`.

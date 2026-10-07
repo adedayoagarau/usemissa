@@ -329,7 +329,6 @@ export function HomepageFooterStandard() {
         </nav>
         <div className={styles.footerLegal}>
           <span>© {new Date().getFullYear()} Missa</span>
-          <span>The illustrations on this page are made with AI.</span>
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>
         </div>

@@ -49,9 +49,7 @@
 
 /* Empty states: the drawing in the text colour, so it reads in both themes. */
 .emptyArt {
-  display: grid;
-  justify-items: center;
-  gap: 6px;
+  display: block;
   width: min(240px, 70%);
   margin: 0 auto 12px;
 }
@@ -62,10 +60,4 @@
 
 .emptyArt .art {
   color: var(--foreground);
-}
-
-.emptyArt figcaption {
-  color: var(--muted-foreground);
-  font-size: 12px;
-  line-height: 1.4;
 }
