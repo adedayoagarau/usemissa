@@ -74,7 +74,7 @@ function block(value: LetterBlock): string {
       return `
         <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin:14px 0 18px;">
           <tr>
-            <td bgcolor="${c.forestDeep}" style="background-color:${c.forestDeep};border-radius:999px;">
+            <td bgcolor="${c.forestDeep}" style="background-color:${c.forestDeep};border-radius:999px;mso-padding-alt:15px 26px;">
               <a href="${escapeHtml(value.url)}" style="display:inline-block;padding:15px 26px;font-family:${f.interface};font-size:15px;line-height:20px;font-weight:600;color:${c.onForest};text-decoration:none;">${escapeHtml(value.label)}</a>
             </td>
           </tr>
