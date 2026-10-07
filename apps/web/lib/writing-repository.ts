@@ -1,6 +1,7 @@
 import { CreatorRepositoryBase, creatorPoolFor } from "@missa/radar-adapters";
 import {
   countWords,
+  sameWritingContent,
   writingPreview,
   WRITING_LIST_LIMIT,
   type WritingEntry,
@@ -9,14 +10,16 @@ import {
 } from "./writing.ts";
 
 /**
- * The only code that reads or writes creator_writing_entries (migration 0095).
+ * The only code that reads or writes creator_writing_entries (migrations 0095, 0096).
  * Every query is scoped to one account. writing-boundary.test.ts fails when
  * another file names the table, so nothing else can read a creator's writing.
  */
 
 type Row = {
   id: string;
+  title: string;
   body?: string;
+  document?: string | null;
   preview?: string;
   word_count: number;
   revision: number;
@@ -30,12 +33,14 @@ export type WritingSaveResult =
   | { kind: "not-found" };
 
 const SUMMARY_COLUMNS =
-  "id,left(regexp_replace(btrim(left(body,400)),'\\s+',' ','g'),120) as preview,word_count,revision,created_at,updated_at";
-const ENTRY_COLUMNS = "id,body,word_count,revision,created_at,updated_at";
+  "id,title,left(regexp_replace(btrim(left(body,400)),'\\s+',' ','g'),120) as preview,word_count,revision,created_at,updated_at";
+const ENTRY_COLUMNS =
+  "id,title,body,document,word_count,revision,created_at,updated_at";
 
 function summary(row: Row): WritingEntrySummary {
   return {
     id: row.id,
+    title: row.title,
     preview: writingPreview(row.preview ?? row.body ?? ""),
     wordCount: row.word_count,
     revision: row.revision,
@@ -45,7 +50,11 @@ function summary(row: Row): WritingEntrySummary {
 }
 
 function entry(row: Row): WritingEntry {
-  return { ...summary(row), body: row.body ?? "" };
+  return {
+    ...summary(row),
+    body: row.body ?? "",
+    document: row.document ?? null,
+  };
 }
 
 export class WritingRepository extends CreatorRepositoryBase {
@@ -85,8 +94,8 @@ export class WritingRepository extends CreatorRepositoryBase {
       request.baseRevision === 0
         ? await this.query<Row>(
             `with inserted as (
-               insert into creator_writing_entries (id,account_id,body,word_count)
-               values ($1,$2,$3,$4)
+               insert into creator_writing_entries (id,account_id,body,word_count,title,document)
+               values ($1,$2,$3,$4,$5,$6)
                on conflict (id) do nothing
                returning ${ENTRY_COLUMNS}
              ), audited as (
@@ -94,23 +103,39 @@ export class WritingRepository extends CreatorRepositoryBase {
                select $2,'writing.entry_created','writing_entry',id,'{"revision":1}'::jsonb from inserted
              )
              select * from inserted`,
-            [id, accountId, request.body, wordCount],
+            [
+              id,
+              accountId,
+              request.body,
+              wordCount,
+              request.title,
+              request.document,
+            ],
           )
         : await this.query<Row>(
             `update creator_writing_entries
-             set body=$3, word_count=$4, revision=revision+1, updated_at=now()
+             set body=$3, word_count=$4, title=$6, document=$7, revision=revision+1, updated_at=now()
              where account_id=$1 and id=$2 and revision=$5
              returning ${ENTRY_COLUMNS}`,
-            [accountId, id, request.body, wordCount, request.baseRevision],
+            [
+              accountId,
+              id,
+              request.body,
+              wordCount,
+              request.baseRevision,
+              request.title,
+              request.document,
+            ],
           );
     if (written.rows[0])
       return { kind: "saved", entry: summary(written.rows[0]) };
 
     const current = await this.get(accountId, id);
     if (!current) return { kind: "not-found" };
-    if (current.body === request.body) {
+    if (sameWritingContent(current, request)) {
       const {
         id: storedId,
+        title,
         preview,
         wordCount: words,
         revision,
@@ -121,6 +146,7 @@ export class WritingRepository extends CreatorRepositoryBase {
         kind: "saved",
         entry: {
           id: storedId,
+          title,
           preview,
           wordCount: words,
           revision,

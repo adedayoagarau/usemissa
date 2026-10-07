@@ -2,7 +2,7 @@ import localFont from "next/font/local";
 
 /**
  * Typefaces a writer can choose for their own text in the writing room. They
- * style only WritingSurface, never Missa's interface, which keeps Newsreader,
+ * style only WritingPages, never Missa's interface, which keeps Newsreader,
  * Instrument Sans and Fragment Mono (DESIGN.md, "Writer typefaces").
  *
  * All are SIL Open Font License faces kept in fonts/writing with their

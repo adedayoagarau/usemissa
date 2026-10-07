@@ -1,6 +1,8 @@
 import {
   isWritingEntryId,
   newWritingEntryId,
+  sameWritingContent,
+  type WritingContent,
   type WritingEntry,
   type WritingEntrySummary,
 } from "./writing.ts";
@@ -17,7 +19,7 @@ import {
 
 export type WritingDraft = {
   id: string;
-  body: string;
+  content: WritingContent;
   /** The account revision this text was written on; 0 for an entry not yet saved. */
   baseRevision: number;
   updatedAt: string;
@@ -36,7 +38,7 @@ export type WritingSaveOutcome =
 
 export type WritingTransport = (
   id: string,
-  body: string,
+  content: WritingContent,
   baseRevision: number,
   options: { keepalive: boolean },
 ) => Promise<WritingSaveOutcome>;
@@ -85,11 +87,23 @@ export type WritingSyncOptions = {
 
 type Timer = ReturnType<typeof setTimeout>;
 
+function contentOf(value: {
+  title?: unknown;
+  body: string;
+  document?: unknown;
+}): WritingContent {
+  return {
+    title: typeof value.title === "string" ? value.title : "",
+    body: value.body,
+    document: typeof value.document === "string" ? value.document : null,
+  };
+}
+
 export class WritingSync {
   private readonly drafts = new Map<string, WritingDraft>();
   private readonly confirmed = new Map<
     string,
-    { body: string; revision: number }
+    { content: WritingContent; revision: number }
   >();
   private readonly inflight = new Map<string, Promise<void>>();
   private readonly timers = new Map<string, Timer>();
@@ -156,13 +170,11 @@ export class WritingSync {
   }
 
   /** Records text the account already holds, such as an entry just opened. */
-  adopt(entry: { id: string; body: string; revision: number }) {
-    this.confirmed.set(entry.id, {
-      body: entry.body,
-      revision: entry.revision,
-    });
+  adopt(entry: WritingContent & { id: string; revision: number }) {
+    const content = contentOf(entry);
+    this.confirmed.set(entry.id, { content, revision: entry.revision });
     const draft = this.drafts.get(entry.id);
-    if (draft && draft.body === entry.body) {
+    if (draft && sameWritingContent(draft.content, content)) {
       this.drafts.delete(entry.id);
       this.persistSoon();
     }
@@ -183,15 +195,15 @@ export class WritingSync {
     return !this.deviceOk && this.drafts.size > 0;
   }
 
-  edit(id: string, body: string) {
+  edit(id: string, content: WritingContent) {
     if (this.discarded.has(id)) return;
     this.touched.add(id);
     const confirmed = this.confirmed.get(id);
     const existing = this.drafts.get(id);
     const baseRevision = existing?.baseRevision ?? confirmed?.revision ?? 0;
     const unchanged = confirmed
-      ? confirmed.body === body
-      : baseRevision === 0 && body.trim() === "";
+      ? sameWritingContent(confirmed.content, content)
+      : baseRevision === 0 && !content.body.trim() && !content.title.trim();
     if (unchanged) {
       if (existing) {
         this.drafts.delete(id);
@@ -205,7 +217,7 @@ export class WritingSync {
     // Text over the limit is kept whole; the account refuses it with a reason.
     this.drafts.set(id, {
       id,
-      body,
+      content,
       baseRevision,
       updatedAt: new Date(this.options.now()).toISOString(),
     });
@@ -313,13 +325,13 @@ export class WritingSync {
       return Promise.resolve();
     }
     this.firstPending.delete(id);
-    const sent = { body: draft.body, baseRevision: draft.baseRevision };
+    const sent = { content: draft.content, baseRevision: draft.baseRevision };
     const run = (async () => {
       let outcome: WritingSaveOutcome;
       try {
         outcome = await this.options.transport(
           id,
-          sent.body,
+          sent.content,
           sent.baseRevision,
           {
             keepalive,
@@ -338,7 +350,7 @@ export class WritingSync {
 
   private handle(
     id: string,
-    sent: { body: string; baseRevision: number },
+    sent: { content: WritingContent; baseRevision: number },
     outcome: WritingSaveOutcome,
   ) {
     if (outcome.kind !== "failed") this.retryDelay.delete(id);
@@ -346,12 +358,12 @@ export class WritingSync {
       case "saved": {
         this.rejected.delete(id);
         this.confirmed.set(id, {
-          body: sent.body,
+          content: sent.content,
           revision: outcome.entry.revision,
         });
         if (this.discarded.has(id)) break;
         const draft = this.drafts.get(id);
-        if (draft && draft.body === sent.body) {
+        if (draft && sameWritingContent(draft.content, sent.content)) {
           this.drafts.delete(id);
         } else if (draft) {
           this.drafts.set(id, {
@@ -368,7 +380,7 @@ export class WritingSync {
       case "not-found": {
         if (outcome.kind === "conflict") {
           this.confirmed.set(id, {
-            body: outcome.current.body,
+            content: contentOf(outcome.current),
             revision: outcome.current.revision,
           });
         } else {
@@ -382,7 +394,7 @@ export class WritingSync {
         this.clearTimer(id);
         this.drafts.set(to, {
           id: to,
-          body: draft.body,
+          content: draft.content,
           baseRevision: 0,
           updatedAt: new Date(this.options.now()).toISOString(),
         });
@@ -498,15 +510,34 @@ export function browserWritingDeviceStore(key: string): WritingDeviceStore {
             ? Reflect.get(parsed, "drafts")
             : [];
         if (!Array.isArray(drafts)) return [];
-        return drafts.filter(
-          (draft): draft is WritingDraft =>
-            draft &&
-            isWritingEntryId(draft.id) &&
-            typeof draft.body === "string" &&
-            Number.isSafeInteger(draft.baseRevision) &&
-            draft.baseRevision >= 0 &&
-            typeof draft.updatedAt === "string",
-        );
+        return drafts.flatMap((draft): WritingDraft[] => {
+          if (
+            !draft ||
+            !isWritingEntryId(draft.id) ||
+            !Number.isSafeInteger(draft.baseRevision) ||
+            draft.baseRevision < 0 ||
+            typeof draft.updatedAt !== "string"
+          ) {
+            return [];
+          }
+          // Drafts kept before pages hold only their text.
+          const content =
+            draft.content && typeof draft.content.body === "string"
+              ? contentOf(draft.content)
+              : typeof draft.body === "string"
+                ? { title: "", body: draft.body, document: null }
+                : null;
+          return content
+            ? [
+                {
+                  id: draft.id,
+                  content,
+                  baseRevision: draft.baseRevision,
+                  updatedAt: draft.updatedAt,
+                },
+              ]
+            : [];
+        });
       } catch {
         return [];
       }
@@ -534,18 +565,19 @@ const KEEPALIVE_LIMIT = 60_000;
 
 export const httpWritingTransport: WritingTransport = async (
   id,
-  body,
+  content,
   baseRevision,
   { keepalive },
 ) => {
   let response: Response;
   try {
+    const payload = JSON.stringify({ ...content, baseRevision });
     response = await fetch(`/api/me/writing/${encodeURIComponent(id)}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body, baseRevision }),
+      body: payload,
       cache: "no-store",
-      keepalive: keepalive && body.length < KEEPALIVE_LIMIT,
+      keepalive: keepalive && payload.length < KEEPALIVE_LIMIT,
     });
   } catch {
     return { kind: "failed" };

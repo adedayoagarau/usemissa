@@ -33,7 +33,8 @@ export async function GET(request: Request) {
       .map((entry) => {
         const words = countWords(entry.body);
         const heading = `Written ${stamp(entry.createdAt)} · last saved ${stamp(entry.updatedAt)} · ${words.toLocaleString("en")} ${words === 1 ? "word" : "words"}`;
-        return `${heading}\n\n${entry.body}`;
+        const title = entry.title.trim() ? `${entry.title.trim()}\n` : "";
+        return `${title}${heading}\n\n${entry.body}`;
       })
       .join("\n\n* * *\n\n");
     const date = new Date().toISOString().slice(0, 10);

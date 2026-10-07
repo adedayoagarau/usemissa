@@ -64,7 +64,9 @@ dbTest("an entry is created, saved again, and read back", async () => {
   const owner = await account();
   const id = newWritingEntryId();
   const created = await repository().save(owner, id, {
+    title: "",
     body: "First words",
+    document: null,
     baseRevision: 0,
   });
   assert.equal(created.kind, "saved");
@@ -72,7 +74,9 @@ dbTest("an entry is created, saved again, and read back", async () => {
   assert.equal(created.kind === "saved" && created.entry.wordCount, 2);
 
   const saved = await repository().save(owner, id, {
+    title: "",
     body: "First words, then more",
+    document: null,
     baseRevision: 1,
   });
   assert.equal(saved.kind === "saved" && saved.entry.revision, 2);
@@ -93,9 +97,16 @@ dbTest("an entry is created, saved again, and read back", async () => {
 dbTest("a retried save that already landed is not a conflict", async () => {
   const owner = await account();
   const id = newWritingEntryId();
-  await repository().save(owner, id, { body: "Once", baseRevision: 0 });
-  const replayedCreate = await repository().save(owner, id, {
+  await repository().save(owner, id, {
+    title: "",
     body: "Once",
+    document: null,
+    baseRevision: 0,
+  });
+  const replayedCreate = await repository().save(owner, id, {
+    title: "",
+    body: "Once",
+    document: null,
     baseRevision: 0,
   });
   assert.equal(
@@ -103,9 +114,16 @@ dbTest("a retried save that already landed is not a conflict", async () => {
     1,
   );
 
-  await repository().save(owner, id, { body: "Twice", baseRevision: 1 });
-  const replayedUpdate = await repository().save(owner, id, {
+  await repository().save(owner, id, {
+    title: "",
     body: "Twice",
+    document: null,
+    baseRevision: 1,
+  });
+  const replayedUpdate = await repository().save(owner, id, {
+    title: "",
+    body: "Twice",
+    document: null,
     baseRevision: 1,
   });
   assert.equal(
@@ -120,16 +138,22 @@ dbTest(
     const owner = await account();
     const id = newWritingEntryId();
     await repository().save(owner, id, {
+      title: "",
       body: "Shared start",
+      document: null,
       baseRevision: 0,
     });
     await repository().save(owner, id, {
+      title: "",
       body: "Shared start, laptop",
+      document: null,
       baseRevision: 1,
     });
 
     const phone = await repository().save(owner, id, {
+      title: "",
       body: "Shared start, phone",
+      document: null,
       baseRevision: 1,
     });
     assert.equal(phone.kind, "conflict");
@@ -150,18 +174,35 @@ dbTest(
     const owner = await account();
     const other = await account();
     const id = newWritingEntryId();
-    await repository().save(owner, id, { body: "Private", baseRevision: 0 });
+    await repository().save(owner, id, {
+      title: "",
+      body: "Private",
+      document: null,
+      baseRevision: 0,
+    });
 
     assert.equal(await repository().get(other, id), null);
     assert.deepEqual(await repository().list(other), []);
     assert.equal(
-      (await repository().save(other, id, { body: "Taken", baseRevision: 0 }))
-        .kind,
+      (
+        await repository().save(other, id, {
+          title: "",
+          body: "Taken",
+          document: null,
+          baseRevision: 0,
+        })
+      ).kind,
       "not-found",
     );
     assert.equal(
-      (await repository().save(other, id, { body: "Taken", baseRevision: 1 }))
-        .kind,
+      (
+        await repository().save(other, id, {
+          title: "",
+          body: "Taken",
+          document: null,
+          baseRevision: 1,
+        })
+      ).kind,
       "not-found",
     );
     assert.equal(await repository().delete(other, id), false);
@@ -173,15 +214,23 @@ dbTest("deleting removes the text and audit events never hold it", async () => {
   const owner = await account();
   const id = newWritingEntryId();
   await repository().save(owner, id, {
+    title: "",
     body: "Words that should not be copied",
+    document: null,
     baseRevision: 0,
   });
   assert.equal(await repository().delete(owner, id), true);
   assert.equal(await repository().get(owner, id), null);
   assert.equal(await repository().delete(owner, id), false);
   assert.equal(
-    (await repository().save(owner, id, { body: "Again", baseRevision: 1 }))
-      .kind,
+    (
+      await repository().save(owner, id, {
+        title: "",
+        body: "Again",
+        document: null,
+        baseRevision: 1,
+      })
+    ).kind,
     "not-found",
   );
 
@@ -200,11 +249,54 @@ dbTest("the export holds every entry in full, oldest first", async () => {
   const owner = await account();
   const first = newWritingEntryId();
   const second = newWritingEntryId();
-  await repository().save(owner, first, { body: "One", baseRevision: 0 });
-  await repository().save(owner, second, { body: "Two", baseRevision: 0 });
+  await repository().save(owner, first, {
+    title: "",
+    body: "One",
+    document: null,
+    baseRevision: 0,
+  });
+  await repository().save(owner, second, {
+    title: "",
+    body: "Two",
+    document: null,
+    baseRevision: 0,
+  });
   const exported = await repository().exportAll(owner);
   assert.deepEqual(
     exported.map((item) => item.body),
     ["One", "Two"],
   );
 });
+
+dbTest(
+  "the title and pages are stored with the text, and a page change elsewhere is a conflict",
+  async () => {
+    const owner = await account();
+    const id = newWritingEntryId();
+    const pages = '{"version":1,"pages":["first"]}';
+    await repository().save(owner, id, {
+      title: "Harmattan",
+      body: "The light went thin",
+      document: pages,
+      baseRevision: 0,
+    });
+    const stored = await repository().get(owner, id);
+    assert.equal(stored?.title, "Harmattan");
+    assert.equal(stored?.document, pages);
+    assert.equal((await repository().list(owner))[0]?.title, "Harmattan");
+
+    await repository().save(owner, id, {
+      title: "Harmattan",
+      body: "The light went thin",
+      document: '{"version":1,"pages":["laptop"]}',
+      baseRevision: 1,
+    });
+    const phone = await repository().save(owner, id, {
+      title: "Harmattan",
+      body: "The light went thin",
+      document: '{"version":1,"pages":["phone"]}',
+      baseRevision: 1,
+    });
+    assert.equal(phone.kind, "conflict");
+  },
+);

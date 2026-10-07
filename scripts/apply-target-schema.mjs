@@ -123,6 +123,7 @@ const migrationFiles = [
   '0093_misattributed_artconnect_host.sql',
   '0094_intermediary_publication_hold.sql',
   '0095_creator_writing.sql',
+  '0096_creator_writing_pages.sql',
 ];
 
 

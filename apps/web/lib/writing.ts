@@ -1,3 +1,5 @@
+import { parseWritingDocument } from "./writing-document.ts";
+
 /**
  * Shared rules for the writing room (/write). Pure functions only, so the
  * browser and the server apply exactly the same limits and counts.
@@ -69,8 +71,23 @@ export function writingPreview(text: string, length = 80): string {
     : line;
 }
 
-export type WritingSaveRequest = {
+/** What one save carries: the title, the plain text, and the paged document (null for plain entries). */
+export type WritingContent = {
+  title: string;
   body: string;
+  document: string | null;
+};
+
+export const WRITING_TITLE_MAX = 200;
+
+export function sameWritingContent(
+  a: WritingContent,
+  b: WritingContent,
+): boolean {
+  return a.title === b.title && a.body === b.body && a.document === b.document;
+}
+
+export type WritingSaveRequest = WritingContent & {
   /** The stored revision this text was written on; 0 for an entry not yet saved. */
   baseRevision: number;
 };
@@ -83,10 +100,24 @@ export function parseWritingSaveRequest(
   }
   const body: unknown = Reflect.get(value, "body");
   const baseRevision: unknown = Reflect.get(value, "baseRevision");
+  const title: unknown = Reflect.get(value, "title") ?? "";
+  const document: unknown = Reflect.get(value, "document") ?? null;
   if (typeof body !== "string") return { error: "Body must be text." };
   if (body.length > WRITING_BODY_MAX) {
     return {
       error: `This entry is longer than ${WRITING_BODY_MAX.toLocaleString("en")} characters. Start a new entry to keep writing.`,
+    };
+  }
+  if (typeof title !== "string" || title.length > WRITING_TITLE_MAX) {
+    return { error: `Titles can be up to ${WRITING_TITLE_MAX} characters.` };
+  }
+  if (
+    document !== null &&
+    (typeof document !== "string" || !parseWritingDocument(document))
+  ) {
+    return {
+      error:
+        "This entry's pages could not be read. Reload the page and try again.",
     };
   }
   if (
@@ -96,11 +127,12 @@ export function parseWritingSaveRequest(
   ) {
     return { error: "Refresh this entry before saving again." };
   }
-  return { body, baseRevision };
+  return { title, body, document: document as string | null, baseRevision };
 }
 
 export type WritingEntrySummary = {
   id: string;
+  title: string;
   preview: string;
   wordCount: number;
   revision: number;
@@ -108,4 +140,7 @@ export type WritingEntrySummary = {
   updatedAt: string;
 };
 
-export type WritingEntry = WritingEntrySummary & { body: string };
+export type WritingEntry = WritingEntrySummary & {
+  body: string;
+  document: string | null;
+};

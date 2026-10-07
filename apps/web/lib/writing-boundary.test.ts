@@ -42,6 +42,7 @@ const sources = files(root).map((path) => ({
 test("only the writing module names the writing table", () => {
   const allowed = new Set([
     "packages/db/migrations/0095_creator_writing.sql",
+    "packages/db/migrations/0096_creator_writing_pages.sql",
     "apps/web/lib/writing-repository.ts",
     "apps/web/lib/writing-repository.test.ts",
     "apps/web/lib/writing-boundary.test.ts",
