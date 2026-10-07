@@ -13,7 +13,7 @@ async function organizationSession(page: Page) {
 test('Organization chooser states role before tenant entry', async ({ page }) => {
   const membership = await organizationSession(page);
   await page.goto('/organization');
-  await expect(page.getByRole('heading', { name: 'Choose an organization' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Choose an Organization' })).toBeVisible();
   await expect(page.getByText(/Admin|Owner|Member|Program manager/u).first()).toBeVisible();
   await expect(page.locator('main')).not.toContainText(membership.organizationId);
   await expect(page.getByRole('link', { name: /Enter/u })).toBeVisible();
@@ -29,7 +29,7 @@ test('Organization overview keeps scope, role, and exact actions visible', async
   await page.getByRole('button', { name: 'Search Organization' }).click();
   await expect(page.getByRole('dialog', { name: 'Find a page or record' })).toBeVisible();
   await page.getByPlaceholder('Search pages, submitters, Works').fill('not-a-destination');
-  await expect(page.getByText('No destinations match “not-a-destination”.')).toBeVisible();
+  await expect(page.getByText('Nothing matches “not-a-destination”.')).toBeVisible();
   await page.getByRole('button', { name: 'Close Organization search' }).click();
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);

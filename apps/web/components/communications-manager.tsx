@@ -117,7 +117,7 @@ export function CommunicationsManager(props: {
           {batches.length === 0 ? (
             <Empty variant="bordered" size="spacious"><EmptyHeader><EmptyTitle>No letters yet</EmptyTitle><EmptyDescription>Compose the first one from a template. Nothing is sent until it is approved.</EmptyDescription></EmptyHeader>{props.canManage ? <Button type="button" variant="outline" onClick={() => setTab('compose')}><PenLine aria-hidden="true" />Compose a letter</Button> : null}</Empty>
           ) : (
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)]">
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)]">
               <ol className="divide-y divide-border rounded-lg border border-border" aria-label="Letter batches">
                 {batches.map((batch) => (
                   <li key={batch.id}>
@@ -188,7 +188,7 @@ function Composer({ base, openCalls, templates, stageLabels, onCreated }: { base
   });
 
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6">
       <Field>
         <FieldLabel>What kind of letter</FieldLabel>
         <RadioGroup value={kind} onValueChange={(value) => chooseKind(value as CommunicationKind)} aria-label="Letter kind" className="sm:grid-cols-3">
@@ -203,10 +203,10 @@ function Composer({ base, openCalls, templates, stageLabels, onCreated }: { base
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
         <Field>
           <FieldLabel htmlFor="compose-opportunity">Opportunity</FieldLabel>
-          <NativeSelect className="w-full"><select id="compose-opportunity" value={openCallId} onChange={(event) => setOpenCallId(event.target.value)}>{openCalls.map((call) => <NativeSelectOption key={call.id} value={call.id}>{call.title}</NativeSelectOption>)}{openCalls.length === 0 ? <NativeSelectOption value="">No opportunities yet</NativeSelectOption> : null}</select></NativeSelect>
+          <NativeSelect className="w-full" id="compose-opportunity" value={openCallId} onChange={(event) => setOpenCallId(event.target.value)}>{openCalls.map((call) => <NativeSelectOption key={call.id} value={call.id}>{call.title}</NativeSelectOption>)}{openCalls.length === 0 ? <NativeSelectOption value="">No opportunities yet</NativeSelectOption> : null}</NativeSelect>
         </Field>
       </div>
-      <fieldset className="rounded-lg border border-border">
+      <fieldset className="min-w-0 rounded-lg border border-border">
         <legend className="px-3 text-sm font-medium text-foreground">Recipients · {chosen.size} chosen</legend>
         <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 text-xs text-muted-foreground">
           <span>Suggested recipients for this kind are ticked. Change the set before approval; after approval it is fixed.</span>
@@ -405,7 +405,7 @@ function PreviewDialog({ base, batchId, open, onOpenChange, draftSubject, draftB
           <DialogDescription>{total > (previews?.length ?? 0) ? `Showing the first ${previews?.length} of ${total} recipients.` : 'Rendered with the live merge values for each recipient.'}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-wrap items-center gap-3">
-          <NativeSelect className="min-w-64"><select aria-label="Recipient to preview" value={index} onChange={(event) => setIndex(Number(event.target.value))}>{options.map((option) => <NativeSelectOption key={option.position} value={option.position}>{option.label}</NativeSelectOption>)}</select></NativeSelect>
+          <NativeSelect className="min-w-64" aria-label="Recipient to preview" value={index} onChange={(event) => setIndex(Number(event.target.value))}>{options.map((option) => <NativeSelectOption key={option.position} value={option.position}>{option.label}</NativeSelectOption>)}</NativeSelect>
           <Tabs value={mode} onValueChange={(value) => setMode(value as 'html' | 'text')}><TabsList aria-label="Preview format"><TabsTrigger value="html">Email</TabsTrigger><TabsTrigger value="text">Plain text</TabsTrigger></TabsList></Tabs>
         </div>
         {current ? (
