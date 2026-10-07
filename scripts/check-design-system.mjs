@@ -9,6 +9,7 @@ const cataloguePath = path.join(webRoot, "component-catalogue.json");
 const baselinePath = path.join(webRoot, "component-policy-baseline.json");
 const writeCatalogue = process.argv.includes("--write-catalogue");
 const writeBaseline = process.argv.includes("--write-baseline");
+const tightenControls = process.argv.includes("--tighten-controls");
 
 // Counts read from the authenticated Shadcn Studio component index on 2026-09-03.
 // They are evidence of catalogue availability, not approval or local installation.
@@ -149,6 +150,33 @@ const excludedPrefixes = [
   "emails/",
 ];
 
+// Native controls and ARIA widget roles in feature code mean a control was
+// built by hand instead of composed from components/ui or a Studio variant.
+// Hidden and file inputs stay native: they have no visible primitive.
+const handRolledTagPattern =
+  /<(button|input|select|textarea|dialog|details|progress)\b(?![\w-])/g;
+const handRolledRolePattern =
+  /\brole=["'{]+(button|tab|tablist|tabpanel|menu|menuitem|menuitemradio|menuitemcheckbox|dialog|alertdialog|switch|combobox|listbox|option|radio|radiogroup|tooltip|checkbox|progressbar|slider)["'}]/g;
+
+function countHandRolledControls(source) {
+  const counts = {};
+  const add = (key) => (counts[key] = (counts[key] ?? 0) + 1);
+  for (const match of source.matchAll(handRolledTagPattern)) {
+    if (
+      match[1] === "input" &&
+      /^[^>]*?\btype=["'](?:hidden|file)["']/s.test(
+        source.slice(match.index, match.index + 400),
+      )
+    )
+      continue;
+    add(`<${match[1]}>`);
+  }
+  for (const match of source.matchAll(handRolledRolePattern))
+    add(`role=${match[1]}`);
+  return counts;
+}
+
+const handRolledControls = {};
 const findings = [];
 function record(file, rule, detail) {
   const relative = path.relative(webRoot, file).split(path.sep).join("/");
@@ -187,6 +215,11 @@ for (const file of sourceFiles) {
       );
   }
 
+  if (!isExcluded && /\.(?:jsx|tsx)$/.test(relative)) {
+    const counts = countHandRolledControls(source);
+    if (Object.keys(counts).length) handRolledControls[relative] = counts;
+  }
+
   if (!isExcluded) {
     for (const line of source.split("\n")) {
       if (/#[0-9a-fA-F]{3,8}\b/.test(line)) record(file, "raw-color", line);
@@ -203,6 +236,7 @@ if (writeBaseline) {
     generatedAt: "2026-09-03",
     note: "Existing migration debt. Entries may be removed but not added. Do not copy these patterns into new UI.",
     findings: uniqueFindings,
+    handRolledControls,
   };
   await fs.writeFile(baselinePath, `${JSON.stringify(baseline, null, 2)}\n`);
 }
@@ -221,6 +255,31 @@ const baselineSet = new Set(baseline.findings);
 const newFindings = uniqueFindings.filter(
   (finding) => !baselineSet.has(finding),
 );
+
+// Hand-rolled controls are a ratchet: a file may lose them but never gain
+// them, and a file absent from the baseline may have none.
+const baselineControls = baseline.handRolledControls ?? {};
+const newControls = [];
+const tightenedControls = {};
+for (const [file, counts] of Object.entries(handRolledControls)) {
+  for (const [control, count] of Object.entries(counts)) {
+    const allowed = baselineControls[file]?.[control] ?? 0;
+    if (count > allowed)
+      newControls.push(
+        `${file}|hand-rolled-control|${control} ${count} (baseline ${allowed})`,
+      );
+  }
+}
+for (const [file, counts] of Object.entries(baselineControls)) {
+  for (const [control, allowed] of Object.entries(counts)) {
+    const count = Math.min(allowed, handRolledControls[file]?.[control] ?? 0);
+    if (count) (tightenedControls[file] ??= {})[control] = count;
+  }
+}
+if (tightenControls) {
+  baseline.handRolledControls = tightenedControls;
+  await fs.writeFile(baselinePath, `${JSON.stringify(baseline, null, 2)}\n`);
+}
 
 const semanticNames = Object.keys(policy.semanticComponents);
 const invalidStudioCandidates = [];
@@ -248,6 +307,11 @@ if (invalidStudioCandidates.length)
 if (newFindings.length)
   errors.push(
     `New design-system policy violations:\n${newFindings.join("\n")}`,
+  );
+
+if (newControls.length)
+  errors.push(
+    `New hand-rolled controls. Compose them from components/ui or a Studio variant (see AGENTS.md):\n${newControls.join("\n")}`,
   );
 
 for (const entrypoint of policy.instructionEntrypoints ?? []) {
