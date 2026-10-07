@@ -105,6 +105,7 @@ test("grants are marked up as MonetaryGrant, other calls never as events", () =>
 test("homepage entity names the brand and its search", () => {
   const graph = siteEntityJsonLd()["@graph"] as Array<Record<string, unknown>>;
   assert.deepEqual(graph.map((node) => node["@type"]), ["Organization", "WebSite"]);
+  assert.ok((graph[0].sameAs as string[]).includes("https://www.linkedin.com/company/143965433"));
 });
 
 test("roundup posts and FAQ pages are recognised", () => {

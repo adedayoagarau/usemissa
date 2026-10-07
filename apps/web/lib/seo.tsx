@@ -158,7 +158,10 @@ export function opportunityDescription(item: { title: string; organizationName?:
  * each one here as it is created so search and answer engines can connect
  * them to this site.
  */
-export const BRAND_SAME_AS: readonly string[] = [];
+export const BRAND_SAME_AS: readonly string[] = [
+  'https://www.linkedin.com/company/143965433',
+  'https://www.crunchbase.com/organization/missa-cbec',
+];
 
 /** Organization + WebSite entity for the homepage. */
 export function siteEntityJsonLd(): Record<string, unknown> {
