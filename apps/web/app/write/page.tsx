@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { isWritingEntryId, type WritingEntrySummary } from "@/lib/writing";
 import { getWritingRepository } from "@/lib/writing-repository";
+import type { WritingProject } from "@/lib/writing-projects";
 import { WritingRoomLoader } from "@/components/missa/writing-room-loader";
 
 export const metadata = {
@@ -38,10 +39,14 @@ export default async function WritePage({
 
   const repository = getWritingRepository();
   let entries: WritingEntrySummary[] = [];
+  let projects: WritingProject[] = [];
   let listFailed = false;
   if (repository) {
     try {
-      entries = await repository.list(session.account.id);
+      [entries, projects] = await Promise.all([
+        repository.list(session.account.id),
+        repository.listProjects(session.account.id),
+      ]);
     } catch {
       listFailed = true;
     }
@@ -54,6 +59,7 @@ export default async function WritePage({
         .digest("hex")
         .slice(0, 24)}
       initialEntries={entries}
+      initialProjects={projects}
       initialEntryId={entryId}
       storage={repository ? "account" : "device"}
       listFailed={listFailed}

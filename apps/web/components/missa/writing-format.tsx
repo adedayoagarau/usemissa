@@ -200,7 +200,7 @@ export function WritingFormatBar({
       {(
         [
           ["left", "Align line left", AlignLeft],
-          ["center", "Centre line", AlignCenter],
+          ["center", "Center line", AlignCenter],
           ["right", "Align line right", AlignRight],
           ["justify", "Justify line", AlignJustify],
         ] as const
@@ -372,7 +372,7 @@ export function WritingFormatSheet({
                   {(
                     [
                       ["left", "Left"],
-                      ["center", "Centre"],
+                      ["center", "Center"],
                       ["right", "Right"],
                       ["justify", "Justified"],
                     ] as const

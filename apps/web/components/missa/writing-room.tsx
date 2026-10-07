@@ -45,33 +45,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from "@/components/ui/empty";
-import {
-  Item,
-  ItemContent,
-  ItemDescription,
-  ItemGroup,
-  ItemTitle,
-} from "@/components/ui/item";
-import {
   Popover,
   PopoverContent,
   PopoverHeader,
   PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import type { Editor } from "@tiptap/react";
 import {
   WritingPages,
@@ -82,6 +61,14 @@ import {
   WritingFormatBar,
   WritingFormatSheet,
 } from "@/components/missa/writing-format";
+import {
+  CompileDialog,
+  NewProjectDialog,
+  projectName,
+  WritingLibrary,
+  WritingOutline,
+  type LibraryPiece,
+} from "@/components/missa/writing-library";
 import {
   DEFAULT_WRITING_TYPEFACE,
   storedWritingTypeface,
@@ -111,6 +98,15 @@ import {
   type WritingDocument,
 } from "@/lib/writing-document";
 import {
+  compileProject,
+  compileProjectText,
+  newWritingProjectId,
+  type CompileOptions,
+  type PieceStatus,
+  type ProjectTemplateId,
+  type WritingProject,
+} from "@/lib/writing-projects";
+import {
   browserWritingDeviceStore,
   httpWritingTransport,
   WritingSync,
@@ -121,6 +117,7 @@ export type WritingRoomProps = {
   /** Separates this account's device drafts from anyone else's in the same browser. */
   deviceKey: string;
   initialEntries: WritingEntrySummary[];
+  initialProjects: WritingProject[];
   initialEntryId?: string;
   storage: "account" | "device";
   listFailed: boolean;
@@ -129,6 +126,8 @@ export type WritingRoomProps = {
 type Current = {
   id: string;
   title: string;
+  /** The project the piece is in; null for a loose piece. */
+  projectId: string | null;
   doc: WritingDocument;
   /** Changes when a different entry is opened, so its pages are rebuilt. */
   mount: number;
@@ -162,6 +161,7 @@ function opened(
   content: WritingContent | null,
   typeface: string,
   state: Current["state"] = "ready",
+  projectId: string | null = null,
 ): Current {
   const doc =
     (content?.document ? parseWritingDocument(content.document) : null) ??
@@ -169,7 +169,14 @@ function opened(
       ? plainTextToDocument(content.body, typeface)
       : newDocument(typeface));
   mounts += 1;
-  return { id, title: content?.title ?? "", doc, mount: mounts, state };
+  return {
+    id,
+    title: content?.title ?? "",
+    projectId,
+    doc,
+    mount: mounts,
+    state,
+  };
 }
 
 function contentOf(current: Current): WritingContent {
@@ -219,16 +226,6 @@ function wordLabel(words: number) {
   return `${words.toLocaleString()} ${words === 1 ? "word" : "words"}`;
 }
 
-function entryDate(iso: string) {
-  const date = new Date(iso);
-  const sameYear = date.getFullYear() === new Date().getFullYear();
-  return new Intl.DateTimeFormat(undefined, {
-    day: "numeric",
-    month: "short",
-    year: sameYear ? undefined : "numeric",
-  }).format(date);
-}
-
 function localDay(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   return `${date.getFullYear()}-${month}-${String(date.getDate()).padStart(2, "0")}`;
@@ -248,15 +245,36 @@ function downloadText(filename: string, text: string) {
 }
 
 function summaryOf(entry: WritingEntry): WritingEntrySummary {
-  return {
-    id: entry.id,
-    title: entry.title,
-    preview: entry.preview,
-    wordCount: entry.wordCount,
-    revision: entry.revision,
-    createdAt: entry.createdAt,
-    updatedAt: entry.updatedAt,
-  };
+  const { body: _body, document: _document, ...summary } = entry;
+  return summary;
+}
+
+async function requestJson(
+  url: string,
+  init: RequestInit,
+): Promise<{ ok: boolean; status: number; data: Record<string, unknown> }> {
+  try {
+    const response = await fetch(url, {
+      cache: "no-store",
+      ...init,
+      headers: { "Content-Type": "application/json", ...init.headers },
+    });
+    const data: unknown = await response.json().catch(() => ({}));
+    return {
+      ok: response.ok,
+      status: response.status,
+      data:
+        data && typeof data === "object"
+          ? (data as Record<string, unknown>)
+          : {},
+    };
+  } catch {
+    return { ok: false, status: 0, data: {} };
+  }
+}
+
+function errorOf(data: Record<string, unknown>, fallback: string) {
+  return typeof data.error === "string" ? data.error : fallback;
 }
 
 function subscribeFullscreen(listener: () => void) {
@@ -272,6 +290,7 @@ function subscribeFullscreen(listener: () => void) {
 export function WritingRoom({
   deviceKey,
   initialEntries,
+  initialProjects,
   initialEntryId,
   storage,
   listFailed,
@@ -288,21 +307,62 @@ export function WritingRoom({
     const drafts = sync.load();
     if (initialEntryId) {
       const draft = drafts.find((item) => item.id === initialEntryId);
+      const known = initialEntries.find((item) => item.id === initialEntryId);
       return draft
-        ? opened(draft.id, draft.content, prefs.typeface)
-        : opened(initialEntryId, null, prefs.typeface, "opening");
+        ? opened(
+            draft.id,
+            draft.content,
+            prefs.typeface,
+            "ready",
+            draft.projectId ?? known?.projectId ?? null,
+          )
+        : opened(
+            initialEntryId,
+            null,
+            prefs.typeface,
+            "opening",
+            known?.projectId ?? null,
+          );
     }
     const latest = drafts[0];
     return latest
-      ? opened(latest.id, latest.content, prefs.typeface)
+      ? opened(
+          latest.id,
+          latest.content,
+          prefs.typeface,
+          "ready",
+          latest.projectId ??
+            initialEntries.find((item) => item.id === latest.id)?.projectId ??
+            null,
+        )
       : opened(newWritingEntryId(), null, prefs.typeface);
   });
   const [entries, setEntries] = useState(initialEntries);
+  const [projects, setProjects] = useState(initialProjects);
+  const [libraryProject, setLibraryProject] = useState<string | null>(null);
+  const [newProject, setNewProject] = useState<{
+    open: boolean;
+    busy: boolean;
+    error: string;
+  }>({ open: false, busy: false, error: "" });
+  const [outlineProject, setOutlineProject] = useState<string | null>(null);
+  const [compileState, setCompileState] = useState<{
+    projectId: string | null;
+    busy: boolean;
+    error: string;
+  }>({ projectId: null, busy: false, error: "" });
+  const [compiled, setCompiled] = useState<{
+    projectId: string;
+    title: string;
+    doc: WritingDocument;
+    text: string;
+  } | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [view, setView] = useState<PagesView>(
     () => prefs.view ?? (window.innerWidth < 768 ? "draft" : "page"),
   );
   const [editors] = useState<PageEditors>(() => new Map());
+  const [compiledEditors] = useState<PageEditors>(() => new Map());
   const [active, setActive] = useState<{
     pageId: string;
     editor: Editor;
@@ -379,7 +439,9 @@ export function WritingRoom({
         sync.adopt(entry);
         const content = sync.draft(id)?.content ?? entry;
         setCurrent((value) =>
-          value.id === id ? opened(id, content, value.doc.typeface) : value,
+          value.id === id
+            ? opened(id, content, value.doc.typeface, "ready", entry.projectId)
+            : value,
         );
         setFocusTick((tick) => tick + 1);
       } catch {
@@ -511,7 +573,7 @@ export function WritingRoom({
     setCurrent((value) =>
       value.id === current.id ? { ...value, ...next } : value,
     );
-    sync.edit(current.id, contentOf(updated));
+    sync.edit(current.id, contentOf(updated), current.projectId);
   }
 
   const changeDocument = useCallback(
@@ -562,6 +624,8 @@ export function WritingRoom({
 
   function openEntry(id: string) {
     setSheetOpen(false);
+    setOutlineProject(null);
+    setCompiled(null);
     if (id === current.id) {
       setFocusTick((tick) => tick + 1);
       return;
@@ -569,17 +633,241 @@ export function WritingRoom({
     setNotice(null);
     setActive(null);
     const draft = sync.draft(id);
+    const projectId =
+      draft?.projectId ??
+      entries.find((item) => item.id === id)?.projectId ??
+      null;
     if (draft) {
-      setCurrent(opened(id, draft.content, prefs.typeface));
+      setCurrent(opened(id, draft.content, prefs.typeface, "ready", projectId));
       setFocusTick((tick) => tick + 1);
       return;
     }
-    setCurrent(opened(id, null, prefs.typeface, "opening"));
+    setCurrent(opened(id, null, prefs.typeface, "opening", projectId));
     void loadEntry(id);
+  }
+
+  /** Starts a new piece at the end of a project. It is saved once it has words. */
+  function addPiece(projectId: string) {
+    setSheetOpen(false);
+    setCompiled(null);
+    setNotice(null);
+    setActive(null);
+    setCurrent(
+      opened(newWritingEntryId(), null, prefs.typeface, "ready", projectId),
+    );
+    setFocusTick((tick) => tick + 1);
+  }
+
+  async function createProject(title: string, template: ProjectTemplateId) {
+    const id = newWritingProjectId();
+    setNewProject({ open: true, busy: true, error: "" });
+    const result = await requestJson("/api/me/writing/projects", {
+      method: "POST",
+      body: JSON.stringify({ id, title, template }),
+    });
+    const project = result.data.project as WritingProject | undefined;
+    if (!result.ok || !project) {
+      setNewProject({
+        open: true,
+        busy: false,
+        error: errorOf(
+          result.data,
+          "We could not create this project. Check your connection and try again.",
+        ),
+      });
+      return;
+    }
+    const created = (result.data.entries as WritingEntrySummary[]) ?? [];
+    setProjects((list) => [project, ...list.filter((item) => item.id !== id)]);
+    setEntries((list) => [...created, ...list]);
+    setNewProject({ open: false, busy: false, error: "" });
+    setLibraryProject(id);
+    setSheetOpen(true);
+    toast.success(
+      created.length
+        ? `Project created with ${created.length} ${created.length === 1 ? "piece" : "pieces"}`
+        : "Project created",
+    );
+  }
+
+  async function renameProject(id: string, title: string) {
+    const before = projects;
+    setProjects((list) =>
+      list.map((item) => (item.id === id ? { ...item, title } : item)),
+    );
+    const result = await requestJson(
+      `/api/me/writing/projects/${encodeURIComponent(id)}`,
+      { method: "PATCH", body: JSON.stringify({ title }) },
+    );
+    if (!result.ok) {
+      setProjects(before);
+      toast.error(
+        errorOf(result.data, "Couldn’t rename the project. Try again."),
+      );
+    }
+  }
+
+  async function deleteProject(id: string) {
+    const result = await requestJson(
+      `/api/me/writing/projects/${encodeURIComponent(id)}`,
+      { method: "DELETE" },
+    );
+    if (!result.ok && result.status !== 404) {
+      toast.error(
+        errorOf(
+          result.data,
+          "Couldn’t delete the project. It’s unchanged. Try again.",
+        ),
+      );
+      return;
+    }
+    setProjects((list) => list.filter((item) => item.id !== id));
+    setEntries((list) =>
+      list.map((item) =>
+        item.projectId === id ? { ...item, projectId: null } : item,
+      ),
+    );
+    for (const draftId of syncState.pending) {
+      if (sync.draft(draftId)?.projectId === id) sync.place(draftId, null);
+    }
+    if (current.projectId === id) {
+      sync.place(current.id, null);
+      setCurrent((value) =>
+        value.projectId === id ? { ...value, projectId: null } : value,
+      );
+    }
+    setLibraryProject(null);
+    toast.success("Project deleted. Its pieces are loose pieces now.");
+  }
+
+  async function reorderPieces(projectId: string, ids: string[]) {
+    const before = entries;
+    const order = new Map(ids.map((id, index) => [id, index]));
+    setEntries((list) =>
+      list.map((item) =>
+        order.has(item.id)
+          ? { ...item, projectId, position: order.get(item.id)! }
+          : item,
+      ),
+    );
+    const result = await requestJson(
+      `/api/me/writing/projects/${encodeURIComponent(projectId)}/pieces`,
+      { method: "PUT", body: JSON.stringify({ entryIds: ids }) },
+    );
+    if (!result.ok) {
+      setEntries(before);
+      toast.error(
+        errorOf(result.data, "Couldn’t save the new order. Try again."),
+      );
+    }
+  }
+
+  async function movePiece(id: string, projectId: string | null) {
+    sync.place(id, projectId);
+    if (current.id === id) {
+      setCurrent((value) =>
+        value.id === id ? { ...value, projectId } : value,
+      );
+    }
+    if (!entries.some((item) => item.id === id)) return;
+    const result = await requestJson(
+      `/api/me/writing/${encodeURIComponent(id)}`,
+      { method: "PATCH", body: JSON.stringify({ projectId }) },
+    );
+    const entry = result.data.entry as WritingEntrySummary | undefined;
+    if (!result.ok || !entry) {
+      toast.error(errorOf(result.data, "Couldn’t move this piece. Try again."));
+      return;
+    }
+    setEntries((list) =>
+      list.map((item) => (item.id === id ? { ...item, ...entry } : item)),
+    );
+    const project = projects.find((item) => item.id === projectId);
+    toast.success(
+      project ? `Moved to ${projectName(project)}` : "Moved to loose pieces",
+    );
+  }
+
+  async function changeCard(
+    id: string,
+    card: { synopsis?: string; status?: PieceStatus },
+  ) {
+    const before = entries;
+    setEntries((list) =>
+      list.map((item) => (item.id === id ? { ...item, ...card } : item)),
+    );
+    const result = await requestJson(
+      `/api/me/writing/${encodeURIComponent(id)}`,
+      { method: "PATCH", body: JSON.stringify(card) },
+    );
+    if (!result.ok) {
+      setEntries(before);
+      toast.error(
+        errorOf(
+          result.data,
+          "Couldn’t save that. Check your connection and try again.",
+        ),
+      );
+    }
+  }
+
+  async function compile(options: CompileOptions) {
+    const projectId = compileState.projectId;
+    if (!projectId) return;
+    setCompileState({ projectId, busy: true, error: "" });
+    const result = await requestJson(
+      `/api/me/writing/projects/${encodeURIComponent(projectId)}/compile`,
+      { method: "GET" },
+    );
+    const stored = result.data.entries as WritingEntry[] | undefined;
+    const project = result.data.project as WritingProject | undefined;
+    if (!result.ok || !stored || !project) {
+      setCompileState({
+        projectId,
+        busy: false,
+        error: errorOf(
+          result.data,
+          "We could not gather this project. Check your connection and try again.",
+        ),
+      });
+      return;
+    }
+    // Words on this device that the account hasn't confirmed yet are compiled too.
+    const known = new Set(stored.map((entry) => entry.id));
+    const sources = [
+      ...stored.map((entry) => ({
+        id: entry.id,
+        content: sync.draft(entry.id)?.content ?? entry,
+      })),
+      ...syncState.pending
+        .filter(
+          (id) => !known.has(id) && sync.draft(id)?.projectId === projectId,
+        )
+        .map((id) => ({ id, content: sync.draft(id)!.content })),
+    ];
+    const ordered = sources.map(({ id, content }) =>
+      id === current.id
+        ? contentOf(current)
+        : {
+            title: content.title,
+            body: content.body,
+            document: content.document,
+          },
+    );
+    setCompiled({
+      projectId,
+      title: project.title,
+      doc: compileProject(project.title, ordered, options, prefs.typeface),
+      text: compileProjectText(project.title, ordered, options),
+    });
+    setCompileState({ projectId: null, busy: false, error: "" });
+    setSheetOpen(false);
+    setView("page");
   }
 
   function newEntry() {
     setSheetOpen(false);
+    setCompiled(null);
     if (
       current.state === "ready" &&
       !body.trim() &&
@@ -738,11 +1026,11 @@ export function WritingRoom({
         ? "Resume timer"
         : `Start ${prefs.minutes}-minute timer`;
 
-  const rows = useMemo(() => {
+  const pieces = useMemo((): LibraryPiece[] => {
     const known = new Set(entries.map((item) => item.id));
     const local = syncState.pending
       .filter((id) => !known.has(id))
-      .flatMap((id) => {
+      .flatMap((id): LibraryPiece[] => {
         const draft = sync.draft(id);
         return draft
           ? [
@@ -751,17 +1039,68 @@ export function WritingRoom({
                 title: draft.content.title,
                 preview: writingPreview(draft.content.body),
                 wordCount: countWords(draft.content.body),
-                revision: 0,
-                createdAt: draft.updatedAt,
                 updatedAt: draft.updatedAt,
+                projectId: draft.projectId ?? null,
+                position: Number.MAX_SAFE_INTEGER,
+                synopsis: "",
+                status: "",
+                local: true,
+                open: false,
               },
             ]
           : [];
       });
-    return [...local, ...entries].sort((a, b) =>
-      b.updatedAt.localeCompare(a.updatedAt),
-    );
-  }, [entries, syncState.pending, sync]);
+    const list: LibraryPiece[] = [
+      ...local,
+      ...entries.map((item) => ({
+        id: item.id,
+        title: item.title,
+        preview: item.preview,
+        wordCount: item.wordCount,
+        updatedAt: item.updatedAt,
+        projectId: item.projectId,
+        position: item.position,
+        synopsis: item.synopsis,
+        status: item.status,
+        local: syncState.pending.includes(item.id) && !sync.saved(item.id),
+        open: false,
+      })),
+    ];
+    // The open piece shows what is on the page now, even before it is saved.
+    const openIndex = list.findIndex((item) => item.id === current.id);
+    const live = {
+      title: current.title,
+      preview: writingPreview(body),
+      wordCount: words,
+      projectId: current.projectId,
+      open: true,
+    };
+    if (openIndex >= 0) list[openIndex] = { ...list[openIndex]!, ...live };
+    else if (current.projectId && current.state === "ready")
+      list.push({
+        id: current.id,
+        ...live,
+        updatedAt: new Date().toISOString(),
+        position: Number.MAX_SAFE_INTEGER,
+        synopsis: "",
+        status: "",
+        local: true,
+      });
+    return list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }, [
+    entries,
+    syncState.pending,
+    sync,
+    current.id,
+    current.title,
+    current.projectId,
+    current.state,
+    body,
+    words,
+  ]);
+  const currentProject = projects.find(
+    (project) => project.id === current.projectId,
+  );
 
   const chrome =
     "transition-opacity duration-180 motion-reduce:transition-none data-[hidden=true]:opacity-0 data-[hidden=true]:hover:opacity-100 data-[hidden=true]:focus-within:opacity-100 data-[hidden=true]:[&:not(:hover):not(:focus-within)_*]:pointer-events-none";
@@ -773,10 +1112,25 @@ export function WritingRoom({
         className={`flex flex-col border-b border-border px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1 sm:px-4 print:hidden ${chrome}`}
       >
         <div className="flex items-center justify-between gap-2">
-          <Link href="/home" className={buttonVariants({ variant: "ghost" })}>
-            <ArrowLeft aria-hidden="true" />
-            Home
-          </Link>
+          <div className="flex min-w-0 items-center gap-1">
+            <Link href="/home" className={buttonVariants({ variant: "ghost" })}>
+              <ArrowLeft aria-hidden="true" />
+              Home
+            </Link>
+            {currentProject ? (
+              <Button
+                variant="ghost"
+                className="min-w-0"
+                aria-label={`Project: ${projectName(currentProject)}. Open its pieces`}
+                onClick={() => {
+                  setLibraryProject(currentProject.id);
+                  setSheetOpen(true);
+                }}
+              >
+                <span className="truncate">{projectName(currentProject)}</span>
+              </Button>
+            ) : null}
+          </div>
           <Popover>
             <PopoverTrigger render={<Button variant="ghost" />}>
               <Lock aria-hidden="true" />
@@ -805,7 +1159,7 @@ export function WritingRoom({
             </PopoverContent>
           </Popover>
         </div>
-        <div className="flex justify-center">
+        <div className={compiled ? "hidden" : "flex justify-center"}>
           <WritingFormatBar
             editor={
               active && editors.get(active.pageId) === active.editor
@@ -850,35 +1204,85 @@ export function WritingRoom({
           className="min-h-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto print:overflow-visible"
           aria-busy={current.state === "opening" || undefined}
         >
-          <WritingPages
-            key={current.mount}
-            document={current.doc}
-            onChange={changeDocument}
-            view={view}
-            spellcheck={prefs.spellcheck}
-            readOnly={current.state !== "ready"}
-            editors={editors}
-            onActiveEditor={onActiveEditor}
-            before={
-              <input
-                aria-label="Title"
-                placeholder={
-                  current.state === "opening" ? "Opening…" : "Untitled"
-                }
-                value={current.title}
-                maxLength={WRITING_TITLE_MAX}
-                readOnly={current.state !== "ready"}
-                onChange={(event) => change({ title: event.target.value })}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === "ArrowDown") {
-                    event.preventDefault();
-                    setFocusTick((tick) => tick + 1);
+          {compiled ? (
+            <WritingPages
+              key={`compiled-${compiled.projectId}-${compiled.doc.pages.length}`}
+              document={compiled.doc}
+              onChange={() => undefined}
+              view={view}
+              spellcheck={false}
+              readOnly
+              editors={compiledEditors}
+              onActiveEditor={() => undefined}
+              before={
+                <div className="flex w-full max-w-2xl flex-col items-center gap-3 text-center print:hidden">
+                  <h2 className="text-lg font-medium">
+                    {compiled.title.trim() || "Untitled project"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Compiled from every piece, in order:{" "}
+                    {compiled.doc.pages.length.toLocaleString()}{" "}
+                    {compiled.doc.pages.length === 1 ? "page" : "pages"},{" "}
+                    {wordLabel(countWords(compiled.text))}. Changes happen in
+                    the pieces.
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button onClick={printPages}>Print or save as PDF</Button>
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        downloadText(
+                          `${(compiled.title.trim() || "project").replace(/[^\p{L}\p{N}]+/gu, "-").toLowerCase()}-${localDay(new Date())}.txt`,
+                          compiled.text,
+                        )
+                      }
+                    >
+                      Download as plain text
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setCompiled(null);
+                        setFocusTick((tick) => tick + 1);
+                      }}
+                    >
+                      Back to writing
+                    </Button>
+                  </div>
+                </div>
+              }
+            />
+          ) : (
+            <WritingPages
+              key={current.mount}
+              document={current.doc}
+              onChange={changeDocument}
+              view={view}
+              spellcheck={prefs.spellcheck}
+              readOnly={current.state !== "ready"}
+              editors={editors}
+              onActiveEditor={onActiveEditor}
+              before={
+                <input
+                  aria-label="Title"
+                  placeholder={
+                    current.state === "opening" ? "Opening…" : "Untitled"
                   }
-                }}
-                className={`w-full max-w-2xl bg-transparent text-center text-3xl text-foreground outline-none placeholder:text-muted-foreground focus-visible:underline focus-visible:decoration-primary focus-visible:underline-offset-8 print:hidden ${face.className}`}
-              />
-            }
-          />
+                  value={current.title}
+                  maxLength={WRITING_TITLE_MAX}
+                  readOnly={current.state !== "ready"}
+                  onChange={(event) => change({ title: event.target.value })}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === "ArrowDown") {
+                      event.preventDefault();
+                      setFocusTick((tick) => tick + 1);
+                    }
+                  }}
+                  className={`w-full max-w-2xl bg-transparent text-center text-3xl text-foreground outline-none placeholder:text-muted-foreground focus-visible:underline focus-visible:decoration-primary focus-visible:underline-offset-8 print:hidden ${face.className}`}
+                />
+              }
+            />
+          )}
         </div>
         <p role="status" className="sr-only">
           {announcement}
@@ -887,6 +1291,8 @@ export function WritingRoom({
 
       <footer
         data-hidden={hideChrome}
+        // The compiled manuscript has its own actions; the piece's controls step aside.
+        hidden={compiled !== null}
         className={`flex flex-wrap items-center justify-between gap-x-6 gap-y-1 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 print:hidden ${chrome}`}
       >
         <div className="flex items-center gap-1">
@@ -1038,10 +1444,11 @@ export function WritingRoom({
           <Button
             variant="ghost"
             onClick={() => {
+              setLibraryProject(current.projectId);
               setSheetOpen(true);
             }}
           >
-            Entries
+            Library
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -1143,96 +1550,68 @@ export function WritingRoom({
         </div>
       </footer>
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent
-          side="right"
-          // Closing the list returns to the page, so writing can go on at once.
-          finalFocus={() => {
-            setFocusTick((tick) => tick + 1);
-            return false;
-          }}
-        >
-          <SheetHeader variant="section">
-            <SheetTitle>Your writing</SheetTitle>
-            <SheetDescription>
-              {deviceOnly
-                ? "Entries kept in this browser."
-                : `${rows.length.toLocaleString()} ${rows.length === 1 ? "entry" : "entries"}, newest first.`}
-            </SheetDescription>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4">
-            {rows.length ? (
-              <ItemGroup>
-                {rows.map((row) => {
-                  const open = row.id === current.id;
-                  const preview = open ? writingPreview(body) : row.preview;
-                  const title = open ? current.title : row.title;
-                  const count = open ? words : row.wordCount;
-                  const local =
-                    syncState.pending.includes(row.id) && !sync.saved(row.id);
-                  return (
-                    <div role="listitem" key={row.id}>
-                      <Item
-                        render={
-                          <a
-                            href={`/write?entry=${encodeURIComponent(row.id)}`}
-                            aria-current={open ? "true" : undefined}
-                            onClick={(event) => {
-                              if (
-                                event.metaKey ||
-                                event.ctrlKey ||
-                                event.shiftKey ||
-                                event.button !== 0
-                              )
-                                return;
-                              event.preventDefault();
-                              openEntry(row.id);
-                            }}
-                          />
-                        }
-                      >
-                        <ItemContent>
-                          <ItemTitle>
-                            {title || preview || "Untitled"}
-                          </ItemTitle>
-                          <ItemDescription>
-                            {entryDate(row.updatedAt)} · {wordLabel(count)}
-                            {open ? " · Open now" : ""}
-                            {local ? " · Not saved to your account yet" : ""}
-                          </ItemDescription>
-                        </ItemContent>
-                      </Item>
-                    </div>
-                  );
-                })}
-              </ItemGroup>
-            ) : (
-              <Empty>
-                <EmptyHeader>
-                  <EmptyTitle>No entries yet</EmptyTitle>
-                  <EmptyDescription>
-                    Start writing and your entry appears here.
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            )}
-          </div>
-          {!deviceOnly && entries.length ? (
-            <SheetFooter>
-              <Button variant="outline" onClick={() => void downloadAll()}>
-                Download all
-              </Button>
-              {exportError ? (
-                <p className="text-sm text-destructive">{exportError}</p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  One plain text file, oldest entry first.
-                </p>
-              )}
-            </SheetFooter>
-          ) : null}
-        </SheetContent>
-      </Sheet>
+      <WritingLibrary
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        onClosed={() => setFocusTick((tick) => tick + 1)}
+        deviceOnly={deviceOnly}
+        projects={projects}
+        pieces={pieces}
+        projectId={libraryProject}
+        onShowProject={setLibraryProject}
+        onOpenPiece={openEntry}
+        onNewProject={() =>
+          setNewProject({ open: true, busy: false, error: "" })
+        }
+        onAddPiece={addPiece}
+        onReorder={(projectId, ids) => void reorderPieces(projectId, ids)}
+        onMovePiece={(id, projectId) => void movePiece(id, projectId)}
+        onRenameProject={(id, title) => void renameProject(id, title)}
+        onDeleteProject={(id) => void deleteProject(id)}
+        onCompile={(id) =>
+          setCompileState({ projectId: id, busy: false, error: "" })
+        }
+        onOutline={setOutlineProject}
+        onDownloadAll={() => void downloadAll()}
+        exportError={exportError}
+      />
+
+      <NewProjectDialog
+        // A fresh form each time it opens.
+        key={newProject.open ? "new-project-open" : "new-project-closed"}
+        open={newProject.open}
+        onOpenChange={(open) => setNewProject({ open, busy: false, error: "" })}
+        busy={newProject.busy}
+        error={newProject.error}
+        onCreate={(title, template) => void createProject(title, template)}
+      />
+
+      <WritingOutline
+        open={outlineProject !== null}
+        onOpenChange={(open) => {
+          if (!open) setOutlineProject(null);
+        }}
+        project={projects.find((project) => project.id === outlineProject)}
+        pieces={pieces}
+        onCard={(id, card) => void changeCard(id, card)}
+        onOpenPiece={openEntry}
+      />
+
+      <CompileDialog
+        key={compileState.projectId ?? "compile-closed"}
+        open={compileState.projectId !== null}
+        onOpenChange={(open) => {
+          if (!open)
+            setCompileState({ projectId: null, busy: false, error: "" });
+        }}
+        project={projects.find(
+          (project) => project.id === compileState.projectId,
+        )}
+        busy={compileState.busy}
+        error={compileState.error}
+        defaultPageSize={current.doc.pageSize}
+        onCompile={(options) => void compile(options)}
+      />
 
       <AlertDialog
         open={deleteOpen}
@@ -1300,7 +1679,7 @@ export function WritingRoom({
       />
 
       {/* Printing draws each page on its own sheet of the chosen paper. */}
-      <style>{`@page { size: ${PAGE_SIZES[current.doc.pageSize].width}mm ${PAGE_SIZES[current.doc.pageSize].height}mm; margin: 0; }
+      <style>{`@page { size: ${PAGE_SIZES[(compiled?.doc ?? current.doc).pageSize].width}mm ${PAGE_SIZES[(compiled?.doc ?? current.doc).pageSize].height}mm; margin: 0; }
 @media print { [data-slot="writing-page"] { zoom: 1 !important; break-after: page; } }`}</style>
     </div>
   );
