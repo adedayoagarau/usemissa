@@ -50,7 +50,7 @@ export function SubmitterQuestionsPanel({ submissionId, organizationName, questi
       {questions.length ? (
         <ol className="grid gap-3">
           {questions.map((question) => (
-            <li key={question.id} className="grid gap-2 rounded-xl border border-border p-4">
+            <li key={question.id} className="grid gap-2 rounded-lg border border-border bg-card p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs text-muted-foreground">You asked on {displayDate(question.askedAt)}</span>
                 <QuestionStateBadge status={question.status} />
