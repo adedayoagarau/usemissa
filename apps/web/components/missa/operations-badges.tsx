@@ -101,3 +101,32 @@ export function DeliveryStateBadge({ state }: { state: string }) {
     </Badge>
   );
 }
+
+const decisionSummaryCopy: Record<string, { label: string; variant: BadgeVariant }> = {
+  "No decisions": { label: "Not decided", variant: "outline" },
+  "Partially decided": { label: "Partly decided", variant: "outline" },
+  "Partially accepted": { label: "Partly accepted", variant: "accent" },
+  Mixed: { label: "Mixed", variant: "information" },
+  Accepted: { label: "Accepted", variant: "success" },
+  Declined: { label: "Declined", variant: "secondary" },
+  Waitlisted: { label: "Waitlisted", variant: "information" },
+};
+
+/** The recorded decisions across a submission's Works, from decisionSummary. Never implies a letter went out. */
+export function DecisionSummaryBadge({ summary }: { summary: string }) {
+  const copy = decisionSummaryCopy[summary] ?? { label: summary, variant: "outline" as const };
+  return (
+    <Badge variant={copy.variant} size="compact">
+      {copy.label}
+    </Badge>
+  );
+}
+
+/** An intake flag raised by a screening rule or duplicate check. A prompt to look, never a decision. */
+export function IntakeFlagBadge({ label, message }: { label: string; message: string }) {
+  return (
+    <Badge variant="warning" size="compact" title={message} aria-label={`${label}. ${message}`}>
+      {label}
+    </Badge>
+  );
+}

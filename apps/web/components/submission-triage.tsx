@@ -3,97 +3,82 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Filter, ListChecks } from 'lucide-react';
+import { ChevronDown, Filter, ListChecks, Mail } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
-export const BULK_TRIAGE_FORM_ID = 'bulk-triage';
+type Decision = 'declined' | 'waitlisted' | 'accepted';
 
-type Action = 'decline' | 'waitlist' | 'accept' | 'letter';
+const LETTER_KINDS: Array<{ kind: string; label: string }> = [
+  { kind: 'rejection-with-dignity', label: 'Rejection with dignity' },
+  { kind: 'longlist', label: 'Longlist' },
+  { kind: 'shortlist', label: 'Shortlist' },
+  { kind: 'finalists', label: 'Finalists' },
+  { kind: 'decision', label: 'Decision letter' },
+  { kind: 'custom', label: 'Custom update' },
+];
+
+const DECISION_WORDS: Record<Decision, { verb: string; menu: string }> = {
+  accepted: { verb: 'Accept', menu: 'Accept undecided Works' },
+  waitlisted: { verb: 'Waitlist', menu: 'Waitlist undecided Works' },
+  declined: { verb: 'Decline', menu: 'Decline undecided Works' },
+};
 
 /**
- * Bulk actions on submissions ticked in the queue. Row checkboxes belong to
- * this form through the HTML `form` attribute, so the server-rendered queue
- * stays server-rendered. Decisions only fill Works without one; letters are
- * drafts that still pass approval.
+ * Actions on the submissions ticked in the list. Decisions only fill Works
+ * without one and are confirmed first; letters are drafts that still pass
+ * approval in Messages.
  */
-export function BulkTriageBar({ organizationId }: { organizationId: string }) {
+export function BulkTriageActions({ organizationId, ids, onDone }: { organizationId: string; ids: string[]; onDone: () => void }) {
   const router = useRouter();
-  const [action, setAction] = useState<Action>('letter');
-  const [kind, setKind] = useState('rejection-with-dignity');
-  const [confirm, setConfirm] = useState<{ ids: string[] } | null>(null);
+  const [confirm, setConfirm] = useState<Decision | null>(null);
   const [pending, startTransition] = useTransition();
-
-  const selected = (form: HTMLFormElement) => new FormData(form).getAll('submissionId').map(String);
-  const run = (ids: string[]) => startTransition(async () => {
-    const body = action === 'letter'
-      ? { action: 'draft-letter', submissionIds: ids, kind }
-      : { action: 'decide', submissionIds: ids, outcome: action === 'decline' ? 'declined' : action === 'waitlist' ? 'waitlisted' : 'accepted' };
-    const response = await fetch(`/api/orgs/${encodeURIComponent(organizationId)}/submissions/triage`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const count = ids.length;
+  const run = (body: Record<string, unknown>, letter: boolean) => startTransition(async () => {
+    const response = await fetch(`/api/orgs/${encodeURIComponent(organizationId)}/submissions/triage`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...body, submissionIds: ids }) });
     const payload = await response.json().catch(() => ({}));
     setConfirm(null);
     if (!response.ok) { toast.error(payload.error ?? 'Nothing was changed.'); return; }
     const skipped = (payload.withdrawn?.length ?? 0) ? ` ${payload.withdrawn.length} withdrawn skipped.` : '';
-    toast.success(action === 'letter' ? `Drafted ${payload.letters.length} ${payload.letters.length === 1 ? 'letter' : 'letters'} for ${payload.recipients} recipients. Approve them in Messages.${skipped}` : `Recorded ${payload.recorded} Work ${payload.recorded === 1 ? 'decision' : 'decisions'}; kept ${payload.kept} existing.${skipped}`);
+    toast.success(letter ? `Drafted ${payload.letters.length} ${payload.letters.length === 1 ? 'letter' : 'letters'} for ${payload.recipients} recipients. Approve them in Messages.${skipped}` : `Recorded ${payload.recorded} Work ${payload.recorded === 1 ? 'decision' : 'decisions'}; kept ${payload.kept} existing.${skipped}`);
+    onDone();
     router.refresh();
   });
-
   return (
-    <form
-      id={BULK_TRIAGE_FORM_ID}
-      className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-border p-3"
-      aria-label="Bulk actions on selected submissions"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const ids = selected(event.currentTarget);
-        if (ids.length === 0) { toast.error('Tick at least one submission in the queue.'); return; }
-        if (action === 'letter') run(ids);
-        else setConfirm({ ids });
-      }}
-    >
-      <ListChecks aria-hidden="true" className="mb-2 size-4 text-muted-foreground" />
-      <Field className="w-56">
-        <FieldLabel htmlFor="bulk-action">With the ticked submissions</FieldLabel>
-        <NativeSelect className="w-full" id="bulk-action" value={action} onChange={(event) => setAction(event.target.value as Action)}>
-          <NativeSelectOption value="letter">Draft a letter</NativeSelectOption>
-          <NativeSelectOption value="decline">Decline undecided Works</NativeSelectOption>
-          <NativeSelectOption value="waitlist">Waitlist undecided Works</NativeSelectOption>
-          <NativeSelectOption value="accept">Accept undecided Works</NativeSelectOption>
-        </NativeSelect>
-      </Field>
-      {action === 'letter' ? (
-        <Field className="w-56">
-          <FieldLabel htmlFor="bulk-letter-kind">Letter</FieldLabel>
-          <NativeSelect className="w-full" id="bulk-letter-kind" value={kind} onChange={(event) => setKind(event.target.value)}>
-            <NativeSelectOption value="rejection-with-dignity">Rejection with dignity</NativeSelectOption>
-            <NativeSelectOption value="longlist">Longlist</NativeSelectOption>
-            <NativeSelectOption value="shortlist">Shortlist</NativeSelectOption>
-            <NativeSelectOption value="finalists">Finalists</NativeSelectOption>
-            <NativeSelectOption value="decision">Decision letter</NativeSelectOption>
-            <NativeSelectOption value="custom">Custom update</NativeSelectOption>
-          </NativeSelect>
-        </Field>
-      ) : null}
-      <Button type="submit" variant="outline" disabled={pending}>{pending ? 'Working…' : 'Apply to ticked'}</Button>
-      <span className="text-xs text-muted-foreground">Decisions only fill Works without one. Letters are drafts until approved.</span>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<Button type="button" variant="outline" size="sm" disabled={pending} />}><Mail aria-hidden="true" />Draft a letter<ChevronDown aria-hidden="true" /></DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-56">
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Draft for {count} {count === 1 ? 'submission' : 'submissions'}</DropdownMenuLabel>
+            {LETTER_KINDS.map((item) => <DropdownMenuItem key={item.kind} onClick={() => run({ action: 'draft-letter', kind: item.kind }, true)}>{item.label}</DropdownMenuItem>)}
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<Button type="button" variant="outline" size="sm" disabled={pending} />}><ListChecks aria-hidden="true" />Decide<ChevronDown aria-hidden="true" /></DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-60">
+          {(Object.keys(DECISION_WORDS) as Decision[]).map((outcome) => <DropdownMenuItem key={outcome} onClick={() => setConfirm(outcome)}>{DECISION_WORDS[outcome].menu}</DropdownMenuItem>)}
+        </DropdownMenuContent>
+      </DropdownMenu>
       <Dialog open={Boolean(confirm)} onOpenChange={(open) => { if (!open) setConfirm(null); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{action === 'decline' ? 'Decline' : action === 'waitlist' ? 'Waitlist' : 'Accept'} undecided Works in {confirm?.ids.length} {confirm?.ids.length === 1 ? 'submission' : 'submissions'}?</DialogTitle>
+            <DialogTitle>{confirm ? DECISION_WORDS[confirm].verb : ''} undecided Works in {count} {count === 1 ? 'submission' : 'submissions'}?</DialogTitle>
             <DialogDescription>Pieces that already have a decision keep it. Submitters aren’t told until you send a letter. You can still change the decision on each piece.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
-            <Button type="button" onClick={() => confirm && run(confirm.ids)} disabled={pending}>Record decisions</Button>
+            <Button type="button" onClick={() => confirm && run({ action: 'decide', outcome: confirm }, false)} disabled={pending}>{pending ? 'Recording…' : 'Record decisions'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </form>
+    </>
   );
 }
 

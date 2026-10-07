@@ -34,12 +34,14 @@ test('Submission queue and dossier preserve independent lifecycle lanes and mult
   await page.goto(`/organization/${fixture.organizationId}/submissions?q=${encodeURIComponent(fixture.firstWork)}`);
   await expect(page.getByRole('heading', { name: 'Submissions', level: 1 })).toBeVisible();
   await expect(page.getByText('Workflow Submitter').first()).toBeVisible();
-  await expect(page.locator('dd').filter({ hasText: 'Partially accepted' }).first()).toBeVisible();
-  await expect(page.locator('dd').filter({ hasText: 'In review' }).first()).toBeVisible();
   await expect(page.locator('body')).not.toContainText(fixture.organizationId);
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);
-  await page.getByRole('link', { name: 'Open full dossier' }).click();
+  await page.getByRole('button', { name: /Workflow Submitter/ }).first().click();
+  const pane = page.getByRole('dialog');
+  await expect(pane.locator('dd').filter({ hasText: 'Partly accepted' })).toBeVisible();
+  await expect(pane.locator('dd').filter({ hasText: 'In review' })).toBeVisible();
+  await pane.getByRole('link', { name: 'Open the full submission' }).click();
   await page.getByRole('link', { name: 'Works' }).click();
   await expect(page.getByRole('heading', { name: fixture.firstWork })).toBeVisible();
   await expect(page.getByRole('heading', { name: fixture.secondWork })).toBeVisible();
