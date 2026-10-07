@@ -7,7 +7,6 @@ import { BellRing, Check, ChevronDown, ChevronRight, Download, Ellipsis, FileTex
 import type { DistributionPlan } from '@missa/workspace-engine';
 import type { RankedSubmissionRow, RoundOperationsView, RoundReaderRow } from '@/lib/readerOperationsData';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -23,6 +22,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { CalibrationBadge, WorkDecisionBadge } from '@/components/missa/operations-badges';
 import { CountBadge } from '@/components/missa/count-badge';
+import { HueTile } from '@/components/missa/hue-tile';
+import { PersonAvatar } from '@/components/missa/person-avatar';
 import { SegmentedChoice } from '@/components/missa/segmented-choice';
 import { DecisionDateControl, NewRoundDialog, PromoteDialog, PublishResultsDialog, ReassignReadsDialog, RoundBriefDialog, RoundDueDateControl, RubricDialog } from '@/components/reader-round-actions';
 
@@ -34,7 +35,6 @@ export interface RoundSummary { id: string; name: string; opportunityTitle: stri
 const dayMonth = (value: string) => new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(new Date(value));
 const clock = (value: string) => { const date = new Date(value); return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('en-GB', { hour: 'numeric', minute: '2-digit' }).format(date); };
 const sentence = (value: string) => { const text = value.replaceAll('-', ' ').toLocaleLowerCase('en'); return text.charAt(0).toUpperCase() + text.slice(1); };
-const initials = (label: string) => label.split(/[\s@._-]+/u).filter(Boolean).slice(0, 2).map((part) => part[0]!.toUpperCase()).join('') || '?';
 
 function conflictLabel(reason: DistributionPlan['conflicts'][number]['reason']): string {
   switch (reason) {
@@ -118,7 +118,8 @@ export function ReaderOperations({ organizationId, initial, canManage, stageLabe
   return (
     <div className="grid gap-6">
       <header className="grid gap-3">
-        <div className="flex min-w-0 items-center gap-1">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <HueTile identity={view.round.id}><ListChecks /></HueTile>
           <h2 id="round-title" className="truncate font-heading text-2xl font-medium text-foreground">{view.round.name}</h2>
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button type="button" variant="ghost" size="icon-sm" />} aria-label="Switch review round">
@@ -129,12 +130,13 @@ export function ReaderOperations({ organizationId, initial, canManage, stageLabe
                 <DropdownMenuLabel>Review rounds</DropdownMenuLabel>
                 {rounds.map((round) => (
                   <DropdownMenuItem key={round.id} onClick={() => router.push(`${reviewsHref}?selected=${encodeURIComponent(round.id)}`)}>
-                    <span className="flex size-4 items-center justify-center">{round.id === roundId ? <Check aria-hidden="true" /> : null}</span>
+                    <HueTile identity={round.id} size="sm"><ListChecks /></HueTile>
                     <span className="grid min-w-0 flex-1">
                       <span className="truncate text-foreground">{round.name}</span>
                       <span className="truncate text-xs text-muted-foreground">{round.opportunityTitle}</span>
                     </span>
                     <span className="font-mono text-xs text-muted-foreground tabular-nums">{round.complete}/{round.total}</span>
+                    {round.id === roundId ? <Check aria-label="Current round" className="text-primary" /> : <span className="size-4" />}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuGroup>
@@ -214,7 +216,7 @@ export function ReaderOperations({ organizationId, initial, canManage, stageLabe
           {view.readers.length === 0 ? (
             <Empty variant="bordered"><EmptyHeader><EmptyTitle>No readers yet</EmptyTitle><EmptyDescription>Invite members with the reviewer role, then distribute this round.</EmptyDescription></EmptyHeader></Empty>
           ) : (
-            <Table>
+            <Table variant="grid">
               <caption className="sr-only">Readers in {view.round.name}, grouped by where they are</caption>
               <TableHeader>
                 <TableRow>
@@ -234,7 +236,7 @@ export function ReaderOperations({ organizationId, initial, canManage, stageLabe
                       <TableRow key={reader.reviewerAccountId} data-state={reader.reviewerAccountId === readerId ? 'selected' : undefined}>
                         <TableCell>
                           <div className="flex min-w-0 items-center gap-3">
-                            <Avatar size="sm"><AvatarFallback>{initials(reader.label)}</AvatarFallback></Avatar>
+                            <PersonAvatar size="sm" name={reader.label} identity={reader.reviewerAccountId} />
                             <div className="grid min-w-0">
                               <Button type="button" variant="rowTitle" size="inline" onClick={() => setReaderId(reader.reviewerAccountId)}>{reader.label}</Button>
                               <span className="truncate text-xs text-muted-foreground">{reader.lastActivityAt ? `Last read ${dayMonth(reader.lastActivityAt)}` : 'No reads recorded'}</span>
@@ -264,7 +266,7 @@ export function ReaderOperations({ organizationId, initial, canManage, stageLabe
             <Empty variant="bordered"><EmptyHeader><EmptyTitle>No submissions in this opportunity</EmptyTitle><EmptyDescription>The ranking fills in as submissions arrive and readers record scores.</EmptyDescription></EmptyHeader></Empty>
           ) : (
             <>
-              <Table>
+              <Table variant="grid">
                 <caption className="sr-only">Submissions ranked by average score, grouped by decision</caption>
                 <TableHeader>
                   <TableRow>
@@ -282,9 +284,12 @@ export function ReaderOperations({ organizationId, initial, canManage, stageLabe
                       <TableRow key={row.submissionId} data-state={row.submissionId === submissionId ? 'selected' : undefined}>
                         <TableCell className="text-end font-mono text-xs tabular-nums"><span className="text-muted-foreground">{view.ranking.indexOf(row) + 1}</span></TableCell>
                         <TableCell>
+                          <div className="flex min-w-0 items-center gap-3">
+                          <PersonAvatar size="sm" name={row.submitterLabel} identity={row.submissionId} />
                           <div className="grid min-w-0">
                             <Button type="button" variant="rowTitle" size="inline" onClick={() => setSubmissionId(row.submissionId)}>{row.submitterLabel}</Button>
                             <span className="truncate text-xs text-muted-foreground">{row.works.map((work) => work.title).join(' · ') || 'No Works'}</span>
+                          </div>
                           </div>
                         </TableCell>
                         <TableCell className="hidden text-end font-mono tabular-nums sm:table-cell">{row.completedCount}/{row.readerCount}</TableCell>
@@ -339,8 +344,8 @@ function ListGroup({ title, count, columns, defaultOpen = true, children }: { ti
   return (
     <TableBody>
       <TableRow variant="static">
-        <TableCell colSpan={columns} className="px-0 pt-5 pb-1">
-          <Button type="button" variant="ghost" size="sm" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
+        <TableCell colSpan={columns} className="px-1 pt-4 pb-1.5">
+          <Button type="button" variant="disclosure" size="sm" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
             {open ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
             {title}
             <span className="font-mono text-xs font-normal text-muted-foreground tabular-nums">{count}</span>
@@ -385,7 +390,7 @@ function ReaderDetail({ reader, view, base, roundId, canMove, onMoved }: { reade
     <>
       <SheetHeader variant="section" className="pe-12">
         <div className="flex items-center gap-3">
-          <Avatar size="lg"><AvatarFallback>{initials(reader.label)}</AvatarFallback></Avatar>
+          <PersonAvatar size="lg" name={reader.label} identity={reader.reviewerAccountId} />
           <div className="grid min-w-0">
             <SheetTitle className="truncate">{reader.label}</SheetTitle>
             <SheetDescription>{sentence(reader.role)} · {view.round.name}</SheetDescription>
@@ -495,7 +500,7 @@ function NudgeDialog({ base, roundId, readers }: { base: string; roundId: string
           <ul className="max-h-48 divide-y divide-border overflow-auto border-y border-border text-sm">
             {readers.map((reader) => (
               <li key={reader.reviewerAccountId} className="flex items-center gap-3 py-2">
-                <Avatar size="sm"><AvatarFallback>{initials(reader.label)}</AvatarFallback></Avatar>
+                <PersonAvatar size="sm" name={reader.label} identity={reader.reviewerAccountId} />
                 <span className="min-w-0 flex-1 truncate">{reader.label}</span>
                 <span className="font-mono text-xs text-muted-foreground tabular-nums">{reader.open} open{reader.overdue ? ` · ${reader.overdue} past due` : ''}</span>
               </li>
@@ -582,7 +587,7 @@ function DistributionPanel({ base, roundId, view, onApplied }: { base: string; r
                 <li key={member.accountId}>
                   <label className="flex min-h-11 items-center gap-3 px-1 text-sm hover:bg-muted/50">
                     <Checkbox checked={selected.has(member.accountId)} onCheckedChange={(checked) => toggle(member.accountId, Boolean(checked))} aria-label={`Include ${member.label}`} />
-                    <Avatar size="sm"><AvatarFallback>{initials(member.label)}</AvatarFallback></Avatar>
+                    <PersonAvatar size="sm" name={member.label} identity={member.accountId} />
                     <span className="min-w-0 flex-1 truncate">{member.label}</span>
                     <span className="text-xs text-muted-foreground">{sentence(member.role)}</span>
                     <span className="w-16 text-end font-mono text-xs text-muted-foreground tabular-nums">{member.openAssignments} open</span>

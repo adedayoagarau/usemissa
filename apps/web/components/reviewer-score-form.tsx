@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import type { RubricCriterion } from '@missa/workspace-engine';
 import { previewRubricScore } from '@/lib/rubricClient';
 import { SegmentedChoice } from '@/components/missa/segmented-choice';
+import { HueTile } from '@/components/missa/hue-tile';
 
 /**
  * The reader's recommendation: one whole-number score from 0 to 100 and
@@ -57,7 +58,7 @@ function RubricScoreForm({ assignmentId, existing, locked, rubric }: { assignmen
   return (
     <form onSubmit={submit} className="grid gap-5" aria-labelledby="reviewer-score-form-title">
       <div className="grid gap-1">
-        <h3 id="reviewer-score-form-title" className="font-heading text-lg font-medium text-foreground">{existing ? 'Update your recommendation' : 'Record your recommendation'}</h3>
+        <h3 id="reviewer-score-form-title" className="text-base font-semibold text-foreground">{existing ? 'Update your recommendation' : 'Record your recommendation'}</h3>
         <p className="text-sm text-muted-foreground">Score each criterion. Your notes go to the review team only, never to the submitter.</p>
       </div>
       {existing && existing.rubricVersion !== undefined && !sameVersion ? <Alert><AlertTitle>The rubric changed</AlertTitle><AlertDescription>You scored this on version {existing.rubricVersion}. That score still counts. Re-score to use version {rubric.version}.</AlertDescription></Alert> : null}
@@ -67,11 +68,11 @@ function RubricScoreForm({ assignmentId, existing, locked, rubric }: { assignmen
           const value = scores[criterion.id];
           return (
             <li key={criterion.id} className="grid gap-3 py-4">
-              <div className="flex items-baseline justify-between gap-3">
-                <span id={labelId} className="text-sm font-medium text-foreground">{criterion.label}</span>
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2.5"><HueTile identity={criterion.id} size="sm">{rubric.criteria.indexOf(criterion) + 1}</HueTile><span id={labelId} className="text-sm font-medium text-foreground">{criterion.label}</span></span>
                 <span className="text-xs text-muted-foreground tabular-nums">{value === undefined ? `– of ${criterion.maxScore}` : `${value} of ${criterion.maxScore}`}{criterion.weight > 1 ? ` · weight ${criterion.weight}` : ''}</span>
               </div>
-              {criterion.description ? <p className="-mt-2 text-sm text-muted-foreground">{criterion.description}</p> : null}
+              {criterion.description ? <p className="-mt-2 ps-8.5 text-sm text-muted-foreground">{criterion.description}</p> : null}
               <SegmentedChoice
                 aria-labelledby={labelId}
                 value={value === undefined ? undefined : String(value)}
@@ -128,7 +129,7 @@ function SingleScoreForm({ assignmentId, existing, locked }: { assignmentId: str
 
   return (
     <form onSubmit={submit} className="grid gap-4" aria-labelledby="reviewer-score-form-title">
-      <h3 id="reviewer-score-form-title" className="font-heading text-lg font-medium text-foreground">{existing ? 'Update your recommendation' : 'Record your recommendation'}</h3>
+      <h3 id="reviewer-score-form-title" className="text-base font-semibold text-foreground">{existing ? 'Update your recommendation' : 'Record your recommendation'}</h3>
       <p className="text-sm text-muted-foreground">This round uses a single 0 to 100 score with notes. Your notes are private to the organization’s review team and are never shown to the submitter.</p>
       <Field>
         <FieldLabel htmlFor={`score-${assignmentId}`}>Score (0 to 100)</FieldLabel>
@@ -206,7 +207,7 @@ export function RoundBriefPanel({ assignmentId, brief }: { assignmentId: string;
   });
   return (
     <section aria-labelledby={`brief-title-${assignmentId}`} className="rounded-lg border border-border p-4">
-      <h3 id={`brief-title-${assignmentId}`} className="font-heading text-lg font-medium text-foreground">Brief for this round</h3>
+      <h3 id={`brief-title-${assignmentId}`} className="text-base font-semibold text-foreground">Brief for this round</h3>
       <p className="mt-2 text-sm leading-6 whitespace-pre-line text-foreground">{brief.text}</p>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         {brief.acknowledged ? <span className="text-xs text-muted-foreground">You acknowledged this brief.</span> : <Button type="button" onClick={acknowledge} disabled={pending}>{pending ? 'Saving…' : 'I have read this brief'}</Button>}

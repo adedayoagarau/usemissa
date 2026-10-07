@@ -52,11 +52,18 @@ function PopoverContent({
   )
 }
 
-function PopoverHeader({ className, ...props }: React.ComponentProps<"div">) {
+function PopoverHeader({
+  className,
+  ruled = false,
+  ...props
+}: React.ComponentProps<"div"> & {
+  /** Padded header with a rule below, for a `flush` popover. */
+  ruled?: boolean
+}) {
   return (
     <div
       data-slot="popover-header"
-      className={cn("flex flex-col gap-1 text-sm", className)}
+      className={cn("flex flex-col gap-1 text-sm", ruled && "border-b border-border px-4 py-3", className)}
       {...props}
     />
   )

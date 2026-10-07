@@ -12,9 +12,11 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import { SegmentedChoice } from '@/components/missa/segmented-choice';
+import { HueTile } from '@/components/missa/hue-tile';
 import { RUBRIC_UI_LIMITS } from '@/lib/rubricClient';
 
 /**
@@ -47,30 +49,29 @@ function dateInputValue(value?: string): string {
  * A date shown as a field value, edited in a small popover: the way a task
  * tool shows a due date. Saving and clearing go through the caller's route.
  */
-function DateFieldPopover({ id, icon, label, emptyLabel, description, value, onSave }: { id: string; icon: React.ReactNode; label: string; emptyLabel: string; description: string; value?: string; onSave: (next: string | null) => Promise<boolean> }) {
+function DateFieldPopover({ icon, label, emptyLabel, description, value, onSave }: { id?: string; icon: React.ReactNode; label: string; emptyLabel: string; description: string; value?: string; onSave: (next: string | null) => Promise<boolean> }) {
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState(dateInputValue(value));
   const [pending, startTransition] = useTransition();
+  const selected = value ? new Date(`${dateInputValue(value)}T12:00:00`) : undefined;
   const save = (next: string | null) => startTransition(async () => { if (await onSave(next)) setOpen(false); });
+  const iso = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   return (
-    <Popover open={open} onOpenChange={(next) => { setOpen(next); if (next) setDraft(dateInputValue(value)); }}>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger render={<Button type="button" variant="ghost" size="sm" />}>
         {icon}
         <span><span className="text-muted-foreground">{label}</span> <span className={value ? 'text-foreground' : 'text-muted-foreground'}>{value ? shortDate(value) : emptyLabel}</span></span>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-72">
-        <PopoverHeader>
+      <PopoverContent align="start" flush className="w-64">
+        <PopoverHeader ruled>
           <PopoverTitle>{label}</PopoverTitle>
           <PopoverDescription>{description}</PopoverDescription>
         </PopoverHeader>
-        <Field>
-          <FieldLabel htmlFor={id} className="sr-only">{label}</FieldLabel>
-          <Input id={id} type="date" value={draft} onChange={(event) => setDraft(event.target.value)} />
-        </Field>
-        <div className="flex justify-end gap-2">
-          {value ? <Button type="button" size="sm" variant="ghost" onClick={() => save(null)} disabled={pending}>Clear</Button> : null}
-          <Button type="button" size="sm" onClick={() => save(draft || null)} disabled={pending || !draft || draft === dateInputValue(value)}>{pending ? 'Saving…' : 'Save'}</Button>
-        </div>
+        <Calendar mode="single" selected={selected} defaultMonth={selected} disabled={pending} onSelect={(date) => { if (date) save(iso(date)); }} />
+        {value ? (
+          <div className="flex justify-end border-t border-border px-2 py-2">
+            <Button type="button" size="xs" variant="ghost" onClick={() => save(null)} disabled={pending}>Clear date</Button>
+          </div>
+        ) : null}
       </PopoverContent>
     </Popover>
   );
@@ -492,7 +493,9 @@ export function RubricDialog({ base, roundId, rubric, onSaved, ...control }: { b
               <ol aria-label="Criteria" className="divide-y divide-border">
                 {rows.map((row, index) => (
                   <li key={row.key} className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-6">
-                    <div className="grid min-w-0 gap-2">
+                    <div className="flex min-w-0 gap-3">
+                    <HueTile identity={row.id ?? row.key} size="sm">{index + 1}</HueTile>
+                    <div className="grid min-w-0 flex-1 gap-2">
                       <Field>
                         <FieldLabel htmlFor={`criterion-label-${row.key}`} className="sr-only">Criterion {index + 1} name</FieldLabel>
                         <Input id={`criterion-label-${row.key}`} value={row.label} maxLength={80} onChange={(event) => update(row.key, { label: event.target.value })} placeholder={`Criterion ${index + 1}, for example Voice`} />
@@ -501,6 +504,7 @@ export function RubricDialog({ base, roundId, rubric, onSaved, ...control }: { b
                         <FieldLabel htmlFor={`criterion-description-${row.key}`} className="sr-only">Guidance for readers on criterion {index + 1}</FieldLabel>
                         <Textarea id={`criterion-description-${row.key}`} value={row.description} maxLength={400} rows={2} onChange={(event) => update(row.key, { description: event.target.value })} placeholder="What a top score looks like. Readers see this beside the scale." />
                       </Field>
+                    </div>
                     </div>
                     <div className="flex flex-wrap items-end gap-4 sm:flex-nowrap">
                       <Field className="w-20 gap-2">
