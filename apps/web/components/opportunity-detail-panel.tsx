@@ -10,6 +10,7 @@ import { describeDeadline } from '@/lib/deadline-moment';
 import { opportunityFreshness } from '@/lib/opportunityFreshness';
 import { cleanCrawledNarrative, cleanTitleOrLabel } from '@/lib/textUtils';
 import { Sp } from "@/components/missa/spelling";
+import { OpportunityTypeArt } from "@/components/missa/opportunity-type-art";
 
 function typeLabel(type: OpportunityDetailProjection['type']): string {
   return type === 'open-call' ? 'Open call' : type.charAt(0).toUpperCase() + type.slice(1);
@@ -25,17 +26,6 @@ function deadlineLabel(item: OpportunityDetailProjection['deadline']): string {
   return moment.state === 'unlisted' ? 'Deadline needs confirmation' : moment.label;
 }
 
-function sourceInitials(name: string): string {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join('')
-      .toUpperCase() || 'M'
-  );
-}
 
 export function OpportunityDetailPanel({ opportunity, userId, closeHref, mobileOpen = false }: { opportunity: OpportunityDetailProjection; userId?: string; closeHref: string; mobileOpen?: boolean }) {
   const reasons = opportunity.personal?.tailoringReasons ?? [];
@@ -52,12 +42,12 @@ export function OpportunityDetailPanel({ opportunity, userId, closeHref, mobileO
     <aside className={`flex min-h-0 flex-col border-l border-border bg-card lg:sticky lg:top-0 lg:h-[calc(100vh-3.75rem)] lg:overflow-y-auto ${styles.detailPanel} ${mobileOpen ? styles.detailPanelMobileOpen : ''}`}>
       <div className="flex items-start justify-between gap-4 p-6 pb-4">
         <div className="flex min-w-0 gap-4">
-          <div className="relative flex h-28 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-[linear-gradient(145deg,#eaf0f2,#c6d6dc)] text-center text-[10px] font-semibold tracking-[0.14em] text-slate-700 uppercase">
+          <div className="relative flex h-28 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border">
             {opportunity.identityAssetUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={opportunity.identityAssetUrl} alt={cleanTitleOrLabel(opportunity.identityAssetAlt) || sourceName} className="h-full w-full object-cover" />
             ) : (
-              <span className="px-2">{sourceInitials(sourceName)}</span>
+              <OpportunityTypeArt type={opportunity.type} />
             )}
           </div>
           <div className="min-w-0 pt-1">

@@ -8,20 +8,12 @@ import { calendarDaysUntil } from "@/lib/deadlineLabel";
 import type { OpportunityBrowseProjection } from "@missa/radar-engine";
 import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
 import { OrganizationMark } from "@/components/missa/organization-mark";
+import { OpportunityTypeArt } from "@/components/missa/opportunity-type-art";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardFooter } from "@/components/ui/card";
 import { cleanTitleOrLabel } from "@/lib/textUtils";
 import styles from "./opportunity-catalogue-card.module.css";
 import { Sp } from "@/components/missa/spelling";
-
-const EDITORIAL_PLATES = [
-  "/media/home/opportunity-mountains.webp",
-  "/media/home/opportunity-architecture.webp",
-  "/media/home/opportunity-dance.webp",
-  "/media/home/gallery-interior.webp",
-  "/media/home/artist-at-work.webp",
-  "/media/home/portfolio-still-life.webp",
-] as const;
 
 function typeLabel(type: OpportunityBrowseProjection["type"]): string {
   if (type === "open-call") return "Open call";
@@ -147,15 +139,6 @@ function compactPrizeLabel(prize: string): string | null {
   return null;
 }
 
-function editorialPlate(item: OpportunityBrowseProjection): string {
-  const key = `${item.type}:${item.discipline ?? ""}:${item.id}`;
-  let hash = 0;
-  for (const character of key) {
-    hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
-  }
-  return EDITORIAL_PLATES[hash % EDITORIAL_PLATES.length] ?? EDITORIAL_PLATES[0];
-}
-
 export function OpportunityCatalogueCard({
   item,
   signedIn,
@@ -184,10 +167,6 @@ export function OpportunityCatalogueCard({
   const publicStatus = statusLabel(item.status, item.deadline);
   const titleId = `opportunity-${item.id}-title`;
   const officialMedia = Boolean(item.identityAssetUrl) && !officialFailed;
-  const mediaSrc =
-    officialMedia && item.identityAssetUrl
-      ? item.identityAssetUrl
-      : editorialPlate(item);
   const prizeChip = item.prize ? compactPrizeLabel(item.prize) : null;
   const cleanTitle = cleanTitleOrLabel(item.title);
   const cleanOrg = cleanTitleOrLabel(item.organizationName);
@@ -227,17 +206,19 @@ export function OpportunityCatalogueCard({
           aria-hidden={officialMedia ? undefined : true}
           aria-label={officialMedia ? `Open ${cleanTitle}` : undefined}
         >
-          {/* Official images were cleared or permitted by a reviewer, or are the organizer's own credited share image. Editorial plates are decorative atmosphere only. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            ref={handleMediaRef}
-            src={mediaSrc}
-            alt={officialMedia ? cleanTitleOrLabel(item.identityAssetAlt) : ""}
-            onLoad={handleMediaLoad}
-            onError={() => {
-              if (officialMedia) setOfficialFailed(true);
-            }}
-          />
+          {/* Official images were cleared or permitted by a reviewer, or are the organizer's own credited share image. Without one, the drawn type art stands in. */}
+          {officialMedia ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              ref={handleMediaRef}
+              src={item.identityAssetUrl!}
+              alt={cleanTitleOrLabel(item.identityAssetAlt)}
+              onLoad={handleMediaLoad}
+              onError={() => setOfficialFailed(true)}
+            />
+          ) : (
+            <OpportunityTypeArt type={item.type} />
+          )}
           {!officialMedia && item.identityLogoUrl ? (
             <OrganizationMark src={item.identityLogoUrl} className={styles.mediaMark} />
           ) : null}
