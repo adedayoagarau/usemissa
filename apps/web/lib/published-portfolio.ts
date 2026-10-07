@@ -7,6 +7,7 @@ import {
   publicPortfolioProjection,
   withServerProvenance,
 } from "@/lib/creator-portfolio-schema";
+import { portfolioServerFacts } from "@/lib/portfolio-server-facts";
 
 /**
  * A user's published snapshot as visitors may see it. Confirmed entries are
@@ -19,10 +20,18 @@ export const readPublishedPortfolio = cache(async (userId: string) => {
   const parsed = portfolioSchema.safeParse(published?.data);
   if (!published || !parsed.success) return undefined;
   const confirmable = parsed.data.record.some((item) => item.outcomeId);
+  // Credits and file facts are read fresh on every read, like outcomes: a
+  // collaborator who removes the credit, or a file that is gone, stops showing
+  // without a republish.
+  const facts = await portfolioServerFacts(parsed.data, {
+    accountId: published.accountId,
+    userId,
+  });
   return publicPortfolioProjection(
     withServerProvenance(
       parsed.data,
       confirmable ? await verifiedOutcomes(published.accountId) : new Map(),
+      facts,
     ),
   );
 });
