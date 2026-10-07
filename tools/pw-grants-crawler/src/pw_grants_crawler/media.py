@@ -110,7 +110,7 @@ def extract_media_references(page: PageSnapshot) -> list[_MediaReference]:
         attribute = "poster" if tag.name == "video" else "data" if tag.name == "object" else "src"
         add(
             tag.get(attribute, ""),
-            "media",
+            "image" if tag.name == "img" or attribute == "poster" else "media",
             f"{tag.name}.{attribute}",
             tag.get("alt"),
             priority=tag.get("fetchpriority", "").casefold() == "high",
@@ -218,12 +218,17 @@ def _image_content_type(page: PageSnapshot, reference: _MediaReference) -> str |
     return captured[0] if captured is not None else None
 
 
+def _has_excluded_term(haystack: str, exclusions: Iterable[str] = PRIMARY_IMAGE_EXCLUSIONS) -> bool:
+    # Match whole words (allowing plurals) so "silicon" or "cartography" don't read as icon/cart.
+    return any(re.search(rf"(?<![a-z]){re.escape(term)}s?(?![a-z])", haystack) for term in exclusions)
+
+
 def _looks_like_primary_image(reference: _MediaReference, page: PageSnapshot) -> bool:
     kind = _kind_for(reference.kind, reference.url, _image_content_type(page, reference))
     if kind != "image":
         return False
     haystack = unquote(f"{reference.url} {reference.alt_text or ''}").casefold()
-    return not any(exclusion in haystack for exclusion in PRIMARY_IMAGE_EXCLUSIONS)
+    return not _has_excluded_term(haystack)
 
 
 def _contains_all_tokens(text: str, value: str) -> bool:
@@ -266,7 +271,7 @@ def _looks_like_official_logo(reference: _MediaReference, page: PageSnapshot) ->
         return False
     haystack = unquote(f"{reference.url} {reference.alt_text or ''}").casefold()
     exclusions = [item for item in PRIMARY_IMAGE_EXCLUSIONS if item != "logo"]
-    return "logo" in haystack and not any(exclusion in haystack for exclusion in exclusions)
+    return "logo" in haystack and not _has_excluded_term(haystack, exclusions)
 
 
 def _image_resolution_hint(url: str) -> int:
@@ -307,6 +312,56 @@ def _primary_image_score(
         sum(5 for hint in PRIMARY_IMAGE_HINTS if hint in haystack),
     )
     return score
+
+
+MAX_CALL_IMAGE_ATTEMPTS = 5
+MIN_CALL_IMAGE_SIDE = 200
+MIN_CALL_IMAGE_BYTES = 1_000
+
+
+def image_dimensions(content: bytes) -> tuple[int, int] | None:
+    """Read width/height from PNG, GIF, JPEG or WebP headers without decoding pixels."""
+
+    if content[:8] == b"\x89PNG\r\n\x1a\n" and len(content) >= 24:
+        return int.from_bytes(content[16:20], "big"), int.from_bytes(content[20:24], "big")
+    if content[:6] in {b"GIF87a", b"GIF89a"} and len(content) >= 10:
+        return int.from_bytes(content[6:8], "little"), int.from_bytes(content[8:10], "little")
+    if content[:4] == b"RIFF" and content[8:12] == b"WEBP" and len(content) >= 30:
+        chunk = content[12:16]
+        if chunk == b"VP8X":
+            return 1 + int.from_bytes(content[24:27], "little"), 1 + int.from_bytes(content[27:30], "little")
+        if chunk == b"VP8 ":
+            return int.from_bytes(content[26:28], "little") & 0x3FFF, int.from_bytes(content[28:30], "little") & 0x3FFF
+        if chunk == b"VP8L" and len(content) >= 25:
+            bits = int.from_bytes(content[21:25], "little")
+            return (bits & 0x3FFF) + 1, ((bits >> 14) & 0x3FFF) + 1
+    if content[:2] == b"\xff\xd8":
+        index = 2
+        while index + 9 < len(content):
+            if content[index] != 0xFF:
+                index += 1
+                continue
+            marker = content[index + 1]
+            if marker in {0xD8, 0x01} or 0xD0 <= marker <= 0xD7 or marker == 0xFF:
+                index += 1 if marker == 0xFF else 2
+                continue
+            length = int.from_bytes(content[index + 2 : index + 4], "big")
+            if marker in {0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF}:
+                return int.from_bytes(content[index + 7 : index + 9], "big"), int.from_bytes(content[index + 5 : index + 7], "big")
+            index += 2 + length
+    return None
+
+
+def _is_usable_call_image(asset: MediaAsset, content: bytes, relation: str) -> bool:
+    content_type = (asset.content_type or "").split(";", 1)[0].casefold()
+    if asset.kind != "image" or (content_type and not content_type.startswith("image/") and content_type != "application/octet-stream"):
+        return False
+    if relation == "fallback.logo" or content_type == "image/svg+xml" or asset.final_url.casefold().endswith(".svg"):
+        return bool(content)
+    dimensions = image_dimensions(content)
+    if dimensions is not None:
+        return min(dimensions) >= MIN_CALL_IMAGE_SIDE
+    return len(content) >= MIN_CALL_IMAGE_BYTES
 
 
 class MediaCollector:
@@ -417,10 +472,15 @@ class MediaCollector:
                 page_priority -= 1
             candidates = fallback_candidates
         candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
-        return [
-            (page, self._download_reference(page, reference, asset_root, scope)[0])
-            for _, _, page, reference in candidates[:max_images]
-        ]
+        selected: list[tuple[PageSnapshot, MediaAsset]] = []
+        for _, _, page, reference in candidates[: max_images + MAX_CALL_IMAGE_ATTEMPTS]:
+            if len(selected) >= max_images:
+                break
+            asset, content = self._download_reference(page, reference, asset_root, scope)
+            # Fall through to the next candidate instead of returning a broken or tiny image.
+            if asset.error is None and _is_usable_call_image(asset, content, reference.relation):
+                selected.append((page, asset))
+        return selected
 
     def _download_reference(
         self,

@@ -6,6 +6,9 @@ from pw_grants_crawler.media import BinarySnapshot
 from pw_grants_crawler.output import write_result
 
 
+PHOTO = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR" + (1200).to_bytes(4, "big") + (630).to_bytes(4, "big")
+
+
 def _page(url: str, html: str) -> PageSnapshot:
     return PageSnapshot(url, url, 200, "text/html", html, "Page", "Body")
 
@@ -158,7 +161,7 @@ def test_write_result_downloads_media_and_records_provenance(tmp_path):
         def fetch_binary(self, url: str, *, max_bytes: int) -> BinarySnapshot:
             self.urls.append(url)
             payloads = {
-                "https://example.test/cover.jpg": ("image/jpeg", b"cover-bytes"),
+                "https://example.test/cover.jpg": ("image/jpeg", PHOTO + b"cover"),
                 "https://example.test/brand-logo.svg": ("image/svg+xml", b"logo-bytes"),
                 "https://example.test/related-story.jpg": ("image/jpeg", b"related-bytes"),
             }
@@ -173,5 +176,5 @@ def test_write_result_downloads_media_and_records_provenance(tmp_path):
     assert len(assets) == 1
     assert assets[0]["kind"] == "image"
     assert assets[0]["source_page_url"] == page_url
-    assert (tmp_path / assets[0]["local_path"]).read_bytes() == b"cover-bytes"
+    assert (tmp_path / assets[0]["local_path"]).read_bytes() == PHOTO + b"cover"
     assert asset_fetcher.urls == ["https://example.test/cover.jpg"]

@@ -4,6 +4,9 @@ from pw_grants_crawler.media import BinarySnapshot, MediaCollector
 from pw_grants_crawler.models import PageSnapshot
 
 
+PHOTO = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR" + (1200).to_bytes(4, "big") + (630).to_bytes(4, "big")
+
+
 class FakeAssetFetcher:
     def __init__(self, responses: dict[str, bytes]):
         self.responses = responses
@@ -88,7 +91,7 @@ def test_media_collector_selects_one_primary_call_image(tmp_path):
     )
     fetcher = FakeAssetFetcher(
         {
-            "https://example.test/call-photo.jpg": b"call-photo",
+            "https://example.test/call-photo.jpg": PHOTO,
             "https://example.test/related-story.jpg": b"related-story",
         }
     )
@@ -185,3 +188,41 @@ def test_media_collector_falls_back_to_official_organizer_logo(tmp_path):
     assert asset.original_url == "https://example.test/brand-logo.svg"
     assert asset.kind == "image"
     assert fetcher.urls == ["https://example.test/brand-logo.svg"]
+
+
+def test_call_image_falls_through_broken_and_tiny_candidates(tmp_path):
+    page_url = "https://example.test/call"
+    tiny = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR" + (1).to_bytes(4, "big") + (1).to_bytes(4, "big")
+    page = PageSnapshot(
+        page_url,
+        page_url,
+        200,
+        "text/html",
+        """<html><head><meta property="og:image" content="/award-broken.jpg"></head><body>
+        <img src="/award-thumb.jpg" alt="Example Award">
+        <img src="https://cdn.example.test/media/award-hero" alt="Example Award hero">
+        <img src="/silicon-valley-award.jpg" alt="Example Award">
+        </body></html>""",
+        "Example Award",
+        "Example Press Example Award",
+    )
+
+    class Fetcher(FakeAssetFetcher):
+        def fetch_binary(self, url, *, max_bytes):
+            if url.endswith("award-broken.jpg"):
+                self.urls.append(url)
+                return BinarySnapshot(url, url, 404, "text/html", b"", error="HTTP 404")
+            if url.endswith("award-hero"):
+                self.urls.append(url)
+                return BinarySnapshot(url, url, 200, "image/png", PHOTO)
+            return super().fetch_binary(url, max_bytes=max_bytes)
+
+    fetcher = Fetcher({"https://example.test/award-thumb.jpg": tiny, "https://example.test/silicon-valley-award.jpg": PHOTO})
+    selected = MediaCollector(fetcher).collect_call_images(
+        [page], tmp_path / "assets", scope="01-call", preferred_terms=["Example Award"]
+    )
+
+    assert len(selected) == 1
+    assert selected[0][1].error is None
+    assert selected[0][1].original_url != "https://example.test/award-broken.jpg"
+    assert selected[0][1].original_url != "https://example.test/award-thumb.jpg"
