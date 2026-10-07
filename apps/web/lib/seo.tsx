@@ -161,6 +161,7 @@ export function opportunityDescription(item: { title: string; organizationName?:
 export const BRAND_SAME_AS: readonly string[] = [
   'https://www.linkedin.com/company/143965433',
   'https://www.crunchbase.com/organization/missa-cbec',
+  'https://www.wikidata.org/wiki/Q141665370',
 ];
 
 /** Organization + WebSite entity for the homepage. */
