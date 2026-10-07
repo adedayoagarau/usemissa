@@ -7,6 +7,7 @@ import { sendMail } from '@/lib/mail-service';
 import { renderDecisionLetter } from '@/emails/decision-letter';
 import { checkDecisionLetters, WORKSPACE_DECISION_SCOPES, type DecisionLetterCheckInput } from '@missa/workspace-engine';
 import { recordDecisionsAfterResponse, workspaceDecisionContext } from '@/lib/jevDecisions';
+import { workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
 const headers = { 'Cache-Control': 'private, no-store' };
 function render(template: string, values: Record<string, string>): string {
@@ -17,6 +18,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
   const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status, headers });
+  if (workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: 'Decision emails are not available in this workspace yet' }, { status: 503, headers });
   const idempotencyKey = request.headers.get('Idempotency-Key')?.trim().slice(0, 200) || undefined;
   const batchKey = idempotencyKey ?? randomUUID();
   if (idempotencyKey) {

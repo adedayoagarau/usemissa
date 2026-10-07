@@ -16,7 +16,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ ass
   const session = await getSessionAccount(request.headers.get('cookie'));
   if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== 'object') return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   const score = typeof body.score === 'number' ? body.score : undefined;
   const notes = typeof body.notes === 'string' ? body.notes.trim() : undefined;
   if (score !== undefined && (!Number.isFinite(score) || !Number.isInteger(score) || score < 0 || score > 100)) {
