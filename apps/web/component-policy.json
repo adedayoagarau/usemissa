@@ -288,7 +288,66 @@
       "semantic": "PublicCreatorProfile",
       "base": "Button",
       "variant": "ghost",
-      "appearance": "pressed-format-filter"
+      "appearance": "pressed-format-filter",
+      "implementation": "components/creator-profile/work-media/work-section.tsx",
+      "rules": "Formats are built from what the work holds (Writing, Images, Sound, Film, Link), never from listed practices; a film's poster does not make it Images. Hidden when every work shares one format. Series joins only when two or more works share a series name and not every work is in one. A change is announced ('Showing 4 writing works.').",
+      "rulesImplementation": "lib/creator-work-media.ts"
+    },
+    "composition.creator-work-formats": {
+      "semantic": "PortfolioWorkFormats",
+      "implementation": "components/creator-profile/work-media/work-card.tsx",
+      "composition": [
+        "Button",
+        "Dialog",
+        "Skeleton",
+        "Empty",
+        "Progress",
+        "Collapsible"
+      ],
+      "appearance": "work-grid-with-series-groups-wall-labels-film-posters-listening-strips-and-case-study-facts",
+      "variants": ["text", "image", "audio", "film", "link", "case-study"],
+      "states": [
+        "default",
+        "hover",
+        "focus-visible",
+        "loading",
+        "media-error",
+        "playing"
+      ],
+      "boundary": "Works that share a series group under a heading with a plate count. A wall label prints title, year, medium, size and edition, each only when the creator gave it. Pressing play on a film card opens the work with the film begun; opening the work any other way loads nothing from the film's host."
+    },
+    "media.creator-film": {
+      "semantic": "Screening",
+      "implementation": "components/creator-profile/work-media/screening.tsx",
+      "composition": ["Button", "Collapsible"],
+      "appearance": "click-to-load-poster-with-chapters-beside-the-player-and-a-transcript-disclosure",
+      "states": ["poster", "playing", "external-link"],
+      "boundary": "The poster is the creator's own picture, so opening a page makes no request to YouTube or Vimeo. The frame is built only after a press, from the film id, on youtube-nocookie.com or player.vimeo.com (Vimeo with do-not-track on); the content-security-policy frame-src lists exactly those two origins (lib/video-embed-origins.ts). Any other link opens as an ordinary link in a new tab. A chapter reloads the frame at its start time; no provider script runs on Missa."
+    },
+    "player.creator-audio": {
+      "semantic": "ProfileAudioPlayer",
+      "implementation": "components/creator-profile/work-media/mini-player.tsx",
+      "base": "Button",
+      "composition": ["Button", "Progress", "Spinner"],
+      "appearance": "docked-card-with-title-position-and-elapsed-over-total-time",
+      "states": ["idle", "playing", "paused", "loading", "error"],
+      "boundary": "One recording at a time for the whole profile, kept playing while the visitor scrolls or closes a dialog. Nothing is fetched until someone presses play. Loading is also said in words; an error says what failed and Try again loads the file again; Close stops the recording. Chapters jump to a time and the current one is marked with aria-current."
+    },
+    "feedback.creator-media-error": {
+      "semantic": "MediaError",
+      "implementation": "components/creator-profile/work-media/media-image.tsx",
+      "base": "Empty",
+      "composition": ["Empty", "Button"],
+      "appearance": "bordered-tile-in-the-place-of-the-picture",
+      "boundary": "Says the image didn't load and the work is still here, and offers Try again. The work still opens; a failed picture never blocks its text, audio or film."
+    },
+    "disclosure.creator-transcript": {
+      "semantic": "Transcript",
+      "implementation": "components/creator-profile/work-media/transcript.tsx",
+      "base": "Collapsible",
+      "composition": ["Collapsible", "Button"],
+      "appearance": "outline-button-opening-the-text-in-flow",
+      "boundary": "The words of a film or recording, opened on request with line breaks kept. Shown wherever the player is."
     },
     "composition.organization-profile": {
       "semantic": "InstitutionProfileView",
@@ -1370,7 +1429,11 @@
       "AspectRatio",
       "Media",
       "EditorialTitle",
-      "AccessibleCaption"
+      "AccessibleCaption",
+      "WallLabel",
+      "FilmPoster",
+      "AudioStrip",
+      "SkeletonAndMediaError"
     ],
     "SubmissionTable": [
       "Table",

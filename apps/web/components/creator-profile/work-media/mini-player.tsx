@@ -70,7 +70,7 @@ export function MiniPlayer({ player }: { player: Player }) {
           aria-label={`Try ${track.title} again`}
           onClick={player.retry}
         >
-          <RotateCcw aria-hidden="true" />
+          <RotateCcw aria-hidden="true" className={cx.stroke} />
         </Button>
       ) : (
         <PlayButton track={track} player={player} />
