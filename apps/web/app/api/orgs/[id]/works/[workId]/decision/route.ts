@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { persistOrganizationMutation, requireOrganizationAccess } from '@/lib/organizationAccess';
 import { getRelationalWorkspace, workspaceCommandEnvelope, workspaceMutationError, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 import { persistRadar } from '@/lib/engine';
+import { projectHostedStatusToTracker } from '@/lib/hosted-tracker-projection';
 
 const headers = { 'Cache-Control': 'private, no-store' };
 const outcomes = ['accepted', 'declined', 'waitlisted'] as const;
@@ -46,6 +47,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         radarDirty = true;
       }
       if (radarDirty) await persistRadar();
+      if (context?.radarOpportunityId) {
+        await projectHostedStatusToTracker({ accountId: context.submitterAccountId, opportunityId: context.radarOpportunityId, status: trackerStatus, source: 'radar', note: `Organization decision for Work ${workId}`, idempotencyKey: `hosted-decision:${decision.resourceId}` });
+      }
       return NextResponse.json({ id: decision.resourceId, workId, outcome: body.outcome, revision: decision.revision, receiptId: decision.receiptId, idempotent: decision.replayed }, { headers });
     } catch (error) {
       const mapped = workspaceMutationError(error);
@@ -73,6 +77,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
     if (submitter?.userId && openCall?.radarOpportunityId && result.access.radar.store.opportunities.has(openCall.radarOpportunityId)) {
       result.access.radar.setMyStatus(submitter.userId, openCall.radarOpportunityId, trackerStatus, { source: 'radar', note: `Organization decision for Work ${workId}` });
+    }
+    if (submission && openCall?.radarOpportunityId) {
+      await projectHostedStatusToTracker({ accountId: submission.submitterAccountId, opportunityId: openCall.radarOpportunityId, status: trackerStatus, source: 'radar', note: `Organization decision for Work ${workId}`, idempotencyKey: `hosted-decision:${decision.id}` });
     }
     await persistOrganizationMutation(result.access, { action: 'decision.recorded', targetType: 'work_decision', targetId: decision.id, detail: { workId, outcome: decision.outcome } });
     return NextResponse.json(decision, { headers });

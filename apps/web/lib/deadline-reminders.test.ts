@@ -436,6 +436,57 @@ dbTest('already-announced rows do not crowd new ones out of the batch', async ()
   assert.equal(result.goneQuiet, 1);
 });
 
+dbTest('"Deadline reminders off" on a call holds Missa\'s notices and keeps the creator\'s own', async () => {
+  const a = await account({ plan: 'plus' });
+  const opp = await call(30, 'Quiet grant');
+  const tracked = await track(a, opp, 'preparing');
+  assert.deepEqual(await applyDefaultReminders(a, opp), { created: 2 });
+  await q(`update tracked_opportunities set notify=false where id=$1`, [tracked]);
+
+  // Nothing new is scheduled for the call while its reminders are off.
+  const closing = await call(0, 'Closing today');
+  await q(`update tracked_opportunities set notify=false where id=$1`, [await track(a, closing, 'preparing')]);
+  assert.deepEqual(await applyDefaultReminders(a, closing), { created: 0, skipped: 'reminders-off' });
+  await tickDeadlineReminders(a);
+  assert.equal((await reminders(a)).filter(r => r.kind === 'deadline-day').length, 0, 'no deadline-day alarm while off');
+
+  // The defaults already scheduled are held, not cancelled, and nothing goes out.
+  await makeDue(a, 'deadline');
+  await tickCreatorReminders(a);
+  assert.deepEqual(await alerts(a), []);
+  assert.deepEqual((await reminders(a)).filter(r => r.kind === 'deadline').map(r => r.state), ['scheduled', 'scheduled']);
+
+  // The creator's own reminder on the same call is theirs and still goes out.
+  const repository = new CreatorReminderRepository();
+  await repository.create({ accountId: a, commandType: 'application-reminder.create', idempotencyKey: randomUUID(), expectedRevision: 0, requestHash: randomUUID(), correlationId: randomUUID() },
+    { opportunityId: opp, kind: 'deadline', offsetDays: 3, timeOfDay: '09:00', timezone: 'UTC' });
+  await makeDue(a, 'deadline');
+  await tickCreatorReminders(a);
+  assert.equal((await alerts(a)).length, 1, 'only the creator\'s own reminder was delivered');
+  assert.deepEqual((await reminders(a)).filter(r => r.subject_id?.startsWith('offset:')).map(r => r.state), ['scheduled', 'scheduled']);
+
+  // Switching reminders back on resumes the held defaults.
+  await q(`update tracked_opportunities set notify=true where id=$1`, [tracked]);
+  await tickCreatorReminders(a);
+  assert.equal((await alerts(a)).length, 3);
+  assert.deepEqual((await reminders(a)).filter(r => r.subject_id?.startsWith('offset:')).map(r => r.state), ['delivered', 'delivered']);
+});
+
+dbTest('a default offset whose day has gone by expires instead of firing late', async () => {
+  const a = await account();
+  const opp = await call(5);
+  await track(a, opp, 'preparing');
+  assert.deepEqual(await applyDefaultReminders(a, opp), { created: 1 }, 'the week-before offset is already past');
+  // A week-before row that was held, for example while the call's reminders
+  // were off, and is only now due: "Closes in a week" would be wrong today.
+  await q(`insert into creator_application_reminders(account_id,opportunity_id,kind,title,timezone,due_at,deadline_offset_days,source_deadline,subject_id)
+    select $1,$2,'deadline','Closes in a week','UTC',now()-interval '1 minute',7,deadline_date,'offset:7' from opportunities where id=$2`, [a, opp]);
+  await tickCreatorReminders(a);
+  assert.deepEqual(await alerts(a), []);
+  assert.equal((await reminders(a)).find(r => r.subject_id === 'offset:7')?.state, 'expired');
+  assert.equal((await reminders(a)).find(r => r.subject_id === 'offset:1')?.state, 'scheduled', 'the day-before reminder is still ahead');
+});
+
 dbTest('the deadline-day text waits only while the application is unsent', async () => {
   const a = await account({ plan: 'plus' });
   await q(`update notification_preferences set sms_enabled=true,sms_phone='+15555550123',sms_phone_verified_at=now() where account_id=$1`, [a]);

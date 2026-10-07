@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { Pool } from "pg";
 import {
+  CreatorCalendarError,
   PostgresCreatorCalendarRepository,
   PostgresCreatorNotificationRepository,
   PostgresCreatorProfileRepository,
@@ -135,6 +136,32 @@ test(
       );
       assert.equal((await calendarB.events(accountB, new Date("2026-01-01"), new Date("2027-01-01"))).length, 0);
       assert.equal((await calendarA.events(accountA, new Date("2026-01-01"), new Date("2027-01-01"))).length, 1);
+
+      // The official deadline and the personal target are kept for the creator
+      // from the call and the Tracker item: a client cannot create, edit or
+      // delete them as personal events.
+      for (const purpose of ["official-deadline", "personal-target"]) {
+        const protectedInput = { ...event, id: `story-16-2-${purpose}`, purpose };
+        await assert.rejects(
+          () => calendarA.createEvent(creatorCommandEnvelope(accountA, "calendar-event.create", `event-${purpose}`, protectedInput, 1), protectedInput),
+          CreatorCalendarError,
+        );
+      }
+      await firstPool.query(
+        `insert into creator_calendar_events(id,account_id,title,start_at,end_at,all_day,color,purpose)
+         values('story-16-2-deadline',$1,'Application deadline','2026-09-10','2026-09-11',true,'ink','official-deadline')`,
+        [accountA],
+      );
+      const edit = { title: "Moved by hand", startAt: "2026-09-12T00:00:00.000Z", endAt: "2026-09-13T00:00:00.000Z", allDay: true, color: "ink" };
+      await assert.rejects(
+        () => calendarA.updateEvent(creatorCommandEnvelope(accountA, "calendar-event.update", "deadline-edit", edit, 1), "story-16-2-deadline", edit),
+        /official deadline comes from the call/u,
+      );
+      await assert.rejects(
+        () => calendarA.deleteEvent(creatorCommandEnvelope(accountA, "calendar-event.delete", "deadline-delete", { id: "story-16-2-deadline" }, 1), "story-16-2-deadline"),
+        /official deadline comes from the call/u,
+      );
+      assert.equal((await calendarA.events(accountA, new Date("2026-01-01"), new Date("2027-01-01"))).length, 2, "the deadline row is untouched");
 
       const rolledBack = await firstPool.query<{ count: number }>(
         `select count(*)::int count from workspace_command_receipts
