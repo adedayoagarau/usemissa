@@ -14,6 +14,7 @@ import {
   ListOrdered,
   Menu,
   PanelLeftClose,
+  PenLine,
   PanelLeftOpen,
   Target,
   Search,
@@ -40,6 +41,7 @@ const primary = [
   { href: "/tracker", label: "Tracker", icon: BookOpen },
   { href: "/goals", label: "Goals", icon: Target },
   { href: "/library", label: "Library", icon: Archive },
+  { href: "/write", label: "Write", icon: PenLine },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/season", label: "Season", icon: CalendarRange },
 ] as const;

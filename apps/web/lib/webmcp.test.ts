@@ -27,6 +27,7 @@ test("classifies public, creator, organization, reviewer, and blocked routes", (
   assert.equal(classifyWebMcpSurface("/reviewer"), "reviewer");
   assert.equal(classifyWebMcpSurface("/admin/audit"), "blocked");
   assert.equal(classifyWebMcpSurface("/login"), "blocked");
+  assert.equal(classifyWebMcpSurface("/write"), "blocked");
   assert.equal(
     classifyWebMcpSurface("/organization/org_1/submissions/sub_1"),
     "blocked",
