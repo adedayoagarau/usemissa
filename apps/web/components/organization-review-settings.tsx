@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Sp } from "@/components/missa/spelling";
 
 type BlindMode = 'none' | 'identity-redacted';
 type Settings = { organizationId: string; blindMode: BlindMode; revision: number };
 
-export function OrganizationReviewSettings({ organizationId, canManage }: { organizationId: string; canManage: boolean }) {
+export function OrganizationReviewSettings({ organizationId, canManage, unavailableReason }: { organizationId: string; canManage: boolean; unavailableReason?: string }) {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -24,11 +25,11 @@ export function OrganizationReviewSettings({ organizationId, canManage }: { orga
     <h2 id="review-privacy-heading" className="font-heading text-xl font-medium text-foreground">Review privacy</h2>
     <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Choose whether reviewer views hide applicant identity by default. Individual review stages can use their own immutable workflow setting.</p>
     {error && <p className="mt-3 text-sm text-destructive" role="alert">{error}</p>}
-    <fieldset className="mt-4 space-y-3" disabled={!canManage || saving}>
+    <fieldset className="mt-4 space-y-3" disabled={!canManage || saving || Boolean(unavailableReason)}>
       <legend className="sr-only">Blind review mode</legend>
       <label className="flex cursor-pointer gap-3 rounded-md border border-border p-3"><input type="radio" name="blind-mode" checked={settings.blindMode === 'identity-redacted'} onChange={() => void update('identity-redacted')} /><span><span className="block text-sm font-medium text-foreground">Blind review on</span><span className="block text-sm text-muted-foreground">Hide applicant identity from reviewer projections.</span></span></label>
       <label className="flex cursor-pointer gap-3 rounded-md border border-border p-3"><input type="radio" name="blind-mode" checked={settings.blindMode === 'none'} onChange={() => void update('none')} /><span><span className="block text-sm font-medium text-foreground">Blind review off</span><span className="block text-sm text-muted-foreground">Allow identity in stages that explicitly permit it.</span></span></label>
     </fieldset>
-    {!canManage && <p className="mt-3 text-xs text-muted-foreground">Only organization owners and admins can change this policy.</p>}
+    {unavailableReason ? <p className="mt-3 text-xs text-muted-foreground">{unavailableReason}</p> : !canManage && <p className="mt-3 text-xs text-muted-foreground"><Sp>Only organization owners and admins can change this policy.</Sp></p>}
   </section>;
 }

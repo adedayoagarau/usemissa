@@ -64,6 +64,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (refusal) return refusal.response;
   try {
     const assignment = engine.assignReviewer(roundId, body.submissionId, body.reviewerAccountId);
+    // New reads inherit the round's due date, as distributed and reassigned reads do.
+    const dueDate = engine.roundDueDate(roundId);
+    if (dueDate) assignment.expiresAt = dueDate;
     await persistOrganizationMutation(result.access, {
       action: 'review-assignment.create',
       targetType: 'review-assignment',
@@ -94,7 +97,7 @@ function assignmentRefusal(candidate: DistributionSubmission | undefined, reader
   }
   const conflict = readerConflict(reader, candidate);
   if (!conflict) return undefined;
-  const error = conflict.reason === 'already-assigned' ? 'This reviewer is already assigned to this Submission in this round.' : `This person cannot review this Submission. ${conflict.detail}`;
+  const error = conflict.reason === 'already-assigned' ? 'This reviewer is already assigned to this submission in this round.' : `This person cannot review this submission. ${conflict.detail}`;
   return { reason: conflict.reason, response: NextResponse.json({ error, reason: conflict.reason }, { status: 409 }) };
 }
 

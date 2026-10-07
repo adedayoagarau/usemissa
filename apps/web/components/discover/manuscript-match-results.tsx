@@ -33,11 +33,11 @@ export const SORT_LABELS: Record<ResultSort, string> = {
 };
 
 const SCORED_NOTE =
-  "Fit compares your brief with what Missa has recorded for this magazine. Odds, payoff and cost are scored the same way, and magazines are ranked by all four. Nothing here is an eligibility check.";
+  "Fit compares your brief with what Missa has recorded for this magazine. Openness, payoff and cost are scored the same way, and magazines are ranked by all four. None of it tells you whether you’re eligible or whether they’ll say yes.";
 
 export const DIMENSION_LABELS: Record<DecisionDimension, string> = {
   fit: "Fit",
-  odds: "Odds",
+  odds: "Openness",
   payoff: "Payoff",
   cost: "Low cost",
 };
@@ -328,7 +328,7 @@ function hasRecordedScores(card: ManuscriptMatchCard): boolean {
   );
 }
 
-/** Odds, payoff and cost beside the fit score; unrecorded scores show a dash. */
+/** Openness, payoff and cost beside the fit score; unrecorded scores show a dash. */
 export function DecisionScores({ card }: { card: ManuscriptMatchCard }) {
   const decision = card.decision;
   if (!decision || !hasRecordedScores(card)) return null;
@@ -587,7 +587,7 @@ function PrizeRecord({ card }: { card: ManuscriptMatchCard }) {
       {record.recent.length ? (
         <ul
           className={styles.prizePieces}
-          aria-label="Recently recognised pieces"
+          aria-label="Recently recognized pieces"
         >
           {record.recent.slice(0, 3).map((piece) => (
             <li key={`${piece.source}-${piece.writer}-${piece.work}`}>

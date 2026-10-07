@@ -10,15 +10,15 @@ export const CUTS: Record<"cut15" | "cut6", Clip[]> = {
   // "But mostly, it runs on deadlines." → Missa finds + reminds →
   // "Talent's your department. Deadlines are ours." → end card with CTA
   cut15: [
-    [5.85, 8.95],
+    [5.85, 8.75],
     [17.85, 23.5],
     [23.95, 26.95],
-    [27.35, 30.55],
+    [27.35, 30.75],
   ],
-  // "But mostly, it runs on deadlines." → "Missa. Opportunities for every creator."
+  // "But mostly, it runs on deadlines." → "Missa. Find the call. Make the deadline."
   cut6: [
-    [5.95, 8.7],
-    [27.4, 30.55],
+    [5.95, 8.5],
+    [27.4, 30.75],
   ],
 };
 

@@ -43,41 +43,43 @@ const FEATURES = [
     icon: FolderOpen,
     title: "Show what you make.",
     image: "/media/home/generated/feature-studio.webp",
-    description:
-      "Put your writing, images and audio in one portfolio. Share one link to your work.",
+    description: "Writing, images and audio on one page. Share one link.",
     href: "/profile/portfolio",
     action: "Build your portfolio",
-    note: "You decide when to publish.",
+    note: "Nothing's public until you say so.",
   },
   {
     id: "applications",
-    label: "Applications",
+    label: "Tracker",
     icon: CalendarDays,
-    title: "Keep your calls together.",
+    title: "Keep track.",
     image: "/media/home/generated/publications.webp",
-    description: "Save a call, add a note and see what you have applied for.",
+    description:
+      "What you sent, where and when, and who still owes you a reply. Bring your old spreadsheet with you.",
     href: "/tracker",
     action: "Open your Tracker",
-    note: "Your notes and application records stay private.",
+    note: "Your notes and records stay private.",
   },
   {
     id: "notifications",
-    label: "Notifications",
+    label: "Reminders",
     icon: Bell,
-    title: "Choose your updates.",
+    title: "Get reminded.",
     image: "/media/home/generated/community.webp",
-    description: "Turn updates for saved calls on or off in your Inbox.",
+    description:
+      "Two weeks before, a week before, three days before, the day before. Keep the ones you want.",
     href: "/inbox",
-    action: "Open your Inbox",
-    note: "Change your preferences any time.",
+    action: "Set your reminders",
+    note: "Change them any time.",
   },
   {
     id: "goals",
     label: "Goals",
     icon: Target,
-    title: "Make time for the work.",
+    title: "Pick your number.",
     image: "/media/home/generated/feature-studio.webp",
-    description: "Set a simple submission target and see your progress.",
+    description:
+      "Some writers aim for 100 rejections a year. Set a target and count what you send.",
     href: "/goals",
     action: "Set a goal",
     note: "This preview does not change your account.",
@@ -120,7 +122,7 @@ function DeadlinePreview({
         <CalendarDays size={22} aria-hidden="true" />
         <h4>Upcoming deadlines</h4>
       </div>
-      <p className={styles.sourceLabel}>From the current catalogue</p>
+      <p className={styles.sourceLabel}>Open on Missa now</p>
       {failed ? (
         <div role="status" className={styles.dataState}>
           <p>We couldn’t load these deadlines.</p>
@@ -224,12 +226,13 @@ export function HomepageWorkspace({
     >
       <header className={styles.heading}>
         <h2 id="workspace-heading">
-          Find your next call.
+          Making the work is half the job.
           <br />
-          <span className="font-heading">Share what you make.</span>
+          <span className="font-heading">Here&rsquo;s the other half.</span>
         </h2>
         <p>
-          Browse calls, then build a portfolio for the work you want to share.
+          Track what you sent, get reminded before calls close, and share your
+          work with one link.
         </p>
       </header>
       <Tabs

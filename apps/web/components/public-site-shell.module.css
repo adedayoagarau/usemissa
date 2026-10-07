@@ -30,6 +30,12 @@
   line-height: 1.55;
 }
 
+.footer p a {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .footer nav {
   display: flex;
   flex-wrap: wrap;

@@ -31,6 +31,7 @@ import {
 } from "@/lib/homepageStatDisplay";
 import "@/components/design-system/homepage-carousel-tokens.css";
 import "@/components/design-system/homepage-marketing-palette.css";
+import { useSp } from "@/components/missa/spelling";
 import styles from "./homepage-next-opening.module.css";
 
 type HomepageCounts = {
@@ -45,6 +46,7 @@ export function HomepageNextOpening({
 }: {
   layout?: "carousel" | "compact";
 }) {
+  const sp = useSp();
   const [api, setApi] = useState<CarouselApi>();
   const [selected, setSelected] = useState(2);
   const [counts, setCounts] = useState<HomepageCounts | null>(null);
@@ -128,7 +130,7 @@ export function HomepageNextOpening({
                       {openTotal}
                     </strong>
                     <span>
-                      Open opportunities <span aria-hidden="true">↗</span>
+                      Open calls <span aria-hidden="true">↗</span>
                     </span>
                   </Link>
                 ) : null
@@ -147,7 +149,7 @@ export function HomepageNextOpening({
                 </>
               ) : (
                 <>
-                  <span className="sr-only">Loading opportunity total…</span>
+                  <span className="sr-only">Counting open calls…</span>
                   <Skeleton className={styles.compactSkeleton} />
                 </>
               )}
@@ -180,13 +182,17 @@ export function HomepageNextOpening({
       >
         <div className={styles.statement}>
           <h2 id="scattered-heading">
-            Opportunities are scattered
-            <br /> across the web.
+            Calls turn up
+            <br /> everywhere.
           </h2>
           <div className={styles.introduction}>
-            <p className={styles.answer}>Missa brings them together.</p>
+            <p className={styles.answer}>
+              Newsletters, group chats, a friend&rsquo;s story the day after it
+              closed. Missa keeps them on one list, with the date.
+            </p>
             <p>
-              Browse residencies, grants, publications and prizes in one place.
+              Residencies, grants, magazines and prizes, with the fee and the
+              rules up front.
             </p>
           </div>
         </div>
@@ -194,7 +200,7 @@ export function HomepageNextOpening({
           <div className={styles.stats}>
             {visibleHomepageStats([
               {
-                label: "Open opportunities",
+                label: "Open calls",
                 value: counts.open,
                 copy: "Calls you can apply to now.",
                 href: `/opportunities?${categorySearch([])}`,
@@ -208,11 +214,11 @@ export function HomepageNextOpening({
               {
                 label: "Grants",
                 value: counts.grants,
-                copy: "Funding for your next project.",
+                copy: "Funding for a project you want to make.",
                 href: `/opportunities?${categorySearch(["grant"])}`,
               },
               {
-                label: "Organizations",
+                label: sp("Organizations"),
                 value: counts.organizations,
                 copy: "The people and places behind the calls.",
                 href: "/directory",
@@ -274,7 +280,7 @@ export function HomepageNextOpening({
         className={styles.discovery}
         aria-label="Explore opportunity categories"
       >
-        <h2 className="sr-only">Find your next opportunity</h2>
+        <h2 className="sr-only">Browse by type</h2>
         <Carousel
           setApi={setApi}
           plugins={wheelPlugins}

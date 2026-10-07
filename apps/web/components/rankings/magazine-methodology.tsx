@@ -18,6 +18,7 @@ import {
   FlashLeadersChart,
   TierChart,
 } from "./magazine-index-charts";
+import { Sp } from "@/components/missa/spelling";
 
 const percent = (part: number, whole: number) =>
   whole > 0 ? Math.round((part / whole) * 100) : 0;
@@ -83,10 +84,10 @@ function Observations({ analytics }: { analytics: MagazineIndexAnalytics }) {
   return (
     <Bullets>
       <li>
-        Recognition gathers at the top. The ten most honoured magazines hold{" "}
+        <Sp>Recognition gathers at the top. The ten most honored magazines hold</Sp>{" "}
         {percent(honours.top10Share, 1)}% of all Pushcart recognition in the
-        index, and the fifty most honoured hold {percent(honours.top50Share, 1)}
-        %.
+        index, and <Sp>the fifty most honored hold</Sp>{" "}
+        {percent(honours.top50Share, 1)}%.
       </li>
       <li>
         The long tail is real. {honours.singleRecognition.toLocaleString()} of
@@ -94,20 +95,25 @@ function Observations({ analytics }: { analytics: MagazineIndexAnalytics }) {
         recognition have a single one to their name.
       </li>
       <li>
-        Honour and access pull in different directions. Among the fifty most
-        honoured magazines, {topFee}% charge a reading fee; among the rest,{" "}
+        <Sp>
+          Honor and access pull in different directions. Among the fifty most
+          honored magazines,
+        </Sp>{" "}
+        {topFee}% charge a reading fee; among the rest,{" "}
         {restFee}%.
         {analytics.typicalFeeCents != null
           ? ` Where we know the amount, it is usually $${(analytics.typicalFeeCents / 100).toFixed(0)}.`
           : ""}
       </li>
       <li>
-        The most honoured magazines are also more likely to pay: {topPay}% of
+        <Sp>The most honored magazines are also more likely to pay:</Sp>{" "}
+        {topPay}% of
         them pay contributors in cash, against {restPay}% of everyone else.
       </li>
       <li>
-        They can be slower to answer. {topSlow}% of the most honoured take more
-        than six months to reply, against {restSlow}% of the rest.
+        They can be slower to answer. {topSlow}%{" "}
+        <Sp>of the most honored take more than six months to reply, against</Sp>{" "}
+        {restSlow}% of the rest.
       </li>
       <li>
         Flash fiction keeps its own company. {flash.magazines.toLocaleString()}{" "}
@@ -116,7 +122,8 @@ function Observations({ analytics }: { analytics: MagazineIndexAnalytics }) {
         also appear in the Pushcart record.
       </li>
       <li>
-        Honours outlast magazines. {honours.closed.toLocaleString()} magazines
+        <Sp>Honors outlast magazines.</Sp> {honours.closed.toLocaleString()}{" "}
+        magazines
         in the Pushcart record have closed and {honours.paused.toLocaleString()}{" "}
         are paused or quiet. They stay in the index, marked, so their record is
         not lost.
@@ -157,12 +164,18 @@ export function MagazineMethodology({
         <Bullets>
           <li>
             <strong className="text-foreground">
-              Honours, up to {PILLAR_MAX.accolades} points.
+              <Sp>Honors, up to</Sp> {PILLAR_MAX.accolades} points.
             </strong>{" "}
-            A magazine’s Pushcart Prize recognition over the past ten years,
-            with recent years counting more. The most recognised magazine in
-            each index earns the full {PILLAR_MAX.accolades}; others earn points
-            in proportion, on a curve that keeps a single honour visible. Pieces
+            A magazine’s Pushcart Prize recognition over the past ten years,{" "}
+            <Sp>
+              with recent years counting more. The most recognized magazine in
+              each index earns the full
+            </Sp>{" "}
+            {PILLAR_MAX.accolades};{" "}
+            <Sp>
+              others earn points in proportion, on a curve that keeps a single
+              honor visible. Pieces
+            </Sp>{" "}
             chosen for Best Small Fictions (
             {ANTHOLOGY_CITATION_POINTS["Best Small Fictions"]} points) and Best
             Microfiction ({ANTHOLOGY_CITATION_POINTS["Best Microfiction"]}{" "}
@@ -334,9 +347,11 @@ export function MagazineMethodology({
             {coverage.magazineCounts.overall.toLocaleString()} magazines
             overall, {coverage.magazineCounts.fiction.toLocaleString()} in
             fiction, {coverage.magazineCounts.poetry.toLocaleString()} in poetry
-            and {coverage.magazineCounts.nonfiction.toLocaleString()} in
-            nonfiction. A magazine joins a genre’s index when it has been
-            recognised in that genre.
+            and {coverage.magazineCounts.nonfiction.toLocaleString()} in{" "}
+            <Sp>
+              nonfiction. A magazine joins a genre’s index when it has been
+              recognized in that genre.
+            </Sp>
           </Prose>
         ) : (
           <Prose>The index has not been published yet.</Prose>
@@ -350,15 +365,15 @@ export function MagazineMethodology({
             {[
               [
                 `${percent(analytics.honours.top10Share, 1)}%`,
-                "of Pushcart recognition held by the ten most honoured magazines",
+                "of Pushcart recognition held by the ten most honored magazines",
               ],
               [
                 `${percent(analytics.honours.top50Share, 1)}%`,
-                "held by the fifty most honoured",
+                "held by the fifty most honored",
               ],
               [
                 `${analytics.honours.singleRecognition.toLocaleString()}`,
-                `of ${analytics.honours.magazines.toLocaleString()} recognised magazines have a single honour`,
+                `of ${analytics.honours.magazines.toLocaleString()} recognized magazines have a single honor`,
               ],
             ].map(([figure, label]) => (
               <div
@@ -370,7 +385,7 @@ export function MagazineMethodology({
                   {figure}
                 </dd>
                 <dd className="text-sm leading-6 text-muted-foreground">
-                  {label}
+                  <Sp>{label}</Sp>
                 </dd>
               </div>
             ))}

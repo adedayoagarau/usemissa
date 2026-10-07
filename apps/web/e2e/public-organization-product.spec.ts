@@ -21,7 +21,7 @@ test('Opportunity-first public profile exposes allowlisted published facts only'
   const fixture = await publishedOrganizationFixture(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/org/${fixture.organizationId}`);
-  await expect(page.getByRole('heading', { name: 'Published Opportunities' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Published calls' })).toBeVisible();
   const card = page.getByRole('heading', { name: fixture.title }).locator('xpath=ancestor::article');
   await expect(card).toBeVisible();
   await expect(card.getByText('Hosted application')).toBeVisible();
@@ -39,5 +39,5 @@ test('Opportunity-first public profile exposes allowlisted published facts only'
 test('unknown public Organization profiles return 404', async ({ page }) => {
   const response = await page.goto('/org/foreign-organization');
   expect(response?.status()).toBe(404);
-  await expect(page.locator('body')).not.toContainText('Published Opportunities');
+  await expect(page.locator('body')).not.toContainText('Published calls');
 });

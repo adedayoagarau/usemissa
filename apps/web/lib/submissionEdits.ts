@@ -46,7 +46,7 @@ export function describeRevision(revision: SubmissionRevision, works: Pick<Work,
     if (change.kind === 'work-title') return `Retitled “${change.before}” to “${change.after}”`;
     if (change.kind === 'work-files') {
       const files = change.after.map(fileName);
-      return `Replaced the files on “${workTitle.get(change.workId) ?? 'a Work'}”${files.length ? ` with ${files.join(', ')}` : ', leaving none'}`;
+      return `Replaced the files on “${workTitle.get(change.workId) ?? 'a piece'}”${files.length ? ` with ${files.join(', ')}` : ', leaving none'}`;
     }
     const label = fieldLabel.get(change.fieldId) ?? 'a question no longer in the form';
     return change.after === undefined ? `Cleared the answer to ${label}` : `Changed the answer to ${label}`;

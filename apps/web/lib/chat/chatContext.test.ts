@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { TAXONOMY_FACET_KEYS } from "@missa/taxonomy";
-import { buildOpportunitySearchPlan } from "./chatContext";
+import { buildOpportunityAssistantPayload, buildOpportunitySearchPlan } from "./chatContext";
 
 test("baseline context planning is bounded and transparent", () => {
   const plan = buildOpportunitySearchPlan("Find free fellowships for writers");
@@ -20,7 +20,7 @@ test("baseline context planning keeps explicit recommendation intent", () => {
   assert.equal(plan.query, "poets");
 });
 
-test("a unique practice phrase becomes a typed taxonomy filter, not loose search text", () => {
+test("a unique taxonomy phrase becomes a typed filter, not loose search text", () => {
   const plan = buildOpportunitySearchPlan("Find free fellowships for screenwriter");
   assert.deepEqual(plan.types, ["fellowship"]);
   assert.equal(plan.feeStatus, "no-fee");
@@ -35,7 +35,7 @@ test("a unique practice phrase becomes a typed taxonomy filter, not loose search
   assert.equal(plan.repositoryQuery.taxonomyIncludeDescendants, true);
 });
 
-test("an ambiguous practice phrase asks the customer instead of silently collapsing facets", () => {
+test("an ambiguous taxonomy phrase asks the customer instead of silently collapsing facets", () => {
   const plan = buildOpportunitySearchPlan("Find film grants");
   assert.deepEqual(plan.types, ["grant"]);
   assert.equal(plan.taxonomy.length, 0);
@@ -60,4 +60,11 @@ test("the customer-safe parser recognises all twelve independent field facets", 
     "audience",
     "language",
   ]);
+});
+
+test("an ambiguous search asks the clarifying question in plain words", () => {
+  const plan = buildOpportunitySearchPlan("Find photography residencies");
+  const payload = buildOpportunityAssistantPayload(plan, { items: [], nextCursor: null, total: 0 });
+  assert.equal(payload.answer, "“photography” can mean more than one thing in Missa. Do you mean Photography (what you make) or Photography (discipline)?");
+  assert.deepEqual(payload.results, []);
 });

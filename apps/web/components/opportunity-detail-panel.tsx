@@ -9,6 +9,7 @@ import { DateConfidenceBadge } from '@/components/missa/deadline-badges';
 import { describeDeadline } from '@/lib/deadline-moment';
 import { opportunityFreshness } from '@/lib/opportunityFreshness';
 import { cleanCrawledNarrative, cleanTitleOrLabel } from '@/lib/textUtils';
+import { Sp } from "@/components/missa/spelling";
 
 function typeLabel(type: OpportunityDetailProjection['type']): string {
   return type === 'open-call' ? 'Open call' : type.charAt(0).toUpperCase() + type.slice(1);
@@ -61,11 +62,11 @@ export function OpportunityDetailPanel({ opportunity, userId, closeHref, mobileO
           </div>
           <div className="min-w-0 pt-1">
             <h2 className="text-lg leading-snug font-semibold text-foreground">{cleanTitleOrLabel(opportunity.title)}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{cleanTitleOrLabel(opportunity.organizationName) || 'Organization not confirmed'}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{cleanTitleOrLabel(opportunity.organizationName) || <Sp>Organization not confirmed</Sp>}</p>
             <p className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
               <span className={`inline-flex items-center gap-1 ${sourceLabelClass}`}>
                 <SourceIcon className="size-3.5" aria-hidden="true" />
-                {sourceLabel}
+                <Sp>{sourceLabel}</Sp>
               </span>
               <span>·</span>
               <span className={freshness.state === 'stale' || freshness.state === 'unknown' ? 'text-accent-deep' : freshness.state === 'fresh' ? 'text-green' : undefined}>{freshness.label}</span>

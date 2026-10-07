@@ -51,7 +51,7 @@ test("maps interest cards to canonical opportunity types without duplicate types
   assert.equal(new Set(types).size, types.length);
 });
 
-test("maps stored taxonomy terms back into human practice and refinement labels", () => {
+test("maps stored taxonomy terms back into readable discipline and refinement labels", () => {
   const { practices, refinements } = mapTaxonomyToPracticeLabels([
     "taxterm_pf-writing-and-literature",
     "taxterm_disc-poetry",

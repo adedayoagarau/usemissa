@@ -54,6 +54,7 @@ import {
   viewerToday,
   type ViewerClock,
 } from "@/lib/tracker-plan";
+import { Sp } from "@/components/missa/spelling";
 
 /** Plan features the sheet needs; passed from the server page's creatorFeatures(plan). */
 export type TrackerFeatures = Partial<
@@ -632,7 +633,7 @@ export function TrackerItemSheet({
                 {item.cycleLabel ? ` · ${item.cycleLabel} cycle` : ""}
               </p>
               <SheetTitle className="font-heading text-3xl leading-tight break-words">{item.title}</SheetTitle>
-              <SheetDescription>{item.organizationName ?? "Organization not listed"}</SheetDescription>
+              <SheetDescription>{item.organizationName ?? <Sp>Organization not listed</Sp>}</SheetDescription>
             </SheetHeader>
 
             <div className="space-y-8 px-6 pb-8 sm:px-8">
@@ -656,7 +657,7 @@ export function TrackerItemSheet({
                     {provenance.state === "changed" && provenance.previousDate
                       ? `Moved from ${formatShortDate(provenance.previousDate)}. `
                       : ""}
-                    {dateConfidenceDescription(provenance.state)}
+                    <Sp>{dateConfidenceDescription(provenance.state)}</Sp>
                     {provenance.lastCheckedAt ? ` Last checked ${formatShortDate(provenance.lastCheckedAt.slice(0, 10))}.` : ""}
                   </p>
                 ) : null}

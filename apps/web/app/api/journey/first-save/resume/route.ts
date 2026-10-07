@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   const session = await getSessionAccount(request.headers.get("cookie"));
   if (!session) {
     return NextResponse.json(
-      { error: "Log in to continue saving this Opportunity." },
+      { error: "Log in to finish saving this call." },
       { status: 401, headers: noStore },
     );
   }
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "This Save request changed in another tab. Return to the Opportunity and choose Save again.",
+          "This save request changed in another tab. Return to the call and choose Save again.",
       },
       { status: 409, headers: noStore },
     );
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "This Save request belongs to a different signed-in account. Return to the Opportunity and choose Save again.",
+          "This save request belongs to a different signed-in account. Return to the call and choose Save again.",
       },
       { status: 409, headers: noStore },
     );
@@ -271,7 +271,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "This Opportunity changed while you were saving it. Review the latest details and save again.",
+            "This call changed while you were saving it. Review the latest details and save again.",
         },
         { status: 409, headers: noStore },
       );
@@ -280,7 +280,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "We could not finish saving this Opportunity. Your Save request is still available. Try again.",
+            "We couldn't finish saving this call. Your save request is still here. Try again.",
         },
         { status: 503, headers: noStore },
       );
@@ -288,7 +288,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "We could not finish saving this Opportunity. Your Save request is still available. Try again.",
+          "We couldn't finish saving this call. Your save request is still here. Try again.",
       },
       { status: 503, headers: noStore },
     );

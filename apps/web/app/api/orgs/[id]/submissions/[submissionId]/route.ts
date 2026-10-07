@@ -7,7 +7,7 @@ import {
 } from '@/lib/organizationAccess';
 import { getRelationalWorkspace, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
-/** Story 7.1: "clicking a Submission shows its Works and uploaded files."
+/** Story 7.1: "clicking a Submission shows its Works and uploaded files." (missa-language-allow: quoted story in a code comment, not UI copy)
  *
  * Holders of `submissions.read` receive the full dossier. Any other member
  * receives only a Submission assigned to them for review, with their own

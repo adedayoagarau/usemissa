@@ -37,6 +37,7 @@ export const ROUTE_RESERVED_HANDLE_WORDS = [
   "tracker",
   "waitlist",
   "workspace",
+  "write",
   "missa-public-profile",
   // Planned or explicitly protected public routes.
   "settings",

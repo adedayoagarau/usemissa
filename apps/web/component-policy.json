@@ -198,6 +198,17 @@
       "appearance": "tabbed-messages-invitations-followers-following-with-archive",
       "boundary": "Senders never see the creator's address unless the creator replies by email; organizations are not told when an invitation is declined."
     },
+    "composition.writing-room": {
+      "semantic": "WritingRoom",
+      "implementation": "components/missa/writing-room.tsx",
+      "composition": ["WritingSurface", "Button", "ButtonGroup", "DropdownMenu", "Popover", "Sheet", "Item", "Empty", "Alert", "AlertDialog", "Sonner"],
+      "appearance": "full-page-plain-text-with-controls-that-fade-while-the-timer-runs",
+      "boundary": "Plain text the creator writes. Kept on the device until the account confirms it, and never overwritten by another device: refused text becomes a separate entry. No AI, suggestions, rewriting or analysis; only apps/web/lib/writing-repository.ts reads the text (enforced by lib/writing-boundary.test.ts). No WebMCP tools on /write."
+    },
+    "input.writing-page": {
+      "semantic": "WritingSurface",
+      "boundary": "The page a creator writes on in the writing room. Long text inside a form stays input.long-text (Field + Textarea)."
+    },
     "composition.auth-shell": {
       "semantic": "AuthShell",
       "implementation": "apps/web/components/auth-shell.tsx",
@@ -261,6 +272,83 @@
       ],
       "appearance": "compact-organization-editor-with-adjacent-applicant-preview",
       "boundary": "Relational, versioned Organization configuration. Save and lifecycle actions use optimistic concurrency; preview is explicitly an unsaved applicant projection."
+    },
+    "composition.organization-structure-actions": {
+      "semantic": "OrganizationStructureActions",
+      "implementation": "apps/web/components/organization-structure-actions.tsx",
+      "composition": [
+        "Dialog",
+        "Field",
+        "Input",
+        "Button",
+        "Alert",
+        "Spinner",
+        "Sonner"
+      ],
+      "appearance": "compact-organization-focused-task-dialog",
+      "boundary": "Owners and Admins create Teams and Programs from Settings, under Structure. Rename, move, and archive stay withheld."
+    },
+    "composition.organization-form-builder": {
+      "semantic": "OrganizationFormBuilder",
+      "implementation": "apps/web/components/organization-form-builder.tsx",
+      "composition": [
+        "Field",
+        "FieldSet",
+        "Input",
+        "NativeSelect",
+        "Checkbox",
+        "Button",
+        "Alert",
+        "Spinner",
+        "Sonner"
+      ],
+      "appearance": "labelled-question-list-with-icon-reorder",
+      "boundary": "Compatibility-workspace submission form inside the Opportunity editor. Field identity is preserved on save so applicant drafts stay matched; the relational workspace keeps using PortalStudio."
+    },
+    "composition.organization-opportunity-lifecycle": {
+      "semantic": "OrganizationOpportunityLifecycle",
+      "implementation": "apps/web/components/organization-opportunity-lifecycle.tsx",
+      "composition": [
+        "AlertDialog",
+        "Button",
+        "Alert",
+        "Spinner",
+        "Sonner"
+      ],
+      "boundary": "Publish and close are confirmed state transitions; closing uses the destructive variant and keeps received Submissions."
+    },
+    "composition.organization-people-actions": {
+      "semantic": "OrganizationPeopleActions",
+      "implementation": "apps/web/components/organization-people-actions.tsx",
+      "composition": [
+        "Dialog",
+        "AlertDialog",
+        "Field",
+        "Input",
+        "NativeSelect",
+        "Button",
+        "Alert",
+        "Spinner",
+        "Sonner"
+      ],
+      "boundary": "Add, change role, and remove access. Server owner and last-admin safeguards decide every change; the invite response never reveals whether an email has a Missa account."
+    },
+    "composition.organization-submission-actions": {
+      "semantic": "OrganizationSubmissionActions",
+      "implementation": "apps/web/components/organization-submission-actions.tsx",
+      "composition": [
+        "Dialog",
+        "Field",
+        "FieldSet",
+        "Input",
+        "NativeSelect",
+        "RadioGroup",
+        "Button",
+        "Alert",
+        "Spinner",
+        "Sonner"
+      ],
+      "boundary": "Assign one eligible member per round (duplicates refused client and server side), record one Work outcome per dialog with its consequence stated, and set up or complete a delivery task. Recording a decision never sends email."
     },
     "disclosure.organization-media": {
       "semantic": "InstitutionMediaGallery",
@@ -1067,6 +1155,12 @@
       "implementation": "components/missa/upgrade-hint.tsx",
       "motion": "never",
       "boundary": "One calm line naming what a plan adds and a link to /plan. Says what the creator gets, never what they lose; no alarm colour, no modal."
+    },
+    "WritingSurface": {
+      "base": "textarea",
+      "implementation": "components/missa/writing-surface.tsx",
+      "motion": "never",
+      "boundary": "Borderless, full-height plain-text page with a 42rem measure, in the writer's choice of the open-licence faces in components/missa/writing-typefaces.ts (DESIGN.md typography rule 9) at 16-28px (set in rem). The caret marks focus. Gap recorded: the installed Textarea and the 20 local Studio textarea variants are bordered, labelled form fields; none is a document surface."
     }
   },
   "productCompositions": {
@@ -1138,7 +1232,8 @@
     ],
     "CreatorCv": ["EditorialTypography", "PrintStyles", "ProvenanceMark"],
     "ProfileConnect": ["Button", "Dialog", "Field", "Input", "NativeSelect", "Textarea"],
-    "ProfileInbox": ["Tabs", "Button", "Empty", "Link"]
+    "ProfileInbox": ["Tabs", "Button", "Empty", "Link"],
+    "WritingRoom": ["WritingSurface", "Button", "DropdownMenu", "Popover", "Sheet", "Item", "AlertDialog", "Alert"]
   },
   "motion": {
     "requiresChangingState": true,

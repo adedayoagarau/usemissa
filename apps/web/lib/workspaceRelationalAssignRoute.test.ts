@@ -81,7 +81,7 @@ test('relational assignment applies the distribution conflict rules before writi
   assert.equal(refused.status, 409);
   const refusedBody = await refused.json();
   assert.equal(refusedBody.reason, 'shared-email-domain');
-  assert.match(refusedBody.error, /cannot review this Submission/);
+  assert.match(refusedBody.error, /cannot review this submission/);
   assert.equal(sharedDomain.assigned.length, 0);
 });
 

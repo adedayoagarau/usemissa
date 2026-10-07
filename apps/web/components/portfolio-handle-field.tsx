@@ -52,7 +52,7 @@ export function PortfolioHandleField({
             value,
             status: data.available
               ? "Available · reserved when you publish."
-              : "Already in use. Try adding your middle name or practice.",
+              : "Already in use. Try adding your middle name or what you make.",
           });
       } catch (error) {
         if (!controller.signal.aborted)

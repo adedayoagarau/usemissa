@@ -23,7 +23,6 @@ const STATIC_PATHS = [
   "/about",
   "/methodology",
   "/for-organizations",
-  "/waitlist",
   "/rankings/plan",
   "/terms",
   "/privacy",

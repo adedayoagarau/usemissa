@@ -117,7 +117,7 @@ test('an all-skipped import returns a replayable no-change receipt', async ({ pa
 test('import stepper is reachable from the authenticated Passport shell', async ({ page }) => {
   await account(page);
   await page.goto('/import');
-  await expect(page.getByRole('heading', { name: 'Import your tracker' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bring your spreadsheet. Yes, even that one.' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Download CSV template' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Download template' })).toBeVisible();
   await page.locator('input[type="file"]').setInputFiles({ name: 'tracker.csv', mimeType: 'text/csv', buffer: Buffer.from('Title,Organization,Status\nA call,An organization,Saved\n') });
@@ -135,7 +135,7 @@ test('import review keeps legacy practice explicit and remains contained on a ph
   await page.getByRole('button', { name: 'Review columns' }).click();
   await page.getByRole('button', { name: 'Review rows' }).click();
   await expect(page.getByText('Review “Poetry”')).toBeVisible();
-  await expect(page.getByText('A canonical term is available, but you must confirm it.')).toBeVisible();
+  await expect(page.getByText('A matching term is ready, but you need to confirm it.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Review exact changes' })).toBeDisabled();
   await page.getByRole('button', { name: /Discipline Poetry/ }).click();
   await expect(page.getByRole('button', { name: 'Review exact changes' })).toBeEnabled();

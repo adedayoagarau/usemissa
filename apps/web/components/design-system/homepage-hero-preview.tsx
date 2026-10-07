@@ -137,7 +137,7 @@ export function HomepageHeroPreview({
                   tabIndex={menuOpen ? 0 : -1}
                   onClick={() => setMenuOpen(false)}
                 >
-                  Create account
+                  Get Missa free
                 </Link>
               </nav>
             </div>
@@ -164,18 +164,17 @@ export function HomepageHeroPreview({
             Log in
           </Link>
           <Link href="/signup" className={styles.signup}>
-            Create account
+            Get Missa free
           </Link>
         </div>
       </header>
 
       <div className={styles.copy}>
         <div className={styles.copyInner}>
-          <h1 id="homepage-hero-heading">
-            Opportunities and grants for every creator
-          </h1>
+          <h1 id="homepage-hero-heading">Find the call. Make the deadline.</h1>
           <p className={styles.lede}>
-            Find open calls, grants, residencies and places to share your work.
+            Open calls, grants, residencies and magazines, with the fee, the
+            rules and a reminder before each one closes.
           </p>
           <Link
             id="homepage-primary-cta"
@@ -185,7 +184,7 @@ export function HomepageHeroPreview({
             <span className={styles.exploreMark} aria-hidden="true">
               <ArrowUpRight className={styles.exploreArrow} />
             </span>
-            Browse opportunities
+            Browse open calls
           </Link>
           <p className={styles.photoCredit}>
             Photo by{" "}

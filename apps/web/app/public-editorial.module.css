@@ -12,6 +12,11 @@
 .actions a, .guideList a, .related a { display: inline-flex; min-height: 44px; align-items: center; gap: 7px; color: var(--primary); font-size: .86rem; font-weight: 700; text-decoration: none; }
 .actions svg, .guideList svg, .related svg { width: 16px; height: 16px; }
 .section { padding: 42px 0; border-top: 1px solid var(--border); }
+.note { max-width: 760px; }
+.note h2 { margin: 8px 0 0; font-size: clamp(2rem, 4vw, 3.4rem); font-weight: 540; letter-spacing: -.04em; }
+.note > p:not(.eyebrow) { margin: 16px 0 0; color: var(--muted-foreground); line-height: 1.7; }
+.note footer { display: grid; gap: 2px; margin-top: 24px; font-size: .9rem; }
+.note footer span { color: var(--muted-foreground); }
 .sectionHeader { max-width: 760px; }
 .sectionHeader h2, .responsibility h2, .related h2 { margin: 8px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: clamp(2rem, 4vw, 3.4rem); font-weight: 540; letter-spacing: -.04em; }
 .sectionHeader > p:last-child { margin: 12px 0 0; color: var(--muted-foreground); line-height: 1.6; }

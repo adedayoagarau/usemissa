@@ -17,6 +17,21 @@
       "mcp__github__get_commit"
     ]
   },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$CLAUDE_PROJECT_DIR/scripts/check-missa-language.mjs\"; [ ! -f \"$f\" ] || node \"$f\" --hook",
+            "timeout": 20,
+            "statusMessage": "Checking Missa copy"
+          }
+        ]
+      }
+    ]
+  },
   "autoMode": {
     "allow": [
       "$defaults",

@@ -168,7 +168,7 @@ export function calendarFeed(
   const tracker = (opportunityId: string) => site(`/tracker?view=saved&application=${encodeURIComponent(opportunityId)}`, siteUrl);
 
   for (const item of data.tracked) {
-    const organization = item.organizationName ?? "The organisation";
+    const organization = item.organizationName ?? "The organizer";
     const preparing = PRE_SUBMISSION.has(item.myStatus);
     if (want("opens") && item.openDate && ISO_DATE.test(item.openDate) && preparing && (item.oppStatus === "opening-soon" || item.openDate >= today)) {
       events.push(
@@ -300,7 +300,7 @@ export function calendarFeed(
 
   if (want("forecast")) {
     for (const forecast of data.forecasts) {
-      const based = `Based on ${forecast.basedOnCycles} past cycles. This is a prediction until the organisation confirms the dates.`;
+      const based = `Based on ${forecast.basedOnCycles} past cycles. This is a prediction until the organizer confirms the dates.`;
       const start = forecast.expectedOpenStart ?? forecast.expectedOpenEnd;
       if (start && ISO_DATE.test(start)) {
         events.push(

@@ -275,7 +275,7 @@ function SearchZero({
     <section className={styles.empty} aria-labelledby="tracker-zero-title">
       <Search aria-hidden="true" />
       <h2 id="tracker-zero-title">No Tracker items match “{query}”</h2>
-      <p>Try an Organization, Opportunity, Work, or type name.</p>
+      <p>Try a call, organization, piece or type.</p>
       <button type="button" className={styles.quietButton} onClick={onClear}>
         Clear search
       </button>
@@ -1526,11 +1526,11 @@ export function TrackerProduct({
               <FolderKanban aria-hidden="true" />
               <h2>Nothing saved right now</h2>
               <p>
-                Opportunities you save stay here until you record a
-                submission.
+                Your open tabs can finally rest. Calls you save stay here until
+                you send something.
               </p>
               <Link href="/opportunities" className={styles.primaryLink}>
-                Browse Opportunities
+                Browse open calls
               </Link>
             </section>
           )}

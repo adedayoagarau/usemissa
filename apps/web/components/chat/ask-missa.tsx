@@ -20,6 +20,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
 import { Textarea } from '@/components/ui/textarea';
+import { taxonomyFacetLabel } from '@/lib/taxonomy-labels';
 
 import styles from './ask-missa.module.css';
 
@@ -46,21 +47,6 @@ const suggestions = [
   'Find grants for documentary filmmakers',
 ];
 
-const facetLabels: Record<string, string> = {
-  'practice-family': 'Field',
-  discipline: 'Discipline',
-  form: 'Form',
-  genre: 'Genre',
-  subgenre: 'Subgenre',
-  medium: 'Medium',
-  technique: 'Technique or process',
-  mode: 'Mode or approach',
-  role: 'Role',
-  theme: 'Theme or subject',
-  audience: 'Audience',
-  language: 'Language',
-};
-
 function assistantPayload(message: ChatMessage): ChatAssistantPayload | undefined {
   if (message.role !== 'assistant') return undefined;
   const parsed = chatAssistantPayloadSchema.safeParse(message.metadata);
@@ -80,7 +66,7 @@ function ParsedSearch({ payload }: { payload: ChatAssistantPayload }) {
   const filters = [
     ...payload.search.types.map((type) => ({ category: 'Type', label: type.replaceAll('-', ' ') })),
     ...(payload.search.feeStatus ? [{ category: 'Fee', label: payload.search.feeStatus === 'no-fee' ? 'No fee' : payload.search.feeStatus.replaceAll('-', ' ') }] : []),
-    ...payload.search.taxonomy.map((term) => ({ category: facetLabels[term.facet] ?? term.facet, label: term.label })),
+    ...payload.search.taxonomy.map((term) => ({ category: taxonomyFacetLabel(term.facet), label: term.label })),
   ];
   if (!filters.length && !payload.search.query) return null;
   return (
@@ -110,7 +96,7 @@ function EvidenceList({ payload }: { payload: ChatAssistantPayload }) {
             {result.taxonomy.length ? <div><Shapes aria-hidden="true" /><dt>Field</dt><dd>{result.taxonomy.slice(0, 4).map((term) => term.label).join(' · ')}</dd></div> : null}
           </dl>
           <footer>
-            <Link href={`/opportunities/${encodeURIComponent(result.id)}`}>Open Opportunity <ArrowUpRight aria-hidden="true" /></Link>
+            <Link href={`/opportunities/${encodeURIComponent(result.id)}`}>View call <ArrowUpRight aria-hidden="true" /></Link>
             <a href={result.source.url} target="_blank" rel="noreferrer">Official source <ArrowUpRight aria-hidden="true" /></a>
           </footer>
         </article>
@@ -173,7 +159,7 @@ export function AskMissa() {
     async function loadHistory() {
       try {
         const listResponse = await fetch('/api/me/chat', { cache: 'no-store' });
-        if (!listResponse.ok) throw new Error(listResponse.status === 503 ? 'Ask Missa is temporarily unavailable. Browse Opportunities while the published collection reconnects.' : 'We could not load your conversation history.');
+        if (!listResponse.ok) throw new Error(listResponse.status === 503 ? 'Ask Missa is temporarily unavailable. You can still browse open calls while it reconnects.' : 'Couldn’t load your conversation history.');
         const list = await listResponse.json() as { conversations?: ConversationSummary[] };
         const rows = list.conversations ?? [];
         if (cancelled) return;
@@ -289,7 +275,7 @@ export function AskMissa() {
 
       <section className={styles.conversation} aria-labelledby="ask-conversation-heading" aria-busy={loadingHistory || loadingConversation || pending}>
         <header>
-          <div><p>Published Opportunity search</p><h2 id="ask-conversation-heading" ref={conversationHeadingRef} tabIndex={-1}>{activeConversation?.title || 'New search'}</h2><span>Sources remain attached. Ask does not decide eligibility, quality, or likely outcomes.</span></div>
+          <div><p>Search published calls</p><h2 id="ask-conversation-heading" ref={conversationHeadingRef} tabIndex={-1}>{activeConversation?.title || 'New search'}</h2><span>Every result links to its official source. Ask doesn’t judge eligibility, quality or likely outcomes.</span></div>
           {conversationId ? <Button type="button" variant="ghost" onClick={newConversation}><Plus aria-hidden="true" />New search</Button> : null}
         </header>
 
@@ -299,7 +285,7 @@ export function AskMissa() {
             <section className={styles.empty}>
               <Search aria-hidden="true" />
               <h3>What published Opportunity are you looking for?</h3>
-              <p>Use an Opportunity type, any of the 12 field facets, a fee preference, geography, or deadline. Missa searches its published collection only.</p>
+              <p>Try a type of call, what you make, a fee, a place or a deadline. Missa only searches calls it has published.</p>
               <div>{suggestions.map((suggestion) => <button key={suggestion} type="button" onClick={() => { setInput(suggestion); inputRef.current?.focus(); }}>{suggestion}</button>)}</div>
             </section>
           ) : null}
@@ -308,7 +294,7 @@ export function AskMissa() {
         </div>
 
         <form onSubmit={submit} className={styles.composer}>
-          {error ? <div className={styles.error} role="alert"><FileText aria-hidden="true" /><span>{error}</span>{error.includes('temporarily unavailable') ? <Link href="/opportunities">Browse Opportunities</Link> : null}</div> : null}
+          {error ? <div className={styles.error} role="alert"><FileText aria-hidden="true" /><span>{error}</span>{error.includes('temporarily unavailable') ? <Link href="/opportunities">Browse open calls</Link> : null}</div> : null}
           <label htmlFor="ask-missa-message">Ask about published Opportunities</label>
           <div>
             <Textarea
