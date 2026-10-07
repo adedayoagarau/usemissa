@@ -1,4 +1,4 @@
-import { discoveryCollections } from "@/lib/discoveryGuides";
+import { discoveryCollections, discoveryGuides } from "@/lib/discoveryGuides";
 import { getPublicProfileCountryCounts } from "@/lib/publicProfileReads";
 import type { SitemapEntry } from "@/lib/sitemapData";
 import { sitemapUrlset, xmlResponse } from "@/lib/sitemapXml";
@@ -22,6 +22,7 @@ const STATIC_PATHS = [
   "/discover/prizes",
   "/about",
   "/methodology",
+  "/guides",
   "/for-organizations",
   "/organizations",
   "/terms",
@@ -56,6 +57,7 @@ export async function GET() {
     ...discoveryCollections.map((collection) => ({
       path: `/discover/${collection.slug}`,
     })),
+    ...discoveryGuides.map((guide) => ({ path: `/guides/${guide.slug}` })),
     ...(countryHubs ?? []),
   ];
   return xmlResponse(sitemapUrlset(entries), { degraded: !countryHubs });

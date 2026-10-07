@@ -26,7 +26,7 @@ export function PublicSiteShell({
   session?: HeaderSession;
 }) {
   // Every public page links the discover hubs, so none of them is orphaned.
-  const collections = collectionLinks ?? discoveryCollections;
+  const collections = collectionLinks ?? discoveryCollections.filter((collection) => collection.footer !== false);
   return (
     <div className={styles.site}>
       <MissaSiteHeader session={session} current={current} />
@@ -65,6 +65,7 @@ export function PublicSiteShell({
         <nav aria-label="Footer navigation">
           <Link href="/about">About</Link>
           <Link href="/methodology">Methodology</Link>
+          <Link href="/guides">Guides</Link>
           <Link href="/directory">Directory</Link>
           <Link href="/residencies">Residencies</Link>
           <Link href="/journals">Journals</Link>

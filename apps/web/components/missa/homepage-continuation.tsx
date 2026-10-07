@@ -513,6 +513,7 @@ export function HomepageFooter() {
                 <span>Tools &amp; guides</span>
                 <Link href="/rankings/magazines">Magazine rankings</Link>
                 <Link href="/methodology">How Missa works</Link>
+                <Link href="/guides">Guides</Link>
                 <Link href="/about">About us</Link>
                 <a href={contactMailto()}>Get in touch</a>
               </div>

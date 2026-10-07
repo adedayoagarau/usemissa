@@ -52,23 +52,55 @@ function getPool(): Pool | null {
 export async function listOpportunitySitemapEntries(): Promise<SitemapEntry[]> {
   const client = getPool();
   if (!client) return [];
-  const result = await client.query<{ path: string; updated_at: Date | null }>({
-    text: `
-      select distinct on (coalesce(nullif(btrim(o.slug), ''), o.id))
-             '/opportunities/' || coalesce(nullif(btrim(o.slug), ''), o.id) as path,
-             coalesce(o.updated_at, o.created_at) as updated_at
-      from opportunities o
-      where ${canonicalListedOpportunityPredicate("o")}
-        and o.status = any($1::text[])
-      order by coalesce(nullif(btrim(o.slug), ''), o.id), coalesce(o.updated_at, o.created_at) desc`,
-    values: [PUBLIC_OPPORTUNITY_STATUSES],
-  });
+  let result;
+  try {
+    result = await queryOpportunitySitemap(client, true);
+  } catch (error) {
+    // The quality filter must never cost the whole opportunity sitemap.
+    console.warn("Opportunity sitemap quality filter failed; listing every call.", error);
+    result = await queryOpportunitySitemap(client, false);
+  }
   return result.rows.map((row) => ({
     path: row.path,
     lastModified: row.updated_at
       ? new Date(row.updated_at).toISOString()
       : undefined,
   }));
+}
+
+/**
+ * Roundup posts ("12 open calls to apply for in spring") and FAQ pages that
+ * were ingested as calls. Mirrors `isRoundupTitle` in lib/seo.tsx.
+ */
+export const ROUNDUP_TITLE_SQL_PATTERN =
+  "^\\s*[0-9]{1,3}\\s+(open calls|calls|opportunities|grants|residencies|fellowships|contests|competitions|writing contests|art contests|literary magazines|magazines|places)\\M|frequently asked|\\mfaqs?\\M|tips for applying|applicant faq";
+
+function queryOpportunitySitemap(client: Pool, filtered: boolean) {
+  // Filtered: drop roundups and calls whose exact deadline has passed, and
+  // keep one URL per call when the same title from the same organizer was
+  // ingested more than once (the most recently updated copy wins).
+  const quality = filtered
+    ? `and o.title !~* $2
+        and not (o.deadline_kind = 'exact' and o.deadline_date is not null and o.deadline_date < current_date)`
+    : "";
+  const groupKey = filtered
+    ? `lower(regexp_replace(o.title, '[^[:alnum:]]+', '', 'g')) || '|' || coalesce(o.organization_id, lower(coalesce(o.guidelines_url, o.submission_url, o.id)))`
+    : `coalesce(nullif(btrim(o.slug), ''), o.id)`;
+  return client.query<{ path: string; updated_at: Date | null }>({
+    text: `
+      select path, updated_at from (
+        select distinct on (${groupKey})
+               '/opportunities/' || coalesce(nullif(btrim(o.slug), ''), o.id) as path,
+               coalesce(o.updated_at, o.created_at) as updated_at
+        from opportunities o
+        where ${canonicalListedOpportunityPredicate("o")}
+          and o.status = any($1::text[])
+          ${quality}
+        order by ${groupKey}, coalesce(o.updated_at, o.created_at) desc
+      ) calls
+      order by path`,
+    values: filtered ? [PUBLIC_OPPORTUNITY_STATUSES, ROUNDUP_TITLE_SQL_PATTERN] : [PUBLIC_OPPORTUNITY_STATUSES],
+  });
 }
 
 /**
