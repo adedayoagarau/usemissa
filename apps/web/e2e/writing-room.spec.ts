@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-// Relational only: entries are saved to the account in Postgres (migrations 0095, 0096).
+// Relational only: entries are saved to the account in Postgres (migrations 0095 to 0097).
 
 const pageText = (page: Page, index = 0) =>
   page.locator('[data-slot="writing-page-text"]').nth(index);
@@ -70,13 +70,13 @@ test("the writing room saves as you type, reopens entries and deletes them", asy
     "The river does not wait for anyone. Neither do I.",
   );
 
-  // A new entry starts blank; the earlier one opens from Entries.
+  // A new entry starts blank; the earlier one opens from the library.
   await page.getByRole("button", { name: "New entry" }).click();
   await expect(writing).toHaveText("");
   await expect(writing).toBeFocused();
   await writing.pressSequentially("Second page.");
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Entries" }).click();
+  await page.getByRole("button", { name: "Library" }).click();
   const sheet = page.getByRole("dialog", { name: "Your writing" });
   await expect(sheet.getByRole("link")).toHaveCount(2);
   await expect(
@@ -92,7 +92,7 @@ test("the writing room saves as you type, reopens entries and deletes them", asy
   await writing.pressSequentially(" More.");
   await expect(sheet).toBeHidden();
   await expect(writing).toHaveText("Second page. More.");
-  await page.getByRole("button", { name: "Entries" }).click();
+  await page.getByRole("button", { name: "Library" }).click();
   await sheet.getByRole("link", { name: /The river does not wait/ }).click();
   await expect(writing).toHaveText(
     "The river does not wait for anyone. Neither do I.",
@@ -224,7 +224,7 @@ test("pages keep their own format and every space and tab", async ({
   await expect(format).toContainText("Page 2 of 2");
   await format.getByLabel("Line spacing").selectOption("3");
   await format.getByLabel("Letter spacing").selectOption("0.5");
-  await format.getByRole("radio", { name: "Centre" }).click();
+  await format.getByRole("radio", { name: "Center" }).click();
   await expect(
     (
       await new AxeBuilder({ page })
@@ -257,4 +257,119 @@ test("pages keep their own format and every space and tab", async ({
     (element) => getComputedStyle(element).width,
   );
   expect(parseFloat(width)).toBeCloseTo(210 * (96 / 25.4), 0);
+});
+
+test("projects gather pieces in an order, outline them and compile them", async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.goto("/write");
+  const writing = pageText(page);
+  await expect(writing).toBeFocused();
+
+  // A project starts from a template.
+  await page.getByRole("button", { name: "Library" }).click();
+  await page.getByRole("button", { name: "New project" }).click();
+  const create = page.getByRole("dialog", { name: "New project" });
+  await create.getByLabel("Title").fill("Harmattan");
+  await create.getByRole("radio", { name: /Short story/ }).click();
+  await expect(
+    (await new AxeBuilder({ page }).include('[role="dialog"]').analyze())
+      .violations,
+  ).toEqual([]);
+  await create.getByRole("button", { name: "Create project" }).click();
+  const binder = page.getByRole("list", { name: "Pieces in Harmattan" });
+  await expect(binder.getByRole("link")).toHaveText([/^Draft/, /^Notes/]);
+  await expect(page.getByLabel("Project title")).toHaveValue("Harmattan");
+  await expect(
+    (
+      await new AxeBuilder({ page })
+        .include('[data-slot="sheet-content"]')
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+
+  // A piece opens from the binder and saves like any entry.
+  await binder.getByRole("link", { name: /^Draft/ }).click();
+  await expect(writing).toBeFocused();
+  await writing.pressSequentially("Dust on the louvres.");
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+  // The header names the project; the binder reorders by its menu.
+  await page.getByRole("button", { name: /Project: Harmattan/ }).click();
+  await page.getByRole("button", { name: "Options for Notes" }).click();
+  const ordered = page.waitForResponse(
+    (response) =>
+      response.url().includes("/pieces") &&
+      response.request().method() === "PUT",
+  );
+  await page.getByRole("menuitem", { name: "Move up" }).click();
+  expect((await ordered).status()).toBe(200);
+  await expect(binder.getByRole("link")).toHaveText([/^Notes/, /^Draft/]);
+
+  // The order and the card are kept in the account.
+  await page.getByRole("button", { name: "Outline" }).click();
+  const outline = page.getByRole("dialog", { name: /Outline/ });
+  await outline.getByLabel("Status").nth(1).selectOption("revised");
+  await outline.getByLabel("Synopsis").nth(1).fill("Morning, before the dust.");
+  await outline.getByLabel("Synopsis").nth(0).click();
+  await expect(
+    (await new AxeBuilder({ page }).include('[role="dialog"]').analyze())
+      .violations,
+  ).toEqual([]);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(500);
+  await page.reload();
+  await page.getByRole("button", { name: /Project: Harmattan/ }).click();
+  await expect(binder.getByRole("link")).toHaveText([
+    /^Notes/,
+    /^Draft.*Revised/,
+  ]);
+  await page.getByRole("button", { name: "Outline" }).click();
+  await expect(outline.getByLabel("Synopsis").nth(1)).toHaveValue(
+    "Morning, before the dust.",
+  );
+  await page.keyboard.press("Escape");
+
+  // Compile gathers every piece in order as one printable manuscript.
+  await page.getByRole("button", { name: "Compile" }).click();
+  const compileDialog = page.getByRole("dialog", { name: /Compile/ });
+  await compileDialog.getByRole("button", { name: "Compile" }).click();
+  await expect(
+    page.getByRole("main").getByRole("heading", { level: 2, name: "Harmattan" }),
+  ).toBeVisible();
+  const compiledPages = page.locator('[data-slot="writing-page-text"]');
+  await expect(compiledPages.first()).toHaveText("Harmattan");
+  await expect(compiledPages.nth(1)).toHaveText("Notes");
+  await expect(compiledPages.nth(2)).toHaveText("DraftDust on the louvres.");
+  await page.getByRole("button", { name: "Back to writing" }).click();
+  await expect(writing).toHaveText("Dust on the louvres.");
+
+  // A loose piece moves into the project.
+  await page.getByRole("button", { name: "New entry" }).click();
+  await writing.pressSequentially("Loose words.");
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Library" }).click();
+  await page.getByRole("button", { name: "Options for Loose words." }).click();
+  await page.getByRole("menuitemradio", { name: "Harmattan" }).click();
+  const library = page.locator('[data-slot="sheet-content"]');
+  await expect(library.getByRole("link", { name: /Loose words/ })).toHaveCount(
+    0,
+  );
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("button", { name: /Project: Harmattan/ }),
+  ).toBeVisible();
+
+  // Deleting the project keeps every piece.
+  await page.getByRole("button", { name: /Project: Harmattan/ }).click();
+  await page.getByRole("button", { name: "Project options" }).click();
+  await page.getByRole("menuitem", { name: "Delete project…" }).click();
+  await page.getByRole("button", { name: "Delete project" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Loose pieces" }),
+  ).toBeVisible();
+  await expect(
+    page.locator('[data-slot="sheet-content"]').getByRole("link"),
+  ).toHaveCount(3);
 });

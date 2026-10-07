@@ -302,7 +302,7 @@ function PageSheet({
       {overflowing ? (
         <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground print:hidden">
           <span>Page {index + 1} runs past its bottom margin.</span>
-          {overflowFrom ? (
+          {overflowFrom && !readOnly ? (
             <Button
               variant="outline"
               size="sm"

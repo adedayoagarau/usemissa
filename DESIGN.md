@@ -554,6 +554,7 @@ An AI-generated component that duplicates an approved item fails review.
 | Check before submitting        | `PreSubmitCheck`              | Passed / Needs attention / Check manually, written out; unverifiable checks are never Passed   |
 | Edit a Work                    | `WorkEditor`                  | `Field`, form controls, `Sortable`, media blocks, `Dialog`/`Sheet`, process feedback           |
 | Write in the writing room      | `WritingRoom`                 | `WritingPages` (printed pages, per-page format), `WritingFormatBar`, `WritingFormatSheet`, ghost `Button`s that fade while the timer runs, `DropdownMenu`, `Popover`, `Sheet` of `Item`s, `AlertDialog`; no AI, suggestions or analysis |
+| Gather pieces into a project   | `WritingLibrary`              | `Sheet` of projects and loose pieces, a `Sortable` binder with Move up/Move down in each piece's `DropdownMenu`, outline and compile `Dialog`s; never touches the text |
 | Manage calendar                | `OpportunityCalendar`         | `Calendar`, labelled events, `Popover` or side panel, provider sync status                     |
 | Configure Profile              | `ProfileSettingsForm`         | Grouped section navigation; visibility `RadioGroup` beside each public field with a live preview; `Collapsible` groups; one sticky save bar per section |
 | Present an artist              | `PortfolioIdentityHeader`     | editorial typography, `Avatar`/media, restrained actions; no dashboard chrome                  |

@@ -25,11 +25,21 @@ const text = (body: string, title = ""): WritingContent => ({
 /** An account that follows the same revision rules as WritingRepository. */
 function fakeAccount() {
   const entries = new Map<string, { body: string; revision: number }>();
-  const calls: Array<{ id: string; body: string; baseRevision: number }> = [];
+  const calls: Array<{
+    id: string;
+    body: string;
+    baseRevision: number;
+    projectId?: string | null;
+  }> = [];
   let mode: "ok" | "down" | "unavailable" | "signed-out" = "ok";
-  const transport: WritingTransport = async (id, content, baseRevision) => {
+  const transport: WritingTransport = async (
+    id,
+    content,
+    baseRevision,
+    options,
+  ) => {
     const body = content.body;
-    calls.push({ id, body, baseRevision });
+    calls.push({ id, body, baseRevision, projectId: options.projectId });
     await new Promise((resolve) => setTimeout(resolve, 2));
     if (mode === "down") return { kind: "failed" };
     if (mode === "unavailable") return { kind: "unavailable" };
@@ -40,6 +50,10 @@ function fakeAccount() {
       entry: {
         id,
         title: content.title,
+        projectId: null,
+        position: 0,
+        synopsis: "",
+        status: "",
         preview: writingPreview(body),
         wordCount: countWords(body),
         revision,
@@ -69,6 +83,10 @@ function fakeAccount() {
         title: "",
         body: stored.body,
         document: null,
+        projectId: null,
+        position: 0,
+        synopsis: "",
+        status: "",
         preview: writingPreview(stored.body),
         wordCount: countWords(stored.body),
         revision: stored.revision,
@@ -239,6 +257,22 @@ test("when another device changed the entry, this device's text becomes a new en
   assert.equal(account.entries.get(forks[0]!.to)?.body, "Shared start, phone");
 });
 
+test("a piece started in a project is created there, and a fork stays there", async () => {
+  const { account, sync, forks } = setup();
+  const project = "project_0f8fad5b-d9cb-469f-a165-70867728950e";
+  const id = newWritingEntryId();
+  sync.edit(id, text("Chapter one"), project);
+  await sync.whenIdle();
+  assert.equal(account.calls.at(-1)?.projectId, project);
+
+  account.entries.set(id, { body: "Chapter one, laptop", revision: 2 });
+  sync.edit(id, text("Chapter one, phone"));
+  await sync.whenIdle();
+  assert.equal(forks.length, 1);
+  const created = account.calls.find((call) => call.id === forks[0]!.to);
+  assert.equal(created?.projectId, project);
+});
+
 test("when another device deleted the entry, this device's text becomes a new entry", async () => {
   const { account, sync, forks } = setup();
   const id = newWritingEntryId();
@@ -353,6 +387,10 @@ test("a title or page change saves like any other change", async () => {
         entry: {
           id,
           title: content.title,
+          projectId: null,
+          position: 0,
+          synopsis: "",
+          status: "",
           preview: "",
           wordCount: 0,
           revision: baseRevision + 1,
