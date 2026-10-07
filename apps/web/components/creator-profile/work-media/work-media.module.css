@@ -1,0 +1,622 @@
+/* Work formats on a creator's profile: film, listening, wall labels, case
+   studies and the card states. Colour comes from the creator theme variables
+   set on the profile. The work dialog sits outside the profile, so shared
+   pieces fall back to the app's own tokens there. */
+.screening,
+.audio,
+.transcript,
+.chapters,
+.wallLabel,
+.facts,
+.mediaError,
+.chip,
+.strip {
+  --wm-muted: var(--profile-muted, var(--muted-foreground));
+  --wm-line: var(--profile-line, var(--border));
+  --wm-subtle: var(--profile-subtle, var(--muted));
+}
+
+/* ---------- Play button ---------- */
+.play {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--foreground);
+  box-shadow: var(--elevation-menu);
+}
+.play:hover {
+  background: color-mix(in srgb, var(--foreground) 8%, var(--background));
+  color: var(--foreground);
+}
+.play svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+.play .spinner,
+.play .stroke {
+  fill: none;
+}
+
+/* ---------- Card media ---------- */
+.mediaBox {
+  position: relative;
+  min-width: 0;
+}
+.mediaBox[data-loading="true"],
+.cardImage[data-loading="true"] {
+  min-height: 200px;
+}
+.skeleton {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-sm);
+}
+.cardImage {
+  position: relative;
+  display: block;
+}
+.chips {
+  position: absolute;
+  inset-block-start: 12px;
+  inset-inline: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  pointer-events: none;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 600;
+}
+.chipDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--primary);
+}
+.chipMono {
+  font-weight: 400;
+}
+
+/* The strip is dark in every theme, so its button is light in every theme. */
+.strip .play {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: none;
+}
+.strip .play:hover {
+  background: color-mix(in srgb, var(--ink) 8%, var(--surface));
+  color: var(--ink);
+}
+
+/* Audio strip over an image: play, position, time. */
+.strip {
+  position: absolute;
+  inset-inline: 10px;
+  inset-block-end: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 4px 14px 4px 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 82%, transparent);
+  color: var(--surface);
+}
+.stripLabel {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stripTrack {
+  min-width: 0;
+  flex: 1;
+}
+.stripTime {
+  flex: none;
+  font-size: 11px;
+}
+
+/* Sound tile with no image: the position and time sit under the button. */
+.soundBody {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.soundBody .stripTrack {
+  width: 100%;
+  flex: none;
+}
+
+/* A thin bar in the colour of the text around it: the position of a recording. */
+.bar [data-slot="progress-track"] {
+  height: 3px;
+  background: color-mix(in srgb, currentColor 28%, transparent);
+}
+.bar [data-slot="progress-indicator"] {
+  background: currentColor;
+}
+
+/* ---------- Film poster on a card ---------- */
+.film {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  aspect-ratio: 16 / 10;
+}
+.filmLink {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  color: var(--surface);
+  text-decoration: none;
+}
+.posterImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.posterTile {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 20px;
+  color: var(--surface);
+}
+.posterButton {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--ink);
+}
+.posterButton:hover {
+  background: color-mix(in srgb, var(--ink) 12%, transparent);
+  color: var(--ink);
+}
+.posterIcon {
+  display: inline-flex;
+  width: 56px;
+  height: 56px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  color: var(--ink);
+}
+.posterIcon svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+.posterIconLarge {
+  width: 76px;
+  height: 76px;
+}
+.posterIconLarge svg {
+  width: 24px;
+  height: 24px;
+}
+/* A ring that reads on any picture: ink inside, white outside. */
+.posterButton:focus-visible,
+.filmLink:focus-visible {
+  outline: 2px solid var(--surface);
+  outline-offset: -6px;
+  box-shadow: inset 0 0 0 4px var(--ink);
+}
+.filmTag {
+  position: absolute;
+  inset-inline-end: 10px;
+  inset-block-end: 10px;
+  display: inline-flex;
+  align-items: center;
+  max-width: calc(100% - 20px);
+  height: 24px;
+  padding: 0 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 80%, transparent);
+  color: var(--surface);
+  font-size: 11px;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Media that did not load ---------- */
+.mediaError {
+  min-height: 160px;
+  border-radius: var(--radius-sm);
+  border-style: solid;
+  background: var(--wm-subtle);
+  align-items: flex-start;
+  justify-content: center;
+  padding: 16px;
+  text-align: start;
+}
+.mediaError [data-slot="empty-header"] {
+  align-items: flex-start;
+  max-width: none;
+}
+.mediaError [data-slot="empty-content"] {
+  align-items: flex-start;
+}
+.mediaErrorFill {
+  aspect-ratio: 4 / 5;
+}
+
+/* ---------- Card details ---------- */
+.wallLabel {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  color: var(--wm-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.wallLabelTitle {
+  color: inherit;
+  font-size: 18px;
+  font-style: italic;
+  line-height: 1.25;
+}
+.wallLabelTitle b {
+  font-weight: inherit;
+}
+.cardNotes {
+  margin: -6px 0 0;
+  color: var(--profile-muted, var(--muted-foreground));
+  font-size: 12px;
+}
+
+/* ---------- Series ---------- */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(72px, 8vw, 96px);
+}
+.series {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--profile-line);
+}
+.seriesHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 20px;
+}
+.seriesTitle {
+  margin: 0;
+  font-size: clamp(26px, 2.6vw, 36px);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+}
+.seriesMeta {
+  color: var(--profile-muted);
+  font-size: 12px;
+}
+
+/* ---------- Screening ---------- */
+.screening {
+  display: grid;
+  gap: 16px;
+  container: screening / inline-size;
+}
+.screeningBody {
+  display: grid;
+  gap: 16px;
+}
+.screen {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  aspect-ratio: 16 / 9;
+}
+.screen iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.notice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  color: var(--wm-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.notice a {
+  color: inherit;
+  text-underline-offset: 3px;
+}
+@container screening (min-width: 560px) {
+  .screeningBody[data-chapters="true"] {
+    grid-template-columns: minmax(0, 1fr) 220px;
+    align-items: start;
+  }
+}
+
+/* ---------- Chapters ---------- */
+.chapters {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+.chaptersTitle {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.chapters ol {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.chapter {
+  justify-content: flex-start;
+  width: 100%;
+  height: auto;
+  min-height: 44px;
+  gap: 12px;
+  padding: 8px 10px;
+  font-weight: 400;
+  text-align: start;
+  white-space: normal;
+}
+.chapter[aria-current="true"] {
+  background: var(--wm-subtle);
+  color: var(--foreground);
+  font-weight: 600;
+}
+.chapterTime {
+  min-width: 4.4ch;
+  color: var(--wm-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Listening ---------- */
+.audio {
+  display: grid;
+  gap: 14px;
+  container: audio / inline-size;
+}
+.audioBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px 8px 8px;
+  border-radius: 999px;
+  background: var(--wm-subtle);
+  font-size: 14px;
+}
+.audioText {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+.audioText > span:first-child {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.audioText > span:last-child {
+  color: var(--wm-muted);
+  font-size: 13px;
+}
+.audioTime {
+  flex: none;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Transcript ---------- */
+.transcript {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+.transcriptText {
+  max-width: 68ch;
+  margin: 0;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--wm-line);
+  font-size: 16px;
+  line-height: 1.7;
+  white-space: pre-line;
+}
+.chevron {
+  transition: transform 120ms ease;
+}
+[aria-expanded="true"] > .chevron {
+  transform: rotate(180deg);
+}
+
+/* ---------- Case study ---------- */
+.facts {
+  display: grid;
+  margin: 0;
+  border-top: 1px solid var(--wm-line);
+}
+.fact {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--wm-line);
+}
+.fact dt {
+  color: var(--wm-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.fact dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.fact dd a {
+  color: var(--primary);
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+.eyebrow {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ---------- Mini player ---------- */
+.mini {
+  position: sticky;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 10;
+  display: flex;
+  width: min(520px, calc(100% - 32px));
+  align-items: center;
+  gap: 12px;
+  margin: 0 auto 16px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--surface) 22%, transparent);
+  border-radius: var(--radius-xl);
+  background: var(--ink);
+  color: var(--surface);
+  box-shadow: var(--elevation-dialog);
+}
+.mini img {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+.miniText {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+.miniTitle {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.miniLine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.miniLine > :first-child {
+  min-width: 0;
+  flex: 1;
+}
+.miniTime {
+  flex: none;
+  color: color-mix(in srgb, var(--surface) 82%, transparent);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.miniMessage {
+  margin: 0;
+  color: var(--ochre-tint);
+  font-weight: 400;
+}
+.mini .play {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: none;
+}
+.mini .play:hover {
+  background: color-mix(in srgb, var(--ink) 8%, var(--surface));
+  color: var(--ink);
+}
+.miniClose {
+  flex: none;
+  color: color-mix(in srgb, var(--surface) 82%, transparent);
+}
+.miniClose:hover {
+  background: color-mix(in srgb, var(--surface) 14%, transparent);
+  color: var(--surface);
+}
+@container profile (max-width: 480px) {
+  .mini img {
+    display: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .miniClose {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* Loading is also said in words ("Loading…"), so the spinner can stand still. */
+@media (prefers-reduced-motion: reduce) {
+  .chevron {
+    transition: none;
+  }
+  .spinner {
+    animation: none;
+  }
+}

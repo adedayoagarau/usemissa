@@ -36,7 +36,7 @@ jobs:
         run: npm run test:language && npm run check:language
 
       - name: Check Missa design-system policy
-        run: npm run check:design-system
+        run: npm run test:design-system && npm run check:design-system
 
       - name: Check media provenance stays out of public/
         run: npm run check:public-media

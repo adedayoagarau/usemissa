@@ -44,6 +44,25 @@ export type AcceptedOutcome = Readonly<{
   decidedAt: string;
 }>;
 
+/** A stored portfolio file, described without its bytes. */
+export type PortfolioMediaFact = Readonly<{
+  id: string;
+  /** The type sniffed from the file's own bytes when it was uploaded. */
+  contentType: string;
+  bytes: number;
+}>;
+
+/** The parts of a published snapshot a reciprocal credit check reads. */
+export type PublishedCreditList = Readonly<{
+  name: unknown;
+  collaborators: unknown;
+  modules: unknown;
+}>;
+
+/** A request resolves at most this many handles. */
+export const MAX_HANDLE_LOOKUPS = 12;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
 type ProfileRow = {
   account_id: string;
   user_id: string;
@@ -269,6 +288,116 @@ export class PostgresCreatorProfileRepository extends CreatorRepositoryBase {
       `select m.bytes,m.content_type from creator_portfolio_media m where id=$1 and
        (account_id=$2 or exists(select 1 from creator_portfolio_drafts p join radar_accounts a on a.id=p.account_id where p.account_id=m.account_id and coalesce(a.data->>'active','true') <> 'false' and p.published_at is not null and m.id=any(p.published_media_ids)))`,[id,accountId??null]);
     return result.rows[0];
+  }
+
+  /**
+   * What the account's stored files are, read without loading them: the type
+   * sniffed when they were uploaded and their size in bytes. Booking kit files
+   * are described from this on every write and every public read, so a client
+   * can never state a type or size. Files the account does not own are absent.
+   */
+  async portfolioMediaFacts(
+    accountId: string,
+    ids: readonly string[],
+  ): Promise<PortfolioMediaFact[]> {
+    const wanted = [...new Set(ids)].filter((id) => UUID.test(id));
+    if (!wanted.length) return [];
+    const result = await this.query<{ id: string; content_type: string; size: string | number }>(
+      `select m.id, m.content_type, octet_length(m.bytes) as size
+         from creator_portfolio_media m
+        where m.account_id = $1 and m.id = any($2::uuid[])`,
+      [accountId, wanted],
+    );
+    return result.rows.map((row) => ({
+      id: row.id,
+      contentType: row.content_type,
+      bytes: Number(row.size),
+    }));
+  }
+
+  /**
+   * The users behind up to twelve handles, keyed by the handle asked for.
+   * Only claimed user handles count, whether written as the current handle or
+   * an old alias. A handle that is reserved, blocked, belongs to an
+   * organization or does not exist is simply absent, so the answer says nothing
+   * `/@handle` does not.
+   */
+  async userIdsForHandles(keys: readonly string[]): Promise<Map<string, string>> {
+    const wanted = [...new Set(keys)].slice(0, MAX_HANDLE_LOOKUPS);
+    const found = new Map<string, string>();
+    if (!wanted.length) return found;
+    const canonical = await this.query<{ key: string; user_id: string }>(
+      `select handle_key as key, subject_id as user_id
+         from handles
+        where handle_key = any($1::text[]) and subject_type = 'user' and state = 'claimed'`,
+      [wanted],
+    );
+    for (const row of canonical.rows) found.set(row.key, row.user_id);
+    const missing = wanted.filter((key) => !found.has(key));
+    if (!missing.length) return found;
+    const aliases = await this.query<{ key: string; user_id: string }>(
+      `select a.alias_key as key, h.subject_id as user_id
+         from handle_aliases a
+         join handles h on h.handle_key = a.handle_key
+        where a.alias_key = any($1::text[]) and h.subject_type = 'user' and h.state = 'claimed'`,
+      [missing],
+    );
+    for (const row of aliases.rows) found.set(row.key, row.user_id);
+    return found;
+  }
+
+  /** Every handle this user answers to: the current one and any old aliases. */
+  async userHandleKeys(userId: string): Promise<string[]> {
+    const result = await this.query<{ key: string }>(
+      `select h.handle_key as key
+         from handles h
+        where h.subject_type = 'user' and h.subject_id = $1 and h.state = 'claimed'
+       union
+       select a.alias_key as key
+         from handle_aliases a
+         join handles h on h.handle_key = a.handle_key
+        where h.subject_type = 'user' and h.subject_id = $1 and h.state = 'claimed'`,
+      [userId],
+    );
+    return result.rows.map((row) => row.key);
+  }
+
+  /**
+   * The credits other creators have published: for each user with a live
+   * snapshot, its name, collaborators and module list as stored. Only what a
+   * reciprocal check needs is returned, never the rest of the snapshot, and
+   * unpublished or deactivated accounts are absent.
+   */
+  async publishedCreditLists(
+    userIds: readonly string[],
+  ): Promise<Map<string, PublishedCreditList>> {
+    const wanted = [...new Set(userIds)].slice(0, MAX_HANDLE_LOOKUPS);
+    const lists = new Map<string, PublishedCreditList>();
+    if (!wanted.length) return lists;
+    const result = await this.query<{
+      user_id: string;
+      name: unknown;
+      collaborators: unknown;
+      modules: unknown;
+    }>(
+      `select a.data->>'userId' as user_id,
+              p.published_data->'name' as name,
+              p.published_data->'collaborators' as collaborators,
+              p.published_data->'modules' as modules
+         from creator_portfolio_drafts p
+         join radar_accounts a on a.id = p.account_id
+        where a.data->>'userId' = any($1::text[])
+          and coalesce(a.data->>'active', 'true') <> 'false'
+          and p.published_at is not null`,
+      [wanted],
+    );
+    for (const row of result.rows)
+      lists.set(row.user_id, {
+        name: row.name,
+        collaborators: row.collaborators,
+        modules: row.modules,
+      });
+    return lists;
   }
 
   /** Remove an owner-uploaded asset only when it is not part of the live snapshot. */

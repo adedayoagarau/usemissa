@@ -1,30 +1,32 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
+import { creatorShareImage } from "@/components/creator-profile/share-image";
+import { loadShareFonts } from "@/components/creator-profile/share/fonts";
 import {
-  creatorShareImage,
-  loadEditorialFont,
-} from "@/components/creator-profile/share-image";
-import { sampleCreatorPortfolio } from "@/lib/creator-profile-sample";
+  shareSampleDelay,
+  shareSampleMedia,
+  shareSamplePortfolio,
+  type ShareSampleOptions,
+} from "../creator-share-kit/sample";
 
 export const dynamic = "force-dynamic";
 
-async function publicPng(file: string) {
-  const bytes = await readFile(path.join(process.cwd(), "public", file));
-  return `data:image/png;base64,${bytes.toString("base64")}`;
-}
-
-/** Design review of the share card with the fictional sample creator. */
-export async function GET() {
-  const [photo, image, font] = await Promise.all([
-    publicPng("media/creator-preview-portrait.png"),
-    publicPng("media/creator-preview-landscape.png"),
-    loadEditorialFont(),
+/**
+ * Design review of the link card with the fictional sample creator. The states
+ * are switched by query string; see `ShareSampleOptions`.
+ */
+export async function GET(request: Request) {
+  const query = Object.fromEntries(
+    new URL(request.url).searchParams,
+  ) as ShareSampleOptions;
+  await shareSampleDelay(query);
+  const [{ photo, image }, fonts] = await Promise.all([
+    shareSampleMedia(query),
+    loadShareFonts(),
   ]);
   return creatorShareImage({
-    portfolio: sampleCreatorPortfolio(),
+    portfolio: shareSamplePortfolio(query),
     handleKey: "rileychen",
     photo,
     image,
-    font,
+    fonts,
   });
 }

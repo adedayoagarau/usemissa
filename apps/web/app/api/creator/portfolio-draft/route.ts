@@ -8,6 +8,10 @@ import {
   withServerProvenance,
 } from "@/lib/creator-portfolio-schema";
 import { portfolioRequestBody } from "@/lib/portfolio-request";
+import {
+  normalizedCollaborators,
+  reviewPortfolioDraft,
+} from "@/lib/portfolio-server-facts";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const session = await getSessionAccount(request.headers.get("cookie"));
@@ -89,12 +93,20 @@ export async function PUT(request: Request) {
         { error: "Some media does not belong to this account." },
         { status: 400 },
       );
-    // Creators can never mark their own credits as confirmed.
+    // Creators can never mark their own credits as confirmed, and never state
+    // the type or size of a file: both come from the database on every save.
+    const draft = normalizedCollaborators(parsed.data);
+    const { facts, issue } = await reviewPortfolioDraft(draft, {
+      accountId: session.account.id,
+      userId: session.account.userId,
+    });
+    if (issue) return NextResponse.json({ error: issue }, { status: 400 });
     const revision = await repo.writePortfolio(
       session.account.id,
       withServerProvenance(
-        parsed.data,
+        draft,
         await verifiedOutcomes(session.account.id),
+        facts,
       ),
       body.revision,
     );

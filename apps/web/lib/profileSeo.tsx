@@ -170,3 +170,91 @@ export function ProfileJsonLd({ profile }: { profile: ProfileForSeo }) {
     </>
   );
 }
+
+/* ---------- A creator's work page: /@handle/<slug> ---------- */
+
+export type CreativeWorkInput = {
+  /** The page's own path, such as /@riley/atlas. */
+  path: string;
+  /** The creator's profile path, such as /@riley. */
+  profilePath: string;
+  title: string;
+  description: string;
+  creator: string;
+  /** What the work is called on the page: "Poem sequence". */
+  kind?: string;
+  year?: string;
+  /** The preview image's path or address. Gated media is not offered to crawlers. */
+  image?: string;
+  /** Where it was published, from the track record. */
+  publisher?: string;
+  /** The creator's own rights line; absent when the page shows the default. */
+  rights?: string;
+  credits?: Array<{ role: string; name: string }>;
+  parts?: Array<{ kind: 'text' | 'image' | 'audio'; heading: string }>;
+};
+
+const PART_TYPES = { text: 'CreativeWork', image: 'ImageObject', audio: 'AudioObject' } as const;
+
+/**
+ * schema.org CreativeWork for one work. It says only what the page says: the
+ * creator, the year, the credits the creator listed and the parts by name. It
+ * never carries decision ids or unpublished content.
+ */
+export function creativeWorkJsonLd(input: CreativeWorkInput): Record<string, unknown> {
+  const year = input.year?.trim();
+  const credits = (input.credits ?? []).filter((credit) => credit.name.trim());
+  const parts = (input.parts ?? []).slice(0, 60);
+  const author = { '@type': 'Person', name: input.creator, url: absoluteUrl(input.profilePath) };
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'CreativeWork',
+    name: input.title,
+    url: absoluteUrl(input.path),
+    mainEntityOfPage: absoluteUrl(input.path),
+    description: input.description,
+    author,
+    creator: author,
+    ...(input.kind?.trim() ? { genre: input.kind.trim() } : {}),
+    ...(year ? { dateCreated: year } : {}),
+    ...(input.image ? { image: absoluteUrl(input.image) } : {}),
+    ...(input.publisher?.trim() ? { publisher: { '@type': 'Organization', name: input.publisher.trim() } } : {}),
+    ...(input.rights?.trim() ? { copyrightNotice: input.rights.trim() } : {}),
+    ...(credits.length
+      ? {
+          contributor: credits.map((credit) => ({
+            '@type': 'Role',
+            roleName: credit.role.trim() || undefined,
+            contributor: { '@type': 'Person', name: credit.name.trim() },
+          })),
+        }
+      : {}),
+    ...(parts.length
+      ? {
+          hasPart: parts.map((part, index) => ({
+            '@type': PART_TYPES[part.kind],
+            name: part.heading,
+            position: index + 1,
+          })),
+        }
+      : {}),
+    isPartOf: { '@type': 'WebSite', name: 'Missa', url: absoluteUrl('/') },
+  };
+}
+
+/** The work page's structured data: the work itself, then where it sits on the profile. */
+export function WorkPageJsonLd({ work }: { work: CreativeWorkInput }) {
+  return (
+    <>
+      <JsonLd data={creativeWorkJsonLd(work)} />
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Missa', path: '/' },
+          { name: work.creator, path: work.profilePath },
+          { name: 'Work', path: `${work.profilePath}#profile-work` },
+          { name: work.title },
+        ])}
+      />
+    </>
+  );
+}

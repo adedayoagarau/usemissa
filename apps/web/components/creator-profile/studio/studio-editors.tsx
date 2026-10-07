@@ -6,6 +6,7 @@ import {
   BadgeCheck,
   ArrowUp,
   ChevronDown,
+  FileText,
   ImageUp,
   Music,
   Plus,
@@ -34,6 +35,7 @@ import {
   RECORD_KINDS,
   SHELF_KINDS,
   createItemId,
+  createWork,
   type PortfolioAvailability,
   type PortfolioData,
   type PortfolioEvent,
@@ -45,18 +47,25 @@ import {
 import {
   EVENT_STATUS_COPY,
   LENSES,
+  MODULE_LABELS,
+  applyLensAddons,
   applyLensOrder,
   featuredWork,
 } from "@/lib/creator-profile";
 import type { StudioOutcome } from "./use-profile-draft";
 import { EmptyStateArt } from "@/components/illustrations/missa-illustrations";
+import { WorkFormatFields } from "./work-format-fields";
+import { WorkPageFields } from "./work-page-fields";
 import styles from "./profile-studio.module.css";
 
 export type Update = (
   change: (current: PortfolioData) => PortfolioData,
 ) => void;
-export type Upload = (file: File, kind: "image" | "audio") => Promise<string>;
-type EditorProps = {
+export type Upload = (
+  file: File,
+  kind: "image" | "audio" | "document",
+) => Promise<string>;
+export type EditorProps = {
   draft: PortfolioData;
   update: Update;
   upload: Upload;
@@ -161,7 +170,7 @@ export function AreaField({
   );
 }
 
-function SelectField<T extends string>({
+export function SelectField<T extends string>({
   label,
   value,
   options,
@@ -192,31 +201,38 @@ function SelectField<T extends string>({
   );
 }
 
-function MediaField({
+export function MediaField({
   label,
   value,
   kind,
   hint,
+  required,
+  detail,
   onChange,
   upload,
   onError,
 }: {
   label: string;
   value: string;
-  kind: "image" | "audio";
+  kind: "image" | "audio" | "document";
   hint?: string;
+  /** Hides the "optional" note, for a file the item cannot do without. */
+  required?: boolean;
+  /** What the server found in a file it holds, such as "PDF · 240 KB". */
+  detail?: ReactNode;
   onChange: (value: string) => void;
   upload: Upload;
   onError: (message: string) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
-  const Icon = kind === "audio" ? Music : ImageUp;
+  const Icon =
+    kind === "audio" ? Music : kind === "document" ? FileText : ImageUp;
   return (
     <div className={styles.field}>
       <span className={styles.label}>
         {label}
-        <span className={styles.optional}> · optional</span>
+        {!required && <span className={styles.optional}> · optional</span>}
       </span>
       <div className={styles.media}>
         {value && kind === "image" && (
@@ -237,7 +253,9 @@ function MediaField({
             accept={
               kind === "audio"
                 ? "audio/*"
-                : "image/jpeg,image/png,image/webp,image/gif"
+                : kind === "document"
+                  ? "application/pdf,application/zip,.pdf,.zip"
+                  : "image/jpeg,image/png,image/webp,image/gif"
             }
             onChange={async (event) => {
               const file = event.target.files?.[0];
@@ -276,11 +294,14 @@ function MediaField({
             </Button>
           )}
         </div>
+        {detail && <p className={styles.hint}>{detail}</p>}
         <p className={styles.hint}>
           {hint ??
             (kind === "audio"
               ? "MP3, WAV, OGG, FLAC or M4A · up to 20 MB."
-              : "JPG, PNG, WebP or GIF · up to 20 MB.")}
+              : kind === "document"
+                ? "PDF or ZIP · up to 20 MB."
+                : "JPG, PNG, WebP or GIF · up to 20 MB.")}
         </p>
       </div>
     </div>
@@ -288,7 +309,7 @@ function MediaField({
 }
 
 /** One editable list: compact rows, one open at a time, reorder, remove with undo. */
-function ItemList<T extends { id?: string }>({
+export function ItemList<T extends { id?: string }>({
   items,
   onChange,
   noun,
@@ -299,6 +320,7 @@ function ItemList<T extends { id?: string }>({
   empty,
   emptyArt,
   max,
+  initialOpen,
   children,
 }: {
   items: T[];
@@ -312,9 +334,11 @@ function ItemList<T extends { id?: string }>({
   /** A drawing above the empty message, for the lists that start a profile. */
   emptyArt?: ReactNode;
   max: number;
+  /** The id of the item to show open when the list first appears. */
+  initialOpen?: string;
   children: (item: T, change: (patch: Partial<T>) => void) => ReactNode;
 }) {
-  const [open, setOpen] = useState<string | undefined>();
+  const [open, setOpen] = useState<string | undefined>(initialOpen);
   const [removed, setRemoved] = useState<{ item: T; index: number } | null>(
     null,
   );
@@ -450,7 +474,7 @@ function ItemList<T extends { id?: string }>({
   );
 }
 
-function EditorHead({ title, lead }: { title: string; lead: string }) {
+export function EditorHead({ title, lead }: { title: string; lead: string }) {
   return (
     <div className={styles.editorHead}>
       <h2 className="font-heading" tabIndex={-1}>
@@ -461,7 +485,7 @@ function EditorHead({ title, lead }: { title: string; lead: string }) {
   );
 }
 
-const set =
+export const set =
   (update: Update) =>
   <K extends keyof PortfolioData>(key: K) =>
   (value: PortfolioData[K]) =>
@@ -684,6 +708,7 @@ export function BasicsEditor({ draft, update, upload, onError }: EditorProps) {
 /* ---------- Appearance ---------- */
 
 const THEME_LABELS: Record<PortfolioData["theme"], string> = {
+  default: "Default",
   sage: "Sage",
   mineral: "Mineral",
   night: "After hours",
@@ -743,13 +768,24 @@ export function AppearanceEditor({
           onClick={() =>
             update((current) => ({
               ...current,
-              modules: applyLensOrder(current.modules, current.lens),
+              modules: applyLensAddons(
+                applyLensOrder(current.modules, current.lens),
+                current.lens,
+              ),
             }))
           }
         >
-          Order sections for {LENSES[draft.lens].label.toLowerCase()}
+          Set up sections for {LENSES[draft.lens].label.toLowerCase()}
         </Button>
-        <p className={styles.hint}>Keeps any sections you’ve hidden hidden.</p>
+        <p className={styles.hint}>
+          {LENSES[draft.lens].addons.length
+            ? `Orders your sections and switches on ${LENSES[draft.lens].addons
+                .map((id) => MODULE_LABELS[id].toLowerCase())
+                .join(" and ")}. `
+            : "Orders your sections. "}
+          Keeps any sections you’ve hidden hidden, and anything you add or
+          switch off stays your choice.
+        </p>
       </fieldset>
       <fieldset className={styles.group}>
         <legend>Theme</legend>
@@ -832,20 +868,12 @@ export function WorkEditor({ draft, update, upload, onError }: EditorProps) {
             .filter(Boolean)
             .join(" · ")
         }
-        create={() => ({
-          id: createItemId("w"),
-          title: "",
-          text: "",
-          url: "",
-          image: "",
-          audio: "",
-          formats: [],
-          kind: "",
-          year: "",
-          summary: "",
-          caption: "",
-          featured: draft.works.length === 0,
-        })}
+        create={() =>
+          createWork({
+            id: createItemId("w"),
+            featured: draft.works.length === 0,
+          })
+        }
       >
         {(work, change) => (
           <>
@@ -948,6 +976,24 @@ export function WorkEditor({ draft, update, upload, onError }: EditorProps) {
             {work.url && (
               <PortfolioLinkPreview url={work.url} title={work.title} />
             )}
+            <WorkFormatFields
+              work={work}
+              works={draft.works}
+              lens={draft.lens}
+              handle={draft.handle}
+              change={change}
+              upload={upload}
+              onError={onError}
+            />
+            <WorkPageFields
+              work={work}
+              works={draft.works}
+              lens={draft.lens}
+              handle={draft.handle}
+              change={change}
+              upload={upload}
+              onError={onError}
+            />
           </>
         )}
       </ItemList>

@@ -16,10 +16,50 @@
       "apps/web/components/ui/tabs.tsx"
     ],
     "variants": {
-      "AvatarFallback": ["organization", "hue-red", "hue-orange", "hue-amber", "hue-yellow", "hue-lime", "hue-green", "hue-teal", "hue-blue", "hue-indigo", "hue-purple", "hue-magenta", "hue-pink"],
+      "AvatarFallback": [
+        "organization",
+        "hue-red",
+        "hue-orange",
+        "hue-amber",
+        "hue-yellow",
+        "hue-lime",
+        "hue-green",
+        "hue-teal",
+        "hue-blue",
+        "hue-indigo",
+        "hue-purple",
+        "hue-magenta",
+        "hue-pink"
+      ],
       "AvatarGroup": ["tight"],
-      "Badge": ["compact", "information", "success", "accent", "hue-red", "hue-orange", "hue-amber", "hue-yellow", "hue-lime", "hue-green", "hue-teal", "hue-blue", "hue-indigo", "hue-purple", "hue-magenta", "hue-pink"],
-      "Button": ["account", "accentOutline", "choice", "field", "rowTitle", "inline", "disclosure", "nav"],
+      "Badge": [
+        "compact",
+        "information",
+        "success",
+        "accent",
+        "hue-red",
+        "hue-orange",
+        "hue-amber",
+        "hue-yellow",
+        "hue-lime",
+        "hue-green",
+        "hue-teal",
+        "hue-blue",
+        "hue-indigo",
+        "hue-purple",
+        "hue-magenta",
+        "hue-pink"
+      ],
+      "Button": [
+        "account",
+        "accentOutline",
+        "choice",
+        "field",
+        "rowTitle",
+        "inline",
+        "disclosure",
+        "nav"
+      ],
       "Card": ["empty"],
       "Collapsible": ["section", "sectionSpacious", "divided"],
       "Empty": ["bordered", "spacious"],
@@ -48,6 +88,14 @@
     "composition": ["Badge"],
     "adaptation": "Compact semantic count for unread or selected totals. It supplies an explicit accessible label and does not communicate state through color alone.",
     "evidence": "Creator Inbox information-architecture redesign, 2026-09-14"
+  },
+  "collaborationBadge": {
+    "status": "approved",
+    "implementation": "apps/web/components/missa/collaboration-badge.tsx",
+    "composition": ["Badge", "Popover"],
+    "variants": ["confirmed", "awaiting"],
+    "adaptation": "The credit between two creators on a public profile. Confirmed means the other creator's published profile credits this one back, read by the server on every request; Awaiting is owner-only, drawn as a dashed outline with a clock icon and the words 'Awaiting confirmation'. The Popover explains the rule in plain language. Same badge styles as ProvenanceBadge, with a 44px tap area around the 28px chip.",
+    "evidence": "Public profile add-ons build (Collaborators), 2026-10-07"
   },
   "liquidGlassWelcome": {
     "status": "experimental",
@@ -1461,7 +1509,7 @@
     "journalMedia": "Past issues: three initial portrait issue covers, preview dialog, reveal, and explicit unavailable state with official website link",
     "pressMedia": "Books: portrait cover shelf, three initially, View all books, preview dialog, press-specific empty state",
     "spatialMedia": "Large lead photo plus supporting grid for residency, gallery, foundation and arts profiles; mobile stack; full-image dialog; sourced editorial fallback and missing-photo state",
-    "socialLinks": "apps/web/components/institution-social-links.tsx \u2014 header identity, stored URLs, Button ghost/icon"
+    "socialLinks": "apps/web/components/institution-social-links.tsx — header identity, stored URLs, Button ghost/icon"
   },
   "publicCreatorProfile": {
     "status": "review",
@@ -1649,10 +1697,36 @@
     "status": "approved",
     "implementation": "apps/web/components/missa/creator-home.tsx",
     "route": "/home",
-    "composition": ["Tabs (line, tiles)", "Popover", "Checkbox", "Skeleton", "Empty", "Sonner", "Button", "ApplicationStateBadge", "ApplicationRunway", "StartByDate", "CountBadge"],
+    "composition": [
+      "Tabs (line, tiles)",
+      "Popover",
+      "Checkbox",
+      "Skeleton",
+      "Empty",
+      "Sonner",
+      "Button",
+      "ApplicationStateBadge",
+      "ApplicationRunway",
+      "StartByDate",
+      "CountBadge"
+    ],
     "source": "Installed shadcn/Base UI primitives; no new registry install. Mobbin references for the greeting band, single lead tile, grouped status lists, and week strip (HoneyBook, Copilot, Deel, Wrike, Ditto, Amie, Motion).",
     "adaptation": "Badge information/success/accent and TabsList tiles/auto variants added to the primitives so feature code stays inside shadcn/no-restyle. Links styled as buttons merge classes with cn() so the outline border is not overridden by the base transparent border.",
-    "states": ["busy", "waiting", "quiet", "first-run", "nothing-pressing", "checklist-loading", "checklist-error", "step-saving", "check-in-snoozing", "empty-day", "empty-tab", "no-goal", "goal-without-start"],
+    "states": [
+      "busy",
+      "waiting",
+      "quiet",
+      "first-run",
+      "nothing-pressing",
+      "checklist-loading",
+      "checklist-error",
+      "step-saving",
+      "check-in-snoozing",
+      "empty-day",
+      "empty-tab",
+      "no-goal",
+      "goal-without-start"
+    ],
     "evidence": "lib/creator-home.test.ts; e2e/creator-home.spec.ts; e2e/beta-workspace-recovery.spec.ts; desktop 1280 and 390px captures without horizontal overflow",
     "boundary": "Edits only through the record's checklist-item and reminder APIs; every other action opens the application record."
   },
@@ -1660,10 +1734,32 @@
     "status": "approved",
     "implementation": "apps/web/components/profile-product.tsx",
     "route": "/profile",
-    "composition": ["RadioGroup (Public / Only you per field)", "Collapsible (divided)", "Switch", "NativeSelect", "Checkbox", "AlertDialog", "ApplicationStateBadge", "HandleClaimCard", "NotificationPreferencesPanel (embedded)"],
+    "composition": [
+      "RadioGroup (Public / Only you per field)",
+      "Collapsible (divided)",
+      "Switch",
+      "NativeSelect",
+      "Checkbox",
+      "AlertDialog",
+      "ApplicationStateBadge",
+      "HandleClaimCard",
+      "NotificationPreferencesPanel (embedded)"
+    ],
     "source": "Installed shadcn/Base UI primitives; no new registry install. Mobbin references for grouped settings navigation, field-level visibility, and sticky save (Vercel, Supabase, Mintlify, Flodesk).",
     "adaptation": "Identity and Privacy merge into Public profile with visibility beside each field and a live preview; Preferences becomes Matching with a plain-language summary (lib/profile-settings.ts) and collapsible groups; Notifications moves in from Inbox; old ?section= links resolve to the new sections.",
-    "states": ["clean", "dirty-save-bar", "saving", "saved", "validation-error", "leave-with-unsaved-changes", "nothing-matched-yet", "exclusion-confirmation", "preference-conflict", "notifications-unavailable", "integrations-off"],
+    "states": [
+      "clean",
+      "dirty-save-bar",
+      "saving",
+      "saved",
+      "validation-error",
+      "leave-with-unsaved-changes",
+      "nothing-matched-yet",
+      "exclusion-confirmation",
+      "preference-conflict",
+      "notifications-unavailable",
+      "integrations-off"
+    ],
     "evidence": "lib/profile-settings.test.ts; e2e/profile.spec.ts; e2e/profile-privacy.spec.ts; e2e/profile-export.spec.ts; axe clean on every section at 1280px; no overflow at 1280px, 640px (200% zoom), and 390px"
   },
   "applicationStateBadge": {
@@ -1715,7 +1811,17 @@
     "implementation": "apps/web/components/missa/application-record.tsx",
     "container": "apps/web/components/missa/tracker-item-sheet.tsx",
     "route": "/tracker?application=<opportunityId>&section=<section>",
-    "composition": ["Button", "Dialog", "Field", "Input", "Textarea", "NativeSelect", "Alert", "Skeleton", "ApplicationEmailEvidence"],
+    "composition": [
+      "Button",
+      "Dialog",
+      "Field",
+      "Input",
+      "Textarea",
+      "NativeSelect",
+      "Alert",
+      "Skeleton",
+      "ApplicationEmailEvidence"
+    ],
     "source": "Installed Base UI Dialog, Field family, Alert and Skeleton. Sections hosted by the deadline-management TrackerItemSheet; absorbs the former route-less ApplicationsWorkspace panel.",
     "adaptation": "Progress, Materials, Notes and History sections with the sheet's eyebrow and Newsreader headings; Missa lifecycle and provenance; Fragment Mono dates; a single Forest action for the next step.",
     "boundary": "Real API data; materials captured on explicit submission; email evidence only suggests a status."

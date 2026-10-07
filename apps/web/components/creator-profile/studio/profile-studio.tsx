@@ -10,6 +10,7 @@ import {
   ArrowUpRight,
   Check,
   Eye,
+  GripVertical,
   Inbox,
   Monitor,
   Smartphone,
@@ -21,18 +22,40 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sortable,
+  SortableItem,
+  SortableItemHandle,
+} from "@/components/ui/sortable";
 import { Switch } from "@/components/ui/switch";
 import { PortfolioHandleField } from "@/components/portfolio-handle-field";
 import { PublicCreatorProfile } from "@/components/creator-profile/public-profile";
+import {
+  VIEW_AS,
+  type ViewAs,
+} from "@/components/creator-profile/profile-connect";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 import {
+  activeModules,
+  createItemId,
+  isAddonModule,
   orderedModules,
   publicPortfolioProjection,
+  setAddon,
   withServerProvenance,
+  type PortfolioAddon,
   type PortfolioData,
   type PortfolioModule,
 } from "@/lib/creator-portfolio-schema";
 import { importLocalPortfolio } from "@/lib/creator-portfolio-draft";
+import {
+  MAX_COLLABORATOR_LOOKUPS,
+  collaboratorHandleKey,
+} from "@/lib/portfolio-collaborators";
 import { LENSES, MODULE_LABELS } from "@/lib/creator-profile";
 import { sampleCreatorPortfolio } from "@/lib/creator-profile-sample";
 import {
@@ -49,6 +72,11 @@ import {
   ShelfEditor,
   WorkEditor,
 } from "./studio-editors";
+import { ADDON_EDITORS } from "./addons";
+import { AddAddonMenu } from "./addons/add-addon-menu";
+import { AddonFrame } from "./addons/addon-frame";
+import { useStudioFacts } from "./addons/studio-facts";
+import { SharePanel } from "./share-panel";
 import {
   PREVIEW_OWNER,
   useProfileDraft,
@@ -58,7 +86,15 @@ import styles from "./profile-studio.module.css";
 
 type Action = "publish" | "rename" | "unpublish" | "import" | null;
 
+const VIEW_AS_LABELS: Record<ViewAs, string> = {
+  visitor: "A visitor",
+  creator: "Another creator",
+  organization: "An organization",
+  owner: "You",
+};
+
 function moduleCount(draft: PortfolioData, id: PortfolioModule) {
+  if (isAddonModule(id)) return ADDON_EDITORS[id].count(draft);
   switch (id) {
     case "work":
       return draft.works.length;
@@ -98,11 +134,17 @@ export function ProfileStudio({
   ownerId,
   initialName = "",
   seedWithSample = false,
+  creditPrefill,
 }: {
   ownerId: string;
   initialName?: string;
   /** Design review only: start an empty device draft from the sample creator. */
   seedWithSample?: boolean;
+  /**
+   * Arriving from another creator's "Credit as collaborator": switch the
+   * Collaborators add-on on and start a row for them.
+   */
+  creditPrefill?: { handle: string; name: string };
 }) {
   const controller = useProfileDraft(
     ownerId,
@@ -110,10 +152,20 @@ export function ProfileStudio({
     seedWithSample ? sampleCreatorPortfolio : undefined,
   );
   const { draft, update, state, isAccount } = controller;
-  const [panel, setPanel] = useState<StudioPanel>("basics");
+  const facts = useStudioFacts(draft, isAccount);
+  // Arriving to credit someone starts in the Collaborators editor.
+  const creditKey = creditPrefill
+    ? collaboratorHandleKey(creditPrefill.handle)
+    : null;
+  const [panel, setPanel] = useState<StudioPanel>(
+    creditKey ? "collaborators" : "basics",
+  );
   // Phones show the section list and one editor at a time.
-  const [view, setView] = useState<"index" | "editor">("index");
+  const [view, setView] = useState<"index" | "editor">(
+    creditKey ? "editor" : "index",
+  );
   const [device, setDevice] = useState<"desktop" | "phone">("desktop");
+  const [viewAs, setViewAs] = useState<ViewAs>("visitor");
   const [mobilePreview, setMobilePreview] = useState(false);
   const [action, setAction] = useState<Action>(null);
   const [handle, setHandle] = useState("");
@@ -131,14 +183,27 @@ export function ProfileStudio({
       ),
     [controller.outcomes],
   );
-  // The preview applies the same provenance rule the server applies on save.
+  // The preview applies the same provenance rule the server applies on save,
+  // with the credits and file facts the server has reported.
   const projection = useMemo(
-    () => publicPortfolioProjection(withServerProvenance(draft, verified)),
-    [draft, verified],
+    () =>
+      publicPortfolioProjection(
+        withServerProvenance(draft, verified, facts.server),
+      ),
+    [draft, verified, facts.server],
   );
   const suggestions = useMemo(() => profileSuggestions(draft), [draft]);
   const blocking = suggestions.filter((item) => item.blocking);
-  const modules = orderedModules(draft.modules);
+  const modules = activeModules(draft.modules);
+  const addedAddons = useMemo(
+    () =>
+      new Set(
+        modules.flatMap((module) =>
+          isAddonModule(module.id) ? [module.id] : [],
+        ),
+      ),
+    [modules],
+  );
   const address = controller.currentHandle || draft.handle;
 
   const open = (next: StudioPanel) => {
@@ -150,13 +215,83 @@ export function ProfileStudio({
         ?.focus({ preventScroll: false }),
     );
   };
-  const moveModule = (index: number, by: number) =>
+  // Moves among the sections on the profile, stepping over switched-off add-ons.
+  const moveModule = (id: PortfolioModule, by: number) =>
     update((current) => {
-      const next = orderedModules(current.modules);
-      const [item] = next.splice(index, 1);
-      next.splice(index + by, 0, item);
-      return { ...current, modules: next };
+      const all = orderedModules(current.modules);
+      const active = activeModules(current.modules);
+      const target =
+        active[active.findIndex((module) => module.id === id) + by];
+      if (!target) return current;
+      const [item] = all.splice(
+        all.findIndex((module) => module.id === id),
+        1,
+      );
+      all.splice(
+        all.findIndex((module) => module.id === target.id) + (by > 0 ? 1 : 0),
+        0,
+        item,
+      );
+      return { ...current, modules: all };
     });
+  // Dropping a row reorders the sections on the profile; switched-off add-ons
+  // keep their place after them.
+  const dropModules = (next: typeof modules) =>
+    update((current) => {
+      const onProfile = new Set(next.map((module) => module.id));
+      const rest = orderedModules(current.modules).filter(
+        (module) => !onProfile.has(module.id),
+      );
+      return { ...current, modules: [...next, ...rest] };
+    });
+  // "Credit as collaborator" on another profile lands here once the draft has
+  // loaded: switch Collaborators on and start a row for that creator, once.
+  const credited = useRef(false);
+  useEffect(() => {
+    if (!creditPrefill || !creditKey || credited.current || !ready) return;
+    credited.current = true;
+    if (creditKey === controller.currentHandle) return;
+    update((current) => {
+      const modules = setAddon(current.modules, "collaborators", true);
+      const listed = current.collaborators.some(
+        (entry) => collaboratorHandleKey(entry.handle) === creditKey,
+      );
+      if (listed || current.collaborators.length >= MAX_COLLABORATOR_LOOKUPS)
+        return { ...current, modules };
+      return {
+        ...current,
+        modules,
+        collaborators: [
+          ...current.collaborators,
+          {
+            id: createItemId("c"),
+            handle: creditKey,
+            name: creditPrefill.name,
+            role: "",
+            confirmed: false,
+          },
+        ],
+      };
+    });
+    requestAnimationFrame(() =>
+      editorHeading.current?.querySelector("h2")?.focus(),
+    );
+  }, [creditPrefill, creditKey, ready, controller.currentHandle, update]);
+  const addAddon = (id: PortfolioAddon) => {
+    update((current) => ({
+      ...current,
+      modules: setAddon(current.modules, id, true),
+    }));
+    open(id);
+  };
+  const switchOffAddon = (id: PortfolioAddon) => {
+    update((current) => ({
+      ...current,
+      modules: setAddon(current.modules, id, false),
+    }));
+    setPanel("appearance");
+    setView("index");
+  };
   const toggleModule = (id: PortfolioModule, visible: boolean) =>
     update((current) => ({
       ...current,
@@ -355,61 +490,96 @@ export function ProfileStudio({
           </div>
           <div className={styles.railGroup}>
             <p className={styles.railLabel}>Sections, in page order</p>
-            <ol className={styles.moduleList}>
-              {modules.map((module, index) => {
-                const count = moduleCount(draft, module.id);
-                return (
-                  <li
-                    key={module.id}
-                    className={cn(!module.visible && styles.moduleHidden)}
-                  >
-                    <button
-                      type="button"
-                      className={styles.railItem}
-                      aria-current={panel === module.id ? "true" : undefined}
-                      onClick={() => open(module.id)}
+            <p id="studio-reorder-hint" className="sr-only">
+              Drag a section by its grip to reorder it, or use its move up and
+              move down buttons.
+            </p>
+            <Sortable
+              asChild
+              value={modules}
+              getItemValue={(module) => module.id}
+              onValueChange={dropModules}
+            >
+              <ol
+                className={styles.moduleList}
+                aria-describedby="studio-reorder-hint"
+              >
+                {modules.map((module, index) => {
+                  const count = moduleCount(draft, module.id);
+                  return (
+                    <SortableItem
+                      key={module.id}
+                      value={module.id}
+                      asChild
+                      // Keyboard reordering uses the move buttons, so the row is not a drag target.
+                      tabIndex={-1}
+                      role="listitem"
+                      aria-roledescription={undefined}
+                      aria-describedby={undefined}
                     >
-                      {MODULE_LABELS[module.id]}
-                      {count !== undefined && (
-                        <span className={cn(styles.railHint, "font-mono")}>
-                          {count}
+                      <li
+                        className={cn(!module.visible && styles.moduleHidden)}
+                      >
+                        <SortableItemHandle asChild>
+                          <span
+                            aria-hidden="true"
+                            className={styles.moduleGrip}
+                          >
+                            <GripVertical />
+                          </span>
+                        </SortableItemHandle>
+                        <button
+                          type="button"
+                          className={styles.railItem}
+                          aria-current={
+                            panel === module.id ? "true" : undefined
+                          }
+                          onClick={() => open(module.id)}
+                        >
+                          {MODULE_LABELS[module.id]}
+                          {count !== undefined && (
+                            <span className={cn(styles.railHint, "font-mono")}>
+                              {count}
+                            </span>
+                          )}
+                        </button>
+                        <span className={styles.moduleTools}>
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            disabled={index === 0}
+                            aria-label={`Move ${MODULE_LABELS[module.id]} up`}
+                            onClick={() => moveModule(module.id, -1)}
+                          >
+                            <ArrowUp aria-hidden="true" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            disabled={index === modules.length - 1}
+                            aria-label={`Move ${MODULE_LABELS[module.id]} down`}
+                            onClick={() => moveModule(module.id, 1)}
+                          >
+                            <ArrowDown aria-hidden="true" />
+                          </Button>
+                          <Switch
+                            size="sm"
+                            checked={module.visible}
+                            aria-label={`Show ${MODULE_LABELS[module.id]}`}
+                            onCheckedChange={(visible) =>
+                              toggleModule(module.id, visible)
+                            }
+                          />
                         </span>
-                      )}
-                    </button>
-                    <span className={styles.moduleTools}>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        disabled={index === 0}
-                        aria-label={`Move ${MODULE_LABELS[module.id]} up`}
-                        onClick={() => moveModule(index, -1)}
-                      >
-                        <ArrowUp aria-hidden="true" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        disabled={index === modules.length - 1}
-                        aria-label={`Move ${MODULE_LABELS[module.id]} down`}
-                        onClick={() => moveModule(index, 1)}
-                      >
-                        <ArrowDown aria-hidden="true" />
-                      </Button>
-                      <Switch
-                        size="sm"
-                        checked={module.visible}
-                        aria-label={`Show ${MODULE_LABELS[module.id]}`}
-                        onCheckedChange={(visible) =>
-                          toggleModule(module.id, visible)
-                        }
-                      />
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
+                      </li>
+                    </SortableItem>
+                  );
+                })}
+              </ol>
+            </Sortable>
+            <AddAddonMenu added={addedAddons} onAdd={addAddon} />
             <p className={styles.railNote}>
-              Empty sections are left out for visitors.
+              Drag to reorder. Empty sections are left out for visitors.
             </p>
           </div>
           <div className={styles.railGroup}>
@@ -421,6 +591,14 @@ export function ProfileStudio({
             >
               Address and publishing
             </button>
+            <Button
+              variant="ghost"
+              className={styles.railItem}
+              aria-current={panel === "share" ? "true" : undefined}
+              onClick={() => open("share")}
+            >
+              Share kit
+            </Button>
           </div>
           {suggestions.length > 0 && (
             <div className={styles.suggestions}>
@@ -475,6 +653,34 @@ export function ProfileStudio({
           )}
           {panel === "press" && <PressEditor {...editorProps} />}
           {panel === "about" && <ContactEditor {...editorProps} />}
+          {isAddonModule(panel as PortfolioModule) &&
+            addedAddons.has(panel as PortfolioAddon) &&
+            (() => {
+              const id = panel as PortfolioAddon;
+              const { Editor } = ADDON_EDITORS[id];
+              return (
+                <AddonFrame id={id} onSwitchOff={() => switchOffAddon(id)}>
+                  <Editor
+                    {...editorProps}
+                    isAccount={isAccount}
+                    facts={facts}
+                    creditHandle={
+                      id === "collaborators" ? creditKey : undefined
+                    }
+                  />
+                </AddonFrame>
+              );
+            })()}
+          {panel === "share" && (
+            <SharePanel
+              draft={draft}
+              handle={controller.currentHandle}
+              published={Boolean(controller.publishedAt)}
+              changedSincePublish={controller.changedSincePublish}
+              isAccount={isAccount}
+              onPublish={() => startAction("publish")}
+            />
+          )}
           {panel === "publish" && (
             <PublishPanel
               controller={controller}
@@ -491,6 +697,19 @@ export function ProfileStudio({
         <section className={styles.preview} aria-label="Live preview">
           <div className={styles.previewBar}>
             <span>Preview · what visitors will see</span>
+            <label className={styles.viewAs}>
+              <span>View as</span>
+              <NativeSelect
+                value={viewAs}
+                onChange={(event) => setViewAs(event.target.value as ViewAs)}
+              >
+                {VIEW_AS.map((who) => (
+                  <NativeSelectOption key={who} value={who}>
+                    {VIEW_AS_LABELS[who]}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            </label>
             <div
               role="group"
               aria-label="Preview size"
@@ -521,6 +740,7 @@ export function ProfileStudio({
               portfolio={projection}
               handle={address}
               mode="preview"
+              viewAs={viewAs}
             />
           </ScaledFrame>
         </section>
@@ -536,6 +756,7 @@ export function ProfileStudio({
             portfolio={projection}
             handle={address}
             mode="preview"
+            viewAs={viewAs}
           />
         </DialogContent>
       </Dialog>

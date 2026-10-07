@@ -362,8 +362,7 @@
       "<input>": 1
     },
     "components/creator-profile/public-profile.tsx": {
-      "<button>": 9,
-      "role=progressbar": 1
+      "<button>": 4
     },
     "components/creator-profile/studio/profile-studio.tsx": {
       "<button>": 3

@@ -1,0 +1,60 @@
+.page {
+  display: flex;
+  min-height: 100dvh;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px 16px 64px;
+  background: var(--surface-subtle);
+  color: var(--foreground);
+}
+.toolbar {
+  display: flex;
+  width: 100%;
+  max-width: 440px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 auto;
+}
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  text-decoration: none;
+}
+.back:hover {
+  color: var(--foreground);
+}
+.back:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.back svg {
+  width: 16px;
+  height: 16px;
+}
+.note {
+  max-width: 440px;
+  margin: 0 auto;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* On paper there is only the card. */
+@media print {
+  .page {
+    min-height: 0;
+    padding: 0;
+    background: none;
+  }
+  .toolbar,
+  .note {
+    display: none;
+  }
+}

@@ -245,7 +245,7 @@ test("a published profile takes messages, follows and invitations, and re-checks
   expect(share.headers()["content-type"]).toBe("image/png");
 
   // Anyone can write; the creator's address is never exposed.
-  await page.getByRole("button", { name: "Get in touch" }).click();
+  await page.getByRole("button", { name: "Get in touch", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Your name").fill("Ada Mensah");
   await dialog.getByLabel("Your email").fill("ada@example.com");

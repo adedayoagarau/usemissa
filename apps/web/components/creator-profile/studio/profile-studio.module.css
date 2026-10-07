@@ -202,6 +202,10 @@
   align-items: center;
   gap: 2px;
 }
+/* Let a long label wrap so every row's controls line up at the right edge. */
+.moduleList .railItem {
+  min-width: 0;
+}
 .moduleHidden .railItem {
   color: var(--muted-foreground);
   text-decoration: line-through;
@@ -777,9 +781,10 @@
 }
 .previewBar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px 12px;
   padding: 10px 16px;
   border-bottom: 1px solid var(--studio-line);
   color: var(--muted-foreground);
@@ -884,4 +889,69 @@
   .chevron {
     transition: none;
   }
+}
+
+/* Add-ons: the menu that switches them on, and the foot of each editor. */
+.addAddon {
+  align-self: flex-start;
+  margin: 8px 0 0 10px;
+}
+.addonMenu {
+  width: min(380px, calc(100vw - 32px));
+}
+.addonItem {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.addonSummary {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.addonFoot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--studio-line);
+}
+.addonFoot p {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* The grip that starts a drag in the section list. */
+.moduleGrip {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 36px;
+  color: var(--muted-foreground);
+  touch-action: none;
+}
+.moduleGrip svg {
+  width: 16px;
+  height: 16px;
+}
+.moduleList li:hover .moduleGrip,
+.moduleGrip:focus-visible {
+  color: var(--foreground);
+}
+
+/* "View as": who the preview shows the actions of. */
+.viewAs {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  color: var(--muted-foreground);
+}
+.viewAs [data-slot="native-select"] {
+  min-width: 11rem;
 }

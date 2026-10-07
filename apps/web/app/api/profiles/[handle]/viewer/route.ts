@@ -38,6 +38,9 @@ export async function GET(
       isOwner,
       following,
       inquiries: owner.inquiries,
+      // Anyone signed in, other than the owner, can credit this creator on
+      // their own profile; Confirmed still needs the owner to credit them back.
+      canCredit: Boolean(session?.account.userId) && !isOwner,
       senderName: session?.account.displayName ?? "",
       senderEmail: session?.account.email ?? "",
       organizations,

@@ -21,6 +21,7 @@
     "test:language": "node --test scripts/tests/check-missa-language.test.mjs",
     "guides:build": "node scripts/build-guide-articles.mjs",
     "guides:check": "node scripts/build-guide-articles.mjs --check",
+    "test:design-system": "node --test scripts/tests/merge-catalogue.test.mjs",
   "check:design-system": "node scripts/check-design-system.mjs",
   "check:creator-migration-boundary": "node scripts/verify-creator-migration-boundary.mjs",
     "check:public-media": "node scripts/check-public-media-sidecars.mjs",

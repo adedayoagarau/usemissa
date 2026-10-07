@@ -216,8 +216,76 @@ Confirmed re-verification against Postgres. Running it found and fixed a
 self-redirect on `/@handle` (Next passes the segment as `%40handle`) and a
 500 when claiming a handle in relational mode.
 
+### Add-ons, work pages and the share kit (October 2026)
+
+Spec: [Public profile — add-ons, work pages and share kit](public-profile-addons-build-2026-10-07.md). Everything below is
+additive to `portfolioSchema` v2; stored drafts and snapshots load unchanged and
+no database migration is needed.
+
+- **Add-ons.** Seven switch-on sections join the six core ones: Editions, Shows
+  and performances, Collaborators, Booking kit, Services, Teaching and Support.
+  A creator adds them from **Add an add-on** in the studio rail; an add-on
+  appears on the profile only while it is on, and switching it off keeps what
+  was entered. Each craft lens has a usual set (`LENSES[lens].addons`) that
+  **Set up sections for…** switches on; the creator can change any of it.
+  Sections drag to reorder by their grip or move with the up and down buttons.
+- **Visitor sections** live in `components/creator-profile/sections/`, one file
+  per add-on, registered in `ADDON_SECTIONS`. Editions and Teaching, and each
+  service, open the existing message form with a topic and a first line already
+  written (`EnquireButton`); Editions has no price and no checkout. Support
+  says it leaves Missa and opens in a new tab.
+- **Work formats** (`components/creator-profile/work-media/`). Works that share
+  a series group under a heading; a wall label (`medium · size · edition`) shows
+  on cards and in the dialog; Screening plays a YouTube or Vimeo link only after
+  a visitor presses play (no provider request before that, no provider thumbnail,
+  privacy-enhanced hosts only; `frame-src` in the report-only CSP names exactly
+  those two); recordings and films carry chapters and a transcript; the case
+  study shows brief, role, client and outcome. The mini player shows elapsed and
+  total time, loading and error with Try again, and a Close button.
+- **Work page** `/@handle/<slug>` (`app/[handle]/[work]/`). Addresses come from
+  the creator's slug or the title, are unique per profile and avoid reserved
+  words (`lib/creator-work-page.ts`). A work not shown on the profile, or an
+  address no work has, is a real 404; alias handles redirect. It carries
+  `CreativeWork` JSON-LD, appears in `sitemap-profiles.xml`, and uses the same
+  player as the profile. The profile's work dialog links to it as **Open the
+  page**; a work with only a title has no link.
+- **Share kit** (studio panel **Share kit**). The link card (1200×630) now
+  follows the canvas; `/@handle/story.png` is 1080×1920; `/@handle/events/<id>`
+  is an A6 print page with a QR code (`lib/qr-code.ts`, inline SVG) that is not
+  indexed and 404s for unknown, past or unpublished events; the email signature
+  is table-based HTML with no stylesheet, image or tracking. Before the first
+  publish the panel explains what unlocks; with unpublished changes it says the
+  kit shows the last published version.
+- **Collaborators.** A credit shows publicly only when the other creator's
+  published profile credits this creator back. This is computed on every save,
+  publish and public read from the published snapshots (no new tables, at most
+  twelve lookups, three batched queries). The owner sees _Waiting for @name to
+  credit you back_ or _Confirmed_ from `GET /api/creator/portfolio-collaborators`.
+  A signed-in creator viewing another profile gets **Credit as collaborator**,
+  which opens their studio at `/profile/portfolio?credit=<handle>` with a row
+  ready. Self-credit and duplicates are rejected.
+- **Booking kit.** PDF and ZIP uploads (same 20 MB cap, content sniffed, owned
+  by the account). Documents are never served inline: they download with
+  `nosniff` and a sandbox policy. File type and size come from the stored file
+  on every read, never from the client. The files become public when the
+  profile is published, and the editor says so.
+- **View as.** The studio preview can show the actions a visitor, another
+  creator, an organization or the owner sees. Nothing is sent from a preview.
+- **Default theme.** A white canvas joins Sage, Mineral and After hours.
+- **API.** The public creators summary includes the add-ons visitors can see,
+  without ids, confirmation flags or booking files.
+
+Validation: unit tests for each stream's pure rules, PGlite tests for credit
+lists and file facts (`creatorPortfolioCredits.test.ts`), and Playwright with
+axe through the design-system routes at 1280, 640, 390 and 320 px on all four
+themes. The live `/@handle/<slug>` route was exercised once against a disposable
+local Postgres. The collaborator and document API paths are covered by fakes and
+PGlite, not by a signed-in browser session against a real database.
+
 ### Known gaps
 
-Followers aren't notified when a creator publishes. Replies go through the
+Followers aren't notified when a creator publishes. Editions have no checkout
+by design. Organizations have no shortlist to save a creator to. Custom domains
+and server-made PDFs are not built. Replies go through the
 creator's own email client, not Missa. The Paper theme was retired; stored
 Paper profiles render as Sage.

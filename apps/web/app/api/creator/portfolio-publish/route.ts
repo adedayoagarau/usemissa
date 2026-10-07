@@ -10,6 +10,10 @@ import {
   publicPortfolioProjection,
   withServerProvenance,
 } from "@/lib/creator-portfolio-schema";
+import {
+  normalizedCollaborators,
+  reviewPortfolioDraft,
+} from "@/lib/portfolio-server-facts";
 export async function POST(request: Request) {
   const session = await getSessionAccount(request.headers.get("cookie"));
   if (!session?.account.userId)
@@ -38,12 +42,22 @@ export async function POST(request: Request) {
         { error: "Add your display name before publishing." },
         { status: 400 },
       );
+    const draft = normalizedCollaborators(parsed.data);
+    const { facts, issue: factsIssue } = await reviewPortfolioDraft(draft, {
+      accountId: session.account.id,
+      userId: session.account.userId,
+    });
+    if (factsIssue)
+      return NextResponse.json({ error: factsIssue }, { status: 400 });
+    // The snapshot keeps credits that are still waiting, so the people named
+    // can confirm them against it; every public read drops them again.
     const projection = publicPortfolioProjection(
       withServerProvenance(
-        parsed.data,
+        draft,
         await verifiedOutcomes(session.account.id),
+        facts,
       ),
-      { keepOutcomeIds: true },
+      { keepOutcomeIds: true, keepPendingCollaborators: true },
     );
     const issue = publicationIssue(projection);
     if (issue) return NextResponse.json({ error: issue }, { status: 400 });

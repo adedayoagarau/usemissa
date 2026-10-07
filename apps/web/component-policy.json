@@ -188,14 +188,19 @@
         "Textarea",
         "NativeSelect",
         "Switch",
+        "DatePickerField",
         "Dialog",
         "Combobox",
         "PortfolioLinkPreview",
         "PortfolioHandleField",
-        "ProvenanceBadge"
+        "ProvenanceBadge",
+        "CollaborationBadge",
+        "InputGroup",
+        "Alert"
       ],
       "appearance": "section-rail-focused-editor-and-device-scaled-live-preview",
       "mediaSelection": "labelled-button-trigger-with-replace-remove-and-preview",
+      "documentSelection": "same-trigger-for-pdf-or-zip-with-type-and-size-read-by-the-server-and-an-owner-note-that-files-become-public-on-publish",
       "reorder": "explicit-move-up-down-buttons"
     },
     "composition.creator-portfolio": {
@@ -205,6 +210,7 @@
         "Button",
         "Dialog",
         "ProvenanceBadge",
+        "CollaborationBadge",
         "AvailabilityChip",
         "ProfileConnect"
       ],
@@ -221,12 +227,67 @@
       ],
       "embeddedBoundary": "Embedded samples show identity and selected work only, keep the fictional sample label, and disable contact actions."
     },
+    "composition.creator-profile-addons": {
+      "semantic": "ADDON_SECTIONS",
+      "implementation": "components/creator-profile/sections",
+      "composition": [
+        "Button",
+        "EnquireButton",
+        "EditionAvailability",
+        "ShowKindTag"
+      ],
+      "appearance": "ruled-rows-in-the-profile-grammar-with-type-only-plates",
+      "sections": ["editions", "shows", "services", "teaching", "support"],
+      "boundary": "Visitor sections for the Editions, Shows and performances, Services, Teaching and Support add-ons. Enquiries open the profile's message form with a topic and a first line naming the item; there is no checkout and no price on Editions. Places left show only when stated. Support is one outbound link that says it leaves Missa and opens in a new tab. Embedded mode never shows them.",
+      "customRationale": "Installed Item, Card and Table were inspected and not used for the rows: they fix a density and type scale that the profile's editorial rows (Newsreader titles, ruled lists, mono facts) do not share, and Badge is reachable only through the two semantic wrappers above. The rows follow the Track record and Upcoming grammar in public-profile.module.css."
+    },
     "composition.creator-profile-inbox": {
       "semantic": "ProfileInbox",
       "implementation": "components/creator-profile/profile-inbox.tsx",
       "composition": ["Tabs", "Button", "Empty", "Link"],
       "appearance": "tabbed-messages-invitations-followers-following-with-archive",
       "boundary": "Senders never see the creator's address unless the creator replies by email; organizations are not told when an invitation is declined."
+    },
+    "composition.creator-share-kit": {
+      "semantic": "SharePanel",
+      "implementation": "components/creator-profile/studio/share-panel.tsx",
+      "composition": ["Button", "Alert", "Empty", "Skeleton", "Input", "Textarea", "EventCard", "QrCodeSvg"],
+      "appearance": "stacked-sections-with-generated-previews-downloads-event-links-signature-and-copy-actions",
+      "states": ["not-published", "needs-an-account", "published", "published-with-changes", "loading-picture", "picture-failed", "copied", "copy-refused", "no-events", "no-featured-image"],
+      "boundary": "Drawn only from the published profile: before the first publish it explains what is coming and offers Publish through the studio's own dialog; after changes it says the kit shows the last published version. Pictures come from /@handle/share.png and /@handle/story.png, event cards from /@handle/events/<id>. The signature (emails/creator-signature.ts) is text-only HTML with no stylesheet, image or tracking, and every field escaped. Copying uses the async Clipboard API, then a selection copy, then hands the text over to copy by hand."
+    },
+    "composition.creator-event-card": {
+      "semantic": "EventCard",
+      "implementation": "components/creator-profile/share/event-card.tsx",
+      "page": "components/creator-profile/share/event-card-page.tsx",
+      "composition": ["Button", "QrCodeSvg", "PrintStyles"],
+      "appearance": "a6-print-card-sized-from-its-own-width-with-a-qr-code-to-the-profile",
+      "boundary": "One upcoming, published event with an id; unknown, past and unpublished events are the same 404 and the page is never indexed. The QR code (lib/qr-code.ts, inline SVG, error correction M, four-module quiet zone) always encodes the profile's https address. Print uses the browser's print dialog, which also saves a PDF; the page sets the A6 paper size in millimetres."
+    },
+    "composition.creator-share-image": {
+      "semantic": "CreatorShareImages",
+      "implementation": "components/creator-profile/share-image.tsx",
+      "story": "components/creator-profile/share/story-image.tsx",
+      "composition": ["EditorialTypography"],
+      "appearance": "link-card-1200x630-and-story-1080x1920-drawn-through-next-og",
+      "boundary": "Generated PNGs. next/og cannot read CSS variables or the page's fonts, so colours come from the shared email constants (the Missa tokens as hex) and Newsreader, Instrument Sans and Fragment Mono are fetched as TTF, with the renderer's default face as the fallback. The story quotes the featured work only in the maker's own line breaks and never writes about the work."
+    },
+    "composition.creator-work-page": {
+      "semantic": "CreatorWorkPage",
+      "implementation": "components/creator-profile/work-page/work-page.tsx",
+      "composition": ["Breadcrumb", "Button", "Collapsible", "Item", "Alert", "ProvenanceBadge", "ProfileConnect"],
+      "appearance": "creator-theme-reading-page-with-contents-beside-ordered-parts",
+      "typography": "Newsreader for the title, standfirst and reading text; Fragment Mono for counts, years and part numbers only; Instrument Sans for everything else",
+      "states": ["default", "hover", "focus-visible", "empty", "media-error", "audio-error", "loading-lazy-media"],
+      "boundary": "Only a work the published profile shows has a page, so an unshown work or an unknown address is a 404 and an alias handle redirects. The page never carries decision ids; Confirmed is whatever the server derived for the track-record entry that names the work. A work with parts shows its parts; without parts it shows its own text, picture and audio."
+    },
+    "composition.creator-work-page-fields": {
+      "semantic": "WorkPageFields",
+      "implementation": "components/creator-profile/studio/work-page-fields.tsx",
+      "composition": ["Collapsible", "Button", "Input", "Textarea", "NativeSelect", "ItemList", "MediaField"],
+      "appearance": "one-disclosure-per-work-with-address-context-rights-credits-and-parts",
+      "reorder": "explicit-move-up-down-buttons",
+      "boundary": "The page address is tidied as it is typed and the studio says in a sentence when the address a work gets is not the one asked for (reserved word, or an address another work has)."
     },
     "composition.writing-room": {
       "semantic": "WritingRoom",
@@ -288,7 +349,66 @@
       "semantic": "PublicCreatorProfile",
       "base": "Button",
       "variant": "ghost",
-      "appearance": "pressed-format-filter"
+      "appearance": "pressed-format-filter",
+      "implementation": "components/creator-profile/work-media/work-section.tsx",
+      "rules": "Formats are built from what the work holds (Writing, Images, Sound, Film, Link), never from listed practices; a film's poster does not make it Images. Hidden when every work shares one format. Series joins only when two or more works share a series name and not every work is in one. A change is announced ('Showing 4 writing works.').",
+      "rulesImplementation": "lib/creator-work-media.ts"
+    },
+    "composition.creator-work-formats": {
+      "semantic": "PortfolioWorkFormats",
+      "implementation": "components/creator-profile/work-media/work-card.tsx",
+      "composition": [
+        "Button",
+        "Dialog",
+        "Skeleton",
+        "Empty",
+        "Progress",
+        "Collapsible"
+      ],
+      "appearance": "work-grid-with-series-groups-wall-labels-film-posters-listening-strips-and-case-study-facts",
+      "variants": ["text", "image", "audio", "film", "link", "case-study"],
+      "states": [
+        "default",
+        "hover",
+        "focus-visible",
+        "loading",
+        "media-error",
+        "playing"
+      ],
+      "boundary": "Works that share a series group under a heading with a plate count. A wall label prints title, year, medium, size and edition, each only when the creator gave it. Pressing play on a film card opens the work with the film begun; opening the work any other way loads nothing from the film's host."
+    },
+    "media.creator-film": {
+      "semantic": "Screening",
+      "implementation": "components/creator-profile/work-media/screening.tsx",
+      "composition": ["Button", "Collapsible"],
+      "appearance": "click-to-load-poster-with-chapters-beside-the-player-and-a-transcript-disclosure",
+      "states": ["poster", "playing", "external-link"],
+      "boundary": "The poster is the creator's own picture, so opening a page makes no request to YouTube or Vimeo. The frame is built only after a press, from the film id, on youtube-nocookie.com or player.vimeo.com (Vimeo with do-not-track on); the content-security-policy frame-src lists exactly those two origins (lib/video-embed-origins.ts). Any other link opens as an ordinary link in a new tab. A chapter reloads the frame at its start time; no provider script runs on Missa."
+    },
+    "player.creator-audio": {
+      "semantic": "ProfileAudioPlayer",
+      "implementation": "components/creator-profile/work-media/mini-player.tsx",
+      "base": "Button",
+      "composition": ["Button", "Progress", "Spinner"],
+      "appearance": "docked-card-with-title-position-and-elapsed-over-total-time",
+      "states": ["idle", "playing", "paused", "loading", "error"],
+      "boundary": "One recording at a time for the whole profile, kept playing while the visitor scrolls or closes a dialog. Nothing is fetched until someone presses play. Loading is also said in words; an error says what failed and Try again loads the file again; Close stops the recording. Chapters jump to a time and the current one is marked with aria-current."
+    },
+    "feedback.creator-media-error": {
+      "semantic": "MediaError",
+      "implementation": "components/creator-profile/work-media/media-image.tsx",
+      "base": "Empty",
+      "composition": ["Empty", "Button"],
+      "appearance": "bordered-tile-in-the-place-of-the-picture",
+      "boundary": "Says the image didn't load and the work is still here, and offers Try again. The work still opens; a failed picture never blocks its text, audio or film."
+    },
+    "disclosure.creator-transcript": {
+      "semantic": "Transcript",
+      "implementation": "components/creator-profile/work-media/transcript.tsx",
+      "base": "Collapsible",
+      "composition": ["Collapsible", "Button"],
+      "appearance": "outline-button-opening-the-text-in-flow",
+      "boundary": "The words of a film or recording, opened on request with line breaks kept. Shown wherever the player is."
     },
     "composition.organization-profile": {
       "semantic": "InstitutionProfileView",
@@ -1297,11 +1417,34 @@
       "rule": "Confirmed only when the server matched a Missa acceptance; the popover always explains the source in plain language.",
       "motion": "popover-transition-only"
     },
+    "CollaborationBadge": {
+      "base": "Badge",
+      "disclosure": "Popover",
+      "implementation": "components/missa/collaboration-badge.tsx",
+      "states": ["confirmed", "awaiting"],
+      "rule": "Confirmed only when the other creator's published profile credits this creator back, which the server reads on every request. Awaiting is shown to the owner in the studio and never to a visitor. Both states are written out; the dashed outline never carries the meaning alone.",
+      "boundary": "Not a ProvenanceBadge state: that mark means an organization recorded an outcome on Missa and has three states for the source of a record entry. A credit between two creators has a different rule and an owner-only state, so it is its own semantic component on the same Popover pattern and badge styles.",
+      "motion": "popover-transition-only"
+    },
     "AvailabilityChip": {
       "base": "Badge",
       "implementation": "components/missa/availability-chip.tsx",
       "states": ["open", "from", "booked"],
       "rule": "A 'from' entry whose date has passed reads as open; meaning never depends on colour alone.",
+      "motion": "never"
+    },
+    "EditionAvailability": {
+      "base": "Badge",
+      "implementation": "components/missa/addon-badges.tsx",
+      "states": ["available", "last", "sold-out"],
+      "rule": "Shown only when the edition size and the number left are both stated and agree: '4 of 12 available', or 'Sold out' at none. The label carries the meaning; the dot and tone only help the eye. No price, no checkout.",
+      "motion": "never"
+    },
+    "ShowKindTag": {
+      "base": "Badge",
+      "implementation": "components/missa/addon-badges.tsx",
+      "states": ["solo", "group", "premiere", "screening", "performance"],
+      "rule": "A tiny read-only tag for the kind of show; a show of kind 'other' has no tag.",
       "motion": "never"
     },
     "DateConfidenceBadge": {
@@ -1413,7 +1556,11 @@
       "AspectRatio",
       "Media",
       "EditorialTitle",
-      "AccessibleCaption"
+      "AccessibleCaption",
+      "WallLabel",
+      "FilmPoster",
+      "AudioStrip",
+      "SkeletonAndMediaError"
     ],
     "SubmissionTable": [
       "Table",
@@ -1424,6 +1571,10 @@
     "CreatorCv": ["EditorialTypography", "PrintStyles", "ProvenanceMark"],
     "ProfileConnect": ["Button", "Dialog", "Field", "Input", "NativeSelect", "Textarea"],
     "ProfileInbox": ["Tabs", "Button", "Empty", "Link"],
+    "ShareKit": ["Button", "Alert", "Empty", "Skeleton", "Input", "Textarea", "EventCard"],
+    "EventCard": ["EditorialTypography", "PrintStyles", "QrCodeSvg"],
+    "CreatorWorkPage": ["Breadcrumb", "Button", "Collapsible", "Item", "Alert", "ProvenanceBadge", "ProfileConnect"],
+    "WorkPageFields": ["Collapsible", "Button", "Input", "Textarea", "NativeSelect", "ItemList", "MediaField"],
     "GuideArticle": ["EditorialMotif", "GuideToc", "Alert", "Table", "GuideChecklist", "Accordion", "Collapsible", "PersonAvatar", "FeeBadge", "Button"],
     "WritingRoom": ["WritingPages", "WritingFormatBar", "WritingFormatSheet", "WritingLibrary", "Button", "DropdownMenu", "Popover", "Dialog", "AlertDialog", "Alert"]
   },

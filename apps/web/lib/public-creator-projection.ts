@@ -61,6 +61,20 @@ export function publicCreatorProjection(input: PublicCreatorProjectionInput) {
           shelf: portfolio.shelf.map(({ id: _id, ...item }) => item),
           record: portfolio.record.map(({ id: _id, ...item }) => item),
           events: portfolio.events.map(({ id: _id, ...item }) => item),
+          // Add-ons are already filtered to what visitors may see. Ids, the
+          // confirmation flag and booking files stay out of the summary.
+          shows: portfolio.shows.map(({ id: _id, ...item }) => item),
+          editions: portfolio.editions.map(({ id: _id, ...item }) => item),
+          collaborators: portfolio.collaborators.map(
+            ({ name, handle, role }) => ({ name, handle, role }),
+          ),
+          services: portfolio.services.map(({ id: _id, ...item }) => item),
+          teaching: portfolio.teaching.map(({ id: _id, ...item }) => item),
+          booking: {
+            shortBio: portfolio.booking.shortBio,
+            longBio: portfolio.booking.longBio,
+          },
+          support: portfolio.support,
           // Version 1 fields, kept so existing API readers keep working.
           book: portfolio.shelf[0]
             ? {

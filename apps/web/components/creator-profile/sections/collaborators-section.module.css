@@ -1,0 +1,94 @@
+/* Collaborators. Laid out like the track record beside it: the heading and one
+   line of explanation on the left, hairline-ruled rows on the right. Colour and
+   rules come from the profile's own variables, so every theme reads. */
+.collaborators {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  gap: 56px;
+}
+.intro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+}
+.intro > :first-child {
+  margin-bottom: 0;
+}
+.intro p {
+  max-width: 40ch;
+  margin: 0;
+  color: var(--profile-muted);
+  font-size: 16px;
+  line-height: 1.55;
+}
+.list {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--profile-line-strong);
+  list-style: none;
+}
+.list li {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px 18px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--profile-line);
+}
+/* The avatar colours are mid-tones made for dark ink. The night theme turns
+   the foreground light, so the initials keep the ink colour on every theme. */
+.list [data-slot="avatar-fallback"] {
+  color: var(--ink);
+}
+.text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.name {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+/* A 44px tap target that takes no more room than the line of text. */
+.name a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-block: -11px;
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--profile-line-strong);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+.name a:hover {
+  text-decoration-color: currentColor;
+}
+.role {
+  color: var(--profile-muted);
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+@container profile (max-width: 960px) {
+  .collaborators {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@container profile (max-width: 640px) {
+  .collaborators {
+    gap: 32px;
+  }
+  .list li {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+  .list li > .badge {
+    grid-column: 2;
+    justify-self: start;
+  }
+}

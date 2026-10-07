@@ -1,0 +1,54 @@
+/* Studio-only styling for the add-on editors. Tokens only. */
+
+/* Two short fields side by side, stacking when the column gets narrow. */
+.twoUp {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+  gap: 12px;
+}
+.twoUp > * {
+  min-width: 0;
+}
+
+/* Counts and years line up when they change: tabular figures. */
+.number {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Message under a field when something needs attention. Text says it too. */
+.error,
+.watch {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.error {
+  color: var(--destructive);
+}
+.watch {
+  color: var(--ochre-deep);
+}
+
+/* A plain statement about where a link goes. */
+.leaves {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--surface-subtle);
+  color: var(--foreground);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.leaves svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  margin-top: 2px;
+  color: var(--muted-foreground);
+}
+.leaves p {
+  margin: 0;
+}
