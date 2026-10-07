@@ -857,3 +857,86 @@ test("the shortcuts writers know from Google Docs, smart punctuation and the wor
   );
   await expect(dialog).toContainText(/4 of \d+/u);
 });
+
+test("quiet writing: quiet mode, focus on a paragraph or sentence, typewriter scrolling", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await signIn(page);
+  await page.goto("/doc");
+  const text = pageText(page, 0);
+  await expect(text).toBeFocused();
+  await page.keyboard.type("The rain came early. It stayed.");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Nobody minded.");
+
+  // Quiet mode fades the controls without the timer, and comes back.
+  const header = page.locator("header[data-hidden]");
+  await expect(header).toHaveAttribute("data-hidden", "false");
+  await page.keyboard.press("Control+Shift+f");
+  await expect(header).toHaveAttribute("data-hidden", "true");
+  await page.keyboard.press("Control+Shift+f");
+  await expect(header).toHaveAttribute("data-hidden", "false");
+
+  // Focus on this paragraph dims the others.
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitemradio", { name: "This paragraph" }).click();
+  await text.locator("p").first().click();
+  await page.waitForTimeout(150);
+  await expect(text.locator("p").nth(1)).toHaveClass(/text-muted-foreground/u);
+  await expect(text.locator("p").first()).not.toHaveClass(
+    /text-muted-foreground/u,
+  );
+
+  // Focus on this sentence dims the rest of the paragraph too.
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitemradio", { name: "This sentence" }).click();
+  await text.locator("p").first().click();
+  await page.keyboard.press("End");
+  await page.waitForTimeout(150);
+  await expect(
+    text.locator("p").first().locator("span.text-muted-foreground"),
+  ).toHaveText("The rain came early. ");
+
+  // Every line clear again.
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitemradio", { name: "Every line clear" }).click();
+  await expect(text.locator(".text-muted-foreground")).toHaveCount(0);
+
+  // Typewriter scrolling keeps the line being written near the middle.
+  await page.getByRole("button", { name: "More" }).click();
+  await page
+    .getByRole("menuitemcheckbox", { name: "Typewriter scrolling" })
+    .click();
+  await page.keyboard.press("Escape");
+  await text.click();
+  await page.keyboard.press("Control+End");
+  await page.waitForTimeout(150);
+  for (let line = 0; line < 30; line += 1) {
+    await page.keyboard.press("Enter");
+    await page.keyboard.type(`line ${line}`);
+  }
+  const offset = await page.evaluate(() => {
+    const range = window.getSelection()!.getRangeAt(0);
+    const caret = range.getBoundingClientRect();
+    const box = document
+      .querySelector("main [aria-busy], main .overflow-y-auto")!
+      .getBoundingClientRect();
+    return caret.top + caret.height / 2 - (box.top + box.height / 2);
+  });
+  expect(Math.abs(offset)).toBeLessThan(40);
+
+  // The word count can stay out of sight.
+  await page.getByRole("button", { name: "More" }).click();
+  await page
+    .getByRole("menuitemcheckbox", { name: "Hide the word count" })
+    .click();
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("button", { name: "Word count", exact: true }),
+  ).toHaveText("Word count");
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Word count", exact: true }),
+  ).toBeVisible();
+});

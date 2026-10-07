@@ -111,6 +111,33 @@ depth 40) before saving. `body` stays the plain text of every page, used for
 the word count, previews and the plain-text download. Entries saved before
 pages existed open as one page with their text unchanged.
 
+## Quiet writing
+
+All in More, kept on the device as preferences:
+
+- **Quiet mode** (or Ctrl or ⌘ + Shift + F, Google Docs' compact mode key):
+  the controls fade while the writer writes, with or without the timer. They
+  come back on pointing at them or on reaching them by keyboard, and whenever
+  a dialog or sheet is open.
+- **Focus**: Every line clear, This paragraph, or This sentence. Everything but
+  the paragraph or sentence in hand takes the muted text color (5.55:1 on
+  paper, 7.34:1 in the dark room, so still WCAG AA). Sentences are found by
+  the browser's Unicode rules (`Intl.Segmenter`); nothing reads what the words
+  mean. Dimming never prints (`lib/writing-focus.ts`).
+- **Typewriter scrolling** keeps the line being written in the middle of the
+  window. It moves only as the writer types, never on a click, and jumps
+  rather than glides; half a window of room below the last page lets the last
+  line reach the middle.
+- **Hide the word count** leaves "Word count" in the footer instead of the
+  number; the dialog still opens from it.
+- **Escape in full screen**: where the browser allows (Chrome and Edge),
+  Escape reaches the page, so Escape then Tab still leaves it; holding Escape
+  leaves full screen.
+
+Not built, by choice: parts-of-speech highlighting (iA Writer, Scrivener's
+Linguistic Focus). Even on the device it is automated reading of the writer's
+words, which the room promises not to do (`docs/writing-research.md`).
+
 ## Snapshots, find and replace, appearance
 
 - **Snapshots** (More, Snapshots…) keep the open piece as it stands: title,

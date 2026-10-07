@@ -117,6 +117,7 @@ import {
 } from "@/lib/writing-projects";
 import { wordMeter } from "@/lib/writing-call";
 import { setSmartPunctuation } from "@/lib/writing-typing";
+import { redrawFocus, setFocusMode, type FocusMode } from "@/lib/writing-focus";
 import {
   browserWritingDeviceStore,
   httpWritingTransport,
@@ -158,6 +159,14 @@ type Prefs = {
   appearance: "light" | "dark" | "device";
   /** Curly quotes, an em dash for two hyphens, an ellipsis for three dots. */
   smartPunctuation: boolean;
+  /** The controls fade while writing, with or without the timer. */
+  quiet: boolean;
+  /** Dims all but the paragraph or sentence in hand. */
+  focus: FocusMode;
+  /** Keeps the line being written in the middle of the window. */
+  typewriter: boolean;
+  /** Leaves the word count out of the footer. */
+  hideCount: boolean;
 };
 
 const PREFS_KEY = "missa.write.prefs.v1";
@@ -168,6 +177,10 @@ const DEFAULT_PREFS: Prefs = {
   view: null,
   appearance: "light",
   smartPunctuation: false,
+  quiet: false,
+  focus: "off",
+  typewriter: false,
+  hideCount: false,
 };
 const TIMER_LENGTHS = [5, 10, 15, 20, 25, 30, 45, 60];
 
@@ -221,6 +234,13 @@ function readPrefs(): Prefs {
       view: view === "page" || view === "draft" ? view : null,
       spellcheck: field("spellcheck") === true,
       smartPunctuation: field("smartPunctuation") === true,
+      quiet: field("quiet") === true,
+      focus:
+        field("focus") === "paragraph" || field("focus") === "sentence"
+          ? (field("focus") as FocusMode)
+          : "off",
+      typewriter: field("typewriter") === true,
+      hideCount: field("hideCount") === true,
       minutes: TIMER_LENGTHS.includes(minutes as number)
         ? (minutes as number)
         : DEFAULT_PREFS.minutes,
@@ -388,6 +408,35 @@ export function WritingRoom({
   );
   const [editors] = useState<PageEditors>(() => new Map());
   const pageCommands = useRef<PageCommands | null>(null);
+  const scroller = useRef<HTMLDivElement>(null);
+
+  /**
+   * Typewriter scrolling: the line being written stays in the middle of the
+   * window. It moves only as the writer types, never when they click, and
+   * jumps rather than glides, so nothing swims while writing.
+   */
+  function centerCaret() {
+    const container = scroller.current;
+    const selection = window.getSelection();
+    if (!container || !selection?.rangeCount) return;
+    const range = selection.getRangeAt(0).cloneRange();
+    range.collapse(false);
+    let rect = range.getBoundingClientRect();
+    // An empty line has no box of its own; its element has.
+    if (!rect.height) {
+      const node = range.startContainer;
+      const element = node instanceof Element ? node : node.parentElement;
+      if (element) rect = element.getBoundingClientRect();
+    }
+    if (!rect.height) return;
+    const box = container.getBoundingClientRect();
+    const offset = rect.top + rect.height / 2 - (box.top + box.height / 2);
+    if (Math.abs(offset) > 2)
+      container.scrollTo({
+        top: container.scrollTop + offset,
+        behavior: "instant",
+      });
+  }
   // Shortcut hints in menus follow the keyboard the writer has.
   const [mac] = useState(
     () =>
@@ -616,6 +665,29 @@ export function WritingRoom({
   useEffect(() => {
     setSmartPunctuation(prefs.smartPunctuation);
   }, [prefs.smartPunctuation]);
+
+  // Focus dimming follows the writer's choice; every page redraws at once.
+  useEffect(() => {
+    setFocusMode(prefs.focus);
+    for (const editor of editors.values())
+      if (!editor.isDestroyed) redrawFocus(editor.view);
+  }, [prefs.focus, editors]);
+
+  // In full screen, Escape reaches the page (to leave it by keyboard) where
+  // the browser allows; holding Escape still leaves full screen.
+  useEffect(() => {
+    const keyboard = (
+      navigator as Navigator & {
+        keyboard?: {
+          lock?: (keys: string[]) => Promise<void>;
+          unlock?: () => void;
+        };
+      }
+    ).keyboard;
+    if (!keyboard?.lock) return;
+    if (fullscreen) void keyboard.lock(["Escape"]).catch(() => undefined);
+    else keyboard.unlock?.();
+  }, [fullscreen]);
 
   // The room's own appearance. Only /doc turns dark, and printing is always on white.
   useEffect(() => {
@@ -1192,7 +1264,7 @@ export function WritingRoom({
             ? "This entry was deleted on another device. What you wrote here is saved as a new entry."
             : "";
   const hideChrome =
-    running &&
+    (running || prefs.quiet) &&
     !sheetOpen &&
     !deleteOpen &&
     !formatOpen &&
@@ -1369,6 +1441,17 @@ export function WritingRoom({
             event.preventDefault();
             setWordCountOpen(true);
           }
+          // Quiet mode, as Google Docs' compact mode: Ctrl or ⌘ + Shift + F.
+          if (
+            (event.metaKey || event.ctrlKey) &&
+            event.shiftKey &&
+            !event.altKey &&
+            event.key.toLowerCase() === "f"
+          ) {
+            event.preventDefault();
+            updatePrefs({ quiet: !prefs.quiet });
+            return;
+          }
           // Find and replace reaches every page and text box, which the browser's own find can't change.
           if (
             (event.metaKey || event.ctrlKey) &&
@@ -1411,8 +1494,12 @@ export function WritingRoom({
           onCopy={copyText}
         />
         <div
+          ref={scroller}
           className="min-h-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto print:overflow-visible"
           aria-busy={current.state === "opening" || undefined}
+          onInput={() => {
+            if (prefs.typewriter) requestAnimationFrame(centerCaret);
+          }}
         >
           {compiled ? (
             <WritingPages
@@ -1499,6 +1586,10 @@ export function WritingRoom({
               }
             />
           )}
+          {prefs.typewriter ? (
+            // Room below the last line, so it can reach the middle too.
+            <div aria-hidden="true" className="h-[50vh] print:hidden" />
+          ) : null}
         </div>
         <p role="status" className="sr-only">
           {announcement}
@@ -1585,20 +1676,28 @@ export function WritingRoom({
           <Button
             variant="ghost"
             size="xs"
-            aria-label={`${
-              selectedWords
-                ? `${selectedWords.toLocaleString()} of ${wordLabel(words)} selected`
-                : (meter?.label ?? wordLabel(words))
-            }${meter?.over ? ", over the call’s limit" : ""}. Word count`}
+            aria-label={
+              prefs.hideCount
+                ? "Word count"
+                : `${
+                    selectedWords
+                      ? `${selectedWords.toLocaleString()} of ${wordLabel(words)} selected`
+                      : (meter?.label ?? wordLabel(words))
+                  }${meter?.over ? ", over the call’s limit" : ""}. Word count`
+            }
             onClick={() => setWordCountOpen(true)}
           >
-            <span
-              className={`font-mono tabular-nums ${meter?.over && !selectedWords ? "text-ochre-deep" : ""}`}
-            >
-              {selectedWords
-                ? `${selectedWords.toLocaleString()} of ${wordLabel(words)}`
-                : (meter?.label ?? wordLabel(words))}
-            </span>
+            {prefs.hideCount ? (
+              "Word count"
+            ) : (
+              <span
+                className={`font-mono tabular-nums ${meter?.over && !selectedWords ? "text-ochre-deep" : ""}`}
+              >
+                {selectedWords
+                  ? `${selectedWords.toLocaleString()} of ${wordLabel(words)}`
+                  : (meter?.label ?? wordLabel(words))}
+              </span>
+            )}
           </Button>
           {status ? (
             <>
@@ -1804,6 +1903,56 @@ export function WritingRoom({
                   </DropdownMenuRadioItem>
                   <DropdownMenuRadioItem value="draft">
                     Draft, no paper
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+                <DropdownMenuCheckboxItem
+                  checked={prefs.quiet}
+                  onCheckedChange={(checked) => updatePrefs({ quiet: checked })}
+                >
+                  Quiet mode
+                  <DropdownMenuShortcut>
+                    {mac ? "⇧⌘F" : "Ctrl+Shift+F"}
+                  </DropdownMenuShortcut>
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={prefs.typewriter}
+                  onCheckedChange={(checked) =>
+                    updatePrefs({ typewriter: checked })
+                  }
+                >
+                  Typewriter scrolling
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={prefs.hideCount}
+                  onCheckedChange={(checked) =>
+                    updatePrefs({ hideCount: checked })
+                  }
+                >
+                  Hide the word count
+                </DropdownMenuCheckboxItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Focus</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={prefs.focus}
+                  onValueChange={(value) =>
+                    updatePrefs({
+                      focus:
+                        value === "paragraph" || value === "sentence"
+                          ? value
+                          : "off",
+                    })
+                  }
+                >
+                  <DropdownMenuRadioItem value="off" closeOnClick>
+                    Every line clear
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="paragraph" closeOnClick>
+                    This paragraph
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="sentence" closeOnClick>
+                    This sentence
                   </DropdownMenuRadioItem>
                 </DropdownMenuRadioGroup>
               </DropdownMenuGroup>

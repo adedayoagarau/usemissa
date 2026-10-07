@@ -22,6 +22,7 @@ import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
 import { writingTypeface } from "@/components/missa/writing-typefaces";
 import { cn } from "@/lib/utils";
+import { FocusDim } from "@/lib/writing-focus";
 import { SearchHighlight } from "@/lib/writing-search";
 import {
   SmartPunctuation,
@@ -195,6 +196,7 @@ export function writingExtensions() {
     Subscript,
     WriterKeys,
     SmartPunctuation,
+    FocusDim,
   ];
 }
 

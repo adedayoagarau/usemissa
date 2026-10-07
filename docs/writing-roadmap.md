@@ -16,24 +16,24 @@ what comes next, in the order agreed with the owner.
 | Snapshots, find, dark | Snapshots to compare and restore, find and replace across every page and box, a dark writing room | 0098 |
 | Writing for a call | A piece tied to a call in the tracker: the call and checklist beside the draft, a live count against its word limit, page and blind-reading checks run on the piece in the browser | 0099 |
 | Editor essentials | Page and section breaks as in Google Docs and Word, superscript and subscript, clear formatting, the Docs keys for strikethrough and word count, a word count with the selection and reading time, smart quotes and dashes as a choice, Tab nesting lists | none |
+| Quiet writing | Quiet mode apart from the timer, focus on the paragraph or sentence in hand, typewriter scrolling, hiding the count, Escape kept in full screen | none |
 
 ## Next, in order
 
 From the research in `docs/writing-research.md`, which has the findings,
 sources and what each stage contains:
 
-1. **F. Quiet writing.** Quiet mode, focus dimming, typewriter scrolling.
-2. **G. Cards and corkboard.** Fields on every piece, a corkboard, an outliner
+1. **G. Cards and corkboard.** Fields on every piece, a corkboard, an outliner
    with totals, saved views, editing several pieces as one text.
-3. **H. Story bible.** Characters, places and items with "Appears in".
-4. **I. Plot grid and structures.** Plotlines across the book, structure
+2. **H. Story bible.** Characters, places and items with "Appears in".
+3. **I. Plot grid and structures.** Plotlines across the book, structure
    templates, pacing against beats, plotline gaps.
-5. **J. Goals and history.** Deadline targets that skip days off.
-6. **K. Timeline.** Story order and telling order, ages, continuity checks,
+4. **J. Goals and history.** Deadline targets that skip days off.
+5. **K. Timeline.** Story order and telling order, ages, continuity checks,
    then alternate branches.
-7. **L. Book design and export.** Book interiors, standard manuscript format
+6. **L. Book design and export.** Book interiors, standard manuscript format
    as DOCX, EPUB 3.
-8. **M. Notes and research.** Margin notes, footnotes, research beside the
+7. **M. Notes and research.** Margin notes, footnotes, research beside the
    draft.
 
 ## Later
