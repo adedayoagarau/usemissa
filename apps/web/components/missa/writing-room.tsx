@@ -63,6 +63,7 @@ import {
 } from "@/components/missa/writing-format";
 import { WritingSnapshots } from "@/components/missa/writing-snapshots";
 import { WritingFind } from "@/components/missa/writing-find";
+import { useWritingCall, WritingCall } from "@/components/missa/writing-call";
 import {
   CompileDialog,
   NewProjectDialog,
@@ -111,6 +112,7 @@ import {
   type ProjectTemplateId,
   type WritingProject,
 } from "@/lib/writing-projects";
+import { wordMeter } from "@/lib/writing-call";
 import {
   browserWritingDeviceStore,
   httpWritingTransport,
@@ -359,6 +361,7 @@ export function WritingRoom({
   const [outlineProject, setOutlineProject] = useState<string | null>(null);
   const [snapshotsOpen, setSnapshotsOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
+  const [callOpen, setCallOpen] = useState(false);
   const [compileState, setCompileState] = useState<{
     projectId: string | null;
     busy: boolean;
@@ -923,6 +926,28 @@ export function WritingRoom({
     }
   }
 
+  /** Ties the open piece to a call in the tracker, or unties it. */
+  async function linkCall(id: string, next: string | null) {
+    const result = await requestJson(
+      `/api/me/writing/${encodeURIComponent(id)}`,
+      { method: "PATCH", body: JSON.stringify({ callId: next }) },
+    );
+    if (!result.ok) {
+      toast.error(
+        errorOf(
+          result.data,
+          "Couldn’t save that. Check your connection and try again.",
+        ),
+      );
+      return false;
+    }
+    setEntries((list) =>
+      list.map((item) => (item.id === id ? { ...item, callId: next } : item)),
+    );
+    toast.success(next ? "Writing for this call" : "Writing without a call");
+    return true;
+  }
+
   async function compile(options: CompileOptions) {
     const projectId = compileState.projectId;
     if (!projectId) return;
@@ -1101,6 +1126,14 @@ export function WritingRoom({
   const rejection = syncState.rejected[current.id];
   const deviceOnly =
     storage === "device" || syncState.account === "unavailable";
+  const callId = deviceOnly
+    ? null
+    : (entries.find((item) => item.id === current.id)?.callId ?? null);
+  const writingCall = useWritingCall(callId);
+  const meter =
+    writingCall.state.kind === "ready"
+      ? wordMeter(writingCall.state.details.input, words)
+      : null;
   const status =
     current.state === "opening"
       ? "Opening…"
@@ -1134,7 +1167,8 @@ export function WritingRoom({
     !deleteOpen &&
     !formatOpen &&
     !pageDeleteOpen &&
-    !snapshotsOpen;
+    !snapshotsOpen &&
+    !callOpen;
   const timerLabel = running
     ? "Pause timer"
     : remaining === 0
@@ -1501,7 +1535,18 @@ export function WritingRoom({
         </div>
 
         <p className="text-xs text-muted-foreground">
-          <span className="font-mono tabular-nums">{wordLabel(words)}</span>
+          {meter ? (
+            <span
+              className={`font-mono tabular-nums ${meter.over ? "text-ochre-deep" : ""}`}
+            >
+              {meter.label}
+              {meter.over ? (
+                <span className="sr-only">, over the call’s limit</span>
+              ) : null}
+            </span>
+          ) : (
+            <span className="font-mono tabular-nums">{wordLabel(words)}</span>
+          )}
           {status ? (
             <>
               <span aria-hidden="true" className="mx-1.5">
@@ -1714,6 +1759,12 @@ export function WritingRoom({
               >
                 Snapshots…
               </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={deviceOnly || current.state !== "ready" || !inAccount}
+                onClick={() => setCallOpen(true)}
+              >
+                {callId ? "For a call…" : "Write for a call…"}
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={printPages}>
                 Print or save as PDF
               </DropdownMenuItem>
@@ -1792,6 +1843,22 @@ export function WritingRoom({
           sync.edit(current.id, content, current.projectId);
           setFocusTick((tick) => tick + 1);
         }}
+      />
+
+      <WritingCall
+        open={callOpen}
+        onOpenChange={setCallOpen}
+        onClosed={() => setFocusTick((tick) => tick + 1)}
+        callId={callId}
+        state={writingCall.state}
+        onRetry={writingCall.retry}
+        piece={{
+          id: current.id,
+          title: current.title,
+          text: body,
+          pages: current.doc.pages.length,
+        }}
+        onLink={(next) => linkCall(current.id, next)}
       />
 
       <NewProjectDialog

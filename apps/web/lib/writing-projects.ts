@@ -147,7 +147,13 @@ export type PieceChange = {
   projectId?: string | null;
   synopsis?: string;
   status?: PieceStatus;
+  /** The call the piece is written for; null to clear it. */
+  callId?: string | null;
 };
+
+export function isCallId(value: unknown): value is string {
+  return typeof value === "string" && /^[A-Za-z0-9_-]{1,200}$/.test(value);
+}
 
 export function parsePieceChange(
   value: unknown,
@@ -156,6 +162,11 @@ export function parsePieceChange(
   const projectId = field(value, "projectId");
   const synopsis = field(value, "synopsis");
   const status = field(value, "status");
+  const callId = field(value, "callId");
+  if (callId !== undefined) {
+    if (callId !== null && !isCallId(callId)) return { error: "Call not found." };
+    change.callId = callId;
+  }
   if (projectId !== undefined) {
     if (projectId !== null && !isWritingProjectId(projectId)) {
       return { error: "Project not found." };
