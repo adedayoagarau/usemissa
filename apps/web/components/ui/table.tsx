@@ -8,10 +8,13 @@ import { cn } from "@/lib/utils";
 function Table({
   className,
   scrollLabel,
+  variant = "default",
   ...props
 }: React.ComponentProps<"table"> & {
   /** Names the horizontal scroll container and puts it in the tab order, so keyboard users can scroll a table wider than its column. */
   scrollLabel?: string;
+  /** "grid" draws hairline column dividers, as task lists do, for dense multi-column records. */
+  variant?: "default" | "grid";
 }) {
   return (
     <div
@@ -23,7 +26,8 @@ function Table({
     >
       <table
         data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
+        data-variant={variant}
+        className={cn("w-full caption-bottom text-sm data-[variant=grid]:border-y data-[variant=grid]:border-border data-[variant=grid]:[&_td:not(:last-child)]:border-e data-[variant=grid]:[&_th:not(:last-child)]:border-e data-[variant=grid]:[&_td]:border-border data-[variant=grid]:[&_th]:border-border", className)}
         {...props}
       />
     </div>
@@ -64,10 +68,10 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
 }
 
 const tableRowVariants = cva(
-  "border-b transition-colors has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
+  "border-b border-border transition-colors data-[state=selected]:bg-row-selected",
   {
     variants: {
-      variant: { default: "hover:bg-muted/50", static: "hover:bg-transparent" },
+      variant: { default: "hover:bg-row-hover has-aria-expanded:bg-row-hover", static: "hover:bg-transparent" },
     },
     defaultVariants: { variant: "default" },
   },
@@ -92,7 +96,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
     <th
       data-slot="table-head"
       className={cn(
-        "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
+        "h-9 px-3 text-start align-middle text-xs font-medium whitespace-nowrap text-muted-foreground [&:has([role=checkbox])]:pe-0",
         className,
       )}
       {...props}
@@ -101,7 +105,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
 }
 
 const tableCellVariants = cva(
-  "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
+  "px-3 py-2.5 align-middle whitespace-nowrap [&:has([role=checkbox])]:pe-0",
   {
     variants: { tone: { default: "", muted: "text-muted-foreground" } },
     defaultVariants: { tone: "default" },

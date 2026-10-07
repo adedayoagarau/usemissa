@@ -40,12 +40,26 @@ function AvatarImage({ className, ...props }: AvatarPrimitive.Image.Props) {
 }
 
 const avatarFallbackVariants = cva(
-  "flex size-full items-center justify-center rounded-full text-sm group-data-[size=sm]/avatar:text-xs",
+  "flex size-full items-center justify-center rounded-full text-xs font-semibold group-data-[size=lg]/avatar:text-sm group-data-[size=sm]/avatar:text-[10px]",
   {
     variants: {
       variant: {
         default: "bg-muted text-muted-foreground",
         organization: "bg-secondary font-heading text-xl text-primary",
+        // A person's colour, chosen by PersonAvatar from their identity.
+        "hue-red": "bg-hue-red text-foreground",
+        "hue-orange": "bg-hue-orange text-foreground",
+        "hue-amber": "bg-hue-amber text-foreground",
+        "hue-yellow": "bg-hue-yellow text-foreground",
+        "hue-lime": "bg-hue-lime text-foreground",
+        "hue-green": "bg-hue-green text-foreground",
+        "hue-teal": "bg-hue-teal text-foreground",
+        "hue-blue": "bg-hue-blue text-foreground",
+        "hue-indigo": "bg-hue-indigo text-foreground",
+        "hue-purple": "bg-hue-purple text-foreground",
+        "hue-magenta": "bg-hue-magenta text-foreground",
+        "hue-pink": "bg-hue-pink text-foreground",
+
       },
     },
     defaultVariants: { variant: "default" },
