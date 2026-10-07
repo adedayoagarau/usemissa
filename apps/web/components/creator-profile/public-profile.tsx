@@ -1,13 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- Owned portfolio media is served through an authorization-gated route. */
 import Link from "next/link";
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
+import { useState } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -16,17 +10,9 @@ import {
   Globe,
   Mail,
   MapPin,
-  Pause,
-  Play,
   Share,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { AvailabilityChip } from "@/components/missa/availability-chip";
 import { ProvenanceBadge } from "@/components/missa/provenance-badge";
 import { ProfileConnect } from "./profile-connect";
@@ -47,16 +33,23 @@ import {
   featuredWork,
   firstLines,
   initials,
-  readingMinutes,
   upcomingEvents,
   workFormats,
-  type WorkFormat,
 } from "@/lib/creator-profile";
 import "@/components/design-system/creator-palette.css";
 import styles from "./public-profile.module.css";
 import { ADDON_SECTIONS } from "./sections";
 import { Heading, SectionHead, hostname, safeHref } from "./sections/shared";
 import type { ProfileMode } from "./sections/types";
+import {
+  MiniPlayer,
+  PlayButton,
+  WorkDialog,
+  WorkSection,
+  useAudioPlayer,
+  useWorkViewer,
+  type Player,
+} from "./work-media";
 
 export type { ProfileMode };
 
@@ -76,54 +69,6 @@ function practiceLine(practices: string[]) {
 function firstName(name: string) {
   return name.trim().split(/\s+/)[0] || "this creator";
 }
-
-function useAudioPlayer() {
-  const audio = useRef<HTMLAudioElement | null>(null);
-  const [current, setCurrent] = useState<PortfolioWork | null>(null);
-  const [playing, setPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    const element = new Audio();
-    element.preload = "none";
-    const update = () =>
-      setProgress(
-        element.duration ? (element.currentTime / element.duration) * 100 : 0,
-      );
-    element.addEventListener("timeupdate", update);
-    element.addEventListener("play", () => setPlaying(true));
-    element.addEventListener("pause", () => setPlaying(false));
-    element.addEventListener("ended", () => setPlaying(false));
-    element.addEventListener("error", () => {
-      setFailed(true);
-      setPlaying(false);
-    });
-    audio.current = element;
-    return () => {
-      element.pause();
-      audio.current = null;
-    };
-  }, []);
-  const toggle = (work: PortfolioWork) => {
-    const element = audio.current;
-    if (!element || !work.audio) return;
-    if (current?.id === work.id && current?.audio === work.audio) {
-      if (element.paused) void element.play().catch(() => setFailed(true));
-      else element.pause();
-      return;
-    }
-    setFailed(false);
-    setProgress(0);
-    setCurrent(work);
-    element.src = work.audio;
-    void element.play().catch(() => setFailed(true));
-  };
-  const isPlaying = (work: PortfolioWork) =>
-    playing && current?.id === work.id && current?.audio === work.audio;
-  return { current, playing, progress, failed, toggle, isPlaying };
-}
-
-type Player = ReturnType<typeof useAudioPlayer>;
 
 export function PublicCreatorProfile({
   portfolio,
@@ -158,7 +103,7 @@ export function PublicCreatorProfile({
     : works;
   const events = upcomingEvents(portfolio.events, date);
   const player = useAudioPlayer();
-  const [viewing, setViewing] = useState<PortfolioWork | null>(null);
+  const viewer = useWorkViewer();
   const address = handle || portfolio.handle;
   const contactHref = portfolio.contact.email
     ? `mailto:${portfolio.contact.email}`
@@ -221,7 +166,7 @@ export function PublicCreatorProfile({
           hasRecord={portfolio.record.length > 0}
           sample={sample}
           mode={mode}
-          onOpen={setViewing}
+          onOpen={viewer.open}
           player={player}
         />
         {mode === "page" && modules.length > 1 && (
@@ -251,7 +196,7 @@ export function PublicCreatorProfile({
                   total={portfolio.works.length}
                   lens={portfolio.lens}
                   level={level + 1}
-                  onOpen={setViewing}
+                  onOpen={viewer.open}
                   player={player}
                 />
               );
@@ -344,12 +289,7 @@ export function PublicCreatorProfile({
         </footer>
       )}
       {player.current && mode !== "embedded" && <MiniPlayer player={player} />}
-      <WorkDialog
-        work={viewing}
-        onClose={() => setViewing(null)}
-        player={player}
-        creator={name}
-      />
+      <WorkDialog {...viewer.dialogProps} player={player} creator={name} />
     </div>
   );
 }
@@ -623,302 +563,13 @@ function FeaturedFigure({
         </span>
         {work.audio && (
           <PlayButton
-            work={work}
+            track={work}
             player={player}
             className={styles.inlinePlay}
           />
         )}
       </figcaption>
     </figure>
-  );
-}
-
-function PlayButton({
-  work,
-  player,
-  className,
-}: {
-  work: PortfolioWork;
-  player: Player;
-  className?: string;
-}) {
-  const playing = player.isPlaying(work);
-  return (
-    <button
-      type="button"
-      className={cn(styles.play, className)}
-      onClick={() => player.toggle(work)}
-      aria-label={`${playing ? "Pause" : "Play"} ${work.title}`}
-    >
-      {playing ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}
-    </button>
-  );
-}
-
-function WorkSection({
-  id,
-  works,
-  total,
-  lens,
-  level,
-  onOpen,
-  player,
-}: {
-  id?: string;
-  works: PortfolioWork[];
-  total: number;
-  lens: PortfolioData["lens"];
-  level: number;
-  onOpen: (work: PortfolioWork) => void;
-  player: Player;
-}) {
-  const [filter, setFilter] = useState<WorkFormat | "All">("All");
-  const formats = useMemo(
-    () => [...new Set(works.flatMap(workFormats))],
-    [works],
-  );
-  const shown =
-    filter === "All"
-      ? works
-      : works.filter((work) => workFormats(work).includes(filter));
-  return (
-    <section id={id} className={styles.section} aria-label="Selected work">
-      <SectionHead level={level} title="Selected work" count={total}>
-        {formats.length > 1 && (
-          <div
-            role="group"
-            aria-label="Filter work by format"
-            className={styles.filter}
-          >
-            {(["All", ...formats] as const).map((format) => (
-              <button
-                key={format}
-                type="button"
-                aria-pressed={filter === format}
-                onClick={() => setFilter(format)}
-              >
-                {format === "All" ? "All work" : format}
-              </button>
-            ))}
-          </div>
-        )}
-      </SectionHead>
-      <p className="sr-only" aria-live="polite">
-        {filter === "All"
-          ? ""
-          : `Showing ${shown.length} ${filter.toLowerCase()} ${shown.length === 1 ? "work" : "works"}.`}
-      </p>
-      <ol className={styles.works} data-lens={lens}>
-        {shown.map((work, index) => (
-          <li key={work.id ?? `${work.title}-${index}`}>
-            <WorkCard
-              work={work}
-              index={works.indexOf(work)}
-              level={level + 1}
-              onOpen={onOpen}
-              player={player}
-              lens={lens}
-            />
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
-
-function WorkCard({
-  work,
-  index,
-  level,
-  onOpen,
-  player,
-  lens,
-}: {
-  work: PortfolioWork;
-  index: number;
-  level: number;
-  onOpen: (work: PortfolioWork) => void;
-  player: Player;
-  lens: PortfolioData["lens"];
-}) {
-  const formats = workFormats(work);
-  const excerpt = firstLines(work.text, 4, 220);
-  const href = safeHref(work.url);
-  const linkOnly = !work.image && !work.text.trim() && !work.audio && href;
-  return (
-    <article className={styles.card}>
-      {work.image ? (
-        <button
-          type="button"
-          className={styles.cardMedia}
-          onClick={() => onOpen(work)}
-          aria-label={`Open ${work.title}`}
-        >
-          <img src={work.image} alt={work.caption || ""} loading="lazy" />
-        </button>
-      ) : work.text.trim() ? (
-        <button
-          type="button"
-          className={styles.cardText}
-          onClick={() => onOpen(work)}
-          aria-label={`Read ${work.title}`}
-        >
-          <span className={cn(styles.cardTextMeta, "font-mono")}>
-            {[work.kind, `${readingMinutes(work.text)} min read`]
-              .filter(Boolean)
-              .join(" · ")}
-          </span>
-          <span className={cn(styles.cardExcerpt, "font-heading")}>
-            {excerpt}
-          </span>
-        </button>
-      ) : work.audio ? (
-        <div className={styles.cardSound}>
-          <PlayButton work={work} player={player} />
-          <span className="font-mono">{work.kind || "Recording"}</span>
-        </div>
-      ) : linkOnly ? (
-        <a
-          className={styles.cardLink}
-          href={href}
-          target="_blank"
-          rel="noreferrer"
-        >
-          <span className="font-mono">
-            <Globe aria-hidden="true" /> {hostname(work.url)}
-          </span>
-          <span className="font-heading">{work.title}</span>
-          <span className={styles.readLink}>
-            Open <ArrowUpRight aria-hidden="true" />
-          </span>
-        </a>
-      ) : null}
-      {work.audio && (work.image || work.text.trim()) && (
-        <PlayButton work={work} player={player} className={styles.cardPlay} />
-      )}
-      <div className={cn(styles.cardMeta, "font-mono")}>
-        <span>
-          {String(index + 1).padStart(2, "0")} —{" "}
-          {work.kind || formats.join(" · ") || "Work"}
-        </span>
-        <span>{work.year}</span>
-      </div>
-      <Heading level={level} className={cn(styles.cardTitle, "font-heading")}>
-        <button type="button" onClick={() => onOpen(work)}>
-          {work.title}
-        </button>
-      </Heading>
-      {lens === "visual" && work.caption && (
-        <p className={styles.cardCaption}>{work.caption}</p>
-      )}
-      {work.summary && <p className={styles.cardSummary}>{work.summary}</p>}
-      {href && !linkOnly && (
-        <a
-          className={styles.cardOut}
-          href={href}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {hostname(work.url)}
-          <ArrowUpRight aria-hidden="true" />
-          <span className="sr-only">(opens in a new tab)</span>
-        </a>
-      )}
-    </article>
-  );
-}
-
-function WorkDialog({
-  work,
-  onClose,
-  player,
-  creator,
-}: {
-  work: PortfolioWork | null;
-  onClose: () => void;
-  player: Player;
-  creator: string;
-}) {
-  const href = work ? safeHref(work.url) : undefined;
-  return (
-    <Dialog open={Boolean(work)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className={styles.dialog}>
-        {work && (
-          <>
-            <div className={styles.dialogHead}>
-              <span className="font-mono">
-                {[work.kind, work.year].filter(Boolean).join(" · ")}
-              </span>
-              <DialogTitle className={cn(styles.dialogTitle, "font-heading")}>
-                {work.title}
-              </DialogTitle>
-              <DialogDescription>
-                {work.summary || `By ${creator}`}
-              </DialogDescription>
-            </div>
-            {work.image && (
-              <figure className={styles.dialogFigure}>
-                <img src={work.image} alt={work.caption || ""} />
-                {work.caption && <figcaption>{work.caption}</figcaption>}
-              </figure>
-            )}
-            {work.audio && (
-              <div className={styles.dialogAudio}>
-                <PlayButton work={work} player={player} />
-                <span>
-                  {player.isPlaying(work) ? "Playing" : "Listen"} · {work.title}
-                </span>
-              </div>
-            )}
-            {work.text.trim() && (
-              <div className={cn(styles.reading, "font-heading")}>
-                {work.text}
-              </div>
-            )}
-            {href && (
-              <a
-                className={buttonVariants({ variant: "outline" })}
-                href={href}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Open on {hostname(work.url)}
-                <ArrowUpRight aria-hidden="true" />
-              </a>
-            )}
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function MiniPlayer({ player }: { player: Player }) {
-  const work = player.current!;
-  return (
-    <div className={styles.miniPlayer} role="region" aria-label="Now playing">
-      {work.image && <img src={work.image} alt="" />}
-      <div className={styles.miniText}>
-        <span>{work.title}</span>
-        {player.failed ? (
-          <span className={styles.miniError}>
-            Couldn’t play this recording. Try again.
-          </span>
-        ) : (
-          <span
-            className={styles.miniTrack}
-            role="progressbar"
-            aria-label="Playback position"
-            aria-valuenow={Math.round(player.progress)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            <span style={{ width: `${player.progress}%` } as CSSProperties} />
-          </span>
-        )}
-      </div>
-      <PlayButton work={work} player={player} />
-    </div>
   );
 }
 
