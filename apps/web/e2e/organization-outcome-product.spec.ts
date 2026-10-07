@@ -12,9 +12,11 @@ test('Messages reports the durable ledger unavailable without a database on a ph
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/organization/${organizationId}/messages`);
   await expect(page.getByRole('heading', { name: 'Messages', level: 1 })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Message ledger unavailable' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Letters to submitters' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Provider delivery ledger unavailable' })).toBeVisible();
   await expect(page.getByText('Missa cannot read the authoritative delivery ledger, so it does not infer a healthy empty queue from compatibility audit entries.')).toBeVisible();
-  await expect(page.getByRole('button', { name: /send|retry/iu })).toHaveCount(0);
+  // A test letter to yourself is allowed; sending to submitters needs an approved letter first.
+  await expect(page.getByRole('button', { name: /^(Send now|Retry unsent)$/u })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);

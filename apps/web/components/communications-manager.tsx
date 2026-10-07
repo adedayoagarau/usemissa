@@ -188,7 +188,7 @@ function Composer({ base, openCalls, templates, stageLabels, onCreated }: { base
   });
 
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6">
       <Field>
         <FieldLabel>What kind of letter</FieldLabel>
         <RadioGroup value={kind} onValueChange={(value) => chooseKind(value as CommunicationKind)} aria-label="Letter kind" className="sm:grid-cols-3">
@@ -206,7 +206,7 @@ function Composer({ base, openCalls, templates, stageLabels, onCreated }: { base
           <NativeSelect className="w-full" id="compose-opportunity" value={openCallId} onChange={(event) => setOpenCallId(event.target.value)}>{openCalls.map((call) => <NativeSelectOption key={call.id} value={call.id}>{call.title}</NativeSelectOption>)}{openCalls.length === 0 ? <NativeSelectOption value="">No opportunities yet</NativeSelectOption> : null}</NativeSelect>
         </Field>
       </div>
-      <fieldset className="rounded-lg border border-border">
+      <fieldset className="min-w-0 rounded-lg border border-border">
         <legend className="px-3 text-sm font-medium text-foreground">Recipients · {chosen.size} chosen</legend>
         <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 text-xs text-muted-foreground">
           <span>Suggested recipients for this kind are ticked. Change the set before approval; after approval it is fixed.</span>

@@ -53,7 +53,8 @@ test('Review operations show evidence without unsafe assignment controls', async
   await page.goto(`/organization/${fixture.organizationId}/reviews`);
   await expect(page.getByRole('heading', { name: 'Reviews', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: fixture.roundName })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Assignment controls held back' })).toBeVisible();
+  // Readers are assigned through a previewed distribution plan, never a one-click assign.
+  await expect(page.getByText('How distribution stays safe')).toBeVisible();
   await expect(page.getByRole('button', { name: /Assign reviewer/u })).toHaveCount(0);
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);
