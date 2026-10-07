@@ -176,6 +176,11 @@ export interface ProductionEngine {
    * every tick in a short-lived (serverless) caller -- there's no long-running
    * process to rely on periodic autosave the way serve.ts's RadarServer has. */
   persist(): Promise<void>;
+  /** True while no other writer has touched the radar snapshot since this
+   * engine loaded or last persisted, so a long-running caller can reuse the
+   * in-memory store instead of reloading every table. False after a persist
+   * had to rebase onto someone else's write. */
+  isCurrent(): Promise<boolean>;
   /** Jev extraction-gate counts for this engine; absent without JEV_API_KEY or an LLM extractor. */
   decisionUsage?: OperationsUsage;
   /** Runs the CSV import under the shared Radar snapshot lock, a per-key
@@ -240,6 +245,7 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
   // additions and metadata changes are written on the next persist.
   seedRegistryIfEmpty(engine, { maxTier: 3 });
   let pendingPersist = Promise.resolve();
+  let rebasedOntoOtherWriter = false;
 
   return {
     engine,
@@ -253,6 +259,7 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
             break;
           } catch (error) {
             if (error instanceof Error && error.name === 'SnapshotConflictError') {
+              rebasedOntoOtherWriter = true;
               snapshotVersion = await readSnapshotVersion(pool);
               continue;
             }
@@ -287,6 +294,10 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
       pendingPersist = next.catch(() => undefined);
       await next;
       return output!;
+    },
+    isCurrent: async () => {
+      await pendingPersist;
+      return !rebasedOntoOtherWriter && (await readSnapshotVersion(pool)) === snapshotVersion;
     },
     consumeTrackerImportPreview: (accountId) => consumeTrackerImportPreviewRateLimit(pool, { accountId, limit: 5, windowMs: 10 * 60_000 }),
     close: async () => {

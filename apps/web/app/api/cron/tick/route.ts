@@ -21,7 +21,16 @@ export const maxDuration = 290;
  * this route delivers the engine alert emails, which no Railway lane sends
  * yet, and runs the coverage and taxonomy passes, which feed the
  * taxonomy-discovery-worker's queue.
+ *
+ * Alert delivery loads the whole radar store (every radar table, hundreds of
+ * MB), so it runs on the first tick of each hour rather than every 15 minutes;
+ * at four loads an hour it was a large share of the Neon data-transfer bill.
+ * MISSA_ALERT_DELIVERY_EVERY_TICK=1 restores the 15-minute cadence.
  */
+function alertDeliveryDue(now: Date, env: Record<string, string | undefined> = process.env): boolean {
+  return env.MISSA_ALERT_DELIVERY_EVERY_TICK === '1' || now.getUTCMinutes() < 15;
+}
+
 export async function GET(request: Request) {
   const auth = cronAuthorization(request);
   if (auth === 'unconfigured') {
@@ -36,13 +45,15 @@ export async function GET(request: Request) {
   let deadlineDelivery: Awaited<ReturnType<typeof deliverPendingDeadlineEmails>> | undefined;
 
   if (process.env.MISSA_VERCEL_RADAR_INGESTION !== '1') {
-    const production = await createProductionEngine();
-    try {
-      emailDelivery = await deliverPendingAlertEmails(production.engine);
-      deadlineDelivery = await deliverPendingDeadlineEmails(production.engine);
-      await production.persist();
-    } finally {
-      await production.close();
+    if (alertDeliveryDue(new Date())) {
+      const production = await createProductionEngine();
+      try {
+        emailDelivery = await deliverPendingAlertEmails(production.engine);
+        deadlineDelivery = await deliverPendingDeadlineEmails(production.engine);
+        await production.persist();
+      } finally {
+        await production.close();
+      }
     }
     const coverage = await runCoverageWorkerTick({ logger: console });
     const discovery = await runTaxonomyDiscoveryWorkerTick({ logger: console });
