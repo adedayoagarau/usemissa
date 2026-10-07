@@ -61,4 +61,8 @@ These instructions apply to every AI-authored UI change in this repository.
 
 Run `npm run check:design-system` before handing off UI work. Existing legacy
 exceptions are migration debt, not examples to copy; the validator rejects new
-exceptions.
+exceptions. It also counts hand-rolled controls in feature code (native
+`<button>`, `<input>`, `<select>`, `<textarea>`, `<dialog>`, `<details>`,
+`<progress>`, and ARIA widget roles such as `tab`, `menu` or `dialog`) and fails
+when a file gains one. After migrating a file, run
+`node scripts/check-design-system.mjs --tighten-controls` to lower its baseline.
