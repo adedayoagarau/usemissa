@@ -3,22 +3,38 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { ChevronDown } from 'lucide-react';
 import type { OrganizationCustomization } from '@missa/radar-engine';
 import { ORGANIZATION_ACCENTS, STAGE_VOCABULARY_PRESETS, STATUS_TRANSPARENCY_OPTIONS, SUBMISSION_STAGES } from '@/lib/organizationCustomizationOptions';
 import type { ResolvedOrganizationCustomization } from '@/lib/organizationCustomization';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
+import { OrganizationMark } from '@/components/missa/organization-mark';
+import { SegmentedChoice } from '@/components/missa/segmented-choice';
+import { SettingsRow } from '@/components/missa/settings-row';
 
 type Section = 'brand' | 'communications';
 
+const DENSITY = [
+  { value: 'compact', label: 'Compact' },
+  { value: 'comfortable', label: 'Comfortable' },
+] as const;
+
+const DENSITY_WORDS: Record<string, string> = {
+  compact: 'Tighter spacing for frequent desktop use. The default for organizations.',
+  comfortable: 'More room between rows for occasional admins and shared screens.',
+};
+
 /**
- * Brand and Communications settings for one organization. Each save sends
- * only its own section; the server merges and the page re-reads the result.
+ * Brand and Communications settings for one organization, as rows of
+ * settings with one save. Each save sends only its own section; the server
+ * merges and the page re-reads the result.
  */
 export function OrganizationCustomizationForm({ organizationId, section, stored, resolved, canManage }: { organizationId: string; section: Section; stored: OrganizationCustomization; resolved: ResolvedOrganizationCustomization; canManage: boolean }) {
   const router = useRouter();
@@ -36,6 +52,8 @@ export function OrganizationCustomizationForm({ organizationId, section, stored,
   const [signoff, setSignoff] = useState(stored.communications?.signoff ?? '');
   const [secondApprover, setSecondApprover] = useState(resolved.communications.secondApproverRequired);
   const [adminDigest, setAdminDigest] = useState(resolved.communications.adminDigest);
+  const disabled = !canManage || pending;
+  const logoPreview = /^https:\/\/\S+$/u.test(logoUrl.trim()) ? logoUrl.trim() : undefined;
 
   const save = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -51,121 +69,134 @@ export function OrganizationCustomizationForm({ organizationId, section, stored,
         setError(issues ? `${body.error ?? 'Not saved'}. ${issues}` : body.error ?? 'Settings could not be saved.');
         return;
       }
-      toast.success(section === 'brand' ? 'Appearance saved.' : 'Communication identity saved.');
+      toast.success(section === 'brand' ? 'Appearance saved.' : 'Communication settings saved.');
       router.refresh();
     });
   };
 
+  const footer = (
+    <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-5">
+      {!canManage ? <span className="me-auto text-sm text-muted-foreground">Only owners and admins can change these settings.</span> : null}
+      <Button type="submit" disabled={disabled}>{pending ? 'Saving…' : 'Save changes'}</Button>
+    </div>
+  );
+
   if (section === 'brand') {
     return (
-      <form onSubmit={save} className="grid gap-6">
-        <fieldset disabled={!canManage || pending} className="grid gap-6">
-          <div className="grid gap-4 sm:grid-cols-2">
+      <form onSubmit={save} className="grid gap-2">
+        <fieldset disabled={disabled} className="grid">
+          <SettingsRow id="brand-identity" title="Name and logo" description="Shown in your dashboard and letters. The public portal keeps its own brand record.">
             <Field>
               <FieldLabel htmlFor="org-display-name">Display name</FieldLabel>
-              <Input id="org-display-name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} maxLength={80} placeholder={resolved.displayName} />
-              <FieldDescription>Shown in your dashboard and letters. Leave blank to use the public name.</FieldDescription>
+              <Input id="org-display-name" size="compact" value={displayName} onChange={(event) => setDisplayName(event.target.value)} maxLength={80} placeholder={resolved.displayName} />
+              <FieldDescription>Leave blank to use the public name.</FieldDescription>
             </Field>
             <Field>
-              <FieldLabel htmlFor="org-logo-url">Logo URL (https)</FieldLabel>
-              <Input id="org-logo-url" type="url" value={logoUrl} onChange={(event) => setLogoUrl(event.target.value)} placeholder="https://…/logo.svg" />
-              <FieldDescription>Shown in the dashboard rail with a text fallback. The public portal keeps its own brand record.</FieldDescription>
+              <FieldLabel htmlFor="org-logo-url">Logo address</FieldLabel>
+              <div className="flex items-center gap-3">
+                <Input id="org-logo-url" size="compact" type="url" value={logoUrl} onChange={(event) => setLogoUrl(event.target.value)} placeholder="https://…/logo.svg" />
+                {logoPreview ? <OrganizationMark key={logoPreview} src={logoPreview} /> : null}
+              </div>
+              <FieldDescription>An https link to an image. Without one, your name is shown instead.</FieldDescription>
             </Field>
-          </div>
-          <Field>
-            <FieldLabel>Accent</FieldLabel>
-            <RadioGroup value={accent} onValueChange={(value) => setAccent(value as typeof accent)} aria-label="Accent" className="sm:grid-cols-5">
+          </SettingsRow>
+
+          <SettingsRow id="brand-accent" title="Accent" description="The colour of buttons, links and focus rings. Each one keeps text readable and focus visible.">
+            <RadioGroup value={accent} onValueChange={(value) => setAccent(value as typeof accent)} aria-labelledby="brand-accent" className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
               {ORGANIZATION_ACCENTS.map((option) => (
-                <label key={option.id} className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 has-data-checked:border-primary" data-org-accent={option.id}>
+                <label key={option.id} data-org-accent={option.id} className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-border bg-background px-3 py-2.5 shadow-control hover:bg-row-hover has-data-checked:border-primary has-data-checked:ring-3 has-data-checked:ring-ring/15">
                   <RadioGroupItem value={option.id} aria-label={option.label} />
-                  <span className="min-w-0">
-                    <span className="flex items-center gap-2 text-sm font-medium text-foreground"><span aria-hidden="true" className="size-3 rounded-full bg-primary" />{option.label}</span>
-                    <span className="mt-1 block text-xs text-muted-foreground">{option.description}</span>
-                  </span>
+                  <span aria-hidden="true" className="size-5 shrink-0 rounded-full bg-primary" />
+                  <span className="text-sm font-medium text-foreground">{option.label}</span>
                 </label>
               ))}
             </RadioGroup>
-            <FieldDescription>Each accent maps Missa’s tokens to an existing palette value, so contrast and focus states stay intact.</FieldDescription>
-          </Field>
-          <Field>
-            <FieldLabel>Density</FieldLabel>
-            <RadioGroup value={density} onValueChange={(value) => setDensity(value as typeof density)} aria-label="Density" className="sm:grid-cols-2">
-              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 has-data-checked:border-primary"><RadioGroupItem value="compact" aria-label="Compact" /><span><span className="block text-sm font-medium text-foreground">Compact</span><span className="block text-xs text-muted-foreground">Tighter spacing for frequent desktop use. Missa default for organizations.</span></span></label>
-              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 has-data-checked:border-primary"><RadioGroupItem value="comfortable" aria-label="Comfortable" /><span><span className="block text-sm font-medium text-foreground">Comfortable</span><span className="block text-xs text-muted-foreground">More room between rows for occasional admins and shared screens.</span></span></label>
-            </RadioGroup>
-          </Field>
-          <fieldset className="grid gap-3 rounded-lg border border-border p-4">
-            <legend className="px-1 text-sm font-medium text-foreground">Stage vocabulary</legend>
-            <p className="text-xs text-muted-foreground">What you call each stage, used in letters and on the submitter’s tracker. Tick the stages this organization actually runs so submitters can see what lies ahead.</p>
-            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Start from a preset">
-              <span className="text-xs text-muted-foreground">Start from:</span>
-              {STAGE_VOCABULARY_PRESETS.map((preset) => (
-                <Button key={preset.id} type="button" variant="outline" size="sm" title={preset.description} onClick={() => { setStageLabels({ ...preset.stageLabels }); setDeclaredStages(new Set(preset.declaredStages)); }}>{preset.label}</Button>
-              ))}
+            <p className="text-sm text-muted-foreground">{ORGANIZATION_ACCENTS.find((option) => option.id === accent)?.description}</p>
+          </SettingsRow>
+
+          <SettingsRow id="brand-density" title="Density" description="How much room rows and lists get in your dashboard.">
+            <div className="max-w-xs"><SegmentedChoice aria-labelledby="brand-density" value={density} onValueChange={(value) => setDensity(value as typeof density)} options={[...DENSITY]} disabled={disabled} /></div>
+            <p className="text-sm text-muted-foreground">{DENSITY_WORDS[density]}</p>
+          </SettingsRow>
+
+          <SettingsRow id="brand-stages" title="Stage words" description="What you call each stage in letters and on the submitter’s tracker. Tick the stages you run so submitters can see what lies ahead.">
+            <div>
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<Button type="button" variant="outline" size="sm" disabled={disabled} />}>Start from a preset<ChevronDown aria-hidden="true" /></DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-72">
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel>Presets</DropdownMenuLabel>
+                    {STAGE_VOCABULARY_PRESETS.map((preset) => (
+                      <DropdownMenuItem key={preset.id} onClick={() => { setStageLabels({ ...preset.stageLabels }); setDeclaredStages(new Set(preset.declaredStages)); }}>
+                        <span className="grid min-w-0"><span className="text-foreground">{preset.label}</span><span className="text-xs text-muted-foreground">{preset.description}</span></span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {SUBMISSION_STAGES.map((stage) => (
-                <div key={stage} className="grid gap-2">
-                  <label className="flex items-center gap-2 text-sm text-foreground">
-                    <Checkbox checked={declaredStages.has(stage)} onCheckedChange={(checked) => setDeclaredStages((current) => { const next = new Set(current); if (checked) next.add(stage); else next.delete(stage); return next; })} aria-label={`We run a ${stageLabels[stage].trim() || resolved.stageLabels[stage]} stage`} />
-                    <span>We run a {(stageLabels[stage].trim() || resolved.stageLabels[stage]).toLocaleLowerCase('en')} stage</span>
-                  </label>
-                  <Input aria-label={`Label for ${stage}`} value={stageLabels[stage]} onChange={(event) => setStageLabels((current) => ({ ...current, [stage]: event.target.value }))} maxLength={40} placeholder={resolved.stageLabels[stage]} />
-                </div>
-              ))}
-            </div>
-          </fieldset>
-          <Field>
-            <FieldLabel>What submitters can see</FieldLabel>
-            <RadioGroup value={transparency} onValueChange={(value) => setTransparency(value as typeof transparency)} aria-label="Status transparency">
+            <ul className="grid gap-3">
+              {SUBMISSION_STAGES.map((stage) => {
+                const word = stageLabels[stage].trim() || resolved.stageLabels[stage];
+                return (
+                  <li key={stage} className="grid items-center gap-x-4 gap-y-2 sm:grid-cols-[13rem_minmax(0,1fr)]">
+                    <label className="flex items-center gap-2.5 text-sm text-foreground">
+                      <Checkbox checked={declaredStages.has(stage)} onCheckedChange={(checked) => setDeclaredStages((current) => { const next = new Set(current); if (checked) next.add(stage); else next.delete(stage); return next; })} />
+                      We run a {word.toLocaleLowerCase('en')} stage
+                    </label>
+                    <Input size="compact" aria-label={`Word for the ${stage} stage`} value={stageLabels[stage]} onChange={(event) => setStageLabels((current) => ({ ...current, [stage]: event.target.value }))} maxLength={40} placeholder={resolved.stageLabels[stage]} />
+                  </li>
+                );
+              })}
+            </ul>
+          </SettingsRow>
+
+          <SettingsRow id="brand-transparency" title="What submitters can see" description="Submitters never see who is reading, any score, or any note, whichever you choose.">
+            <RadioGroup value={transparency} onValueChange={(value) => setTransparency(value as typeof transparency)} aria-labelledby="brand-transparency" className="gap-3">
               {STATUS_TRANSPARENCY_OPTIONS.map((option) => (
-                <label key={option.id} className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 has-data-checked:border-primary"><RadioGroupItem value={option.id} aria-label={option.label} /><span><span className="block text-sm font-medium text-foreground">{option.label}</span><span className="block text-xs text-muted-foreground">{option.description}</span></span></label>
+                <label key={option.id} className="flex cursor-pointer items-start gap-3">
+                  <RadioGroupItem value={option.id} aria-label={option.label} className="mt-0.5" />
+                  <span className="grid gap-0.5"><span className="text-sm font-medium text-foreground">{option.label}</span><span className="text-sm text-muted-foreground">{option.description}</span></span>
+                </label>
               ))}
             </RadioGroup>
-            <FieldDescription>Submitters never see who is reading, any score, or any note, whichever level you choose.</FieldDescription>
-          </Field>
+          </SettingsRow>
         </fieldset>
         {error ? <Alert variant="destructive"><AlertTitle>Not saved</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
-        <div className="flex items-center gap-3">
-          <Button type="submit" disabled={!canManage || pending}>{pending ? 'Saving…' : 'Save appearance'}</Button>
-          {!canManage ? <span className="text-xs text-muted-foreground">Only owners and admins can change appearance.</span> : null}
-        </div>
+        {footer}
       </form>
     );
   }
 
   return (
-    <form onSubmit={save} className="grid gap-6">
-      <fieldset disabled={!canManage || pending} className="grid gap-4 sm:grid-cols-2">
-        <Field>
-          <FieldLabel htmlFor="org-sender-name">Sender name</FieldLabel>
-          <Input id="org-sender-name" value={senderName} onChange={(event) => setSenderName(event.target.value)} maxLength={80} placeholder={resolved.communications.senderName} />
-          <FieldDescription>How letters introduce themselves, for example “The Prize Office”.</FieldDescription>
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="org-reply-to">Reply-to address</FieldLabel>
-          <Input id="org-reply-to" type="email" value={replyTo} onChange={(event) => setReplyTo(event.target.value)} placeholder="prize@yourorganization.org" />
-          <FieldDescription>Replies to letters and reader reminders go here. Letters are still sent from Missa’s verified sender.</FieldDescription>
-        </Field>
-        <Field className="sm:col-span-2">
-          <FieldLabel htmlFor="org-signoff">Sign-off</FieldLabel>
-          <Input id="org-signoff" value={signoff} onChange={(event) => setSignoff(event.target.value)} maxLength={200} placeholder={resolved.communications.signoff} />
-          <FieldDescription>The closing line of every letter.</FieldDescription>
-        </Field>
-        <label className="flex items-start justify-between gap-4 rounded-lg border border-border p-4 sm:col-span-2">
-          <span><span className="block text-sm font-medium text-foreground">Require a second approver</span><span className="mt-1 block text-xs text-muted-foreground">A letter batch can only be approved by an admin who did not draft it. Recommended once more than one admin is on the team.</span></span>
-          <Switch checked={secondApprover} onCheckedChange={(checked) => setSecondApprover(Boolean(checked))} aria-label="Require a second approver" />
-        </label>
-        <label className="flex items-start justify-between gap-4 rounded-lg border border-border p-4 sm:col-span-2">
-          <span><span className="block text-sm font-medium text-foreground">Daily summary for owners and admins</span><span className="mt-1 block text-xs text-muted-foreground">One morning email with new submissions, completed and overdue reads, and letters waiting on you. Quiet days send nothing.</span></span>
-          <Switch checked={adminDigest} onCheckedChange={(checked) => setAdminDigest(Boolean(checked))} aria-label="Daily summary for owners and admins" />
-        </label>
+    <form onSubmit={save} className="grid gap-2">
+      <fieldset disabled={disabled} className="grid">
+        <SettingsRow id="comms-identity" title="Sender" description="How letters and reader reminders introduce and sign themselves. They are still sent from Missa’s verified address.">
+          <Field>
+            <FieldLabel htmlFor="org-sender-name">Sender name</FieldLabel>
+            <Input id="org-sender-name" size="compact" value={senderName} onChange={(event) => setSenderName(event.target.value)} maxLength={80} placeholder={resolved.communications.senderName} />
+            <FieldDescription>For example “The Prize Office”.</FieldDescription>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="org-reply-to">Reply-to address</FieldLabel>
+            <Input id="org-reply-to" size="compact" type="email" value={replyTo} onChange={(event) => setReplyTo(event.target.value)} placeholder="prize@yourorganization.org" />
+            <FieldDescription>Replies to letters and reminders go here.</FieldDescription>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="org-signoff">Sign-off</FieldLabel>
+            <Input id="org-signoff" size="compact" value={signoff} onChange={(event) => setSignoff(event.target.value)} maxLength={200} placeholder={resolved.communications.signoff} />
+            <FieldDescription>The closing line of every letter.</FieldDescription>
+          </Field>
+        </SettingsRow>
+        <SettingsRow id="comms-approval" title="Second approver" description="A letter can only be approved by an admin who did not draft it. Worth turning on once more than one admin is on the team.">
+          <label className="flex items-center gap-3 text-sm text-foreground"><Switch checked={secondApprover} onCheckedChange={(checked) => setSecondApprover(Boolean(checked))} />Require a second approver</label>
+        </SettingsRow>
+        <SettingsRow id="comms-digest" title="Daily summary" description="One morning email to owners and admins with new submissions, finished and overdue reads, and letters waiting on you. Quiet days send nothing.">
+          <label className="flex items-center gap-3 text-sm text-foreground"><Switch checked={adminDigest} onCheckedChange={(checked) => setAdminDigest(Boolean(checked))} />Send the daily summary</label>
+        </SettingsRow>
       </fieldset>
       {error ? <Alert variant="destructive"><AlertTitle>Not saved</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
-      <div className="flex items-center gap-3">
-        <Button type="submit" disabled={!canManage || pending}>{pending ? 'Saving…' : 'Save communication identity'}</Button>
-        {!canManage ? <span className="text-xs text-muted-foreground">Only owners and admins can change communication identity.</span> : null}
-      </div>
+      {footer}
     </form>
   );
 }

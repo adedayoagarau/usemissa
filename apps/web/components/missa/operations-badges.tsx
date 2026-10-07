@@ -130,3 +130,17 @@ export function IntakeFlagBadge({ label, message }: { label: string; message: st
     </Badge>
   );
 }
+
+const settingsStateCopy = {
+  "read-only": "Read only",
+  "not-available": "Not available yet",
+} as const;
+
+/** Marks a settings section that cannot be changed: read only, or not built yet. */
+export function SettingsStateBadge({ state }: { state: keyof typeof settingsStateCopy }) {
+  return (
+    <Badge variant="outline" size="compact">
+      {settingsStateCopy[state]}
+    </Badge>
+  );
+}

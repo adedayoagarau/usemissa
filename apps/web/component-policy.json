@@ -69,6 +69,12 @@
       "composition": ["InputGroup", "Select", "Table", "Checkbox", "Sheet", "DropdownMenu", "Dialog", "Button", "Empty", "Sonner", "ListGroup", "DetailFields", "PersonAvatar", "DecisionSummaryBadge", "IntakeFlagBadge", "WorkDecisionBadge"],
       "boundary": "The organization's submission list. Filters live in the address and are applied on the server. Sections order rows by the next step; bulk decisions only fill undecided Works after a confirmation, and bulk letters are drafts that still pass approval. Receipt, review and decision stay separate facts."
     },
+    "composition.organization-settings": {
+      "semantic": "OrganizationSettingsPage",
+      "implementation": "apps/web/app/organization/[organizationId]/settings/page.tsx",
+      "composition": ["Button", "Select", "SettingsStateBadge", "Alert", "Empty", "SettingsRow", "DetailFields", "HueTile", "OrganizationCustomizationForm"],
+      "boundary": "One section at a time, chosen from a list of links (a Select on a phone). Read-only and not-yet-built sections say so with a badge; no commercial, security or destructive control is offered."
+    },
     "composition.communications-manager": {
       "semantic": "CommunicationsManager",
       "implementation": "apps/web/components/communications-manager.tsx",
@@ -96,7 +102,7 @@
     "composition.organization-customization": {
       "semantic": "OrganizationCustomizationForm",
       "implementation": "apps/web/components/organization-customization-form.tsx",
-      "composition": ["Field", "Input", "RadioGroup", "Checkbox", "Switch", "Button", "Alert", "Sonner"],
+      "composition": ["SettingsRow", "Field", "Input", "RadioGroup", "SegmentedChoice", "Checkbox", "Switch", "DropdownMenu", "Button", "Alert", "Sonner", "OrganizationMark"],
       "boundary": "Accent choices are names for existing palette mappings in components/design-system/organization-palette.css; no raw colour is accepted or stored. Stage labels and transparency change wording and visibility only, never the recorded facts."
     },
     "composition.submission-status-timeline": {
@@ -1063,6 +1069,18 @@
       "motion": "never",
       "implementation": "components/missa/operations-badges.tsx",
       "boundary": "Names an intake flag (Too many Works, Missing file, Repeat submitter) with its reason in the accessible name. A prompt to look; it never declines or hides a submission."
+    },
+    "SettingsRow": {
+      "base": "section",
+      "motion": "never",
+      "implementation": "components/missa/settings-row.tsx",
+      "boundary": "One setting on a settings page: a heading and a sentence on what it does beside its controls, rows separated by a rule. Holds no save of its own; the form around it saves."
+    },
+    "SettingsStateBadge": {
+      "base": "Badge",
+      "motion": "never",
+      "implementation": "components/missa/operations-badges.tsx",
+      "boundary": "Marks a settings section that cannot be changed (Read only, Not available yet). Editable sections carry no badge."
     },
     "HueTile": {
       "base": "span",

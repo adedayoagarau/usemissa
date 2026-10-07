@@ -28,6 +28,9 @@ const buttonVariantClasses = cva(
         /** The name of a row in a list, opening that row's details. */
         rowTitle:
           "min-w-0 max-w-full justify-start truncate text-start text-foreground underline-offset-4 hover:underline",
+        /** An item in a section list, marked when it is the current page. */
+        nav:
+          "w-full justify-start text-muted-foreground hover:bg-muted hover:text-foreground aria-[current=page]:bg-muted aria-[current=page]:font-semibold aria-[current=page]:text-foreground [&_svg:not([class*='text-'])]:text-muted-foreground aria-[current=page]:[&_svg:not([class*='text-'])]:text-foreground",
         account:
           "text-muted-foreground hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
         accentOutline:

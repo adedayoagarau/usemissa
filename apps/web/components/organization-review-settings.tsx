@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { Sp } from "@/components/missa/spelling";
+import { SettingsRow } from "@/components/missa/settings-row";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 type BlindMode = 'none' | 'identity-redacted';
 type Settings = { organizationId: string; blindMode: BlindMode; revision: number };
@@ -20,16 +23,21 @@ export function OrganizationReviewSettings({ organizationId, canManage, unavaila
     else setSettings({ organizationId, blindMode: body.blindMode, revision: body.revision });
     setSaving(false);
   }
-  if (!settings) return null;
-  return <section className="rounded-lg border border-border bg-card p-5 shadow-sm" aria-labelledby="review-privacy-heading">
-    <h2 id="review-privacy-heading" className="font-heading text-xl font-medium text-foreground">Review privacy</h2>
-    <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Choose whether reviewer views hide applicant identity by default. Individual review stages can use their own immutable workflow setting.</p>
-    {error && <p className="mt-3 text-sm text-destructive" role="alert">{error}</p>}
-    <fieldset className="mt-4 space-y-3" disabled={!canManage || saving || Boolean(unavailableReason)}>
-      <legend className="sr-only">Blind review mode</legend>
-      <label className="flex cursor-pointer gap-3 rounded-md border border-border p-3"><input type="radio" name="blind-mode" checked={settings.blindMode === 'identity-redacted'} onChange={() => void update('identity-redacted')} /><span><span className="block text-sm font-medium text-foreground">Blind review on</span><span className="block text-sm text-muted-foreground">Hide applicant identity from reviewer projections.</span></span></label>
-      <label className="flex cursor-pointer gap-3 rounded-md border border-border p-3"><input type="radio" name="blind-mode" checked={settings.blindMode === 'none'} onChange={() => void update('none')} /><span><span className="block text-sm font-medium text-foreground">Blind review off</span><span className="block text-sm text-muted-foreground">Allow identity in stages that explicitly permit it.</span></span></label>
-    </fieldset>
-    {unavailableReason ? <p className="mt-3 text-xs text-muted-foreground">{unavailableReason}</p> : !canManage && <p className="mt-3 text-xs text-muted-foreground"><Sp>Only organization owners and admins can change this policy.</Sp></p>}
-  </section>;
+  const blocked = !canManage || saving || Boolean(unavailableReason) || !settings;
+  return (
+    <SettingsRow id="review-privacy-heading" title="Blind review" description="Whether reviewers see who wrote a submission. A review stage can set its own rule when it is created.">
+      {error ? <Alert variant="destructive"><AlertTitle>Not saved</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
+      <RadioGroup value={settings?.blindMode ?? ''} onValueChange={(value) => void update(value as BlindMode)} disabled={blocked} aria-labelledby="review-privacy-heading" className="gap-3">
+        <label className="flex cursor-pointer items-start gap-3">
+          <RadioGroupItem value="identity-redacted" aria-label="Blind review on" className="mt-0.5" />
+          <span className="grid gap-0.5"><span className="text-sm font-medium text-foreground">Blind review on</span><span className="text-sm text-muted-foreground">Reviewers do not see the applicant’s name or details.</span></span>
+        </label>
+        <label className="flex cursor-pointer items-start gap-3">
+          <RadioGroupItem value="none" aria-label="Blind review off" className="mt-0.5" />
+          <span className="grid gap-0.5"><span className="text-sm font-medium text-foreground">Blind review off</span><span className="text-sm text-muted-foreground">Reviewers see identity in stages that allow it.</span></span>
+        </label>
+      </RadioGroup>
+      {unavailableReason ? <p className="text-sm text-muted-foreground">{unavailableReason}</p> : !canManage ? <p className="text-sm text-muted-foreground"><Sp>Only organization owners and admins can change this policy.</Sp></p> : saving ? <p className="text-sm text-muted-foreground" aria-live="polite">Saving…</p> : null}
+    </SettingsRow>
+  );
 }

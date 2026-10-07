@@ -1,11 +1,19 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
-import { Building2, CircleDollarSign, Database, EyeOff, Info, Landmark, LockKeyhole, Mail, Network, Palette, ShieldCheck, WalletCards } from 'lucide-react';
+import { Building2, CircleDollarSign, Database, EyeOff, Landmark, LockKeyhole, Mail, Network, Palette, ShieldCheck } from 'lucide-react';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
 import { organizationCapabilityProjection } from '@/lib/organizationProduct';
-import { ORGANIZATION_SETTINGS_SECTIONS, organizationCommercialFacts, selectedSettingsSection, settingsAuthority, settingsSectionsForRole, type OrganizationSettingsSection } from '@/lib/organizationSettings';
+import { ORGANIZATION_SETTINGS_SECTIONS, organizationCommercialFacts, selectedSettingsSection, settingsSectionsForRole, type OrganizationSettingsSection } from '@/lib/organizationSettings';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { DetailFields } from '@/components/missa/detail-fields';
+import { HueTile } from '@/components/missa/hue-tile';
+import { SettingsStateBadge } from '@/components/missa/operations-badges';
+import { SettingsRow } from '@/components/missa/settings-row';
+import { SettingsSectionPicker } from '@/components/settings-section-picker';
 import { getWorkspaceEngine, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 import styles from './settings.module.css';
 import { OrganizationReviewSettings } from '@/components/organization-review-settings';
@@ -33,10 +41,9 @@ const unavailableCopy: Record<Exclude<OrganizationSettingsSection, 'general' | '
   data: { title: 'Data-governance policy is not represented yet', description: 'Retention, legal hold, exports, archive, restore, and deletion are not durable Organization settings. Destructive controls stay withheld.', required: ['Data-class retention rules', 'Legal hold and export state', 'Transactional archive and delayed deletion'] },
 };
 
-function implementationLabel(value: 'current' | 'partial' | 'unavailable') {
-  if (value === 'current') return 'Current read model';
-  if (value === 'partial') return 'Partial read model';
-  return 'Not represented';
+/** Section descriptions are lists ("Accent, logo, stage words"); the panel shows them as a sentence. */
+function sentence(value: string): string {
+  return `${value.charAt(0).toUpperCase()}${value.slice(1)}${value.endsWith('.') ? '' : '.'}`;
 }
 
 export default async function OrganizationSettingsPage({ params, searchParams }: { params: Promise<{ organizationId: string }>; searchParams: Promise<Query> }) {
@@ -64,22 +71,106 @@ export default async function OrganizationSettingsPage({ params, searchParams }:
   const base = `/organization/${encodeURIComponent(organizationId)}/settings`;
   const canManage = membership.role === 'owner' || membership.role === 'admin';
 
-  return <main id="organization-main" className={styles.main}>
-    <header className={styles.header}><div><p className={styles.eyebrow}>Your organization</p><h1>Settings & billing</h1><p>Your organization’s details, teams, brand, messages, review privacy and billing, each in its own section. Anything that isn’t built yet says so.</p></div><span className={styles.role}>{projection.label}</span></header>
-    <aside className={styles.boundary}><ShieldCheck aria-hidden="true" /><div><strong>What you can change here</strong><p>Owners and Admins create Teams and Programs under Structure. Brand & appearance, Communications and Review privacy save from this page with validation and an audit entry. Billing, security, integrations and data governance remain read-only until their preview and recovery contracts exist.</p></div></aside>
-    <form className={styles.mobilePicker}><label><span>Settings section</span><select name="section" defaultValue={activeId}>{sections.map((section) => <option key={section.id} value={section.id}>{section.label}</option>)}</select></label><button type="submit">Open</button></form>
-    <div className={styles.control}>
-      <nav className={styles.sectionNav} aria-label="Settings sections"><p>Settings</p>{sections.map((section) => { const Icon = sectionIcons[section.id]; return <Link key={section.id} href={`${base}?section=${section.id}`} aria-current={section.id === activeId ? 'page' : undefined}><Icon aria-hidden="true" /><span><strong>{section.label}</strong><small>{section.description}</small></span><i data-state={section.implementation} aria-label={implementationLabel(section.implementation)} /></Link>; })}</nav>
-      <section className={styles.panel} aria-labelledby="settings-panel-title">
-        <header className={styles.panelHeader}><div><p className={styles.eyebrow}>{active.description}</p><h2 id="settings-panel-title">{active.label}</h2></div><span>{implementationLabel(active.implementation)}</span></header>
-        {activeId === 'general' ? <section className={styles.panelBody}><dl className={styles.factList}><div><dt>Public organization name</dt><dd>{organization.name}</dd><p>The name used across your organization workspace.</p></div><div><dt>Verified domain state</dt><dd>{organization.verified ? 'Verified' : 'Not verified'}</dd><p>Verification is distinct from a public custom domain.</p></div><div><dt>Recorded domains</dt><dd>{organization.domains.length ? organization.domains.join(', ') : 'No domains recorded'}</dd><p>No legal name, locale, timezone, currency, address, or slug exists in the current Organization model.</p></div></dl><div className={styles.withheld}><Info aria-hidden="true" /><div><strong>No General save action</strong><p>Public name and verified domains are observable facts today. Editing stays unavailable until validation, audit, versioning, and legal/public-name separation are durable.</p></div></div></section> : null}
-        {activeId === 'structure' ? <section className={styles.panelBody}><dl className={styles.structureFacts}><div><dt>Teams</dt><dd>{teams.length}</dd></div><div><dt>Programs</dt><dd>{programs.length}</dd></div><div><dt>Opportunities</dt><dd>{opportunities.length}</dd></div></dl>{canManage ? <div className={styles.structureActions}><CreateTeamDialog organizationId={organizationId} variant={teams.length ? 'outline' : 'default'} /></div> : null}{teams.length ? <ol className={styles.structureList}>{teams.map((team) => { const teamPrograms = programs.filter((program) => program.entityId === team.id); const teamOpportunityCount = teamPrograms.reduce((count, program) => count + workspace.openCallsForProgram(program.id).length, 0); return <li key={team.id}><div><strong>{team.name}</strong><span>{teamPrograms.length ? teamPrograms.map((program) => program.name).join(', ') : 'No Programs yet'} · {teamOpportunityCount} {teamOpportunityCount === 1 ? 'Opportunity' : 'Opportunities'}</span></div>{canManage ? <CreateProgramDialog organizationId={organizationId} team={{ id: team.id, name: team.name }} /> : <span>Current record</span>}</li>; })}</ol> : <div className={styles.empty}><strong>No teams yet</strong><p>{canManage ? 'Every call belongs to a program inside a team. Create a team, add a program to it, then create calls under Opportunities.' : 'An Owner or Admin creates the first team and program before calls can be drafted.'}</p></div>}<div className={styles.withheld}><Network aria-hidden="true" /><div><strong>Rename, move, and archive stay withheld</strong><p>Teams and Programs can be created here. Renaming, moving, or archiving one needs scope, dependency, reassignment, and audit rules first.</p></div></div></section> : null}
-        {activeId === 'billing' ? <section className={styles.panelBody}><div className={styles.commercialGrid}><article><header><CircleDollarSign aria-hidden="true" /><div><h3>Missa plan</h3><p>Subscription and Organization seat entitlement</p></div></header><dl><div><dt>Plan</dt><dd>{commercial.tierLabel}</dd></div><div><dt>Status</dt><dd>{commercial.statusLabel}</dd></div><div><dt>Seats</dt><dd>{seats.used} of {seats.limit}</dd></div><div><dt>Available</dt><dd>{seats.available}</dd></div><div><dt>Subscription reference</dt><dd>{commercial.hasSubscriptionReference ? 'Recorded privately' : 'Not recorded'}</dd></div></dl></article><article><header><WalletCards aria-hidden="true" /><div><h3>Submission-fee payouts</h3><p>Separate from the Missa subscription</p></div></header><dl><div><dt>Connection</dt><dd>{commercial.payoutLabel}</dd></div><div><dt>Payout reference</dt><dd>{organization.stripeConnectAccountId ? 'Recorded privately' : 'Not recorded'}</dd></div><div><dt>Balance</dt><dd>Unavailable</dd></div><div><dt>Schedule</dt><dd>Unavailable</dd></div><div><dt>Requirements</dt><dd>Unavailable</dd></div></dl></article></div>{commercial.cancellationScheduled ? <div className={styles.attention}><Landmark aria-hidden="true" /><div><strong>Subscription cancellation is scheduled</strong><p>The current record doesn’t include the date the period ends. Missa won’t guess one, or suggest that your organization’s records or payouts are deleted.</p></div></div> : null}<div className={styles.withheld}><CircleDollarSign aria-hidden="true" /><div><strong>Commercial actions stay withheld</strong><p>Checkout, cancellation, payout onboarding, payment methods, invoices, taxes, renewal dates, differentiated seats, and proration need authoritative previews and dedicated recovery flows.</p></div></div></section> : null}
-        {activeId === 'review' ? <section className={styles.panelBody}><OrganizationReviewSettings organizationId={organizationId} canManage={canManage} {...(workspaceRelationalAuthorityEnabled() ? {} : { unavailableReason: 'Review privacy can’t be changed for this organization yet. It’s saved as a versioned setting, which this organization’s workspace doesn’t support.' })} /></section> : null}
-        {activeId === 'brand' || activeId === 'communications' ? <section className={styles.panelBody}><OrganizationCustomizationForm organizationId={organizationId} section={activeId} stored={organization.customization ?? {}} resolved={resolveOrganizationCustomization(organization)} canManage={canManage} /></section> : null}
-        {!['general', 'structure', 'billing', 'review', 'brand', 'communications'].includes(activeId) ? (() => { const copy = unavailableCopy[activeId as keyof typeof unavailableCopy]; return <section className={styles.panelBody}><div className={styles.unavailable}><LockKeyhole aria-hidden="true" /><h3>{copy.title}</h3><p>{copy.description}</p></div><section className={styles.requirements}><h3>Required before this domain can be enabled</h3><ul>{copy.required.map((item) => <li key={item}>{item}</li>)}</ul></section></section>; })() : null}
-      </section>
-      <aside className={styles.rail} aria-label="Section status and safeguards"><section><p className={styles.eyebrow}>Your authority</p><h2>{projection.label}</h2><p>{settingsAuthority(membership.role, activeId)}</p><span>Server recheck required for every future action</span></section><section><p className={styles.eyebrow}>Section state</p><h2>{implementationLabel(active.implementation)}</h2><p>{active.implementation === 'current' ? 'Current records can be read without claiming an edit contract.' : active.implementation === 'partial' ? 'Some commercial fields exist; key customer facts and safe actions do not.' : 'This domain remains a product contract, not a working feature.'}</p></section><section><p className={styles.eyebrow}>Safeguards</p><ul><li>One settings domain per transaction</li><li>Plan and payouts remain separate</li><li>Commercial seats never grant access</li><li>Destructive controls remain absent</li></ul></section></aside>
-    </div>
-  </main>;
+  const editable = new Set<OrganizationSettingsSection>(['structure', 'brand', 'communications', 'review']);
+  const state = editable.has(activeId) ? undefined : active.implementation === 'unavailable' ? 'not-available' as const : 'read-only' as const;
+  const unavailable = !['general', 'structure', 'billing', 'review', 'brand', 'communications'].includes(activeId) ? unavailableCopy[activeId as keyof typeof unavailableCopy] : undefined;
+
+  return (
+    <main id="organization-main" className={styles.main}>
+      <header className="grid gap-1 border-b border-border pb-5">
+        <h1 className="font-heading text-3xl font-medium tracking-tight text-foreground">Settings & billing</h1>
+        <p className="text-sm text-muted-foreground">Your organization’s details, teams, brand, letters, review privacy and billing. Anything not built yet says so.</p>
+      </header>
+      <div className="grid gap-8 pt-6 md:grid-cols-[13.5rem_minmax(0,1fr)]">
+        <div className="md:hidden"><SettingsSectionPicker base={base} active={activeId} sections={sections.map((section) => ({ id: section.id, label: section.label }))} /></div>
+        <nav aria-label="Settings sections" className="hidden content-start gap-0.5 md:grid">
+          {sections.map((section) => { const Icon = sectionIcons[section.id]; return <Button key={section.id} variant="nav" size="sm" render={<Link href={`${base}?section=${section.id}`} aria-current={section.id === activeId ? 'page' : undefined} />}><Icon aria-hidden="true" />{section.label}</Button>; })}
+        </nav>
+        <section aria-labelledby="settings-panel-title" className="grid min-w-0 content-start gap-6">
+          <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
+            <div className="grid gap-1">
+              <h2 id="settings-panel-title" className="text-xl font-semibold tracking-tight text-foreground">{active.label}</h2>
+              <p className="text-sm text-muted-foreground">{sentence(active.description)}</p>
+            </div>
+            {state ? <SettingsStateBadge state={state} /> : null}
+          </header>
+
+          {activeId === 'general' ? (
+            <div className="grid">
+              <SettingsRow id="general-name" title="Public name" description="The name used across your organization workspace.">
+                <DetailFields fields={[['Name', organization.name], ['Domain', organization.verified ? 'Verified' : 'Not verified'], ['Recorded domains', organization.domains.length ? organization.domains.join(', ') : 'None recorded']]} />
+              </SettingsRow>
+              <SettingsRow id="general-editing" title="Editing" description="Name and domains can’t be edited here yet.">
+                <p className="text-sm text-muted-foreground">Editing waits on validation, an audit trail, versioning, and keeping the legal name apart from the public one. Legal name, locale, time zone, currency and address aren’t stored yet.</p>
+              </SettingsRow>
+            </div>
+          ) : null}
+
+          {activeId === 'structure' ? (
+            <div className="grid gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground"><span className="font-medium text-foreground tabular-nums">{teams.length}</span> {teams.length === 1 ? 'team' : 'teams'} · <span className="font-medium text-foreground tabular-nums">{programs.length}</span> {programs.length === 1 ? 'program' : 'programs'} · <span className="font-medium text-foreground tabular-nums">{opportunities.length}</span> {opportunities.length === 1 ? 'opportunity' : 'opportunities'}</p>
+                {canManage ? <CreateTeamDialog organizationId={organizationId} variant={teams.length ? 'outline' : 'default'} /> : null}
+              </div>
+              {teams.length ? (
+                <ul className="grid divide-y divide-border rounded-lg border border-border">
+                  {teams.map((team) => {
+                    const teamPrograms = programs.filter((program) => program.entityId === team.id);
+                    const teamOpportunityCount = teamPrograms.reduce((count, program) => count + workspace.openCallsForProgram(program.id).length, 0);
+                    return (
+                      <li key={team.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                        <HueTile identity={team.id}><Network /></HueTile>
+                        <div className="grid min-w-0 flex-1">
+                          <span className="truncate text-sm font-medium text-foreground">{team.name}</span>
+                          <span className="truncate text-xs text-muted-foreground">{teamPrograms.length ? teamPrograms.map((program) => program.name).join(', ') : 'No programs yet'} · {teamOpportunityCount} {teamOpportunityCount === 1 ? 'opportunity' : 'opportunities'}</span>
+                        </div>
+                        {canManage ? <CreateProgramDialog organizationId={organizationId} team={{ id: team.id, name: team.name }} /> : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <Empty variant="bordered"><EmptyHeader><EmptyTitle>No teams yet</EmptyTitle><EmptyDescription>{canManage ? 'Every opportunity belongs to a program inside a team. Create a team, add a program to it, then create opportunities.' : 'An owner or admin creates the first team and program before opportunities can be drafted.'}</EmptyDescription></EmptyHeader></Empty>
+              )}
+              <p className="text-sm text-muted-foreground">Teams and programs can be created here. Renaming, moving or archiving one waits on scope, dependency and audit rules.</p>
+            </div>
+          ) : null}
+
+          {activeId === 'billing' ? (
+            <div className="grid">
+              <SettingsRow id="billing-plan" title="Missa plan" description="Your subscription and how many people can work in the organization.">
+                <DetailFields fields={[['Plan', commercial.tierLabel], ['Status', commercial.statusLabel], ['Seats', <span key="seats" className="tabular-nums">{seats.used} of {seats.limit} used · {seats.available} free</span>], ['Subscription', commercial.hasSubscriptionReference ? 'Recorded privately' : 'Not recorded']]} />
+              </SettingsRow>
+              <SettingsRow id="billing-payouts" title="Submission-fee payouts" description="Plan and payouts remain separate: fees submitters pay never go towards the Missa subscription.">
+                <DetailFields fields={[['Connection', commercial.payoutLabel], ['Payout account', organization.stripeConnectAccountId ? 'Recorded privately' : 'Not recorded'], ['Balance', 'Not available'], ['Schedule', 'Not available']]} />
+              </SettingsRow>
+              {commercial.cancellationScheduled ? (
+                <Alert><Landmark aria-hidden="true" /><AlertTitle>Subscription cancellation is scheduled</AlertTitle><AlertDescription>The record doesn’t include when the period ends. Missa won’t guess a date, or suggest your records or payouts are deleted.</AlertDescription></Alert>
+              ) : null}
+              <SettingsRow id="billing-actions" title="Commercial actions stay withheld" description="Nothing here can be bought, cancelled or connected yet.">
+                <p className="text-sm text-muted-foreground">Checkout, cancellation, payout onboarding, payment methods, invoices, taxes, renewal dates and proration each need an exact preview and a way back before they are offered.</p>
+              </SettingsRow>
+            </div>
+          ) : null}
+
+          {activeId === 'review' ? <OrganizationReviewSettings organizationId={organizationId} canManage={canManage} {...(workspaceRelationalAuthorityEnabled() ? {} : { unavailableReason: 'Review privacy can’t be changed for this organization yet. It’s saved as a versioned setting, which this organization’s workspace doesn’t support.' })} /> : null}
+
+          {activeId === 'brand' || activeId === 'communications' ? <OrganizationCustomizationForm organizationId={organizationId} section={activeId} stored={organization.customization ?? {}} resolved={resolveOrganizationCustomization(organization)} canManage={canManage} /> : null}
+
+          {unavailable ? (
+            <div className="grid gap-4">
+              <div className="grid gap-1">
+                <h3 className="text-base font-semibold text-foreground">{unavailable.title}</h3>
+                <p className="text-sm text-muted-foreground">{unavailable.description}</p>
+              </div>
+              <div className="grid gap-2 rounded-lg border border-border bg-card p-4">
+                <h4 className="text-sm font-semibold text-foreground">Needed before this can be turned on</h4>
+                <ul className="grid gap-1.5">{unavailable.required.map((item) => <li key={item} className="flex items-center gap-2 text-sm text-muted-foreground"><LockKeyhole aria-hidden="true" className="size-4 shrink-0" />{item}</li>)}</ul>
+              </div>
+            </div>
+          ) : null}
+        </section>
+      </div>
+    </main>
+  );
 }
