@@ -2,7 +2,7 @@ import type { PoolClient } from "pg";
 import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 import type { TickReport } from "@missa/radar-engine";
 import type { RadarEngine } from "@missa/radar-engine";
-import { createProductionEngine } from "./productionEngine.js";
+import { createProductionEngine, type ProductionEngine } from "./productionEngine.js";
 import { logOperationsUsage } from "./operationsDecisions.js";
 import { finishSourceRun, finishWorkerRun, heartbeatWorkerRun, readWorkerRunLifecycle, startSourceRun, startWorkerRun } from "./workerTelemetry.js";
 import { processPlatformAgentControlRequests } from "./platformAdminFoundations.js";
@@ -33,12 +33,26 @@ export interface RadarWorkerOptions {
   afterTick?: (engine: RadarEngine) => Promise<void>;
   /** Internal long-running worker telemetry handle. */
   workerRunId?: string;
+  /** An engine the caller owns and keeps between ticks. Without it the tick
+   * loads its own engine (every radar table) and closes it afterwards. */
+  production?: ProductionEngine;
 }
 
 export interface RadarWorkerTickResult {
   status: "completed" | "skipped";
   report?: TickReport;
   control?: "paused" | "cancelled";
+  /** A reused engine no longer matches the database: the tick discarded its
+   * in-memory changes, or wrote radar rows outside the engine. */
+  storeStale?: true;
+}
+
+/** Hours a long-running worker may reuse one in-memory store before reloading
+ * it anyway. RADAR_WORKER_REUSE_ENGINE=0 restores a full reload every tick. */
+export function radarWorkerEngineMaxAgeMs(env: Record<string, string | undefined> = process.env): number {
+  if (env.RADAR_WORKER_REUSE_ENGINE === "0") return 0;
+  const hours = Number(env.RADAR_WORKER_ENGINE_MAX_AGE_HOURS);
+  return (Number.isFinite(hours) && hours >= 0 ? hours : 6) * 3_600_000;
 }
 
 function positiveInteger(value: number | undefined, fallback: number, max = Number.MAX_SAFE_INTEGER): number {
@@ -78,11 +92,11 @@ export async function releaseAdvisoryLock(client: PoolClient): Promise<void> {
 
 /** Run one bounded, serialized production tick. */
 export async function runRadarWorkerTick(
-  options: Pick<RadarWorkerOptions, "maxSources" | "minRegistryTier" | "maxRegistryTier" | "logger" | "afterTick" | "workerRunId"> = {},
+  options: Pick<RadarWorkerOptions, "maxSources" | "minRegistryTier" | "maxRegistryTier" | "logger" | "afterTick" | "workerRunId" | "production"> = {},
 ): Promise<RadarWorkerTickResult> {
   const logger = options.logger ?? console;
   const maxSources = positiveInteger(options.maxSources, DEFAULT_RADAR_WORKER_BATCH_SIZE, MAX_RADAR_WORKER_BATCH_SIZE);
-  const production = await createProductionEngine();
+  const production = options.production ?? await createProductionEngine();
   let lockClient: PoolClient | undefined;
   let locked = false;
 
@@ -115,13 +129,15 @@ export async function runRadarWorkerTick(
     const afterTickLifecycle = await readWorkerRunLifecycle(production.pool, options.workerRunId);
     if (afterTickLifecycle === "paused" || afterTickLifecycle === "cancelled") {
       logger.info(`[missa-radar-worker] ${afterTickLifecycle} during tick; discarding unpersisted tick state`);
-      return { status: "skipped", control: afterTickLifecycle };
+      return { status: "skipped", control: afterTickLifecycle, storeStale: true };
     }
     await options.afterTick?.(production.engine);
     await production.persist();
+    let storeStale = false;
     try {
       await ensurePublicationRubricSchema(production.pool);
       const reconciled = await reconcileExpiredOpportunitiesInDatabase(production.pool);
+      if (reconciled.radarClosed > 0) storeStale = true;
       if (reconciled.canonicalClosed > 0 || reconciled.radarClosed > 0) {
         logger.info(`[missa-radar-worker] reconciled expired calls: canonical=${reconciled.canonicalClosed}, radar=${reconciled.radarClosed}`);
       }
@@ -161,7 +177,7 @@ export async function runRadarWorkerTick(
       inputCount: report.sourcesChecked,
       outputCount: report.changes.length,
     });
-    return { status: "completed", report };
+    return { status: "completed", report, ...(storeStale ? { storeStale: true as const } : {}) };
   } finally {
     if (locked && lockClient) {
       try {
@@ -171,7 +187,7 @@ export async function runRadarWorkerTick(
       }
     }
     lockClient?.release();
-    await production.close();
+    if (!options.production) await production.close();
   }
 }
 
@@ -203,19 +219,35 @@ export async function runRadarWorker(
   const maxRegistryTier = maxRegistryTierFromEnv();
   const telemetryPool = process.env.DATABASE_URL ? createMissaPostgresPool(process.env.DATABASE_URL, "worker", { max: 1 }) : undefined;
   const workerRunId = telemetryPool ? await startWorkerRun(telemetryPool, "radar-worker") : undefined;
+  // Loading the engine reads every radar table in full (hundreds of MB), and
+  // doing that every tick was most of the Neon data-transfer bill. Keep one
+  // engine while nobody else writes the snapshot; reload when they do, when a
+  // tick fails or discards its state, and at least every few hours.
+  const engineMaxAgeMs = radarWorkerEngineMaxAgeMs();
+  let cached: { production: ProductionEngine; loadedAt: number } | undefined;
+  const dropEngine = async () => {
+    const stale = cached;
+    cached = undefined;
+    await stale?.production.close().catch((error) => logger.warn("[missa-radar-worker] failed to close engine", error));
+  };
 
   try {
     while (!options.signal?.aborted) {
       try {
-        const tick = await runRadarWorkerTick({ maxSources, maxRegistryTier, logger, workerRunId });
+        if (cached && (Date.now() - cached.loadedAt >= engineMaxAgeMs || !(await cached.production.isCurrent()))) await dropEngine();
+        if (engineMaxAgeMs > 0 && !cached) cached = { production: await createProductionEngine(), loadedAt: Date.now() };
+        const tick = await runRadarWorkerTick({ maxSources, maxRegistryTier, logger, workerRunId, production: cached?.production });
+        if (tick.storeStale) await dropEngine();
         if (tick.control === "cancelled") break;
       } catch (error) {
+        await dropEngine();
         await heartbeatWorkerRun(telemetryPool!, workerRunId, "radar-worker", { lastError: error instanceof Error ? error.message : String(error) });
         logger.error("[missa-radar-worker] tick failed; retrying after interval", error);
       }
       await sleep(intervalMs, options.signal);
     }
   } finally {
+    await dropEngine();
     await finishWorkerRun(telemetryPool!, workerRunId, "radar-worker", "cancelled");
     await telemetryPool?.end();
   }
