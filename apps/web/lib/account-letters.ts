@@ -7,8 +7,8 @@ import { sendMail, type SendMailReport } from './mail-service';
  * Sunday List. A failure never undoes the choice; the ledger key keeps a retry
  * or a second "yes" from sending it twice.
  */
-export async function deliverEmailChoiceConfirmation(input: { accountId: string; email: string }): Promise<SendMailReport> {
-  const { subject, html, text } = renderEmailChoiceConfirmationEmail();
+export async function deliverEmailChoiceConfirmation(input: { accountId: string; email: string; remindersByEmail?: boolean }): Promise<SendMailReport> {
+  const { subject, html, text } = renderEmailChoiceConfirmationEmail({ remindersByEmail: input.remindersByEmail });
   return sendMail({
     recipientEmail: input.email,
     recipientAccountId: input.accountId,
@@ -19,7 +19,7 @@ export async function deliverEmailChoiceConfirmation(input: { accountId: string;
     html,
     text,
     templateKey: 'email-choice-confirmation',
-    templateVersion: 'email-choice-confirmation.v1',
+    templateVersion: 'email-choice-confirmation.v2',
     retryFailed: true,
   });
 }

@@ -14,6 +14,7 @@ import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ReminderChannels } from "@/components/missa/reminder-channels";
 import type { ApplicationReminder } from "@/lib/creator-reminders";
 import type { ApplicationSummary } from "@/lib/application-workspace-types";
 import {
@@ -215,12 +216,7 @@ export function ApplicationReminders({
           {application ? "Reminders" : "Coming up"}
         </h2>
       </div>
-      {application ? (
-        <p className="text-sm text-muted-foreground">
-          Reminders arrive in your Missa Inbox and by email when your
-          notification settings allow it. Quiet hours are respected.
-        </p>
-      ) : null}
+      {application ? <ReminderChannels variant="reminders" /> : null}
       {!items && !error ? (
         <div role="status" aria-label="Loading reminders">
           <Skeleton className="h-16 w-full" />

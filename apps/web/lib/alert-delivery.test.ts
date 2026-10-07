@@ -63,9 +63,14 @@ test('legacy deadline emails never send without stored preferences', async () =>
   );
 });
 
-test('deadline reminder emails need email, reminders, and a working provider', () => {
-  assert.equal(deadlineReminderEmailAllowed(preference({})), true);
-  assert.equal(deadlineReminderEmailAllowed(preference({ emailEnabled: false })), false);
-  assert.equal(deadlineReminderEmailAllowed(preference({ reminderEnabled: false })), false);
-  assert.equal(deadlineReminderEmailAllowed(preference({ providerState: 'unavailable' })), false);
+test('deadline reminder emails need email, reminders, a working provider and a plan with reminder email', () => {
+  assert.equal(deadlineReminderEmailAllowed(preference({}), 'plus'), true);
+  assert.equal(deadlineReminderEmailAllowed(preference({}), 'pro'), true);
+  assert.equal(deadlineReminderEmailAllowed(preference({ emailEnabled: false }), 'plus'), false);
+  assert.equal(deadlineReminderEmailAllowed(preference({ reminderEnabled: false }), 'plus'), false);
+  assert.equal(deadlineReminderEmailAllowed(preference({ providerState: 'unavailable' }), 'plus'), false);
+});
+
+test('Free keeps deadline reminders in the Inbox, whatever its email settings say', () => {
+  assert.equal(deadlineReminderEmailAllowed(preference({}), 'free'), false);
 });

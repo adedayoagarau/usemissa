@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import type { UserHandle } from "@missa/radar-adapters";
 import { CANONICAL_COUNTRIES } from "@missa/contracts";
 import { MissaWordmark } from "@/components/missa-wordmark";
+import { ReminderChannels } from "@/components/missa/reminder-channels";
 import {
   AlertCircle,
   ArrowLeft,
@@ -1559,6 +1560,15 @@ function DoneView({
             You can also change these in Profile at any time.
           </p>
         </section>
+
+        {preview ? null : (
+          <section aria-labelledby="reminders-heading" className="mt-14 space-y-3">
+            <h2 id="reminders-heading" className="text-base font-semibold">
+              Reminders
+            </h2>
+            <ReminderChannels variant="setup" />
+          </section>
+        )}
       </div>
     </div>
   );

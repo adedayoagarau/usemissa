@@ -17,7 +17,8 @@ const day = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISO
 async function ready(pool: Pool): Promise<boolean> {
   const result = await pool.query<{ ready: boolean }>(
     `select to_regclass('public.creator_obligations') is not null and to_regclass('public.opportunity_stages') is not null
-        and to_regclass('public.calendar_feed_tokens') is not null and to_regclass('public.platform_message_effects') is not null as ready`,
+        and to_regclass('public.calendar_feed_tokens') is not null and to_regclass('public.platform_message_effects') is not null
+        and to_regclass('public.creator_plans') is not null as ready`,
   );
   return Boolean(result.rows[0]?.ready);
 }
@@ -149,6 +150,7 @@ test("deadline notices are emailed under reminders, opening notices under follow
   try {
     const { account, call } = await seed(pool, prefix);
     await pool.query("insert into notification_preferences(account_id,email_enabled) values($1,true)", [account]);
+    await pool.query("insert into creator_plans(account_id,plan,source) values($1,'plus','grant')", [account]);
     const preparing = await call("preparing", "preparing", day(5));
     const submitted = await call("submitted", "submitted", day(5));
     const alert = async (kind: string, opportunityId: string, title: string, body: string) =>
@@ -171,6 +173,10 @@ test("deadline notices are emailed under reminders, opening notices under follow
     assert.deepEqual(await mine(), ["deadline-day", "obligations-moved"]);
     await pool.query("update notification_preferences set follow_enabled=true,reminder_enabled=false where account_id=$1", [account]);
     assert.deepEqual(await mine(), ["opens-soon"]);
+    await pool.query("update notification_preferences set reminder_enabled=true where account_id=$1", [account]);
+    // Reminder email is part of Plus: with no plan, nothing is emailed.
+    await pool.query("delete from creator_plans where account_id=$1", [account]);
+    assert.deepEqual(await mine(), [], "Free keeps these notices in the Inbox");
   } finally {
     await cleanup(pool, prefix);
     await pool.end();

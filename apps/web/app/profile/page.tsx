@@ -15,9 +15,9 @@ import { normalizeProfileSection } from "@/lib/profile-settings";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { getEngine } from "@/lib/engine";
 import { emailIntegrationFlags } from "@/lib/email-integrations";
+import { notificationPreferencesView } from "@/lib/sms-preferences";
 import { creatorShellOrganizations } from "@/lib/creatorShellOrganizations";
 import {
-  getCreatorNotificationRepository,
   getCreatorPreferenceRepository,
   getCreatorProfileRepository,
 } from "@/lib/creatorRepositories";
@@ -70,9 +70,7 @@ export default async function ProfilePage({
       ),
       relationalPreferences.follows(session.account.id),
       relationalProfiles.portfolioState(session.account.id),
-      getCreatorNotificationRepository()
-        ?.preferences(session.account.id)
-        .catch(() => undefined),
+      notificationPreferencesView(session.account.id).catch(() => undefined),
     ]);
     if (!creator) notFound();
     const handleNamespaceReady = await handleNamespaceAvailable(

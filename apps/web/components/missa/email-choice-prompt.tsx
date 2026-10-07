@@ -10,12 +10,14 @@ import styles from "./email-choice-prompt.module.css";
  * One-time email question for accounts created before reminder emails and the
  * weekly digest were on by default. Missa never switches email on for them
  * silently: the creator answers once, and either answer stops the question.
+ * Free keeps reminders in the Inbox (`remindersByEmail` false), so for Free
+ * the question is only about the weekly digest.
  *
  * Composition note: like CookieConsent, this is a non-urgent permission
  * question, so it is a labelled region over the approved Button primitive
  * rather than the installed Alert, which hard-codes role="alert".
  */
-export function EmailChoicePrompt({ revision }: { revision: number }) {
+export function EmailChoicePrompt({ revision, remindersByEmail = true }: { revision: number; remindersByEmail?: boolean }) {
   const key = useRef<string | null>(null);
   const [state, setState] = useState<"open" | "saving" | "done" | "error">("open");
   const [accepted, setAccepted] = useState<boolean | null>(null);
@@ -44,7 +46,9 @@ export function EmailChoicePrompt({ revision }: { revision: number }) {
         <div className={styles.inner}>
           <p className={styles.body} role="status">
             {accepted
-              ? "Reminder emails and your weekly digest are on. "
+              ? remindersByEmail
+                ? "Reminder emails and your weekly digest are on. "
+                : "Your weekly digest is on. "
               : "Email stays off. "}
             <Link className={styles.link} href="/inbox">
               Change this in Inbox settings
@@ -59,11 +63,14 @@ export function EmailChoicePrompt({ revision }: { revision: number }) {
     <section className={styles.banner} aria-label="Email updates">
       <div className={styles.inner}>
         <div className={styles.copy}>
-          <h2 className={styles.title}>Get your reminders by email?</h2>
+          <h2 className={styles.title}>
+            {remindersByEmail ? "Get your reminders by email?" : "Get The Sunday List by email?"}
+          </h2>
           <p className={styles.body}>
-            Missa can email the reminders you set and a weekly digest of calls
-            in your disciplines and genres, every Sunday evening. Every email
-            has an unsubscribe link.
+            {remindersByEmail
+              ? "Missa can email the reminders you set and a weekly digest of calls in your disciplines and genres, every Sunday evening. "
+              : "Missa can email a weekly digest of calls in your disciplines and genres, every Sunday evening. Your reminders stay in your Inbox. "}
+            Every email has an unsubscribe link.
           </p>
           {state === "error" ? (
             <p className={styles.error} role="alert">

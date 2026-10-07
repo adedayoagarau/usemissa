@@ -1,8 +1,8 @@
 # Text (SMS) reminders
 
-Plus members can get deadline reminders by text. Email and in-app reminders
-stay free. Texts go through Telnyx and are off everywhere until Telnyx is
-configured.
+Plus members can get deadline reminders by text. Free keeps its reminders in
+the Inbox; reminder email and text both come with Plus. Texts go through Telnyx
+and are off everywhere until Telnyx is configured.
 
 ## What gets texted
 
@@ -48,6 +48,21 @@ are skipped with the reason "No US sender" and the settings form refuses +1
 numbers. Everywhere else the messaging profile's alphanumeric sender `Missa`
 is used. Many countries do not deliver replies to an alphanumeric sender, so
 STOP replies only reach Missa where Telnyx supports two-way messaging.
+
+## Adding a number
+
+A Plus or Pro creator can add and confirm a number in three places, all using
+the same form (`TextRemindersSettings`) and routes:
+
+- Inbox and Profile → Notifications, in the Text reminders section;
+- on a Tracker item, under Reminders: "Add your number for texts" opens the
+  form in place (`ReminderChannels`);
+- on the last screen of onboarding, under Reminders.
+
+The number field opens on the country that matches the browser language, and a
+number that cannot be valid is refused before a code is sent. A Free creator is
+never asked for a number: those places say where reminders go and what Plus
+adds, so no verification text is sent for a plan that cannot receive texts.
 
 ## Phone verification
 

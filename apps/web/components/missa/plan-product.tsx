@@ -31,6 +31,7 @@ const longDate = (iso: string, locale: string) =>
 function plusBenefits(textReminders: boolean): string[] {
   return [
     "No limit on calls in progress in your Tracker.",
+    "Deadline reminders and changes by email, as well as in your Inbox.",
     "Start-by dates and steps that move with each deadline.",
     "A morning alarm on deadline day for anything you haven’t sent.",
     "A heads-up before a cheaper fee tier ends, and when a call you follow opens.",
@@ -98,14 +99,14 @@ export function PlanProduct(props: PlanProductProps) {
             {plusBenefits(props.textReminders).map((benefit) => (
               <li key={benefit}>{benefit}</li>
             ))}
-            {props.textReminders ? <li>Add your number in Inbox notification settings to get texts.</li> : null}
+            {props.textReminders ? <li>Add your number in notification settings, or when you set a reminder, to get texts.</li> : null}
           </ul>
         ) : (
           <p className={styles.body}>
             <span className="font-mono tabular-nums">
               {props.activeTracked} of {props.activeTrackedLimit ?? 10}
             </span>{" "}
-            calls in progress. Submitted and closed calls don&apos;t count.
+            calls in progress. Submitted and closed calls don&apos;t count. Reminders arrive in your Inbox.
           </p>
         )}
         {props.endsAt ? <p className={styles.body}>Plus ends on {longDate(props.endsAt, locale)}. You keep everything you tracked.</p> : null}
@@ -129,7 +130,7 @@ export function PlanProduct(props: PlanProductProps) {
             ))}
           </ul>
           <p className={styles.body}>
-            Everything in Free stays free: every call, the organizer’s page, email reminders and The Sunday List.
+            Everything in Free stays free: every call, the organizer’s page, reminders in your Inbox and The Sunday List.
           </p>
           {props.offers.length ? (
             <div className={styles.actions}>
