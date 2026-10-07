@@ -195,6 +195,15 @@ test('flags tenders, admissions, and medical programs unless the title is about 
   }
 });
 
+test('flags public procurement portals named in other languages', () => {
+  for (const title of ['E-Prokurimi', 'Prokurimi publik', 'Licitación pública 2026', 'Bando di appalto', 'Aanbestedingen', 'Marchés publics']) {
+    assert.deepEqual(assessOpportunityRelevance(title), { relevant: false, signals: ['procurement'] }, title);
+  }
+  for (const title of ['Public Art Licitación for Artists', 'Prokurimi Art Award']) {
+    assert.equal(assessOpportunityRelevance(title).relevant, true, title);
+  }
+});
+
 test('flags a promotional artist interview even when it calls itself an open call', () => {
   assert.deepEqual(assessOpportunityRelevance("Open Call — Artist's Interview With Al-tiba9"), { relevant: false, signals: ['promotional-interview'] });
   for (const title of ['Open Call | Artist’s Interview With Al-Tiba9', 'Artist Interview Series', 'Call for Artists: Artists Interviews 2026']) {
