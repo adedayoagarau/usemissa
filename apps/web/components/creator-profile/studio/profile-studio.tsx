@@ -97,10 +97,13 @@ function saveCopy(controller: ProfileDraftController) {
 export function ProfileStudio({
   ownerId,
   initialName = "",
+  initialBio = "",
   seedWithSample = false,
 }: {
   ownerId: string;
   initialName?: string;
+  /** The bio saved in profile settings; fills the page's bio while it is empty. */
+  initialBio?: string;
   /** Design review only: start an empty device draft from the sample creator. */
   seedWithSample?: boolean;
 }) {
@@ -108,6 +111,7 @@ export function ProfileStudio({
     ownerId,
     initialName,
     seedWithSample ? sampleCreatorPortfolio : undefined,
+    initialBio,
   );
   const { draft, update, state, isAccount } = controller;
   const [panel, setPanel] = useState<StudioPanel>("basics");

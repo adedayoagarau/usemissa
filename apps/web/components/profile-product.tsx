@@ -802,13 +802,28 @@ export function ProfileProduct({
             )}
           </p>
         </div>
-        <Link
-          href={publicHref}
-          className={buttonVariants({ variant: "outline" })}
-        >
-          View public profile
-          <ArrowUpRight />
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/profile/portfolio"
+            className={buttonVariants({
+              variant: profile.handle.published ? "outline" : "default",
+            })}
+          >
+            {profile.handle.published
+              ? "Edit your public page"
+              : "Build your public page"}
+            <ArrowRight />
+          </Link>
+          {profile.handle.published ? (
+            <Link
+              href={publicHref}
+              className={buttonVariants({ variant: "outline" })}
+            >
+              View public page
+              <ArrowUpRight />
+            </Link>
+          ) : null}
+        </div>
       </header>
 
       <div className="grid items-start gap-8 lg:grid-cols-[14.5rem_minmax(0,1fr)] lg:gap-12">
@@ -1002,6 +1017,12 @@ export function ProfileProduct({
                       ) : null}
                       <HandleClaimCard
                         initialHandle={profile.handle.current}
+                        onHandleChange={(current) =>
+                          setProfile((previous) => ({
+                            ...previous,
+                            handle: { ...previous.handle, current },
+                          }))
+                        }
                         initialNamespaceAvailable={
                           profile.handle.namespaceAvailable
                         }

@@ -44,12 +44,24 @@ function coerceDraft(raw: unknown, initialName: string): PortfolioData {
 
 type LoadResult = { draft: PortfolioData | null; state: SaveState };
 
+/** Settings and the page share one bio: an empty page bio starts from settings. */
+function withProfileBio(
+  draft: PortfolioData | null,
+  initialName: string,
+  initialBio: string,
+): PortfolioData | null {
+  const bio = initialBio.trim().slice(0, 600);
+  if (!bio || draft?.bio?.trim()) return draft;
+  return { ...(draft ?? { ...emptyPortfolio(), name: initialName }), bio };
+}
+
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 export function useProfileDraft(
   ownerId: string,
   initialName: string,
   seed?: () => PortfolioData,
+  initialBio = "",
 ) {
   const isAccount = ownerId !== PREVIEW_OWNER;
   const [draft, setDraft] = useState<PortfolioData>(() => ({
@@ -74,7 +86,11 @@ export function useProfileDraft(
     (): Promise<LoadResult> =>
       portfolioDraft<unknown>(ownerId).then(
         (raw) => ({
-          draft: raw ? coerceDraft(raw, initialName) : (seed?.() ?? null),
+          draft: withProfileBio(
+            raw ? coerceDraft(raw, initialName) : (seed?.() ?? null),
+            initialName,
+            initialBio,
+          ),
           state: { kind: "saved" },
         }),
         (error: unknown) => ({
@@ -88,7 +104,7 @@ export function useProfileDraft(
           },
         }),
       ),
-    [ownerId, initialName, seed],
+    [ownerId, initialName, seed, initialBio],
   );
 
   const apply = useCallback((result: LoadResult) => {

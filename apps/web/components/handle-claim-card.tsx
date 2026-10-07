@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import type { UserHandle } from "@missa/radar-adapters";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import styles from "./profile-product.module.css";
@@ -15,6 +15,7 @@ export function HandleClaimCard({
   promptDismissed,
   displayName,
   published,
+  onHandleChange,
 }: {
   initialHandle: UserHandle | null;
   initialNamespaceAvailable: boolean;
@@ -22,6 +23,8 @@ export function HandleClaimCard({
   promptDismissed: boolean;
   displayName: string;
   published: boolean;
+  /** Tells the settings page about a claim or rename so its checklist updates. */
+  onHandleChange?: (handle: UserHandle) => void;
 }) {
   const [handle, setHandle] = useState(initialHandle);
   const [value, setValue] = useState(displayName);
@@ -65,6 +68,7 @@ export function HandleClaimCard({
       if (result.handle) {
         setHandle(result.handle);
         setValue(result.handle.displayHandle);
+        onHandleChange?.(result.handle);
         setMessage(
           method === "PATCH"
             ? "Handle renamed."
@@ -79,10 +83,6 @@ export function HandleClaimCard({
       await fetch("/api/me/handles/prompt", { method: "POST" });
       setDismissed(true);
     });
-  }
-
-  function publish() {
-    request("/api/me/handles/publish", "POST");
   }
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -168,22 +168,28 @@ export function HandleClaimCard({
         <h3 id="handle-card-title">@{handle.displayHandle}</h3>
         <p>
           {published
-            ? "Your public Profile is live at this address."
-            : "This handle is held for you. Your public Profile is not published yet."}
+            ? "Your public page is live at this address."
+            : "This handle is yours. Add your photo, links and Works, then publish your page from the page builder."}
         </p>
       </div>
-      {published ? (
+      <div className={styles.formActions}>
         <Link
-          href={`/@${handle.handleKey}`}
-          className="text-sm font-semibold text-primary underline underline-offset-4"
+          href="/profile/portfolio"
+          className={buttonVariants({
+            variant: published ? "outline" : "default",
+          })}
         >
-          Open public Profile
+          {published ? "Edit your public page" : "Build your public page"}
         </Link>
-      ) : (
-        <Button type="button" onClick={publish} disabled={isPending}>
-          {isPending ? "Publishing…" : "Publish Profile"}
-        </Button>
-      )}
+        {published ? (
+          <Link
+            href={`/@${handle.handleKey}`}
+            className={buttonVariants({ variant: "link" })}
+          >
+            Open public page
+          </Link>
+        ) : null}
+      </div>
       <form onSubmit={submit} className={styles.handleForm}>
         <label htmlFor="rename-profile-handle">Rename handle</label>
         <Input

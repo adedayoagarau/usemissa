@@ -105,6 +105,25 @@ function createPool(connectionString: string): Pool {
   });
 }
 
+// Reads run on every profile page load. A fresh connection per read meant a
+// slow connect surfaced as "no handle" on a claimed account, so reads share
+// one long-lived pool per database. Claims keep their own short-lived pool.
+const readPools = new Map<string, Pool>();
+function readPool(connectionString: string): Pool {
+  let pool = readPools.get(connectionString);
+  if (!pool) {
+    pool = new Pool({
+      connectionString,
+      max: 2,
+      connectionTimeoutMillis: 10_000,
+      idleTimeoutMillis: 30_000,
+      allowExitOnIdle: true,
+    });
+    readPools.set(connectionString, pool);
+  }
+  return pool;
+}
+
 function isUniqueViolation(error: unknown): boolean {
   return (
     typeof error === "object" &&
@@ -159,19 +178,15 @@ async function namespaceTablesAvailable(client: PoolClient): Promise<boolean> {
 export async function handleNamespaceAvailable(
   connectionString: string,
 ): Promise<boolean> {
-  const pool = createPool(connectionString);
-  try {
-    const result = await pool.query<{
-      handles: string | null;
-      aliases: string | null;
-    }>(
-      `select to_regclass('public.handles') as handles,
-              to_regclass('public.handle_aliases') as aliases`,
-    );
-    return Boolean(result.rows[0]?.handles && result.rows[0]?.aliases);
-  } finally {
-    await pool.end();
-  }
+  const pool = readPool(connectionString);
+  const result = await pool.query<{
+    handles: string | null;
+    aliases: string | null;
+  }>(
+    `select to_regclass('public.handles') as handles,
+            to_regclass('public.handle_aliases') as aliases`,
+  );
+  return Boolean(result.rows[0]?.handles && result.rows[0]?.aliases);
 }
 
 async function readCanonical(
@@ -277,24 +292,20 @@ export async function readUserHandle(
   connectionString: string,
   userId: string,
 ): Promise<UserHandle | null> {
-  const pool = createPool(connectionString);
-  try {
-    const available = await pool.query<{ handles: string | null }>(
-      `select to_regclass('public.handles') as handles`,
-    );
-    if (!available.rows[0]?.handles) return null;
-    const result = await pool.query<HandleRow>(
-      `select handle_key, display_handle, subject_type, subject_id, state,
-              derivation, reserved_from_profile_id, claimed_at, created_at, updated_at
-         from handles
-        where subject_type = 'user' and subject_id = $1 and state = 'claimed'
-        limit 1`,
-      [userId],
-    );
-    return result.rows[0] ? toUserHandle(result.rows[0]) : null;
-  } finally {
-    await pool.end();
-  }
+  const pool = readPool(connectionString);
+  const available = await pool.query<{ handles: string | null }>(
+    `select to_regclass('public.handles') as handles`,
+  );
+  if (!available.rows[0]?.handles) return null;
+  const result = await pool.query<HandleRow>(
+    `select handle_key, display_handle, subject_type, subject_id, state,
+            derivation, reserved_from_profile_id, claimed_at, created_at, updated_at
+       from handles
+      where subject_type = 'user' and subject_id = $1 and state = 'claimed'
+      limit 1`,
+    [userId],
+  );
+  return result.rows[0] ? toUserHandle(result.rows[0]) : null;
 }
 
 export async function resolveHandle(
@@ -303,43 +314,39 @@ export async function resolveHandle(
 ): Promise<ResolvedHandle | null> {
   const handleKey = normalizeUserHandleInput(rawHandle);
   if (!handleKey) return null;
-  const pool = createPool(connectionString);
-  try {
-    const available = await pool.query<{
-      handles: string | null;
-      aliases: string | null;
-    }>(
-      `select to_regclass('public.handles') as handles,
-              to_regclass('public.handle_aliases') as aliases`,
-    );
-    if (!available.rows[0]?.handles || !available.rows[0]?.aliases) return null;
-    const canonical = await pool.query<HandleRow>(
-      `select handle_key, display_handle, subject_type, subject_id, state,
-              derivation, reserved_from_profile_id, claimed_at, created_at, updated_at
-         from handles
-        where handle_key = $1`,
-      [handleKey],
-    );
-    if (canonical.rows[0]) {
-      return toResolvedHandle({
-        ...canonical.rows[0],
-        resolution: "canonical",
-      });
-    }
-    const alias = await pool.query<HandleRow>(
-      `select h.handle_key, h.display_handle, h.subject_type, h.subject_id, h.state,
-              h.derivation, h.reserved_from_profile_id, h.claimed_at,
-              h.created_at, h.updated_at
-         from handle_aliases a
-         join handles h on h.handle_key = a.handle_key
-        where a.alias_key = $1`,
-      [handleKey],
-    );
-    if (!alias.rows[0]) return null;
-    return toResolvedHandle({ ...alias.rows[0], resolution: "alias" });
-  } finally {
-    await pool.end();
+  const pool = readPool(connectionString);
+  const available = await pool.query<{
+    handles: string | null;
+    aliases: string | null;
+  }>(
+    `select to_regclass('public.handles') as handles,
+            to_regclass('public.handle_aliases') as aliases`,
+  );
+  if (!available.rows[0]?.handles || !available.rows[0]?.aliases) return null;
+  const canonical = await pool.query<HandleRow>(
+    `select handle_key, display_handle, subject_type, subject_id, state,
+            derivation, reserved_from_profile_id, claimed_at, created_at, updated_at
+       from handles
+      where handle_key = $1`,
+    [handleKey],
+  );
+  if (canonical.rows[0]) {
+    return toResolvedHandle({
+      ...canonical.rows[0],
+      resolution: "canonical",
+    });
   }
+  const alias = await pool.query<HandleRow>(
+    `select h.handle_key, h.display_handle, h.subject_type, h.subject_id, h.state,
+            h.derivation, h.reserved_from_profile_id, h.claimed_at,
+            h.created_at, h.updated_at
+       from handle_aliases a
+       join handles h on h.handle_key = a.handle_key
+      where a.alias_key = $1`,
+    [handleKey],
+  );
+  if (!alias.rows[0]) return null;
+  return toResolvedHandle({ ...alias.rows[0], resolution: "alias" });
 }
 
 export async function claimUserHandle(input: {
