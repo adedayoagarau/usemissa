@@ -85,6 +85,20 @@ export function workBySlug(works: readonly PortfolioWork[], slug: string) {
   return index < 0 ? undefined : { work: works[index], index };
 }
 
+/**
+ * The work a requested address means. An address in another case still finds
+ * its work, and `slug` is the address the page really has, so the route can
+ * send the visitor there.
+ */
+export function findWorkByAddress(
+  works: readonly PortfolioWork[],
+  requested: string,
+) {
+  const found =
+    workBySlug(works, requested) ?? workBySlug(works, requested.toLowerCase());
+  return found ? { ...found, slug: workSlugs(works)[found.index] } : undefined;
+}
+
 /** The works either side of one, for Previous and Next on a work page. */
 export function workNeighbours(works: readonly PortfolioWork[], index: number) {
   return {

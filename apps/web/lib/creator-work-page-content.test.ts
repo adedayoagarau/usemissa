@@ -3,6 +3,7 @@ import test from "node:test";
 import { createWork } from "./creator-portfolio-schema";
 import {
   addressFromInput,
+  findWorkByAddress,
   isThinWorkPage,
   recordEntryDetail,
   recordEntryForWork,
@@ -310,6 +311,18 @@ test("reserved words are explained, and untitled works still have an address", (
   });
   const blank = w("");
   assert.equal(workAddress(blank, [blank]).slug, "work-1");
+});
+
+test("a requested address finds its work, in any case, and names the real one", () => {
+  const works = [w("Window"), w("Window"), w("Mirror", { slug: "glass" })];
+  assert.equal(findWorkByAddress(works, "window-2")?.index, 1);
+  assert.equal(findWorkByAddress(works, "window-2")?.slug, "window-2");
+  const upper = findWorkByAddress(works, "GLASS");
+  assert.equal(upper?.index, 2);
+  assert.equal(upper?.slug, "glass");
+  assert.equal(findWorkByAddress(works, "mirror"), undefined);
+  assert.equal(findWorkByAddress(works, "cv"), undefined);
+  assert.equal(findWorkByAddress([], "window"), undefined);
 });
 
 test("an address is tidied as it is typed", () => {
