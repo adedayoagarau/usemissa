@@ -68,10 +68,10 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
 }
 
 const tableRowVariants = cva(
-  "border-b border-border transition-colors has-aria-expanded:bg-row-hover data-[state=selected]:bg-row-selected",
+  "border-b border-border transition-colors data-[state=selected]:bg-row-selected",
   {
     variants: {
-      variant: { default: "hover:bg-row-hover", static: "hover:bg-transparent" },
+      variant: { default: "hover:bg-row-hover has-aria-expanded:bg-row-hover", static: "hover:bg-transparent" },
     },
     defaultVariants: { variant: "default" },
   },
