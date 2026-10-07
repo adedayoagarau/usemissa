@@ -54,6 +54,56 @@ export function sampleCreatorPortfolio(): PortfolioData {
           url: "",
           formats: [],
           featured: true,
+          slug: "atlas",
+          about:
+            "Riley rode the same three lines for three years, writing one poem per trip and photographing only through glass.",
+          madeDuring: "Saltmarsh Writers’ House residency",
+          supportedBy: "Coastline Arts Fund",
+          credits: [
+            {
+              id: "cr_1",
+              role: "Words and images",
+              name: "Riley Chen",
+              url: "",
+            },
+            { id: "cr_2", role: "Editor", name: "Mara Lind", url: "" },
+            {
+              id: "cr_3",
+              role: "Printing",
+              name: "Harbour Print Studio",
+              url: "",
+            },
+          ],
+          parts: [
+            {
+              id: "pt_1",
+              kind: "text",
+              title: "Window",
+              text: "The train window holds the lake\nthe way a palm holds water —\nbriefly, and with all of itself.",
+              image: "",
+              audio: "",
+              caption: "Written on the 07:12 from Perth.",
+            },
+            {
+              id: "pt_2",
+              kind: "text",
+              title: "Platform 4",
+              text: "A heron lifts. The carriage keeps\nits small promises: the next stop,\nthe next stop, the tea gone cold.",
+              image: "",
+              audio: "",
+              caption: "",
+            },
+            {
+              id: "pt_3",
+              kind: "image",
+              title: "Low tide, Elie",
+              text: "",
+              image: "/media/home/portfolio-still-life.webp",
+              audio: "",
+              caption:
+                "A table by a window with a bowl, a pitcher and a folded cloth",
+            },
+          ],
         },
         {
           id: "w_glossary",
@@ -83,6 +133,10 @@ export function sampleCreatorPortfolio(): PortfolioData {
           url: "",
           formats: [],
           featured: false,
+          series: "The rooms remember us",
+          medium: "Archival pigment print",
+          size: "50 × 40 cm",
+          edition: "Edition of 12",
         },
         {
           id: "w_threshold",
