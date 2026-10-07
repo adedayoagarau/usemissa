@@ -13,9 +13,9 @@ import styles from "../countries.module.css";
 export const revalidate = 300;
 
 export const metadata: Metadata = pageMetadata({
-  title: "Literary publishers & opportunities by country",
+  title: "Open calls, grants and publishers by country",
   description:
-    "Browse literary magazines, small presses, residencies, and creative opportunities organized by country. Explore the global publishing landscape.",
+    "Open calls, grants, residencies, literary magazines and small presses for each country, plus calls open to artists and writers worldwide.",
   path: "/countries",
 });
 

@@ -1,4 +1,4 @@
-# Missa
+# Missa (usemissa.com)
 
 > Missa is a free site where artists and writers find open calls, grants, residencies, magazines and prizes, see the fee, who can apply and the official page for each, and get reminded before they close. Organizations can post calls and take submissions through Missa. The public catalog, directory and rankings are open to everyone.
 
@@ -6,6 +6,24 @@
 
 - [Browse open calls](https://www.usemissa.com/opportunities): open calls, grants, residencies, fellowships, contests, prizes, exhibitions and festivals.
 - [Directory](https://www.usemissa.com/directory): residencies, literary journals, small presses, grant foundations and arts organizations.
+- [Literary magazines](https://www.usemissa.com/journals): magazines and journals, with reading periods, fees and guidelines.
+- [Residencies](https://www.usemissa.com/residencies), [grant funders](https://www.usemissa.com/grants) and [small presses](https://www.usemissa.com/presses).
+- [Calls by country](https://www.usemissa.com/countries): open calls and publishers for each country, plus calls open worldwide.
+
+## Open calls by kind
+
+- [Contests](https://www.usemissa.com/discover/contests)
+- [Magazine submissions](https://www.usemissa.com/discover/magazines)
+- [Poetry](https://www.usemissa.com/discover/poetry)
+- [Grants](https://www.usemissa.com/discover/grants)
+- [Residencies](https://www.usemissa.com/discover/residencies)
+- [Fellowships](https://www.usemissa.com/discover/fellowships)
+- [Prizes](https://www.usemissa.com/discover/prizes)
+- [For emerging artists and writers](https://www.usemissa.com/discover/emerging-writers-artists)
+- [For BIPOC artists and writers](https://www.usemissa.com/discover/bipoc-opportunities)
+- [For queer and LGBTQ+ artists and writers](https://www.usemissa.com/discover/queer-lgbtq-opportunities)
+- [For women and non-binary artists and writers](https://www.usemissa.com/discover/women-nonbinary-opportunities)
+- [For disabled and neurodivergent artists and writers](https://www.usemissa.com/discover/disabled-neurodivergent-opportunities)
 - [Manuscript matcher](https://www.usemissa.com/discover/match): literary magazines that publish work like yours.
 - [Magazine rankings](https://www.usemissa.com/rankings/magazines): the 2026 Missa literary magazine index.
 - [Residency rankings](https://www.usemissa.com/rankings/residencies): artist residencies and fellowships ranked on funding, facilities and evidence.

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { ArrowRight, Building2, Globe, MapPin } from "lucide-react";
 import { PublicSiteShell } from "@/components/public-site-shell";
-import { pageMetadata, JsonLd, breadcrumbJsonLd, absoluteUrl } from "@/lib/seo";
+import { pageMetadata, JsonLd, breadcrumbJsonLd, absoluteUrl, currentYear } from "@/lib/seo";
 import { CANONICAL_COUNTRIES, normalizeCountry } from "@missa/contracts";
 import { getSemanticUrlForProfile } from "@missa/radar-adapters";
 import { getPublicProfileBrowse } from "@/lib/publicProfileReads";
@@ -83,10 +83,12 @@ export async function generateMetadata({
   const displayName = isGlobal ? "Worldwide" : normalized.country;
 
   return pageMetadata({
-    title: `${displayName} — literary publishers & creative opportunities`,
+    title: isGlobal
+      ? `Open calls for artists and writers worldwide, ${currentYear()}`
+      : `Open calls, grants and residencies in ${displayName}, ${currentYear()}`,
     description: isGlobal
-      ? `Browse literary magazines, presses, residencies, and open calls accepting submissions from writers worldwide.`
-      : `Browse literary magazines and small presses based in ${displayName}, plus country-filtered and explicitly worldwide opportunity listings. Check each official source for eligibility.`,
+      ? `Open calls, grants, residencies, literary magazines and presses that take work from artists and writers anywhere in the world.`
+      : `Open calls, grants and residencies for artists and writers in ${displayName}, plus calls open worldwide, and the literary magazines and presses based there. Check each organizer's page for who can apply.`,
     path: `/countries/${normalized.countryCode.toLowerCase()}`,
   });
 }

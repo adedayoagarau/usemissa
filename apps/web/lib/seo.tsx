@@ -11,6 +11,15 @@ export function absoluteUrl(path = '/'): string {
   return new URL(path, `${siteUrl()}/`).toString();
 }
 
+/** "October 2026": keeps listing titles current for date-led searches. */
+export function currentMonthYear(now = new Date()): string {
+  return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(now);
+}
+
+export function currentYear(now = new Date()): number {
+  return now.getUTCFullYear();
+}
+
 /** Appends the brand to a page title unless it already names Missa. */
 export function brandedTitle(title: string): string {
   return /\bMissa\b/u.test(title) ? title : `${title} | ${SITE_NAME}`;
@@ -32,7 +41,10 @@ export function pageMetadata(input: { title: string; description: string; path: 
     // unless the title already names Missa.
     title: { absolute: brandedTitle(cleanTitle) },
     description: cleanDesc,
-    alternates: { canonical: url },
+    // A noindexed variant (a filtered listing, a closed call) carries no
+    // canonical: Google advises against pairing noindex with a canonical that
+    // points elsewhere.
+    ...(input.noIndex ? {} : { alternates: { canonical: url } }),
     robots: input.noIndex ? { index: false, follow: true } : { index: true, follow: true },
     openGraph: {
       title: cleanTitle,

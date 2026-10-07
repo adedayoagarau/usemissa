@@ -15,7 +15,7 @@ import { OpportunityShell } from "@/components/opportunity-shell";
 import { OpportunityCatalogueFilters } from "@/components/opportunity-catalogue-filters";
 import { SaveSearchButton } from "@/components/save-search-button";
 import { PublicDiscoveryEvent } from "@/components/public-discovery-event";
-import { JsonLd, absoluteUrl, pageMetadata } from "@/lib/seo";
+import { JsonLd, absoluteUrl, currentMonthYear, pageMetadata } from "@/lib/seo";
 import {
   PUBLIC_OPPORTUNITY_PREVIEW_FACETS,
   previewItemsForQuery,
@@ -53,9 +53,9 @@ export async function generateMetadata({
       (Array.isArray(value) ? value.length > 0 : Boolean(value)),
   );
   return pageMetadata({
-    title: "Explore creative opportunities",
+    title: `Open calls, grants and residencies for artists and writers, ${currentMonthYear()}`,
     description:
-      "Browse grants, open calls, residencies, fellowships, awards, commissions, and other creative opportunities.",
+      "Open calls, grants, residencies, fellowships, contests and magazines accepting submissions, each with its deadline, fee, who can apply and a link to the organizer's page.",
     path: "/opportunities",
     noIndex: hasFilters,
   });

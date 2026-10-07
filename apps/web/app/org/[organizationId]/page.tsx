@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import type { RelationalPortalConfigurationView, RelationalPublicOpenCallView } from '@missa/workspace-engine';
 import { ArrowRight, Building2, CalendarDays, CircleDollarSign, ImageIcon, Info } from 'lucide-react';
@@ -12,6 +12,7 @@ import { PublicSiteShell } from '@/components/public-site-shell';
 import { InstitutionProfileView } from '@/components/institution-profile-view';
 import { organizationMonogram, publicDeadlineLabel, publicFeeLabel, publicPracticeLabels, safePublicMedia } from '@/lib/publicOrganizationProfile';
 import { JsonLd, absoluteUrl, pageMetadata } from '@/lib/seo';
+import { ProfileJsonLd, profileMetadata, profilePath } from '@/lib/profileSeo';
 import { getRelationalWorkspace, getWorkspaceEngine, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 import { MissaSiteHeader } from '@/components/missa-site-header';
 import styles from './public-organization.module.css';
@@ -25,7 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<{ organizat
   try {
     const profile = await getProfileRepository()?.getById(organizationId);
     if (profile) {
-      return pageMetadata({ title: `${profile.name} — Arts Organization`, description: profile.summary || `Explore opportunities and exhibitions at ${profile.name}.`, path: `/org/${organizationId}` });
+      return profileMetadata(profile);
     }
     const organization = (await getEngine()).store.organizations.get(organizationId);
     if (organization) {
@@ -44,13 +45,13 @@ export default async function PublicOrganizationPage({ params }: { params: Promi
   const profileRepo = getProfileRepository();
   const profile = profileRepo ? await profileRepo.getById(organizationId) : null;
   if (profile) {
-    if (profile.kind === "residency_center") redirect(`/residency/${profile.slug}`);
-    if (profile.kind === "grant_foundation") redirect(`/grant/${profile.slug}`);
-    if (profile.kind === "literary_magazine") redirect(`/journal/${profile.slug}`);
-    if (profile.kind === "small_press") redirect(`/press/${profile.slug}`);
+    // One URL per profile: other kinds and non-canonical slugs move permanently.
+    const canonicalPath = profilePath(profile);
+    if (canonicalPath !== `/org/${encodeURIComponent(organizationId)}` && canonicalPath !== `/org/${organizationId}`) permanentRedirect(canonicalPath);
 
     return (
       <PublicSiteShell current="Directory">
+        <ProfileJsonLd profile={profile} />
         <InstitutionProfileView profile={profile} />
       </PublicSiteShell>
     );

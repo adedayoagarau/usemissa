@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { notFound, permanentRedirect } from 'next/navigation';
 import type { OpportunityDetailProjection } from '@missa/radar-engine';
@@ -25,6 +26,16 @@ import {
 } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
+
+/** The discover hub for each call type that has one. */
+const TYPE_HUBS: Record<string, { slug: string; label: string }> = {
+  contest: { slug: 'contests', label: 'More contests' },
+  award: { slug: 'contests', label: 'More contests and prizes' },
+  magazine: { slug: 'magazines', label: 'More magazines open for submissions' },
+  grant: { slug: 'grants', label: 'More grants for artists and writers' },
+  residency: { slug: 'residencies', label: 'More residencies' },
+  fellowship: { slug: 'fellowships', label: 'More fellowships' },
+};
 
 /** Statuses that are listed and indexed. */
 const PUBLIC_STATUSES = new Set(['opening-soon', 'open', 'closing-soon', 'deadline-extended']);
@@ -126,6 +137,15 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         practiceLabels={practiceLabels}
         relatedProfile={profileMatch ?? undefined}
       />
+      <nav aria-label="Keep browsing" className="mx-auto flex w-[min(100%-40px,1120px)] flex-wrap gap-x-6 gap-y-2 pb-12 text-sm">
+        {TYPE_HUBS[opportunity.type] ? (
+          <Link href={`/discover/${TYPE_HUBS[opportunity.type].slug}`} className="text-primary underline underline-offset-4">
+            {TYPE_HUBS[opportunity.type].label}
+          </Link>
+        ) : null}
+        <Link href="/opportunities" className="text-primary underline underline-offset-4">All open calls</Link>
+        <Link href="/countries" className="text-primary underline underline-offset-4">Calls by country</Link>
+      </nav>
     </div>
   );
 }
