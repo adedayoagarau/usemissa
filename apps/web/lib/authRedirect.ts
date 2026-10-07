@@ -50,6 +50,7 @@ export function safeAuthRedirect(value: string | undefined): string {
       "/org",
       "/publication-claim",
       "/plan",
+      "/doc",
       "/write",
     ].some(
       (prefix) =>

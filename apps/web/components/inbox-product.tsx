@@ -6,7 +6,6 @@ import {
   ArrowRight,
   BellRing,
   CalendarClock,
-  Check,
   CheckCheck,
   CircleCheck,
   FileCheck2,
@@ -42,6 +41,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Sp } from "@/components/missa/spelling";
+import { EmptyStateArt } from "@/components/illustrations/missa-illustrations";
 
 export type InboxProductGroup =
   "attention" | "changes" | "submissions" | "discovery";
@@ -318,8 +318,8 @@ export function InboxProduct({
               {!items.length ? (
                 <Empty variant="bordered" size="spacious">
                   <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                      <Check />
+                    <EmptyMedia>
+                      <EmptyStateArt id="spot-inbox" size="spot" />
                     </EmptyMedia>
                     <EmptyTitle role="heading" aria-level={2}>
                       Nothing needs your attention right now

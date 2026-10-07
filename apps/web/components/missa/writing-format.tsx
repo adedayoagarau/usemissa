@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/tooltip";
 import { WRITING_TYPEFACES } from "@/components/missa/writing-typefaces";
 import {
+  flowChain,
   LETTER_SPACINGS,
   LINE_HEIGHTS,
   MARGIN_PRESETS,
@@ -200,7 +201,7 @@ export function WritingFormatBar({
       {(
         [
           ["left", "Align line left", AlignLeft],
-          ["center", "Centre line", AlignCenter],
+          ["center", "Center line", AlignCenter],
           ["right", "Align line right", AlignRight],
           ["justify", "Justify line", AlignJustify],
         ] as const
@@ -272,11 +273,18 @@ export function WritingFormatSheet({
   const page = document.pages[pageIndex] ?? document.pages[0]!;
   const format = page.format;
 
+  // Pages the text flows across share one format, so a change reaches them all.
+  const chain = new Set(
+    flowChain(document.pages, Math.max(0, document.pages.indexOf(page))).map(
+      (index) => document.pages[index]!.id,
+    ),
+  );
+
   function setPage(change: Partial<PageFormat>) {
     onDocumentChange({
       ...document,
       pages: document.pages.map((item) =>
-        item.id === page.id
+        chain.has(item.id)
           ? { ...item, format: { ...item.format, ...change } }
           : item,
       ),
@@ -358,7 +366,11 @@ export function WritingFormatSheet({
           </FieldSet>
 
           <FieldSet>
-            <FieldLegend>This page</FieldLegend>
+            <FieldLegend>
+              {chain.size > 1
+                ? `This page and the ${chain.size - 1} its text flows onto`
+                : "This page"}
+            </FieldLegend>
             <FieldGroup>
               <Field>
                 <FieldLabel id="writing-align-label">Alignment</FieldLabel>
@@ -372,7 +384,7 @@ export function WritingFormatSheet({
                   {(
                     [
                       ["left", "Left"],
-                      ["center", "Centre"],
+                      ["center", "Center"],
                       ["right", "Right"],
                       ["justify", "Justified"],
                     ] as const

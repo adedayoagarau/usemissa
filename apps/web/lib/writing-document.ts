@@ -52,6 +52,12 @@ export type FlowPage = {
   kind: "flow";
   format: PageFormat;
   content: JsonNode;
+  /**
+   * The page holds text that flowed on from the page before it. Text moves
+   * back and forth between such pages as it is written; a page the writer
+   * adds is never merged into another.
+   */
+  continues?: boolean;
 };
 
 export type WritingDocument = {
@@ -145,9 +151,28 @@ function nodeText(node: JsonNode): string {
   return children.map(nodeText).join("");
 }
 
-/** The words of every page, in order, for counting, previews and plain-text export. */
+/**
+ * The words of every page, in order, for counting, previews and plain-text
+ * export. A page break the text flowed across adds nothing; a page the writer
+ * added starts after a blank line.
+ */
 export function documentText(document: WritingDocument): string {
-  return document.pages.map((page) => nodeText(page.content)).join("\n\n");
+  return document.pages
+    .map(
+      (page, index) =>
+        (index === 0 ? "" : page.continues ? "\n" : "\n\n") +
+        nodeText(page.content),
+    )
+    .join("");
+}
+
+/** The pages a page's text flows across: the page that starts it and every page that continues it. */
+export function flowChain(pages: FlowPage[], index: number): number[] {
+  let start = index;
+  while (start > 0 && pages[start]?.continues) start -= 1;
+  const chain = [start];
+  while (pages[chain.at(-1)! + 1]?.continues) chain.push(chain.at(-1)! + 1);
+  return chain;
 }
 
 function finite(value: unknown, min: number, max: number): value is number {
@@ -218,6 +243,8 @@ export function parseWritingDocument(value: unknown): WritingDocument | null {
   const ids = new Set<string>();
   for (const page of document.pages) {
     if (!page || typeof page !== "object" || page.kind !== "flow") return null;
+    if (page.continues !== undefined && typeof page.continues !== "boolean")
+      return null;
     if (
       typeof page.id !== "string" ||
       !PAGE_ID.test(page.id) ||

@@ -49,6 +49,7 @@ import {
   featuredWork,
 } from "@/lib/creator-profile";
 import type { StudioOutcome } from "./use-profile-draft";
+import { EmptyStateArt } from "@/components/illustrations/missa-illustrations";
 import styles from "./profile-studio.module.css";
 
 export type Update = (
@@ -296,6 +297,7 @@ function ItemList<T extends { id?: string }>({
   create,
   addLabel,
   empty,
+  emptyArt,
   max,
   children,
 }: {
@@ -307,6 +309,8 @@ function ItemList<T extends { id?: string }>({
   create: () => T;
   addLabel: string;
   empty: string;
+  /** A drawing above the empty message, for the lists that start a profile. */
+  emptyArt?: ReactNode;
   max: number;
   children: (item: T, change: (patch: Partial<T>) => void) => ReactNode;
 }) {
@@ -323,7 +327,12 @@ function ItemList<T extends { id?: string }>({
   };
   return (
     <div className={styles.list}>
-      {items.length === 0 && <p className={styles.emptyList}>{empty}</p>}
+      {items.length === 0 && (
+        <div className={styles.emptyList}>
+          {emptyArt}
+          <p>{empty}</p>
+        </div>
+      )}
       <ol>
         {items.map((item, index) => {
           const key = keyOf(item, index);
@@ -816,6 +825,7 @@ export function WorkEditor({ draft, update, upload, onError }: EditorProps) {
         max={50}
         addLabel="Add work"
         empty="No work yet. Add a poem, a series, a recording or a link."
+        emptyArt={<EmptyStateArt id="scene-making-work" />}
         titleOf={(work) => work.title}
         metaOf={(work) =>
           [work.featured ? "Featured" : "", work.kind, work.year]
