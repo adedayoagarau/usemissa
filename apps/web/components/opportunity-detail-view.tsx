@@ -47,6 +47,7 @@ import {
 } from "@/lib/textUtils";
 import { cn } from "@/lib/utils";
 import styles from "./opportunity-detail.module.css";
+import { Sp } from "@/components/missa/spelling";
 
 function initials(name: string): string {
   return (
@@ -192,7 +193,7 @@ export function OpportunityDetailView({
   const officialHref = opportunity.guidelinesUrl ?? opportunity.submissionUrl;
   const destinationHref = officialHref ?? opportunity.organizationWebsiteUrl;
   const destinationLabel = officialHref
-    ? "Open Official Application"
+    ? "Open the official application"
     : "Open organization website";
 
   const call = opportunity.callProfile;
@@ -205,7 +206,7 @@ export function OpportunityDetailView({
   // Decoded title and organization
   const cleanTitle = cleanTitleOrLabel(opportunity.title);
   const organizerName = cleanTitleOrLabel(
-    opportunity.organizationName ?? relatedProfile?.name ?? "Host Organization",
+    opportunity.organizationName ?? relatedProfile?.name ?? "Organizer not listed",
   );
   const organizerUrl = getOrganizerProfileUrl(
     relatedProfile,
@@ -488,7 +489,7 @@ export function OpportunityDetailView({
                 target="_blank"
                 rel="noreferrer"
               >
-                {destinationLabel} <ExternalLink aria-hidden="true" />
+                <Sp>{destinationLabel}</Sp> <ExternalLink aria-hidden="true" />
               </a>
             ) : null}
             <AddOpportunityToCalendarButton
@@ -650,8 +651,10 @@ export function OpportunityDetailView({
                 How to apply
               </h2>
               <p>
-                Review the organization’s current instructions and submit
-                through its official website.
+                <Sp>
+                  Review the organization’s current instructions and submit
+                  through its official website.
+                </Sp>
               </p>
               {destinationHref ? (
                 <a
@@ -660,7 +663,7 @@ export function OpportunityDetailView({
                   target="_blank"
                   rel="noreferrer"
                 >
-                  {destinationLabel} <ExternalLink aria-hidden="true" />
+                  <Sp>{destinationLabel}</Sp> <ExternalLink aria-hidden="true" />
                 </a>
               ) : null}
               {signedIn ? (
@@ -802,7 +805,7 @@ export function OpportunityDetailView({
                   <div className={styles.signalRow}>
                     <span className={styles.signalLabel}>
                       <CalendarDays aria-hidden="true" />
-                      Organization window
+                      <Sp>Organization window</Sp>
                     </span>
                     <span className={styles.signalValue}>
                       {call.readingPeriodLabel}
@@ -891,7 +894,7 @@ export function OpportunityDetailView({
               {organizerUrl ? (
                 <div className={styles.organizerCardActions}>
                   <Link href={organizerUrl} className={styles.profileButton}>
-                    View organization profile →
+                    <Sp>View organization profile →</Sp>
                   </Link>
                 </div>
               ) : null}
@@ -924,7 +927,7 @@ export function OpportunityDetailView({
               opportunityId={opportunity.id}
               surface="detail-sticky"
             >
-              {destinationLabel}
+              <Sp>{destinationLabel}</Sp>
               <ExternalLink aria-hidden="true" />
             </OfficialDestinationLink>
           ) : null}
@@ -954,7 +957,7 @@ export function OpportunityDetailView({
               opportunityId={opportunity.id}
               surface="mobile-dock"
             >
-              {officialHref ? "Open official site" : "Open organization website"}{" "}
+              {officialHref ? "Open official site" : <Sp>Open organization website</Sp>}{" "}
               <ExternalLink aria-hidden="true" />
             </OfficialDestinationLink>
           ) : null}

@@ -65,6 +65,7 @@ import {
   type OpportunityPreferences,
   type ProfileSection,
 } from "@/lib/profile-settings";
+import { useSp, Sp } from "@/components/missa/spelling";
 
 export type { ProfileSection } from "@/lib/profile-settings";
 
@@ -379,6 +380,7 @@ export function ProfileProduct({
   /** Email integrations turned on for this deployment. */
   integrations?: { gmailSync: boolean; emailForwarding: boolean };
 }) {
+  const sp = useSp();
   const router = useRouter();
   const [active, setActive] = useState<ProfileSection>(initialSection);
   const [profile, setProfile] = useState(initialProfile);
@@ -857,11 +859,11 @@ export function ProfileProduct({
                   : active === "notifications"
                     ? "Choose what you hear about, and where."
                     : active === "connections"
-                      ? "Private. Each connection has its own permissions, and organizations never see them."
+                      ? sp("Private. Each connection has its own permissions, and organizations never see them.")
                       : active === "searches"
                         ? "Searches you can run again, with alerts when new calls match."
                         : active === "following"
-                          ? "Organizations whose new calls and changes you hear about."
+                          ? sp("Organizations whose new calls and changes you hear about.")
                           : "Only you can see this page."}
             </p>
           </div>
@@ -941,8 +943,7 @@ export function ProfileProduct({
                       id="display-name-help"
                       className="text-xs text-muted-foreground"
                     >
-                      How organizations and readers find you. Up to 120
-                      characters.
+                      <Sp>How organizations and readers find you. Up to 120 characters.</Sp>
                     </p>
                   </div>
 
@@ -1022,9 +1023,11 @@ export function ProfileProduct({
                       Never public
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      Matching choices, eligibility, your Tracker, Library
-                      drafts, saved answers, following, and connections stay
-                      private. Organizations see only what you send them.
+                      <Sp>
+                        Matching choices, eligibility, your Tracker, Library
+                        drafts, saved answers, following, and connections stay
+                        private. Organizations see only what you send them.
+                      </Sp>
                     </p>
                   </section>
                 </div>

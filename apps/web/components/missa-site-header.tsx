@@ -18,6 +18,7 @@ import { MissaWordmark } from "@/components/missa-wordmark";
 import { useBrowserSession, type BrowserSession } from "@/lib/browserSession";
 import { rememberSignedIn } from "@/lib/signedInHint";
 import styles from "./missa-site-header.module.css";
+import { Sp } from "@/components/missa/spelling";
 
 export type HeaderSession = BrowserSession;
 
@@ -81,7 +82,7 @@ export function MissaSiteHeader({
               href={link.href}
               aria-current={link.label === (current === "Magazine rankings" ? "Rankings" : current) ? "page" : undefined}
             >
-              {link.label}
+              <Sp>{link.label}</Sp>
             </Link>
           ))}
         </nav>
@@ -159,7 +160,7 @@ export function MissaSiteHeader({
               aria-current={link.label === (current === "Magazine rankings" ? "Rankings" : current) ? "page" : undefined}
               onClick={() => setMobileOpen(false)}
             >
-              {link.label}
+              <Sp>{link.label}</Sp>
             </Link>
           ))}
           {!session ? (

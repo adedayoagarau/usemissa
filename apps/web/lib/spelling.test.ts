@@ -24,6 +24,7 @@ test('converts whole words and keeps their case', () => {
   assert.equal(toUkSpelling('PROGRAM'), 'PROGRAMME');
   assert.equal(toUkSpelling('Your favorite color'), 'Your favourite colour');
   assert.equal(toUkSpelling('The program closed.'), 'The programme closed.');
+  assert.equal(toUkSpelling('The fifty most honored magazines'), 'The fifty most honoured magazines');
 });
 
 test('leaves URLs, paths, emails and slugs alone', () => {

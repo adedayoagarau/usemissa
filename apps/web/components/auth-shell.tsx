@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { MissaWordmark } from "@/components/missa-wordmark";
+import { Sp } from "@/components/missa/spelling";
 
 /**
  * Shared frame for log in, sign up, and password recovery: a white form
@@ -84,10 +85,10 @@ export function AuthShell({
             />
             <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-foreground/85 via-foreground/45 to-transparent px-8 pt-40 pb-8 xl:px-12 xl:pb-12">
               <p className="max-w-md font-heading text-4xl leading-[1.05] tracking-tight text-balance text-background xl:text-5xl">
-                {art.title}
+                <Sp>{art.title}</Sp>
               </p>
               <p className="mt-4 max-w-sm text-sm leading-relaxed text-background/85">
-                {art.body}
+                <Sp>{art.body}</Sp>
               </p>
               <p className="mt-6 text-xs text-background/70">
                 Illustration made with AI.

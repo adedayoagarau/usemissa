@@ -41,6 +41,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { Sp } from "@/components/missa/spelling";
 
 export type InboxProductGroup =
   "attention" | "changes" | "submissions" | "discovery";
@@ -90,7 +91,7 @@ const groups: Array<{
     id: "discovery",
     title: "Saved searches and following",
     description:
-      "Quieter discovery from preferences and Organizations you chose to follow.",
+      "Quieter discovery from preferences and organizations you chose to follow.",
   },
 ];
 
@@ -402,7 +403,7 @@ export function InboxProduct({
                               : group.title}
                           </h3>
                           <p className="mt-1 text-sm text-muted-foreground">
-                            {group.description}
+                            <Sp>{group.description}</Sp>
                           </p>
                         </div>
                         <span className="text-sm text-muted-foreground tabular-nums">

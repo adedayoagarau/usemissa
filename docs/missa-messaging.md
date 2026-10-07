@@ -1,7 +1,7 @@
 ---
 title: Missa messaging and microcopy
-status: proposed, waiting on four founder decisions (see the end)
-last_updated: "2026-10-06"
+status: adopted; the founder note is the one open item (see the end)
+last_updated: "2026-10-07"
 north_star: Notion's plain marketing and product voice
 ---
 
@@ -292,8 +292,10 @@ When you add a word to "Don't say", add a rule to
    tagline. The film's closing line was re-recorded in the same voice.
 3. **US or UK spelling.** Decided: US, with UK spelling for UK accounts and UK
    visitors. See "Spelling" above.
-4. **A founder note on About.** Still open. Recommended: yes, in the founder's
-   own words.
+4. **A founder note on About.** Still open, and it has to be in the founder's
+   own words. The section is built and stays hidden until
+   `apps/web/lib/founder-note.ts` is filled in. The prompts are in
+   `docs/founder-note.md`.
 
 ## Evidence
 

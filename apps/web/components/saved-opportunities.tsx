@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Bookmark, CalendarDays, Search } from "lucide-react";
 import type { TrackerProductItem } from "@/components/tracker-product";
 import styles from "./saved-opportunities.module.css";
+import { Sp } from "@/components/missa/spelling";
 
 function formatDeadline(item: TrackerProductItem): string {
   if (item.deadline) {
@@ -48,7 +49,7 @@ export function SavedOpportunities({ initialItems }: { initialItems: TrackerProd
       <div className={styles.resultHeading} role="status" aria-live="polite"><h2>{items.length} saved {items.length === 1 ? "opportunity" : "opportunities"}</h2><span>Sorted by deadline</span></div>
       {items.length ? <div className={styles.grid}>{items.map((item) => <article key={item.opportunityId} className={styles.card}>
         <div className={styles.cardTop}><span className={styles.mark}><Bookmark aria-hidden="true" /></span><span data-urgent={item.daysToDeadline !== undefined && item.daysToDeadline >= 0 && item.daysToDeadline <= 7 || undefined}>{item.daysToDeadline !== undefined && item.daysToDeadline >= 0 ? `${item.daysToDeadline} days left` : typeLabel(item.type)}</span></div>
-        <div><h3>{item.title}</h3><p>{item.organizationName ?? "Organization not listed"}</p></div>
+        <div><h3>{item.title}</h3><p>{item.organizationName ?? <Sp>Organization not listed</Sp>}</p></div>
         <dl><div><dt><CalendarDays aria-hidden="true" />Deadline</dt><dd>{formatDeadline(item)}</dd></div><div><dt>Type</dt><dd>{typeLabel(item.type)}</dd></div></dl>
         <div className={styles.actions}><Link href={`/opportunities/${encodeURIComponent(item.opportunityId)}`}>Review opportunity <ArrowRight aria-hidden="true" /></Link><Link href="/tracker">Open in Tracker</Link></div>
       </article>)}</div> : <section className={styles.empty}><Search aria-hidden="true" /><h2>No saved opportunities match</h2><p>Clear the search or choose a different deadline view.</p><button type="button" onClick={() => { setQuery(""); setScope("all"); }}>Show everything saved</button></section>}

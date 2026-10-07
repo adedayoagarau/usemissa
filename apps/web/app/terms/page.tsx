@@ -8,6 +8,7 @@ import {
   LEGAL_POSTAL_ADDRESS,
   hasPostalAddress,
 } from "@/lib/legalContact";
+import { Sp } from "@/components/missa/spelling";
 
 export const metadata: Metadata = {
   title: "Terms",
@@ -96,8 +97,8 @@ export default function TermsPage() {
             <li>break the law or infringe someone else&apos;s rights;</li>
             <li>post reviews, claims, or content that is false, misleading, or written as someone else;</li>
             <li>upload malware or try to get around security, rate limits, or access controls;</li>
-            <li>scrape, resell, or bulk-copy the catalog without our written permission;</li>
-            <li>harass Organizations, reviewers, or other creators.</li>
+            <li><Sp>scrape, resell, or bulk-copy the catalog without our written permission;</Sp></li>
+            <li><Sp>harass Organizations, reviewers, or other creators.</Sp></li>
           </ul>
           <p>
             We may remove content or limit an account that breaks these rules.

@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardFooter } from "@/components/ui/card";
 import { cleanTitleOrLabel } from "@/lib/textUtils";
 import styles from "./opportunity-catalogue-card.module.css";
+import { Sp } from "@/components/missa/spelling";
 
 const EDITORIAL_PLATES = [
   "/media/home/opportunity-mountains.webp",
@@ -269,7 +270,7 @@ export function OpportunityCatalogueCard({
           </h2>
 
           <p className={styles.organization}>
-            {cleanOrg || "Organization not confirmed"}
+            {cleanOrg || <Sp>Organization not confirmed</Sp>}
           </p>
 
           {practices.length ? (

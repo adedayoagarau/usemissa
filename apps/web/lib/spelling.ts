@@ -68,6 +68,8 @@ const US_TO_UK: Record<string, string> = {
   behavior: 'behaviour',
   honor: 'honour',
   honors: 'honours',
+  honored: 'honoured',
+  honoring: 'honouring',
   labor: 'labour',
   gray: 'grey',
   fulfill: 'fulfil',

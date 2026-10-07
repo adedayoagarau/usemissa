@@ -353,8 +353,10 @@ export function HomepageContinuation({
                   </div>
                   <div className={styles.featuredOrganizationCopy}>
                     <span className={styles.organizationKind}>
-                      {PROFILE_KINDS[featuredProfile.kind]?.label ||
-                        "Organization"}
+                      {sp(
+                        PROFILE_KINDS[featuredProfile.kind]?.label ||
+                          "Organization",
+                      )}
                       {featuredProfile.city && ` · ${featuredProfile.city}`}
                     </span>
                     <h3 className="font-heading">{featuredProfile.name}</h3>
@@ -397,7 +399,7 @@ export function HomepageContinuation({
                     </Avatar>
                     <div>
                       <span className={styles.organizationKind}>
-                        {kind?.label || "Organization"}
+                        {sp(kind?.label || "Organization")}
                       </span>
                       <h3 className="font-heading">{profile.name}</h3>
                     </div>
@@ -437,7 +439,7 @@ export function HomepageContinuation({
                   {q}
                 </AccordionTrigger>
                 <AccordionContent className={styles.faqContent}>
-                  <p>{a}</p>
+                  <p>{sp(a)}</p>
                 </AccordionContent>
               </AccordionItem>
             ))}

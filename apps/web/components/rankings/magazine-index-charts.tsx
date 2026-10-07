@@ -19,6 +19,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { Sp, useSp } from "@/components/missa/spelling";
 
 /*
  * Ordered categories share one hue, lighter to darker (validated for both
@@ -52,8 +53,8 @@ function Figure({
   return (
     <figure className="space-y-3 rounded-xl border border-border bg-card p-5">
       <figcaption className="space-y-1">
-        <h3 className="text-base font-semibold text-foreground">{title}</h3>
-        <p className="text-sm leading-6 text-muted-foreground">{caption}</p>
+        <h3 className="text-base font-semibold text-foreground"><Sp>{title}</Sp></h3>
+        <p className="text-sm leading-6 text-muted-foreground"><Sp>{caption}</Sp></p>
       </figcaption>
       <div aria-hidden="true" className="space-y-3">
         {children}
@@ -135,7 +136,7 @@ export function TierChart({
   return (
     <Figure
       title="How the magazines spread across tiers"
-      caption="Most magazines sit in the fourth tier. The upper tiers are reserved for magazines whose honours and recorded policies are both strong."
+      caption="Most magazines sit in the fourth tier. The upper tiers are reserved for magazines whose honors and recorded policies are both strong."
       table={{
         head: ["Tier", "Magazines"],
         rows: tiers.map((t) => [t.tier, t.count]),
@@ -215,8 +216,9 @@ export function ComparisonChart({
   const keys = spec.keys.map((k) => k.key);
   const top = shares(counts.top, keys);
   const rest = shares(counts.rest, keys);
+  const sp = useSp();
   const data = [
-    { group: "Fifty most honoured", ...top.values },
+    { group: sp("Fifty most honored"), ...top.values },
     { group: "Everyone else", ...rest.values },
   ];
   const config = Object.fromEntries(
@@ -227,7 +229,7 @@ export function ComparisonChart({
     <Figure
       title={spec.title}
       legend={spec.keys.map((k) => ({ label: k.label, color: k.color }))}
-      caption={`Share of magazines where this is recorded: ${top.recorded} of the fifty most honoured, and ${rest.recorded} others.`}
+      caption={`Share of magazines where this is recorded: ${top.recorded} of the fifty most honored, and ${rest.recorded} others.`}
       table={{
         head: ["Group", ...spec.keys.map((k) => k.label)],
         rows: data.map((row) => [
@@ -350,7 +352,7 @@ export function FlashLeadersChart({
 }
 
 const PILLAR_NAMES: Record<string, string> = {
-  accolades: "Honours",
+  accolades: "Honors",
   pay: "Pay",
   turnaround: "Reply time",
   fees: "Fees",
@@ -364,8 +366,9 @@ export function CoverageChart({
   coverage: MagazineIndexCoverage;
 }) {
   const total = coverage.magazineCounts.overall;
+  const sp = useSp();
   const data = Object.entries(coverage.pillars).map(([key, counts]) => ({
-    pillar: PILLAR_NAMES[key] ?? key,
+    pillar: sp(PILLAR_NAMES[key] ?? key),
     recorded: percentOf(counts.recorded, total),
     partial: percentOf(counts.partial, total),
     unknown: percentOf(counts.unknown, total),

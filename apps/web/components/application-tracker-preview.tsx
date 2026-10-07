@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { NativeSelect } from "@/components/ui/native-select";
 import styles from "./application-tracker-preview.module.css";
+import { Sp } from "@/components/missa/spelling";
 
 type Application = {
   id: string;
@@ -248,7 +249,7 @@ export function ApplicationTrackerPreview() {
           <div className={styles.heading}>
             <div>
               <h2>Your dates</h2>
-              <p>Date-only agenda. Confirm cutoff times with each organizer.</p>
+              <p><Sp>Date-only agenda. Confirm cutoff times with each organizer.</Sp></p>
             </div>
             <Button
               variant="outline"
@@ -332,7 +333,7 @@ export function ApplicationTrackerPreview() {
                 />
               </Field>
               <Field>
-                <FieldLabel htmlFor="organization">Organization</FieldLabel>
+                <FieldLabel htmlFor="organization"><Sp>Organization</Sp></FieldLabel>
                 <Input
                   id="organization"
                   value={item.organization}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Sp } from "@/components/missa/spelling";
 
 type BlindMode = 'none' | 'identity-redacted';
 type Settings = { organizationId: string; blindMode: BlindMode; revision: number };
@@ -29,6 +30,6 @@ export function OrganizationReviewSettings({ organizationId, canManage }: { orga
       <label className="flex cursor-pointer gap-3 rounded-md border border-border p-3"><input type="radio" name="blind-mode" checked={settings.blindMode === 'identity-redacted'} onChange={() => void update('identity-redacted')} /><span><span className="block text-sm font-medium text-foreground">Blind review on</span><span className="block text-sm text-muted-foreground">Hide applicant identity from reviewer projections.</span></span></label>
       <label className="flex cursor-pointer gap-3 rounded-md border border-border p-3"><input type="radio" name="blind-mode" checked={settings.blindMode === 'none'} onChange={() => void update('none')} /><span><span className="block text-sm font-medium text-foreground">Blind review off</span><span className="block text-sm text-muted-foreground">Allow identity in stages that explicitly permit it.</span></span></label>
     </fieldset>
-    {!canManage && <p className="mt-3 text-xs text-muted-foreground">Only organization owners and admins can change this policy.</p>}
+    {!canManage && <p className="mt-3 text-xs text-muted-foreground"><Sp>Only organization owners and admins can change this policy.</Sp></p>}
   </section>;
 }

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 import styles from './email-review-queue.module.css';
+import { Sp } from "@/components/missa/spelling";
 
 type Candidate = {
   id: string;
@@ -192,7 +193,7 @@ function CandidateReview({ candidate, busy, onBack, onReview }: { candidate: Can
         {candidate.candidates.length ? (
           <div><Label htmlFor={`${candidate.id}-opportunity`}>Related Tracker record</Label><select id={`${candidate.id}-opportunity`} value={opportunityId} onChange={(event) => setOpportunityId(event.target.value)}><option value="">Choose an opportunity</option>{candidate.candidates.map((item) => <option key={item.opportunityId} value={item.opportunityId}>{item.title}{item.organizationName ? ` · ${item.organizationName}` : ''}</option>)}</select></div>
         ) : (
-          <div className={styles.manualFields}><div><Label htmlFor={`${candidate.id}-title`}>Opportunity title</Label><Input id={`${candidate.id}-title`} value={title} onChange={(event) => setTitle(event.target.value)} /></div><div><Label htmlFor={`${candidate.id}-org`}>Organization</Label><Input id={`${candidate.id}-org`} value={organizationName} onChange={(event) => setOrganizationName(event.target.value)} /></div></div>
+          <div className={styles.manualFields}><div><Label htmlFor={`${candidate.id}-title`}>Opportunity title</Label><Input id={`${candidate.id}-title`} value={title} onChange={(event) => setTitle(event.target.value)} /></div><div><Label htmlFor={`${candidate.id}-org`}><Sp>Organization</Sp></Label><Input id={`${candidate.id}-org`} value={organizationName} onChange={(event) => setOrganizationName(event.target.value)} /></div></div>
         )}
         <div><Label htmlFor={`${candidate.id}-status`}>What does the email say?</Label><select id={`${candidate.id}-status`} value={status} onChange={(event) => setStatus(event.target.value)}>{statuses.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
       </div>

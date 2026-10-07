@@ -1,4 +1,5 @@
 import { getWorkspacePageAccess } from '@/lib/workspacePage';
+import { Sp } from "@/components/missa/spelling";
 
 export default async function WorkspaceInsightsPage({ searchParams }: { searchParams: Promise<{ organizationId?: string }> }) {
   const access = await getWorkspacePageAccess(searchParams, 'workspace/insights', 'insights.read');
@@ -6,7 +7,7 @@ export default async function WorkspaceInsightsPage({ searchParams }: { searchPa
     return (
       <main className="mx-auto max-w-2xl px-6 py-12">
         <h1 className="font-heading text-3xl font-medium text-foreground">Insights</h1>
-        <p className="mt-2 text-muted-foreground">Join an organization to view workflow insights.</p>
+        <p className="mt-2 text-muted-foreground"><Sp>Join an organization to view workflow insights.</Sp></p>
       </main>
     );
   const reporting = access.workspace.reportingForOrganization(access.organizationId);
@@ -44,7 +45,7 @@ export default async function WorkspaceInsightsPage({ searchParams }: { searchPa
         <h2 className="font-heading text-xl font-medium text-foreground">Submissions by month</h2>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[420px] text-left text-sm">
-            <caption className="sr-only">Monthly organization submissions</caption>
+            <caption className="sr-only"><Sp>Monthly organization submissions</Sp></caption>
             <thead className="border-b border-border text-xs text-muted-foreground">
               <tr>
                 <th scope="col" className="px-3 py-3 font-medium">
