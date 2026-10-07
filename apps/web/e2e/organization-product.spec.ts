@@ -13,7 +13,7 @@ async function organizationSession(page: Page) {
 test('Organization chooser states role before tenant entry', async ({ page }) => {
   const membership = await organizationSession(page);
   await page.goto('/organization');
-  await expect(page.getByRole('heading', { name: 'Choose an Organization' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Choose an organization' })).toBeVisible();
   await expect(page.getByText(/Admin|Owner|Member|Program manager/u).first()).toBeVisible();
   await expect(page.locator('main')).not.toContainText(membership.organizationId);
   await expect(page.getByRole('link', { name: /Enter/u })).toBeVisible();

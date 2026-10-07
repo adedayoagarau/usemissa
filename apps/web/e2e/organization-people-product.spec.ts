@@ -16,7 +16,7 @@ test('Access dossier exposes current truth without unsafe access mutations', asy
   await expect(page.getByText(fixture.email).first()).toBeVisible();
   await expect(page.getByText('Access changes stay withheld')).toBeVisible();
   await expect(page.getByText('Compatibility membership seat')).toBeVisible();
-  await expect(page.getByText('Not a capability registry')).toBeVisible();
+  await expect(page.getByText('Not a full permission list')).toBeVisible();
   await expect(page.getByRole('button', { name: /invite|remove|change role|transfer/iu })).toHaveCount(0);
   await expect(page.locator('select[aria-label^="Role for"]')).toHaveCount(0);
   await expect(page.locator('body')).not.toContainText(/presence|online now|taxonomy expertise/iu);
