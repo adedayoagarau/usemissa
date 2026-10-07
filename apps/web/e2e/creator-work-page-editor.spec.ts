@@ -28,11 +28,14 @@ test("a work's page group shows its address live and says when it can't be used"
     page,
     /^An atlas of small departures/,
   );
-  // The address comes from the title until the creator chooses one.
+  // The sample's creator chose "atlas"; clearing it gives the address back to
+  // the title.
+  await expect(trigger).toContainText("usemissa.com/@rileychen/atlas");
+  const address = editor.getByLabel(/^Page address/);
+  await address.fill("");
   await expect(trigger).toContainText(
     "usemissa.com/@rileychen/an-atlas-of-small-departures",
   );
-  const address = editor.getByLabel(/^Page address/);
   await address.fill("My Atlas, 2026!");
   await expect(editor.getByText(/^Page:/)).toContainText(
     "usemissa.com/@rileychen/my-atlas-2026",

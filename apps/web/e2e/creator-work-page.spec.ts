@@ -257,19 +257,14 @@ test("a recording that can't play says so and offers Try again", async ({
     route.abort(),
   );
   await page.goto(route, { waitUntil: "networkidle" });
-  const player = page.locator("audio");
-  await expect(player).toHaveAttribute(
-    "aria-label",
-    /Recording: Between Perth/,
-  );
-  await player.evaluate((audio: HTMLAudioElement) => {
-    audio.load();
-    void audio.play().catch(() => undefined);
-  });
+  await page
+    .getByRole("button", { name: "Play Between Perth and Inverness" })
+    .click();
   const alert = page.getByRole("alert").filter({
-    hasText: "Couldn’t play this recording. Nothing was lost.",
+    hasText: "Couldn’t play this recording",
   });
   await expect(alert).toBeVisible();
+  await expect(alert).toContainText("Nothing was lost");
   await expect(alert.getByRole("button", { name: "Try again" })).toBeVisible();
 });
 

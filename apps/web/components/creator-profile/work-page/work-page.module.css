@@ -457,6 +457,23 @@
   background: var(--page-ink);
   color: var(--creator-canvas, var(--background));
   scroll-margin-top: var(--page-clear);
+  /* The shared listening block reads these; on this inverted panel its pill,
+     rules and quiet text are tints of the canvas colour, not of the ink. */
+  --profile-subtle: color-mix(
+    in srgb,
+    var(--creator-canvas, var(--background)) 14%,
+    transparent
+  );
+  --profile-line: color-mix(
+    in srgb,
+    var(--creator-canvas, var(--background)) 28%,
+    transparent
+  );
+  --profile-muted: color-mix(
+    in srgb,
+    var(--creator-canvas, var(--background)) 78%,
+    transparent
+  );
 }
 .recording .partLabel,
 .recording .note {
