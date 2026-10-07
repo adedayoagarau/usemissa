@@ -1,9 +1,15 @@
 "use client";
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Plus, Target, Check, Bell } from "lucide-react";
+import { ArrowRight, Plus, Target, Check, Bell, ChevronDown } from "lucide-react";
 import { CreatorShell } from "@/components/creator-shell";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -159,14 +165,18 @@ export function GoalsPreview() {
               </NativeSelect>
             </label>
             {goals.map((g) => (
-              <button
+              <Button
                 key={g.id}
+                type="button"
+                variant="choice"
+                size="choice"
                 onClick={() => {
                   setSelected(g.id);
                   setMessage("");
                 }}
                 aria-pressed={g.id === selected}
-                className={`hidden w-full rounded-xl border p-5 md:block text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring ${g.id === selected ? "border-primary bg-accent" : "border-border hover:bg-muted"}`}
+                data-selected={g.id === selected}
+                className="hidden flex-col items-start gap-0 rounded-xl p-5 md:flex"
               >
                 <span className="mb-4 block text-xs text-muted-foreground">
                   {g.paused ? "Paused" : g.kind}
@@ -181,7 +191,7 @@ export function GoalsPreview() {
                       ? "Waiting for the next call"
                       : `${g.checked.length} of ${g.steps.length} preparation steps`}
                 </span>
-              </button>
+              </Button>
             ))}
           </section>
           <section aria-label="Goal details" className="min-w-0">
@@ -314,11 +324,10 @@ export function GoalsPreview() {
                       key={step}
                       className="flex min-h-16 cursor-pointer items-center gap-3 border-b border-border py-4 text-sm"
                     >
-                      <input
-                        type="checkbox"
-                        className="size-5 shrink-0 accent-primary"
+                      <Checkbox
+                        className="size-5"
                         checked={current.checked.includes(step)}
-                        onChange={() => {
+                        onCheckedChange={() => {
                           setMessage(
                             current.checked.includes(step)
                               ? "Step reopened."
@@ -351,11 +360,19 @@ export function GoalsPreview() {
                 </Link>
               </section>
             </div>
-            <details className="mt-6 border-b border-border pb-5">
-              <summary className="cursor-pointer py-2 text-sm font-medium">
+            <Collapsible className="mt-6 border-b border-border pb-5">
+              <CollapsibleTrigger
+                render={
+                  <Button variant="ghost" className="-ml-2 px-2" />
+                }
+              >
                 Reminders &amp; recommendations
-              </summary>
-              <div className="mt-4 grid gap-5 md:grid-cols-2">
+                <ChevronDown
+                  aria-hidden="true"
+                  className="transition-transform group-data-panel-open/button:rotate-180 motion-reduce:transition-none"
+                />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-4 grid gap-5 md:grid-cols-2">
                 <section className="rounded-lg border border-border p-5">
                   <h3 className="flex items-center gap-2 font-semibold">
                     <Bell className="size-4" aria-hidden="true" />
@@ -397,8 +414,8 @@ export function GoalsPreview() {
                     still matter.
                   </p>
                 </section>
-              </div>
-            </details>
+              </CollapsibleContent>
+            </Collapsible>
             <section className="mt-8 pt-2">
               <h3 className="text-lg font-semibold">
                 {current.watching ? "Following" : "Find an opportunity"}
@@ -588,10 +605,10 @@ export function GoalsPreview() {
                     </NativeSelect>
                   </label>
                   <label className="flex gap-2 text-sm">
-                    <input
-                      type="checkbox"
+                    <Checkbox
+                      className="mt-0.5"
                       checked={influence}
-                      onChange={(e) => setInfluence(e.target.checked)}
+                      onCheckedChange={(checked) => setInfluence(checked)}
                     />
                     Use this goal for recommendations
                   </label>

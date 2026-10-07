@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 
 const ISSUES = [
@@ -119,14 +120,14 @@ export function ContentIssueReportDialog({
           <form onSubmit={submit} className="space-y-4">
             <div className="space-y-1.5">
               <label htmlFor={`issue-type-${subjectId}`} className="text-sm font-medium">What is incorrect?</label>
-              <select
+              <NativeSelect
                 id={`issue-type-${subjectId}`}
                 value={issueType}
                 onChange={(event) => setIssueType(event.target.value as typeof issueType)}
-                className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                className="w-full *:data-[slot=native-select]:h-11"
               >
-                {issues.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
+                {issues.map(([value, label]) => <NativeSelectOption key={value} value={value}>{label}</NativeSelectOption>)}
+              </NativeSelect>
             </div>
             <div className="space-y-1.5">
               <label htmlFor={`correction-${subjectId}`} className="text-sm font-medium">What should it say?</label>

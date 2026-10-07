@@ -3,6 +3,8 @@
 import { useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 export interface EmailTemplateDefinition {
   key: string;
@@ -79,76 +81,55 @@ export function EmailPreviewStudioClient({
           <label htmlFor="template-selector" className="text-xs font-medium text-muted-foreground">
             Template:
           </label>
-          <select
+          <NativeSelect
             id="template-selector"
             value={selectedKey}
             onChange={(e) => {
               setSelectedKey(e.target.value);
               setTestStatus(null);
             }}
-            className="h-9 rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-primary"
           >
             {templates.map((t) => (
-              <option key={t.key} value={t.key}>
+              <NativeSelectOption key={t.key} value={t.key}>
                 {t.label} ({t.category})
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
+          </NativeSelect>
         </div>
 
         {/* Device & Format Toggles */}
         <div className="flex items-center gap-3">
           {/* Device Toggle */}
-          <div className="inline-flex rounded-lg border border-border bg-muted/40 p-0.5">
-            <button
-              type="button"
-              onClick={() => setDevice('desktop')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                device === 'desktop'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Desktop (600px)
-            </button>
-            <button
-              type="button"
-              onClick={() => setDevice('mobile')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                device === 'mobile'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Mobile (390px)
-            </button>
-          </div>
+          <ToggleGroup
+            value={[device]}
+            onValueChange={(value: unknown[]) => {
+              const next = value[0];
+              if (next === 'desktop' || next === 'mobile') setDevice(next);
+            }}
+            variant="outline"
+            size="sm"
+            spacing={0}
+            aria-label="Preview width"
+          >
+            <ToggleGroupItem value="desktop">Desktop (600px)</ToggleGroupItem>
+            <ToggleGroupItem value="mobile">Mobile (390px)</ToggleGroupItem>
+          </ToggleGroup>
 
           {/* Format Toggle */}
-          <div className="inline-flex rounded-lg border border-border bg-muted/40 p-0.5">
-            <button
-              type="button"
-              onClick={() => setFormat('html')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                format === 'html'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              HTML
-            </button>
-            <button
-              type="button"
-              onClick={() => setFormat('text')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                format === 'text'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Plain text
-            </button>
-          </div>
+          <ToggleGroup
+            value={[format]}
+            onValueChange={(value: unknown[]) => {
+              const next = value[0];
+              if (next === 'html' || next === 'text') setFormat(next);
+            }}
+            variant="outline"
+            size="sm"
+            spacing={0}
+            aria-label="Preview format"
+          >
+            <ToggleGroupItem value="html">HTML</ToggleGroupItem>
+            <ToggleGroupItem value="text">Plain text</ToggleGroupItem>
+          </ToggleGroup>
         </div>
       </div>
 

@@ -50,6 +50,29 @@
   color: var(--profile-muted);
   font-size: 14px;
 }
+/* Work surfaces (cards, the featured excerpt, titles) are Buttons that open
+   the reader. They keep the world's own surface, type and focus outline, so
+   the control chrome is reset here; the specific surface rules below then
+   set their own padding, background and layout. */
+.surface {
+  display: inline-block;
+  height: auto;
+  justify-content: flex-start;
+  align-items: stretch;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  text-align: left;
+  white-space: normal;
+  user-select: auto;
+  translate: none;
+  box-shadow: none;
+}
 .world :where(a, button):focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 3px;
@@ -65,7 +88,7 @@
   color: var(--surface);
 }
 /* Outline actions sit on a light fill over the image; the primary keeps its own. */
-.plateHero [data-slot="button"]:not([data-tone="primary"]) {
+.plateHero [data-slot="button"]:not([data-tone="primary"], .plateCredit) {
   color: var(--foreground);
 }
 
@@ -278,6 +301,9 @@
 .featuredExcerpt button,
 .readLink {
   display: inline-flex;
+  height: auto;
+  padding: 0;
+  text-decoration: none;
   align-items: center;
   gap: 8px;
   min-height: 44px;
@@ -317,6 +343,7 @@
 }
 .featuredCaption > button {
   font-size: 24px;
+  line-height: inherit;
   text-align: left;
 }
 .featuredCaption > span {
@@ -385,6 +412,9 @@
 }
 .plateCredit {
   display: inline-flex;
+  height: auto;
+  padding: 0;
+  text-decoration: none;
   align-self: flex-start;
   align-items: center;
   gap: 8px;
@@ -686,7 +716,8 @@
   line-height: 1.1;
 }
 .cardTitle button {
-  text-align: left;
+  font-size: inherit;
+  line-height: inherit;
 }
 .cardTitle button:hover {
   text-decoration: underline;
@@ -808,16 +839,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.miniTrack {
-  display: block;
+.miniTrack [data-slot="progress-track"] {
   height: 3px;
-  border-radius: 999px;
   background: color-mix(in srgb, var(--surface) 24%, transparent);
 }
-.miniTrack span {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
+.miniTrack [data-slot="progress-indicator"] {
   background: var(--surface);
 }
 .miniError {

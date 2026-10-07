@@ -3,6 +3,8 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Member {
@@ -112,15 +114,15 @@ export function SubmissionCard({
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
-      <button type="button" onClick={toggle} className="flex w-full items-center justify-between text-left">
+      <Button type="button" variant="ghost" size="sm" onClick={toggle} className="h-auto w-full justify-between text-left whitespace-normal">
         <div>
           <p className="font-heading text-base font-medium text-foreground">{submission.openCallTitle}</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm font-normal text-muted-foreground">
             submitted <span className="font-mono">{submission.submittedAt.slice(0, 10)}</span>
           </p>
         </div>
         <span className="text-xs text-muted-foreground">{expanded ? 'hide' : 'view'}</span>
-      </button>
+      </Button>
 
       {expanded && (
         <div className="mt-3 border-t border-border pt-3">
@@ -133,10 +135,10 @@ export function SubmissionCard({
                 {works?.map((w) => (
                   <li key={w.id} className="flex flex-wrap items-center justify-between gap-2">
                     <span>{w.title}{(w.fileUrls?.length ?? (w.fileUrl ? 1 : 0)) > 0 && <span className="ml-2 inline-flex gap-2 text-xs text-primary">{(w.fileUrls ?? (w.fileUrl ? [w.fileUrl] : [])).map((_, index) => <a key={index} className="underline" href={`/api/orgs/${organizationId}/works/${w.id}/file?index=${index}`} target="_blank" rel="noreferrer">file {index + 1}</a>)}</span>}</span>
-                    <select aria-label={`Decision for ${w.title}`} value={decisions.find((decision) => decision.workId === w.id)?.outcome ?? ''} onChange={(event) => decide(w.id, event.target.value)} disabled={isPending} className="min-h-11 rounded-md border border-input bg-card px-2 text-xs">
-                      <option value="">Record decision</option><option value="accepted">Accepted</option><option value="declined">Declined</option><option value="waitlisted">Waitlisted</option>
-                    </select>
-                    {decisions.find((decision) => decision.workId === w.id)?.outcome === 'accepted' && (() => { const task = deliveryTasks.find((item) => item.workId === w.id); return task ? <button type="button" onClick={() => toggleDelivery(task)} className="min-h-11 rounded-md border border-border px-2 text-xs">{task.status === 'complete' ? 'Delivery complete' : 'Mark delivery complete'}</button> : <button type="button" onClick={() => createDelivery(w.id)} className="min-h-11 rounded-md border border-border px-2 text-xs">Create delivery task</button>; })()}
+                    <NativeSelect aria-label={`Decision for ${w.title}`} value={decisions.find((decision) => decision.workId === w.id)?.outcome ?? ''} onChange={(event) => decide(w.id, event.target.value)} disabled={isPending} className="*:data-[slot=native-select]:h-11">
+                      <NativeSelectOption value="">Record decision</NativeSelectOption><NativeSelectOption value="accepted">Accepted</NativeSelectOption><NativeSelectOption value="declined">Declined</NativeSelectOption><NativeSelectOption value="waitlisted">Waitlisted</NativeSelectOption>
+                    </NativeSelect>
+                    {decisions.find((decision) => decision.workId === w.id)?.outcome === 'accepted' && (() => { const task = deliveryTasks.find((item) => item.workId === w.id); return task ? <Button type="button" variant="outline" onClick={() => toggleDelivery(task)}>{task.status === 'complete' ? 'Delivery complete' : 'Mark delivery complete'}</Button> : <Button type="button" variant="outline" onClick={() => createDelivery(w.id)}>Create delivery task</Button>; })()}
                   </li>
                 ))}
               </ul>
@@ -172,8 +174,9 @@ export function SubmissionCard({
                       ))}
                     </SelectContent>
                   </Select>
-                  <input
-                    className="w-32 rounded-md border border-input bg-transparent px-2 py-1.5 text-sm"
+                  <Input
+                    size="compact"
+                    className="w-32"
                     value={roundName}
                     onChange={(e) => setRoundName(e.target.value)}
                     placeholder="Round name"

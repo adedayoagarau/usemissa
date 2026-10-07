@@ -12,6 +12,8 @@ import { OrganizationReviewSettings } from '@/components/organization-review-set
 import { CreateProgramDialog, CreateTeamDialog } from '@/components/organization-structure-actions';
 import { OrganizationCustomizationForm } from '@/components/organization-customization-form';
 import { resolveOrganizationCustomization } from '@/lib/organizationCustomization';
+import { Button } from '@/components/ui/button';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 
 type Query = { section?: string };
 
@@ -67,7 +69,7 @@ export default async function OrganizationSettingsPage({ params, searchParams }:
   return <main id="organization-main" className={styles.main}>
     <header className={styles.header}><div><p className={styles.eyebrow}>Your organization</p><h1>Settings & billing</h1><p>Your organization’s details, teams, brand, messages, review privacy and billing, each in its own section. Anything that isn’t built yet says so.</p></div><span className={styles.role}>{projection.label}</span></header>
     <aside className={styles.boundary}><ShieldCheck aria-hidden="true" /><div><strong>What you can change here</strong><p>Owners and Admins create Teams and Programs under Structure. Brand & appearance, Communications and Review privacy save from this page with validation and an audit entry. Billing, security, integrations and data governance remain read-only until their preview and recovery contracts exist.</p></div></aside>
-    <form className={styles.mobilePicker}><label><span>Settings section</span><select name="section" defaultValue={activeId}>{sections.map((section) => <option key={section.id} value={section.id}>{section.label}</option>)}</select></label><button type="submit">Open</button></form>
+    <form className={styles.mobilePicker}><label><span>Settings section</span><NativeSelect className="w-full *:data-[slot=native-select]:h-11" name="section" defaultValue={activeId}>{sections.map((section) => <NativeSelectOption key={section.id} value={section.id}>{section.label}</NativeSelectOption>)}</NativeSelect></label><Button type="submit">Open</Button></form>
     <div className={styles.control}>
       <nav className={styles.sectionNav} aria-label="Settings sections"><p>Settings</p>{sections.map((section) => { const Icon = sectionIcons[section.id]; return <Link key={section.id} href={`${base}?section=${section.id}`} aria-current={section.id === activeId ? 'page' : undefined}><Icon aria-hidden="true" /><span><strong>{section.label}</strong><small>{section.description}</small></span><i data-state={section.implementation} aria-label={implementationLabel(section.implementation)} /></Link>; })}</nav>
       <section className={styles.panel} aria-labelledby="settings-panel-title">

@@ -9,7 +9,6 @@ import {
   BellOff,
   CalendarDays,
   Check,
-  ChevronDown,
   Clock3,
   FileCheck2,
   FolderKanban,
@@ -24,6 +23,17 @@ import {
 import type { MyStatus, OpportunityType } from "@missa/radar-engine";
 import { CalendarFeedButton } from "@/components/calendar-feed-button";
 import { Button } from "@/components/ui/button";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { UrgencyBadge } from "@/components/missa/deadline-badges";
 import {
   TrackerItemSheet,
@@ -246,14 +256,14 @@ function EmptyTracker({
           Browse Opportunities
         </Link>
         {receiptCount ? (
-          <button
+          <Button
             type="button"
-            className={styles.quietButton}
+            variant="outline"
             onClick={onOpenReceipts}
           >
             <FileCheck2 aria-hidden="true" />
             View {receiptCount === 1 ? "your receipt" : `${receiptCount} receipts`}
-          </button>
+          </Button>
         ) : (
           <Link href="/import" className={styles.quietLink}>
             <Import aria-hidden="true" />
@@ -277,9 +287,9 @@ function SearchZero({
       <Search aria-hidden="true" />
       <h2 id="tracker-zero-title">No Tracker items match “{query}”</h2>
       <p>Try a call, organization, piece or type.</p>
-      <button type="button" className={styles.quietButton} onClick={onClear}>
+      <Button type="button" variant="outline" className={styles.quietButton} onClick={onClear}>
         Clear search
-      </button>
+      </Button>
     </section>
   );
 }
@@ -460,7 +470,8 @@ function TrackerCard({
         {!item.isManual ? (
           <label>
             <span>Status</span>
-            <select
+            <NativeSelect
+              className="w-full"
               aria-label={`Update status for ${item.title}`}
               value={item.myStatus}
               disabled={busy}
@@ -468,23 +479,24 @@ function TrackerCard({
                 onStatus(item, event.target.value as MyStatus)
               }
             >
-              <option value={item.myStatus}>
+              <NativeSelectOption value={item.myStatus}>
                 {STATUS_LABELS[item.myStatus]}
-              </option>
+              </NativeSelectOption>
               {nextStatuses(item.myStatus)
                 .filter((status) => status !== item.myStatus)
                 .map((status) => (
-                  <option value={status} key={status}>
+                  <NativeSelectOption value={status} key={status}>
                     {STATUS_LABELS[status]}
-                  </option>
+                  </NativeSelectOption>
                 ))}
-            </select>
+            </NativeSelect>
           </label>
         ) : null}
         {!item.isManual && works.length ? (
           <label>
             <span>Library Work</span>
-            <select
+            <NativeSelect
+              className="w-full"
               aria-label={`Linked Work for ${item.title}`}
               value={item.workId ?? ""}
               disabled={busy}
@@ -492,43 +504,43 @@ function TrackerCard({
                 onWork(item, event.target.value || undefined)
               }
             >
-              <option value="">Not linked</option>
+              <NativeSelectOption value="">Not linked</NativeSelectOption>
               {works.map((work) => (
-                <option value={work.id} key={work.id}>
+                <NativeSelectOption value={work.id} key={work.id}>
                   {work.title}
-                </option>
+                </NativeSelectOption>
               ))}
-            </select>
+            </NativeSelect>
           </label>
         ) : null}
         {!item.isManual && item.revision ? (
-          <button
+          <Button
             type="button"
-            className={styles.quietButton}
+            variant="outline"
             disabled={busy}
             aria-pressed={Boolean(item.notify)}
             onClick={() => onReminder(item, !item.notify)}
           >
             {item.notify ? <Bell aria-hidden="true" /> : <BellOff aria-hidden="true" />}
             {item.notify ? "Deadline reminders on" : "Deadline reminders off"}
-          </button>
+          </Button>
         ) : null}
         {!item.isManual && item.revision ? (
-          <button
+          <Button
             type="button"
-            className={styles.quietButton}
+            variant="outline"
             disabled={busy}
             onClick={() => onRemove(item)}
           >
             <Trash2 aria-hidden="true" />
             Remove from Tracker
-          </button>
+          </Button>
         ) : null}
       </div>
 
       {error ? <div className={styles.itemError} role="alert">
         <p>{error}</p>
-        {stale ? <button type="button" className={styles.quietButton} onClick={() => window.location.reload()}>Reload latest Tracker state</button> : null}
+        {stale ? <Button type="button" variant="outline" onClick={() => window.location.reload()}>Reload latest Tracker state</Button> : null}
       </div> : null}
       <Link href={action.href} className={styles.rowAction}>
         {action.label}
@@ -1138,8 +1150,9 @@ export function TrackerProduct({
               Start this action <ArrowRight aria-hidden="true" />
             </Link>
           </div>
-          <button
+          <Button
             type="button"
+            variant="account"
             className={styles.firstSaveDismiss}
             onClick={() => {
               setFirstSaveDismissed(true);
@@ -1161,11 +1174,12 @@ export function TrackerProduct({
             }}
           >
             Dismiss guidance
-          </button>
+          </Button>
         </section>
       ) : firstSaveReceipt ? (
-        <button
+        <Button
           type="button"
+          variant="link"
           ref={reopenGuidanceRef}
           className={styles.reopenGuidance}
           onClick={() => {
@@ -1175,7 +1189,7 @@ export function TrackerProduct({
           }}
         >
           Show guidance for {firstSaveReceipt.title}
-        </button>
+        </Button>
       ) : null}
 
       {initialImportId ? (
@@ -1202,20 +1216,21 @@ export function TrackerProduct({
 
       <nav className={styles.views} aria-label="Tracker views">
         {primaryViews.map((candidate) => (
-          <button
+          <Button
             type="button"
+            variant="ghost"
             key={candidate.id}
             aria-current={view === candidate.id ? "page" : undefined}
             data-active={view === candidate.id}
             onClick={() => changeView(candidate.id)}
           >
             {candidate.label}
-          </button>
+          </Button>
         ))}
         <label className={styles.moreViews}>
           <span className="sr-only">More Tracker views</span>
           <ListFilter aria-hidden="true" />
-          <select
+          <NativeSelect
             aria-label="More Tracker views"
             value={
               secondaryViews.some((candidate) => candidate.id === view)
@@ -1226,22 +1241,23 @@ export function TrackerProduct({
               event.target.value && changeView(event.target.value as View)
             }
           >
-            <option value="">More views</option>
+            <NativeSelectOption value="">More views</NativeSelectOption>
             {secondaryViews.map((candidate) => (
-              <option value={candidate.id} key={candidate.id}>
+              <NativeSelectOption value={candidate.id} key={candidate.id}>
                 {candidate.label}
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
-          <ChevronDown aria-hidden="true" />
+          </NativeSelect>
         </label>
       </nav>
 
       <div className={styles.toolbar}>
-        <label className={styles.search}>
-          <Search aria-hidden="true" />
-          <span className="sr-only">Search Tracker</span>
-          <input
+        <InputGroup className={styles.search}>
+          <InputGroupAddon>
+            <Search aria-hidden="true" />
+          </InputGroupAddon>
+          <InputGroupInput
+            aria-label="Search Tracker"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onBlur={() => updateUrl({ q: query.trim() || undefined })}
@@ -1252,17 +1268,18 @@ export function TrackerProduct({
             placeholder="Search Tracker"
           />
           {query ? (
-            <button
-              type="button"
-              onClick={() => {
-                setQuery("");
-                updateUrl({ q: undefined });
-              }}
-            >
-              Clear
-            </button>
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton
+                onClick={() => {
+                  setQuery("");
+                  updateUrl({ q: undefined });
+                }}
+              >
+                Clear
+              </InputGroupButton>
+            </InputGroupAddon>
           ) : null}
-        </label>
+        </InputGroup>
         <span>
           {visibleItems.length} {visibleItems.length === 1 ? "item" : "items"}
         </span>
@@ -1285,8 +1302,9 @@ export function TrackerProduct({
             </h2>
             <span>It may have been removed. Your other items are below.</span>
           </div>
-          <button
+          <Button
             type="button"
+            variant="outline"
             className={styles.quietButton}
             onClick={() => {
               setMissingApplication(false);
@@ -1294,7 +1312,7 @@ export function TrackerProduct({
             }}
           >
             Dismiss
-          </button>
+          </Button>
         </section>
       ) : null}
 
@@ -1329,34 +1347,27 @@ export function TrackerProduct({
 
       {items.length && visibleItems.length && view === "active" ? (
         <>
-          <div
+          <ToggleGroup
             className={styles.layoutSwitch}
-            role="group"
+            variant="outline"
+            size="lg"
+            spacing={0}
             aria-label="Active Tracker layout"
-          >
-            <button
-              type="button"
-              aria-pressed={layout === "actions"}
-              data-active={layout === "actions"}
-              onClick={() => {
+            value={[layout]}
+            onValueChange={(value) => {
+              const next = value[0];
+              if (next === "actions") {
                 setLayout("actions");
                 updateUrl({ layout: undefined });
-              }}
-            >
-              Next actions
-            </button>
-            <button
-              type="button"
-              aria-pressed={layout === "board"}
-              data-active={layout === "board"}
-              onClick={() => {
+              } else if (next === "board") {
                 setLayout("board");
                 updateUrl({ layout: "board" });
-              }}
-            >
-              Stage board
-            </button>
-          </div>
+              }
+            }}
+          >
+            <ToggleGroupItem value="actions">Next actions</ToggleGroupItem>
+            <ToggleGroupItem value="board">Stage board</ToggleGroupItem>
+          </ToggleGroup>
 
           {layout === "actions" ? (
             <div className={styles.actionsLayout}>
@@ -1405,8 +1416,9 @@ export function TrackerProduct({
                           </small>
                         </span>
                         {tracked ? (
-                          <button
+                          <Button
                             type="button"
+                            variant="link"
                             className={styles.attentionButton}
                             aria-haspopup="dialog"
                             onClick={(event) => openDetails(tracked, event.currentTarget)}
@@ -1414,7 +1426,7 @@ export function TrackerProduct({
                             Open plan
                             <span className="sr-only"> for {tracked.title}</span>
                             <ArrowRight aria-hidden="true" />
-                          </button>
+                          </Button>
                         ) : null}
                       </div>
                     );
@@ -1588,13 +1600,14 @@ export function TrackerProduct({
                 Submitted Opportunities will keep their receipt, Work snapshot,
                 messages, and decisions here.
               </p>
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 className={styles.quietButton}
                 onClick={() => changeView("active")}
               >
                 Open active Tracker
-              </button>
+              </Button>
             </section>
           ) : null}
         </section>

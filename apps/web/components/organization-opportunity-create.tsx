@@ -6,6 +6,7 @@ import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 
 export function OrganizationOpportunityCreate({ organizationId, programs, claimedListings = [] }: { organizationId: string; programs: Array<{ id: string; name: string; teamName: string }>; claimedListings?: Array<{ id: string; title: string }> }) {
   const router = useRouter();
@@ -27,8 +28,8 @@ export function OrganizationOpportunityCreate({ organizationId, programs, claime
 
   return <form onSubmit={submit}>
     <div><Label htmlFor="opportunity-title">Public title</Label><Input id="opportunity-title" name="title" required autoFocus maxLength={180} placeholder="e.g. New Voices Residency" aria-describedby="opportunity-title-help opportunity-create-error" /><p id="opportunity-title-help">Use the title applicants will recognize. You can revise it before publication.</p></div>
-    <div><Label htmlFor="opportunity-program">Program</Label><select id="opportunity-program" name="programId" required defaultValue=""><option value="" disabled>Choose a program</option>{programs.map((program) => <option key={program.id} value={program.id}>{program.name} · {program.teamName}</option>)}</select><p>The program keeps the call, its submissions, reviews and reporting in the right scope.</p></div>
-    {claimedListings.length ? <div><Label htmlFor="opportunity-listing">Missa listing <span>(optional)</span></Label><select id="opportunity-listing" name="radarOpportunityId" defaultValue="" aria-describedby="opportunity-listing-help"><option value="">Not linked to a listing</option>{claimedListings.map((listing) => <option key={listing.id} value={listing.id}>{listing.title}</option>)}</select><p id="opportunity-listing-help">Link the public Missa listing your organization claimed. Applicants who track that listing then see your decisions in their Tracker.</p></div> : null}
+    <div><Label htmlFor="opportunity-program">Program</Label><NativeSelect className="w-full" id="opportunity-program" name="programId" required defaultValue=""><NativeSelectOption value="" disabled>Choose a program</NativeSelectOption>{programs.map((program) => <NativeSelectOption key={program.id} value={program.id}>{program.name} · {program.teamName}</NativeSelectOption>)}</NativeSelect><p>The program keeps the call, its submissions, reviews and reporting in the right scope.</p></div>
+    {claimedListings.length ? <div><Label htmlFor="opportunity-listing">Missa listing <span>(optional)</span></Label><NativeSelect className="w-full" id="opportunity-listing" name="radarOpportunityId" defaultValue="" aria-describedby="opportunity-listing-help"><NativeSelectOption value="">Not linked to a listing</NativeSelectOption>{claimedListings.map((listing) => <NativeSelectOption key={listing.id} value={listing.id}>{listing.title}</NativeSelectOption>)}</NativeSelect><p id="opportunity-listing-help">Link the public Missa listing your organization claimed. Applicants who track that listing then see your decisions in their Tracker.</p></div> : null}
     {error ? <p id="opportunity-create-error" role="alert">{error}</p> : <span id="opportunity-create-error" />}
     <Button type="submit" disabled={pending}>{pending ? 'Creating draft…' : <>Create draft<ArrowRight aria-hidden="true" /></>}</Button>
   </form>;

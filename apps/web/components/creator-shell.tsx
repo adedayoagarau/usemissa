@@ -186,8 +186,10 @@ export function CreatorShell({
             size="app"
             className={styles.wordmark}
           />
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="icon-sm"
             className={styles.collapseButton}
             onClick={toggleRail}
             aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
@@ -198,7 +200,7 @@ export function CreatorShell({
             ) : (
               <PanelLeftClose aria-hidden="true" />
             )}
-          </button>
+          </Button>
         </div>
         {navigation}
         <div className={styles.account}>
@@ -220,13 +222,15 @@ export function CreatorShell({
                 Plan
               </Link>
             )}
-            <button
+            <Button
               type="button"
+              variant="account"
+              size="xs"
               disabled={applicationsPreview}
               onClick={() => void signOut()}
             >
               {applicationsPreview ? "Preview only" : "Log out"}
-            </button>
+            </Button>
           </div>
           {logoutError ? (
             <p role="alert">Couldn’t log out. Try again.</p>
@@ -265,14 +269,15 @@ export function CreatorShell({
               Plan
             </Link>
           )}
-          <button
+          <Button
+            variant="ghost"
             className={styles.mobileLogout}
             disabled={applicationsPreview}
             type="button"
             onClick={() => void signOut()}
           >
             {applicationsPreview ? "Preview only" : "Log out"}
-          </button>
+          </Button>
         </SheetContent>
       </Sheet>
       <div className={styles.content}>{children}</div>

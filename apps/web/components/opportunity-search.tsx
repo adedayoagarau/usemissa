@@ -3,6 +3,7 @@
 import { FormEvent, useState, useTransition } from 'react';
 import { LoaderCircle, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { InputGroupInput } from '@/components/ui/input-group';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { captureProductEvent } from '@/components/analytics-provider';
 import styles from './opportunity-search.module.css';
@@ -32,7 +33,7 @@ export function OpportunitySearch({ category, initialQuery }: { category: string
   return (
     <form onSubmit={submit} role="search" className={styles.form}>
       <Search className={styles.leadingIcon} aria-hidden="true" />
-      <input
+      <InputGroupInput
         value={value}
         onChange={(event) => setValue(event.target.value)}
         name="q"
@@ -41,14 +42,15 @@ export function OpportunitySearch({ category, initialQuery }: { category: string
         className={styles.input}
       />
       {value ? (
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-xs"
           onClick={() => setValue('')}
           aria-label="Clear search"
-          className={styles.clearButton}
         >
           <X className="size-4" aria-hidden="true" />
-        </button>
+        </Button>
       ) : null}
       <Button type="submit" disabled={pending} className={styles.submit} aria-label="Search opportunities">
         {pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Search className="size-4" aria-hidden="true" />}

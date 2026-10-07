@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
 import { TaxonomyBrowsePicker } from '@/components/taxonomy-browse-picker';
 import { captureProductEvent } from '@/components/analytics-provider';
@@ -183,7 +184,7 @@ export function WorkDetailProduct({ work, currentFile, currentFileMissing, files
       {error && !editOpen && !deleteOpen ? <p className={styles.error} role="alert">{error}</p> : null}
 
       <nav className={styles.nav} aria-label="Work detail views">
-        {(['overview', 'files', 'practice', 'history'] as WorkDetailSection[]).map((item) => <button key={item} type="button" aria-current={section === item ? 'page' : undefined} onClick={() => chooseSection(item)}>{item === 'practice' ? 'Details' : item.slice(0, 1).toLocaleUpperCase() + item.slice(1)}</button>)}
+        {(['overview', 'files', 'practice', 'history'] as WorkDetailSection[]).map((item) => <Button key={item} type="button" variant="ghost" aria-current={section === item ? 'page' : undefined} onClick={() => chooseSection(item)}>{item === 'practice' ? 'Details' : item.slice(0, 1).toLocaleUpperCase() + item.slice(1)}</Button>)}
       </nav>
 
       {section === 'overview' ? <div className={styles.body}>
@@ -222,7 +223,7 @@ export function WorkDetailProduct({ work, currentFile, currentFileMissing, files
             <div className={styles.formBody}>
               <div><Label htmlFor="edit-work-title">Work title</Label><Input id="edit-work-title" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} required /><p>{title.length}/200 characters</p></div>
               <div><Label htmlFor="edit-work-description">Description <span>Optional</span></Label><Textarea id="edit-work-description" value={description} onChange={(event) => setDescription(event.target.value)} maxLength={4000} rows={5} /><p>{description.length}/4,000 characters</p></div>
-              <div><Label htmlFor="edit-work-file">Current file <span>Optional</span></Label><select id="edit-work-file" value={fileId} onChange={(event) => setFileId(event.target.value)}><option value="">No current file</option>{files.map((file) => <option key={file.id} value={file.id}>{file.filename}</option>)}</select><p>Changing this selection does not delete the previous file or alter a submitted receipt.</p></div>
+              <div><Label htmlFor="edit-work-file">Current file <span>Optional</span></Label><NativeSelect id="edit-work-file" className="w-full" value={fileId} onChange={(event) => setFileId(event.target.value)}><NativeSelectOption value="">No current file</NativeSelectOption>{files.map((file) => <NativeSelectOption key={file.id} value={file.id}>{file.filename}</NativeSelectOption>)}</NativeSelect><p>Changing this selection does not delete the previous file or alter a submitted receipt.</p></div>
               <fieldset><legend>Work details <span>Optional · up to 32</span></legend><TaxonomyBrowsePicker idPrefix={`edit-work-${work.id}`} selectedTermIds={termIds} onSelectedTermIdsChange={setTermIds} description="Choose terms that describe the piece. They stay private and don’t decide eligibility or quality." /></fieldset>
               {error ? <p className={styles.error} role="alert">{error}</p> : null}
             </div>

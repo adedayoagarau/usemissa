@@ -389,7 +389,7 @@ function InquiryDialog({
                 Say who you are, what you have in mind and any dates or fees.
               </FieldDescription>
             </Field>
-            <input
+            <Input
               className={styles.trap}
               tabIndex={-1}
               autoComplete="off"

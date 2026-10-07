@@ -9,12 +9,8 @@
 .summary div { padding: 16px; background: var(--background); }
 .summary dt { color: var(--muted-foreground); font-size: .64rem; }
 .summary dd { margin: 7px 0 0; font-family: var(--font-mono), monospace; font-size: 1.2rem; }
-.filters { display: flex; gap: 10px; margin-top: 22px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: color-mix(in srgb, var(--muted) 48%, white); }
+.filters { display: flex; align-items: end; gap: 10px; margin-top: 22px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: color-mix(in srgb, var(--muted) 48%, white); }
 .filters label { display: grid; min-width: 190px; flex: 1; gap: 5px; color: var(--muted-foreground); font-size: .66rem; font-weight: 650; }
-.filters input, .filters select { min-height: 44px; padding: 0 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--background); color: var(--foreground); font: inherit; font-size: .76rem; }
-.filters button, .clear { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; align-self: end; padding: 0 14px; border-radius: 8px; font-size: .73rem; font-weight: 700; text-decoration: none; }
-.filters button { background: var(--foreground); color: white; }
-.clear { border: 1px solid var(--border); color: var(--foreground); }
 .desk { display: grid; grid-template-columns: minmax(330px, .78fr) minmax(0, 1.22fr); gap: 28px; align-items: start; margin-top: 32px; }
 .queueHeader { display: flex; align-items: end; justify-content: space-between; gap: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
 .queueHeader h2, .queueHeader p { margin: 0; }

@@ -153,23 +153,25 @@ export function SubmitResidencyReviewDialog({
               {[1, 2, 3, 4, 5].map((star) => {
                 const active = (hoverRating ?? rating) >= star;
                 return (
-                  <button
+                  <Button
                     key={star}
                     type="button"
+                    variant="ghost"
+                    size="icon-sm"
                     onClick={() => setRating(star)}
                     onMouseEnter={() => setHoverRating(star)}
                     onMouseLeave={() => setHoverRating(null)}
-                    className="rounded-md p-1 transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
                     aria-label={`Rate ${star} of 5 stars`}
                   >
                     <Star
-                      className={`h-6 w-6 transition-transform ${
+                      aria-hidden="true"
+                      className={`size-6 transition-transform ${
                         active
                           ? "scale-110 fill-warning text-warning"
                           : "text-muted-foreground/40 hover:text-muted-foreground"
                       }`}
                     />
-                  </button>
+                  </Button>
                 );
               })}
               <span className="ml-2 font-mono text-sm font-semibold text-foreground">

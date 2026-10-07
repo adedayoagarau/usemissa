@@ -1,6 +1,9 @@
 'use client';
 
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, ReferenceLine, XAxis, YAxis } from 'recharts';
+import { ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 
 export interface SeriesSpec {
@@ -98,10 +101,13 @@ export default function TimeSeriesChart({
           </AreaChart>
         )}
       </ChartContainer>
-      <details className="mt-2 text-xs text-muted-foreground">
-        <summary className="cursor-pointer">View as table</summary>
-        <div className="mt-2 max-h-64 overflow-auto">
-          <table className="w-full text-left">
+      <Collapsible className="mt-2 text-xs">
+        <CollapsibleTrigger render={<Button type="button" variant="link" size="xs" />}>
+          View as table
+          <ChevronDown aria-hidden="true" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2 max-h-64 overflow-auto">
+          <table className="w-full text-left text-muted-foreground">
             <caption className="sr-only">{caption}</caption>
             <thead>
               <tr>
@@ -118,8 +124,8 @@ export default function TimeSeriesChart({
               ))}
             </tbody>
           </table>
-        </div>
-      </details>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }

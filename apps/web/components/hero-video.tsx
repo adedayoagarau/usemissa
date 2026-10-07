@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import styles from '@/app/home.module.css';
 
 type HeroVideoProps = {
@@ -74,16 +75,18 @@ export function HeroVideo({ videoUrl, poster }: HeroVideoProps) {
         <div className={styles.videoWash} />
         <div className={styles.halftone} />
       </div>
-      <button
+      <Button
         className={styles.videoControl}
         type="button"
+        variant="outline"
+        size="sm"
         onClick={togglePlayback}
         disabled={reducedMotion}
         aria-label={reducedMotion ? 'Hero video disabled for reduced motion' : isPlaying ? 'Pause hero video' : 'Play hero video'}
         aria-pressed={isPlaying}
       >
         {isPlaying ? 'Pause film' : 'Play film'}
-      </button>
+      </Button>
     </>
   );
 }

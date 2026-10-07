@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 
 const roles = ['member', 'admin', 'owner', 'team-admin', 'program-manager', 'reviewer', 'finance', 'legal', 'viewer', 'guest'] as const;
 type Member = { accountId: string; email: string; role: string };
@@ -112,20 +114,20 @@ export function OrganizationSeats({ organizationId, canManage }: { organizationI
             <span className="min-w-0 truncate text-sm text-foreground">{member.email}</span>
             <div className="flex items-center gap-2">
               {canManage ? (
-                <select aria-label={`Role for ${member.email}`} value={member.role} onChange={(event) => void changeRole(member.accountId, event.target.value)} className="rounded-md border border-border bg-card px-2 py-1.5 text-sm text-foreground">
+                <NativeSelect aria-label={`Role for ${member.email}`} value={member.role} onChange={(event) => void changeRole(member.accountId, event.target.value)}>
                   {roles.map((role) => (
-                    <option key={role} value={role}>
+                    <NativeSelectOption key={role} value={role}>
                       {role.replace('-', ' ')}
-                    </option>
+                    </NativeSelectOption>
                   ))}
-                </select>
+                </NativeSelect>
               ) : (
                 <span className="text-sm text-muted-foreground capitalize">{member.role.replace('-', ' ')}</span>
               )}
               {canManage && (
-                <button type="button" onClick={() => void remove(member.accountId)} className="rounded-md border border-border px-2 py-1.5 text-sm text-muted-foreground hover:border-destructive hover:text-destructive">
+                <Button type="button" variant="outline" size="sm" onClick={() => void remove(member.accountId)}>
                   Remove
-                </button>
+                </Button>
               )}
             </div>
           </div>

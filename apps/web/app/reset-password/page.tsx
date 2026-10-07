@@ -146,9 +146,11 @@ function ResetPasswordForm() {
                 fieldError ? "password-error" : "password-guidance"
               }
             />
-            <button
+            <Button
               type="button"
-              className={styles.passwordToggle}
+              variant="ghost"
+              size="icon"
+              className="absolute top-0 right-0"
               onClick={() => setShowPassword((value) => !value)}
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
@@ -157,7 +159,7 @@ function ResetPasswordForm() {
               ) : (
                 <Eye className="size-4" />
               )}
-            </button>
+            </Button>
           </div>
           <p
             id="password-guidance"

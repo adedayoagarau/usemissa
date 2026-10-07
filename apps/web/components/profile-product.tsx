@@ -291,9 +291,10 @@ function MatchingGroup({
     <Collapsible open={open} onOpenChange={setOpen} variant="divided">
       <CollapsibleTrigger
         render={
-          <button
+          <Button
             type="button"
-            className="flex min-h-18 w-full flex-wrap items-center gap-x-6 gap-y-1 rounded-lg py-2 text-start hover:bg-muted/60"
+            variant="ghost"
+            className="h-auto min-h-18 w-full flex-wrap justify-start text-start whitespace-normal"
           />
         }
       >
@@ -823,12 +824,13 @@ export function ProfileProduct({
                 {group.label}
               </span>
               {group.sections.map((section) => (
-                <button
+                <Button
                   key={section}
                   type="button"
+                  variant={active === section ? "secondary" : "ghost"}
                   onClick={() => navigate(section)}
                   aria-current={active === section ? "page" : undefined}
-                  className={`flex min-h-11 shrink-0 items-center justify-between gap-3 rounded-lg px-3 text-start text-sm whitespace-nowrap hover:bg-muted/60 ${active === section ? "bg-muted/60 font-semibold text-primary" : "text-foreground"}`}
+                  className="shrink-0 justify-between text-start"
                 >
                   <span>{SECTION_LABELS[section]}</span>
                   {navMeta[section] ? (
@@ -836,7 +838,7 @@ export function ProfileProduct({
                       {navMeta[section]}
                     </span>
                   ) : null}
-                </button>
+                </Button>
               ))}
             </div>
           ))}

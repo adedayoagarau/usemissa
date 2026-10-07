@@ -5,7 +5,11 @@ import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Progress } from '@/components/ui/progress';
 import type { SubmissionField } from '@missa/workspace-engine';
+
+const selectClass = 'mt-2 w-full *:data-[slot=native-select]:h-11';
 
 /**
  * Story 6.5: the submitter-facing submit form, rendering the fields Story
@@ -206,18 +210,18 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
       {categories.length > 0 && (
         <div>
           <Label htmlFor="category">Category — Required</Label>
-          <select
+          <NativeSelect
             id="category"
-            className="mt-2 min-h-11 w-full rounded-md border border-input bg-card px-3 py-2 text-sm"
+            className={selectClass}
             value={category}
             onChange={(e) => setCategory(e.target.value)}
           >
             {categories.map((c) => (
-              <option key={c} value={c}>
+              <NativeSelectOption key={c} value={c}>
                 {c}
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
+          </NativeSelect>
         </div>
       )}
       <section className="space-y-3 rounded-lg border border-border p-4" aria-labelledby="application-works-title">
@@ -228,14 +232,14 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
         <div key={f.id}>
           <Label htmlFor={f.id}>{f.label} — {f.required ? 'Required' : 'Optional'}</Label>
           {f.helpText ? <p className="mt-1 text-xs leading-5 text-muted-foreground">{f.helpText}</p> : null}
-          {f.type === 'file-upload' ? <><input id={f.id} name={f.id} type="file" required={f.required && !values[f.id]} className="mt-2 block min-h-11 w-full text-sm" /><p className="mt-1 text-xs text-muted-foreground">Maximum 25 MB. Files are checked before they are attached to your packet; interrupted uploads can retry.</p></> : f.type === 'category-select' ? <select id={f.id} name={f.id} required={f.required} value={values[f.id] ?? category} onChange={(e) => { setField(f.id, e.target.value); setCategory(e.target.value); }} className="mt-2 min-h-11 w-full rounded-md border border-input bg-card px-3 py-2 text-sm"><option value="">Choose a category</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select> : f.type === 'fee-toggle' ? <p className="mt-2 text-sm text-muted-foreground">The application fee is reviewed before external checkout. Payment and submission receipt remain separate states.</p> : <Input id={f.id} name={f.id} required={f.required} className="mt-2 min-h-11" onChange={(e) => setField(f.id, e.target.value)} />}
+          {f.type === 'file-upload' ? <><input id={f.id} name={f.id} type="file" required={f.required && !values[f.id]} className="mt-2 block min-h-11 w-full text-sm" /><p className="mt-1 text-xs text-muted-foreground">Maximum 25 MB. Files are checked before they are attached to your packet; interrupted uploads can retry.</p></> : f.type === 'category-select' ? <NativeSelect id={f.id} name={f.id} required={f.required} value={values[f.id] ?? category} onChange={(e) => { setField(f.id, e.target.value); setCategory(e.target.value); }} className={selectClass}><NativeSelectOption value="">Choose a category</NativeSelectOption>{categories.map((item) => <NativeSelectOption key={item} value={item}>{item}</NativeSelectOption>)}</NativeSelect> : f.type === 'fee-toggle' ? <p className="mt-2 text-sm text-muted-foreground">The application fee is reviewed before external checkout. Payment and submission receipt remain separate states.</p> : <Input id={f.id} name={f.id} required={f.required} className="mt-2 min-h-11" onChange={(e) => setField(f.id, e.target.value)} />}
         </div>
       ))}</section> : <section aria-labelledby="application-questions-title"><h3 id="application-questions-title" className="text-sm font-semibold">No organization questions</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">This form asks only for your work.</p></section>}
       {reviewing ? <aside className="rounded-lg border border-[var(--green)]/40 bg-[var(--green)]/5 p-4 text-sm leading-6" aria-labelledby="application-review-title"><strong id="application-review-title" className="block text-foreground">Review your application</strong><dl className="mt-3 grid gap-2 sm:grid-cols-2"><div><dt className="text-xs text-muted-foreground">Category</dt><dd>{category || 'Not selected'}</dd></div><div><dt className="text-xs text-muted-foreground">Works</dt><dd>{workTitles.filter((title) => title.trim()).length}</dd></div><div className="sm:col-span-2"><dt className="text-xs text-muted-foreground">Questions answered</dt><dd>{answeredFields.length} of {visibleFields.filter((field) => field.type !== 'file-upload').length}</dd></div></dl><div className="mt-4 space-y-2 border-t border-[var(--green)]/20 pt-3"><strong className="block text-xs uppercase tracking-[.08em] text-muted-foreground">Packet check</strong><ul className="space-y-1 text-sm"><li>{workTitles.filter((title) => title.trim()).length} titled Work{workTitles.filter((title) => title.trim()).length === 1 ? '' : 's'}</li><li>{Object.values(workFileUrls).flat().length + Object.values(workFileInputs).reduce((count, files) => count + files.length, 0)} Work file{Object.values(workFileUrls).flat().length + Object.values(workFileInputs).reduce((count, files) => count + files.length, 0) === 1 ? '' : 's'} attached</li><li>{answeredFields.length} visible question{answeredFields.length === 1 ? '' : 's'} answered</li></ul></div><p className="mt-3 text-xs text-muted-foreground">Confirming submits this exact packet to the organization. After submission, the receipt is immutable and edits are no longer available here.</p></aside> : <aside className="rounded-lg border border-border bg-muted/30 p-4 text-xs leading-5 text-muted-foreground"><strong className="block text-foreground">Before submitting</strong>Check each piece, file, category and answer before you go on.</aside>}
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-end"><Button type="button" variant="outline" disabled={isPending} onClick={saveDraft}>{isPending ? 'Saving…' : 'Save draft'}</Button>{reviewing ? <Button type="button" variant="outline" disabled={isPending} onClick={() => setReviewing(false)}>Back to edit</Button> : null}<Button type="submit" disabled={isPending}>{isPending ? 'Submitting…' : reviewing ? submitLabel : 'Review application'}</Button></div>
       {draftMessage ? <p className="text-xs text-[var(--success)]" role="status">{draftMessage}</p> : null}
       {uploadMessage ? <p className="text-xs text-muted-foreground" role="status">{uploadMessage}</p> : null}
-      {Object.entries(uploadProgress).map(([filename, progress]) => <div key={filename} className="space-y-1" aria-label={`${filename} upload progress`}><div className="flex justify-between text-xs text-muted-foreground"><span className="truncate">{filename}</span><span>{progress}%</span></div><progress className="h-2 w-full" max={100} value={progress}>{progress}%</progress></div>)}
+      {Object.entries(uploadProgress).map(([filename, progress]) => <div key={filename} className="space-y-1" aria-label={`${filename} upload progress`}><div className="flex justify-between text-xs text-muted-foreground"><span className="truncate">{filename}</span><span>{progress}%</span></div><Progress value={progress} aria-label={`${filename} upload progress`} className="*:data-[slot=progress-track]:h-2" /></div>)}
       {result && !result.ok && <p className="text-xs text-destructive" role="alert">{result.message}</p>}
     </form>
   );

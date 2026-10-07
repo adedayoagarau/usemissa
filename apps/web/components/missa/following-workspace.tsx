@@ -213,12 +213,14 @@ export function FollowingWorkspace() {
               </p>
               <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {data.items.map((item) => (
-                  <button
+                  <Button
                     key={item.id}
                     type="button"
+                    variant="choice"
+                    size="choice"
                     aria-label={`Open ${item.name}`}
                     onClick={() => open(item)}
-                    className="flex min-h-56 flex-col items-start gap-5 rounded-xl border border-border bg-card p-5 text-start outline-offset-4 hover:border-primary focus-visible:outline-2 focus-visible:outline-ring"
+                    className="min-h-56 flex-col items-start"
                   >
                     <div className="flex w-full items-center justify-between gap-3">
                       <Avatar className="size-12">
@@ -259,7 +261,7 @@ export function FollowingWorkspace() {
                       </span>
                       <ArrowRight className="size-4 text-primary" />
                     </div>
-                  </button>
+                  </Button>
                 ))}
               </div>
               {!data.items.length ? (
@@ -478,15 +480,17 @@ function FollowingDetail({
                 <section className="space-y-3">
                   <h2 className="font-sans text-xl font-semibold"><Sp>Programs</Sp></h2>
                   {data.programs.map((p) => (
-                    <button
-                      key={p.id}
+                    <div key={p.id} className="border-b border-border py-1">
+                    <Button
                       type="button"
-                      className="flex min-h-14 w-full items-center justify-between gap-3 border-b border-border py-3 text-start text-primary"
+                      variant="link"
+                      className="h-auto min-h-12 w-full justify-between text-start whitespace-normal"
                       onClick={() => onOpen({ kind: "program", id: p.id })}
                     >
                       {p.name}
                       <ArrowRight className="size-4 shrink-0" />
-                    </button>
+                    </Button>
+                    </div>
                   ))}
                 </section>
               ) : null}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { FitScore } from "@missa/radar-engine";
 
 /**
@@ -33,11 +34,12 @@ export function FitScoreBadge({ fit }: { fit: FitScore }) {
 
   return (
     <div>
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="xs"
         aria-expanded={expanded}
         onClick={() => hasReasons && setExpanded((e) => !e)}
-        className="inline-flex items-center gap-1"
       >
         <Badge className={LEVEL_VARIANT[fit.level]}>
           {LEVEL_LABEL[fit.level]}
@@ -47,7 +49,7 @@ export function FitScoreBadge({ fit }: { fit: FitScore }) {
             {expanded ? "hide reasons" : "why?"}
           </span>
         )}
-      </button>
+      </Button>
       {expanded && (
         <ul className="mt-1 space-y-0.5 text-sm">
           {fit.reasons.map((r) => (

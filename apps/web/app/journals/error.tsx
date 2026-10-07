@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+
 export default function JournalsError({
   reset,
 }: {
@@ -28,13 +30,9 @@ export default function JournalsError({
         The published journals and small presses are temporarily unavailable.
         Try again, or return to the directory later.
       </p>
-      <button
-        type="button"
-        onClick={reset}
-        className="mt-6 inline-flex min-h-11 items-center rounded-lg bg-primary px-5 font-medium text-primary-foreground hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-      >
+      <Button type="button" onClick={reset} className="mt-6">
         Try again
-      </button>
+      </Button>
     </main>
   );
 }

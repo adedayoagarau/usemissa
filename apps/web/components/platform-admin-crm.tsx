@@ -10,6 +10,9 @@ import {
 import type { AdminArea } from "@/lib/platformAdmin";
 import type { PlatformAdminCrmData } from "@/lib/platformAdminFoundations";
 import { captureProductEvent } from "@/components/analytics-provider";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 function dateLabel(value?: string): string {
   if (!value) return "Not observed";
@@ -294,11 +297,10 @@ export default function PlatformAdminCrm({
             </div>
             <label className="mt-4 block">
               <span className="sr-only">Search CRM timeline</span>
-              <input
+              <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search organization, event, or note…"
-                className="h-10 w-full border border-border bg-card px-3 text-sm outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </label>
           </div>
@@ -355,44 +357,44 @@ export default function PlatformAdminCrm({
               <span className="text-xs font-medium text-foreground">
                 Organization ID
               </span>
-              <input
+              <Input
                 required
                 value={organizationId}
                 onChange={(event) => setOrganizationId(event.target.value)}
                 placeholder="org_…"
-                className="mt-1 h-10 w-full border border-border px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="mt-1"
               />
             </label>
             <label className="block">
               <span className="text-xs font-medium text-foreground">Title</span>
-              <input
+              <Input
                 required
                 maxLength={240}
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder="Onboarding follow-up"
-                className="mt-1 h-10 w-full border border-border px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="mt-1"
               />
             </label>
             <label className="block">
               <span className="text-xs font-medium text-foreground">Note</span>
-              <textarea
+              <Textarea
                 required
                 maxLength={4000}
                 value={body}
                 onChange={(event) => setBody(event.target.value)}
                 rows={6}
                 placeholder="What should the next operator know?"
-                className="mt-1 w-full resize-y border border-border px-3 py-2 text-sm leading-6 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="mt-1 resize-y"
               />
             </label>
-            <button
+            <Button
               type="submit"
               disabled={saving || !area.data.available}
-              className="min-h-10 w-full bg-foreground px-4 text-sm font-medium text-white hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full"
             >
               {saving ? "Saving…" : "Record internal note"}
-            </button>
+            </Button>
             {message && (
               <p
                 role="status"
@@ -489,21 +491,25 @@ export default function PlatformAdminCrm({
                     )}
                   </div>
                   {task.status === "done" ? (
-                    <button
+                    <Button
                       type="button"
+                      variant="link"
+                      size="xs"
                       onClick={() => updateTask(task.id, "open")}
-                      className="shrink-0 text-xs font-medium text-accent-deep underline underline-offset-4"
+                      className="shrink-0"
                     >
                       Reopen
-                    </button>
+                    </Button>
                   ) : (
-                    <button
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="xs"
                       onClick={() => updateTask(task.id, "done")}
-                      className="shrink-0 border border-border px-2.5 py-1.5 text-xs font-medium hover:border-primary hover:text-primary"
+                      className="shrink-0"
                     >
                       Mark done
-                    </button>
+                    </Button>
                   )}
                 </article>
               ))}
@@ -525,41 +531,41 @@ export default function PlatformAdminCrm({
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className="block">
               <span className="text-xs font-medium">Name</span>
-              <input
+              <Input
                 required
                 value={contactName}
                 onChange={(event) => setContactName(event.target.value)}
-                className="mt-1 h-10 w-full border border-border px-3 text-sm"
+                className="mt-1"
                 placeholder="Jane Doe"
               />
             </label>
             <label className="block">
               <span className="text-xs font-medium">Email</span>
-              <input
+              <Input
                 type="email"
                 value={contactEmail}
                 onChange={(event) => setContactEmail(event.target.value)}
-                className="mt-1 h-10 w-full border border-border px-3 text-sm"
+                className="mt-1"
                 placeholder="jane@example.org"
               />
             </label>
           </div>
           <label className="mt-3 block">
             <span className="text-xs font-medium">Role</span>
-            <input
+            <Input
               value={contactRole}
               onChange={(event) => setContactRole(event.target.value)}
-              className="mt-1 h-10 w-full border border-border px-3 text-sm"
+              className="mt-1"
               placeholder="Programme director"
             />
           </label>
-          <button
+          <Button
             type="submit"
             disabled={saving || !area.data.available}
-            className="mt-4 min-h-10 bg-foreground px-4 text-sm font-medium text-white disabled:opacity-50"
+            className="mt-4"
           >
             Record contact
-          </button>
+          </Button>
         </form>
         <form onSubmit={addTask} className="border border-border bg-card p-5">
           <h2 className="text-lg font-semibold tracking-tight text-foreground">
@@ -567,40 +573,40 @@ export default function PlatformAdminCrm({
           </h2>
           <label className="mt-4 block">
             <span className="text-xs font-medium">Title</span>
-            <input
+            <Input
               required
               value={taskTitle}
               onChange={(event) => setTaskTitle(event.target.value)}
-              className="mt-1 h-10 w-full border border-border px-3 text-sm"
+              className="mt-1"
               placeholder="Send onboarding pack"
             />
           </label>
           <label className="mt-3 block">
             <span className="text-xs font-medium">Due date</span>
-            <input
+            <Input
               type="date"
               value={taskDueAt}
               onChange={(event) => setTaskDueAt(event.target.value)}
-              className="mt-1 h-10 w-full border border-border px-3 text-sm"
+              className="mt-1"
             />
           </label>
           <label className="mt-3 block">
             <span className="text-xs font-medium">Description</span>
-            <textarea
+            <Textarea
               value={taskDescription}
               onChange={(event) => setTaskDescription(event.target.value)}
               rows={3}
-              className="mt-1 w-full border border-border px-3 py-2 text-sm"
+              className="mt-1"
               placeholder="What should happen next?"
             />
           </label>
-          <button
+          <Button
             type="submit"
             disabled={saving || !area.data.available}
-            className="mt-4 min-h-10 bg-foreground px-4 text-sm font-medium text-white disabled:opacity-50"
+            className="mt-4"
           >
             Create follow-up
-          </button>
+          </Button>
         </form>
       </section>
       <p className="text-xs leading-5 text-muted-foreground">

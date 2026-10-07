@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   Check,
@@ -16,6 +16,12 @@ import type {
   PortfolioStrategyPlan,
 } from "@missa/radar-engine";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import { Toggle } from "@/components/ui/toggle";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { MagazineScheduleBadge } from "@/components/ui/magazine-schedule-badge";
@@ -49,6 +55,7 @@ export function SmartShortlistBuilder({
   const [simultaneousOnly, setSimultaneousOnly] = useState(true);
   const [fastOnly, setFastOnly] = useState(false);
   const [pieceTitle, setPieceTitle] = useState("");
+  const fieldId = useId();
 
   const [plan, setPlan] = useState<PortfolioStrategyPlan | undefined>(
     initialPlan,
@@ -153,59 +160,62 @@ export function SmartShortlistBuilder({
         <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {/* Piece Title (Optional) */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold tracking-wide text-foreground uppercase">
+            <label htmlFor={`${fieldId}-title`} className="text-xs font-semibold tracking-wide text-foreground uppercase">
               Manuscript Title / Working Name (Optional)
             </label>
-            <input
+            <Input
+              id={`${fieldId}-title`}
               type="text"
+              size="compact"
               value={pieceTitle}
               onChange={(e) => setPieceTitle(e.target.value)}
               placeholder="e.g. The Anatomy of Fog"
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             />
           </div>
 
           {/* Genre Selection */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold tracking-wide text-foreground uppercase">
+            <label htmlFor={`${fieldId}-genre`} className="text-xs font-semibold tracking-wide text-foreground uppercase">
               Genre
             </label>
-            <select
+            <NativeSelect
+              id={`${fieldId}-genre`}
               value={genre}
               onChange={(e) => {
                 setGenre(e.target.value as RankingGenre);
               }}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              className="w-full *:data-[slot=native-select]:h-9"
             >
-              <option value="overall">All Genres / Composite</option>
-              <option value="fiction">Short Fiction</option>
-              <option value="poetry">Poetry</option>
-              <option value="nonfiction">Creative Nonfiction / Essays</option>
-            </select>
+              <NativeSelectOption value="overall">All Genres / Composite</NativeSelectOption>
+              <NativeSelectOption value="fiction">Short Fiction</NativeSelectOption>
+              <NativeSelectOption value="poetry">Poetry</NativeSelectOption>
+              <NativeSelectOption value="nonfiction">Creative Nonfiction / Essays</NativeSelectOption>
+            </NativeSelect>
           </div>
 
           {/* Strategy Preset */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold tracking-wide text-foreground uppercase">
+            <label htmlFor={`${fieldId}-goal`} className="text-xs font-semibold tracking-wide text-foreground uppercase">
               Portfolio Goal
             </label>
-            <select
+            <NativeSelect
+              id={`${fieldId}-goal`}
               value={preset}
               onChange={(e) => {
                 setPreset(e.target.value as SubmissionStrategyPreset);
               }}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              className="w-full *:data-[slot=native-select]:h-9"
             >
-              <option value="balanced">
+              <NativeSelectOption value="balanced">
                 Balanced Spread (2 Reach, 3 Target, 2 Anchor)
-              </option>
-              <option value="aggressive_moonshot">
+              </NativeSelectOption>
+              <NativeSelectOption value="aggressive_moonshot">
                 Aggressive Moonshot (4 Reach, 2 Target, 1 Anchor)
-              </option>
-              <option value="velocity_low_friction">
+              </NativeSelectOption>
+              <NativeSelectOption value="velocity_low_friction">
                 Frictionless Velocity (1 Reach, 3 Target, 3 Anchor)
-              </option>
-            </select>
+              </NativeSelectOption>
+            </NativeSelect>
           </div>
         </div>
 
@@ -215,61 +225,45 @@ export function SmartShortlistBuilder({
             Preferences:
           </span>
 
-          <button
-            type="button"
-            onClick={() => setSimultaneousOnly(!simultaneousOnly)}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-              simultaneousOnly
-                ? "border-primary bg-primary/10 font-semibold text-primary"
-                : "border-border bg-background text-muted-foreground hover:bg-muted",
-            )}
+          <Toggle
+            variant="outline"
+            size="sm"
+            pressed={simultaneousOnly}
+            onPressedChange={setSimultaneousOnly}
           >
             {simultaneousOnly && <Check className="size-3.5" />}
             Simultaneous Submissions OK
-          </button>
+          </Toggle>
 
-          <button
-            type="button"
-            onClick={() => setFreeOnly(!freeOnly)}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-              freeOnly
-                ? "border-emerald-600 bg-emerald-500/10 font-semibold text-emerald-600 dark:text-emerald-400"
-                : "border-border bg-background text-muted-foreground hover:bg-muted",
-            )}
+          <Toggle
+            variant="outline"
+            size="sm"
+            pressed={freeOnly}
+            onPressedChange={setFreeOnly}
           >
             {freeOnly && <Check className="size-3.5" />}
             $0 Reading Fees Only
-          </button>
+          </Toggle>
 
-          <button
-            type="button"
-            onClick={() => setPayingOnly(!payingOnly)}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-              payingOnly
-                ? "border-warning bg-warning/10 font-semibold text-warning dark:text-warning"
-                : "border-border bg-background text-muted-foreground hover:bg-muted",
-            )}
+          <Toggle
+            variant="outline"
+            size="sm"
+            pressed={payingOnly}
+            onPressedChange={setPayingOnly}
           >
             {payingOnly && <Check className="size-3.5" />}
             Paying Contributors Only
-          </button>
+          </Toggle>
 
-          <button
-            type="button"
-            onClick={() => setFastOnly(!fastOnly)}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-              fastOnly
-                ? "border-information bg-information/10 font-semibold text-information dark:text-information"
-                : "border-border bg-background text-muted-foreground hover:bg-muted",
-            )}
+          <Toggle
+            variant="outline"
+            size="sm"
+            pressed={fastOnly}
+            onPressedChange={setFastOnly}
           >
             {fastOnly && <Check className="size-3.5" />}
             Fast Turnaround (&lt; 60 days)
-          </button>
+          </Toggle>
         </div>
       </div>
 

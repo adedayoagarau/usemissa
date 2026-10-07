@@ -123,9 +123,7 @@
   .queueRows .state { white-space: normal; }
   .queueRows > a > svg { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
   .mobileSwitch { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 18px; padding: 4px; border: 1px solid var(--border); border-radius: 10px; background: color-mix(in srgb, var(--muted) 45%, #fff); }
-  .mobileSwitch button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 7px; background: transparent; color: var(--muted-foreground); font: inherit; font-size: .72rem; font-weight: 700; }
   .mobileSwitch button[aria-pressed='true'] { background: var(--background); color: var(--accent-deep); box-shadow: 0 1px 3px rgb(0 0 0 / .08); }
-  .mobileSwitch svg { width: 16px; }
   .desk { display: block; min-height: 0; margin-top: 10px; }
   .assignmentRail { display: none; }
   .workPane, .reviewPane { padding: 20px; border: 0; }

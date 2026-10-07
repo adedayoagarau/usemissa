@@ -427,18 +427,21 @@ export function InboxProduct({
                                   {dateLabel(item.createdAt)}
                                 </time>
                               </div>
-                              <button
-                                className="text-start outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="-mx-3 h-auto min-h-9 flex-col items-start text-start whitespace-normal"
                                 onClick={() => void openItem(item)}
                                 aria-label={`${item.actionLabel}: ${item.title}`}
                               >
                                 <span className="block font-sans text-lg font-semibold">
                                   {item.title}
                                 </span>
-                                <span className="mt-2 block text-sm leading-relaxed text-muted-foreground">
+                                <span className="block text-sm leading-relaxed font-normal text-muted-foreground">
                                   {item.summary}
                                 </span>
-                              </button>
+                              </Button>
                               <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                                 <span>
                                   <span className="font-medium text-foreground">

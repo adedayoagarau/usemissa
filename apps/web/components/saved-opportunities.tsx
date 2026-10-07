@@ -6,6 +6,9 @@ import { ArrowRight, Bookmark, CalendarDays, Search } from "lucide-react";
 import type { TrackerProductItem } from "@/components/tracker-product";
 import styles from "./saved-opportunities.module.css";
 import { Sp } from "@/components/missa/spelling";
+import { FilterChip } from "@/components/missa/filter-chip";
+import { Button } from "@/components/ui/button";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 
 function formatDeadline(item: TrackerProductItem): string {
   if (item.deadline) {
@@ -41,9 +44,9 @@ export function SavedOpportunities({ initialItems }: { initialItems: TrackerProd
 
     {initialItems.length ? <>
       <div className={styles.tools}>
-        <label><Search aria-hidden="true" /><span className="sr-only">Search saved opportunities</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search saved opportunities" /></label>
-        <div role="group" aria-label="Filter saved opportunities">
-          {([['all', 'All'], ['soon', 'Closing in 14 days'], ['undated', 'No date']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={scope === value} onClick={() => setScope(value)}>{label}</button>)}
+        <InputGroup className={`${styles.search} h-11`}><InputGroupInput type="search" aria-label="Search saved opportunities" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search saved opportunities" /><InputGroupAddon><Search aria-hidden="true" /></InputGroupAddon></InputGroup>
+        <div className={styles.scopes} role="group" aria-label="Filter saved opportunities">
+          {([['all', 'All'], ['soon', 'Closing in 14 days'], ['undated', 'No date']] as const).map(([value, label]) => <FilterChip key={value} selected={scope === value} onSelectedChange={() => setScope(value)}>{label}</FilterChip>)}
         </div>
       </div>
       <div className={styles.resultHeading} role="status" aria-live="polite"><h2>{items.length} saved {items.length === 1 ? "opportunity" : "opportunities"}</h2><span>Sorted by deadline</span></div>
@@ -52,7 +55,7 @@ export function SavedOpportunities({ initialItems }: { initialItems: TrackerProd
         <div><h3>{item.title}</h3><p>{item.organizationName ?? <Sp>Organization not listed</Sp>}</p></div>
         <dl><div><dt><CalendarDays aria-hidden="true" />Deadline</dt><dd>{formatDeadline(item)}</dd></div><div><dt>Type</dt><dd>{typeLabel(item.type)}</dd></div></dl>
         <div className={styles.actions}><Link href={`/opportunities/${encodeURIComponent(item.opportunityId)}`}>Review opportunity <ArrowRight aria-hidden="true" /></Link><Link href="/tracker">Open in Tracker</Link></div>
-      </article>)}</div> : <section className={styles.empty}><Search aria-hidden="true" /><h2>No saved opportunities match</h2><p>Clear the search or choose a different deadline view.</p><button type="button" onClick={() => { setQuery(""); setScope("all"); }}>Show everything saved</button></section>}
+      </article>)}</div> : <section className={styles.empty}><Search aria-hidden="true" /><h2>No saved opportunities match</h2><p>Clear the search or choose a different deadline view.</p><Button type="button" onClick={() => { setQuery(""); setScope("all"); }}>Show everything saved</Button></section>}
     </> : <section className={styles.empty}><Bookmark aria-hidden="true" /><h2>Save opportunities worth another look</h2><p>Your shortlist stays private. Saving does not start an application or confirm eligibility.</p><Link href="/opportunities">Browse opportunities</Link></section>}
   </div>;
 }

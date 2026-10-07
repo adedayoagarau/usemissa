@@ -1,9 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Clock, Send, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { MagazineTelemetrySummary } from "@missa/radar-adapters";
 import {
   Dialog,
@@ -13,6 +19,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+
+const selectClass = "mt-1 w-full *:data-[slot=native-select]:h-9";
 
 interface ReportResponseDialogProps {
   profileId: string;
@@ -40,6 +48,7 @@ export function ReportResponseDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const fieldId = useId();
 
   // Compute calculated days
   const d1 = new Date(submittedDate).getTime();
@@ -154,46 +163,51 @@ export function ReportResponseDialog({
 
               {/* Genre */}
               <div>
-                <label className="text-xs font-semibold tracking-wider text-foreground uppercase">
+                <label htmlFor={`${fieldId}-genre`} className="text-xs font-semibold tracking-wider text-foreground uppercase">
                   Genre Submitted
                 </label>
-                <select
+                <NativeSelect
+                  id={`${fieldId}-genre`}
                   value={genre}
                   onChange={(e) => setGenre(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  className={selectClass}
                 >
-                  <option value="fiction">Fiction</option>
-                  <option value="poetry">Poetry</option>
-                  <option value="nonfiction">Nonfiction</option>
-                  <option value="hybrid">Hybrid / Flash</option>
-                </select>
+                  <NativeSelectOption value="fiction">Fiction</NativeSelectOption>
+                  <NativeSelectOption value="poetry">Poetry</NativeSelectOption>
+                  <NativeSelectOption value="nonfiction">Nonfiction</NativeSelectOption>
+                  <NativeSelectOption value="hybrid">Hybrid / Flash</NativeSelectOption>
+                </NativeSelect>
               </div>
 
               {/* Dates */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold tracking-wider text-foreground uppercase">
+                  <label htmlFor={`${fieldId}-sent`} className="text-xs font-semibold tracking-wider text-foreground uppercase">
                     Date Sent
                   </label>
-                  <input
+                  <Input
+                    id={`${fieldId}-sent`}
                     type="date"
+                    size="compact"
                     required
                     value={submittedDate}
                     onChange={(e) => setSubmittedDate(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    className="mt-1"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold tracking-wider text-foreground uppercase">
+                  <label htmlFor={`${fieldId}-decided`} className="text-xs font-semibold tracking-wider text-foreground uppercase">
                     Decision Date
                   </label>
-                  <input
+                  <Input
+                    id={`${fieldId}-decided`}
                     type="date"
+                    size="compact"
                     value={decisionDate}
                     onChange={(e) => setDecisionDate(e.target.value)}
                     disabled={outcome === "pending"}
                     required={outcome !== "pending"}
-                    className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-50"
+                    className="mt-1"
                   />
                 </div>
               </div>
@@ -211,70 +225,77 @@ export function ReportResponseDialog({
 
               {/* Outcome */}
               <div>
-                <label className="text-xs font-semibold tracking-wider text-foreground uppercase">
+                <span id={`${fieldId}-outcome`} className="text-xs font-semibold tracking-wider text-foreground uppercase">
                   Outcome
-                </label>
-                <div className="mt-1.5 grid grid-cols-4 gap-2">
+                </span>
+                <ToggleGroup
+                  aria-labelledby={`${fieldId}-outcome`}
+                  variant="outline"
+                  spacing={2}
+                  value={[outcome]}
+                  onValueChange={(value) => {
+                    if (value[0]) setOutcome(value[0]);
+                  }}
+                  className="mt-1.5 grid w-full grid-cols-4"
+                >
                   {[
                     { id: "accepted", label: "Accepted" },
                     { id: "rejected", label: "Rejected" },
                     { id: "withdrawn", label: "Withdrawn" },
                     { id: "pending", label: "Pending" },
                   ].map((o) => (
-                    <button
+                    <ToggleGroupItem
                       key={o.id}
-                      type="button"
-                      onClick={() => setOutcome(o.id)}
-                      className={`rounded-lg border py-1.5 text-xs font-medium transition-colors ${
-                        outcome === o.id
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-card text-foreground hover:bg-muted"
-                      }`}
+                      value={o.id}
+                      className="w-full"
                     >
                       {o.label}
-                    </button>
+                    </ToggleGroupItem>
                   ))}
-                </div>
+                </ToggleGroup>
               </div>
 
               {/* Rejection Type (if rejected) */}
               {outcome === "rejected" ? (
                 <div>
-                  <label className="text-xs font-semibold tracking-wider text-foreground uppercase">
+                  <label htmlFor={`${fieldId}-rejection`} className="text-xs font-semibold tracking-wider text-foreground uppercase">
                     Rejection Character
                   </label>
-                  <select
+                  <NativeSelect
+                    id={`${fieldId}-rejection`}
                     value={rejectionType}
                     onChange={(e) => setRejectionType(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    className={selectClass}
                   >
-                    <option value="form">Standard Form Rejection</option>
-                    <option value="tiered_personal">
+                    <NativeSelectOption value="form">Standard Form Rejection</NativeSelectOption>
+                    <NativeSelectOption value="tiered_personal">
                       Tiered / Encouraging Rejection
-                    </option>
-                    <option value="editor_note">
+                    </NativeSelectOption>
+                    <NativeSelectOption value="editor_note">
                       Personal Note from Editor
-                    </option>
-                  </select>
+                    </NativeSelectOption>
+                  </NativeSelect>
                 </div>
               ) : null}
 
               {/* Submission Fee */}
               <div>
-                <label className="text-xs font-semibold tracking-wider text-foreground uppercase">
+                <label htmlFor={`${fieldId}-fee`} className="text-xs font-semibold tracking-wider text-foreground uppercase">
                   Submission Fee Paid (USD)
                 </label>
                 <div className="relative mt-1">
                   <span className="absolute top-2 left-3 text-sm text-muted-foreground">
                     $
                   </span>
-                  <input
+                  <Input
+                    id={`${fieldId}-fee`}
                     type="number"
+                    size="compact"
                     min="0"
                     step="1"
                     value={feePaidDollars}
                     onChange={(e) => setFeePaidDollars(e.target.value)}
-                    className="w-full rounded-lg border border-border bg-card py-2 pr-3 pl-7 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    className="pl-7"
                   />
                 </div>
               </div>

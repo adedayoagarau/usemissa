@@ -10,7 +10,7 @@
 .heroActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
 .quiet { font-style: italic; }
 .nav { display: flex; gap: 28px; overflow-x: auto; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-.nav button { min-height: 50px; flex: 0 0 auto; margin-bottom: -1px; padding: 0 1px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted-foreground); cursor: pointer; font: inherit; font-size: 13px; }
+.nav button { min-height: 50px; flex: 0 0 auto; margin-bottom: -1px; padding: 0 1px; border-width: 0 0 2px; border-color: transparent; color: var(--muted-foreground); }
 .nav button[aria-current='page'] { border-bottom-color: var(--primary); color: var(--foreground); font-weight: 650; }
 .body > section { padding: 30px 0; border-bottom: 1px solid var(--border); }
 .sectionHeading { display: flex; align-items: flex-end; justify-content: space-between; gap: 22px; margin-bottom: 18px; }
@@ -59,7 +59,7 @@
 .formBody label, .formBody legend { font-size: 12px; font-weight: 650; }
 .formBody label span, .formBody legend span { color: var(--muted-foreground); font-weight: 400; }
 .formBody > div > p { margin: 0; color: var(--muted-foreground); font-size: 10px; line-height: 1.5; }
-.formBody select { width: 100%; min-height: 46px; padding: 0 13px; border: 1px solid var(--border); border-radius: 9px; background: var(--background); color: var(--foreground); font: inherit; font-size: 13px; }
+.formBody select { min-height: 46px; }
 .formBody fieldset { min-width: 0; padding: 14px; border: 1px solid var(--border); border-radius: 10px; }
 .formBody fieldset legend { padding: 0 5px; }
 

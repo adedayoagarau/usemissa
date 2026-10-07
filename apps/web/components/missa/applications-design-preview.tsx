@@ -8,6 +8,7 @@ import {
   ArrowUpRight,
   Bookmark,
   Check,
+  ChevronDown,
   ChevronRight,
   Plus,
   Search,
@@ -17,6 +18,11 @@ import { CreatorShell } from "@/components/creator-shell";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Field } from "@/components/ui/field";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Empty } from "@/components/ui/empty";
 import { Alert } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -728,11 +734,23 @@ export function ApplicationsDesignPreview() {
           </Tabs>
           <footer className="mt-12 border-t border-border pt-5 text-xs text-muted-foreground">
             <p>Private to you. Applying happens on the original website.</p>
-            <details className="mt-6">
-              <summary className="cursor-pointer py-3">
+            <Collapsible className="mt-6">
+              <CollapsibleTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="-ml-2 px-2 text-xs font-normal text-muted-foreground"
+                  />
+                }
+              >
                 Preview controls
-              </summary>
-              <div className="flex flex-wrap gap-2">
+                <ChevronDown
+                  aria-hidden="true"
+                  className="transition-transform group-data-panel-open/button:rotate-180 motion-reduce:transition-none"
+                />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="flex flex-wrap gap-2 pt-2">
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -764,8 +782,8 @@ export function ApplicationsDesignPreview() {
                 >
                   Test a save error
                 </Button>
-              </div>
-            </details>
+              </CollapsibleContent>
+            </Collapsible>
           </footer>
         </main>
         <Dialog

@@ -166,22 +166,8 @@
 }
 
 .mobileLogout {
-  display: flex;
   min-height: 46px;
-  align-items: center;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--foreground);
-  font: inherit;
-  font-size: 15px;
-  text-align: left;
-}
-
-.mobileLogout:hover,
-.mobileLogout:focus-visible {
-  background: var(--muted);
+  justify-content: flex-start;
 }
 
 .mobileError {

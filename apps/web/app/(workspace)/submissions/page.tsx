@@ -8,6 +8,9 @@ import { SubmissionCard } from '@/components/submission-card';
 import Link from 'next/link';
 import { loginRedirectForCurrentRequest } from '@/lib/serverAuthRedirect';
 import { Sp } from "@/components/missa/spelling";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 
 const STATUS_LABEL: Record<string, string> = {
   submitted: 'Submitted',
@@ -87,21 +90,21 @@ export default async function SubmissionsPage({
         {filters.organizationId && <input type="hidden" name="organizationId" value={filters.organizationId} />}
         <label className="min-w-56 flex-1 text-xs font-medium text-muted-foreground">
           Search opportunities
-          <input name="q" defaultValue={filters.q ?? ''} placeholder="Search by opportunity title" className="mt-1 h-11 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground" />
+          <Input name="q" defaultValue={filters.q ?? ''} placeholder="Search by opportunity title" className="mt-1" />
         </label>
         <label className="text-xs font-medium text-muted-foreground">
           Status
-          <select name="status" defaultValue={statusFilter} className="mt-1 h-11 rounded-md border border-input bg-card px-3 text-sm text-foreground">
-            <option value="">All statuses</option>
-            <option value="submitted">Submitted</option>
-            <option value="in-review">In review</option>
-            <option value="decided">Decided</option>
-            <option value="withdrawn">Withdrawn</option>
-          </select>
+          <NativeSelect name="status" defaultValue={statusFilter} className="mt-1 *:data-[slot=native-select]:h-11">
+            <NativeSelectOption value="">All statuses</NativeSelectOption>
+            <NativeSelectOption value="submitted">Submitted</NativeSelectOption>
+            <NativeSelectOption value="in-review">In review</NativeSelectOption>
+            <NativeSelectOption value="decided">Decided</NativeSelectOption>
+            <NativeSelectOption value="withdrawn">Withdrawn</NativeSelectOption>
+          </NativeSelect>
         </label>
-        <button className="min-h-11 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground" type="submit">
+        <Button type="submit">
           Filter
-        </button>
+        </Button>
         {(query || statusFilter) && (
           <Link href={filters.organizationId ? `/submissions?organizationId=${encodeURIComponent(filters.organizationId)}` : '/submissions'} className="min-h-11 rounded-md border border-border px-4 py-2 text-sm text-foreground">
             Clear

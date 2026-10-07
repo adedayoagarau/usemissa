@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import {
   DataAreaHeader,
   MaturityBadge,
-  MetricCard,
   SectionHeading,
   WarningList,
 } from "@/components/platform-admin";
@@ -18,6 +17,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Textarea } from "@/components/ui/textarea";
 import type { AdminArea } from "@/lib/platformAdmin";
 import type { PlatformAdminSupportData } from "@/lib/platformAdminSupport";
 
@@ -53,6 +56,38 @@ function dateLabel(value?: string): string {
         dateStyle: "medium",
         timeStyle: "short",
       }).format(date);
+}
+
+/** A summary figure that doubles as the status filter for the case list. */
+function StatusFilterCard({
+  label,
+  value,
+  detail,
+  selected,
+  onSelect,
+}: {
+  label: string;
+  value: number;
+  detail: string;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="choice"
+      size="choice"
+      onClick={onSelect}
+      aria-pressed={selected}
+      data-selected={selected}
+    >
+      <span className="block w-full min-w-0">
+        <span className="block text-xs font-medium text-muted-foreground">{label}</span>
+        <span className="mt-2 block font-mono text-2xl font-normal tabular-nums text-foreground">{value}</span>
+        <span className="mt-1 block text-sm leading-5 font-normal text-muted-foreground">{detail}</span>
+      </span>
+    </Button>
+  );
 }
 
 export default function PlatformAdminSupport({
@@ -177,61 +212,41 @@ export default function PlatformAdminSupport({
         className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"
         aria-label="Support summary"
       >
-        <button
-          type="button"
-          onClick={() => setStatusFilter("all")}
-          className={`text-left ${statusFilter === "all" ? "rounded-xl ring-2 ring-primary/30" : ""}`}
-        >
-          <MetricCard
-            label="All cases"
-            value={summary.total}
-            detail="Durable issue reports"
-          />
-        </button>
-        <button
-          type="button"
-          onClick={() => setStatusFilter("open")}
-          className={`text-left ${statusFilter === "open" ? "rounded-xl ring-2 ring-primary/30" : ""}`}
-        >
-          <MetricCard
-            label="Open"
-            value={summary.byStatus.open ?? 0}
-            detail="Waiting for triage"
-          />
-        </button>
-        <button
-          type="button"
-          onClick={() => setStatusFilter("in-progress")}
-          className={`text-left ${statusFilter === "in-progress" ? "rounded-xl ring-2 ring-primary/30" : ""}`}
-        >
-          <MetricCard
-            label="In progress"
-            value={summary.byStatus["in-progress"] ?? 0}
-            detail="Owned by an operator"
-          />
-        </button>
-        <button
-          type="button"
-          onClick={() => setStatusFilter("resolved")}
-          className={`text-left ${statusFilter === "resolved" ? "rounded-xl ring-2 ring-primary/30" : ""}`}
-        >
-          <MetricCard
-            label="Resolved"
-            value={summary.byStatus.resolved ?? 0}
-            detail="Closed with a resolution"
-          />
-        </button>
-        <button
-          type="button"
-          onClick={() => setStatusFilter("dismissed")}
-          className={`text-left ${statusFilter === "dismissed" ? "rounded-xl ring-2 ring-primary/30" : ""}`}
-        >
-          <MetricCard
-            label="Dismissed"
-            value={summary.byStatus.dismissed ?? 0}
-            detail="Not actionable"
-          />
-        </button>
+        <StatusFilterCard
+          label="All cases"
+          value={summary.total}
+          detail="Durable issue reports"
+          selected={statusFilter === "all"}
+          onSelect={() => setStatusFilter("all")}
+        />
+        <StatusFilterCard
+          label="Open"
+          value={summary.byStatus.open ?? 0}
+          detail="Waiting for triage"
+          selected={statusFilter === "open"}
+          onSelect={() => setStatusFilter("open")}
+        />
+        <StatusFilterCard
+          label="In progress"
+          value={summary.byStatus["in-progress"] ?? 0}
+          detail="Owned by an operator"
+          selected={statusFilter === "in-progress"}
+          onSelect={() => setStatusFilter("in-progress")}
+        />
+        <StatusFilterCard
+          label="Resolved"
+          value={summary.byStatus.resolved ?? 0}
+          detail="Closed with a resolution"
+          selected={statusFilter === "resolved"}
+          onSelect={() => setStatusFilter("resolved")}
+        />
+        <StatusFilterCard
+          label="Dismissed"
+          value={summary.byStatus.dismissed ?? 0}
+          detail="Not actionable"
+          selected={statusFilter === "dismissed"}
+          onSelect={() => setStatusFilter("dismissed")}
+        />
       </section>
 
       <section aria-labelledby="support-case-list-title">
@@ -251,13 +266,14 @@ export default function PlatformAdminSupport({
               {statusFilter !== "all" ? ` · ${statusLabel(statusFilter)}` : ""}
             </span>
             {statusFilter !== "all" && (
-              <button
+              <Button
                 type="button"
+                variant="link"
+                size="xs"
                 onClick={() => setStatusFilter("all")}
-                className="font-medium text-accent-deep underline underline-offset-4"
               >
                 Show all cases
-              </button>
+              </Button>
             )}
           </div>
           {filteredRows.length === 0 ? (
@@ -346,14 +362,14 @@ export default function PlatformAdminSupport({
                           )}
                           {row.status !== "resolved" ? <div className="mt-3 grid gap-2">
                             <label className="text-[11px] text-muted-foreground">Verified correction
-                              <textarea className="mt-1 block w-full border border-border px-2 py-1 text-xs" value={resolutionById[row.id]?.correction ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: event.target.value, evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: current[row.id]?.field ?? "", value: current[row.id]?.value ?? "" } }))} placeholder="What should the public record say?" />
+                              <Textarea className="mt-1 block" value={resolutionById[row.id]?.correction ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: event.target.value, evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: current[row.id]?.field ?? "", value: current[row.id]?.value ?? "" } }))} placeholder="What should the public record say?" />
                             </label>
                             <label className="text-[11px] text-muted-foreground">Apply to public field
-                              <select className="mt-1 block w-full border border-border px-2 py-1 text-xs" value={resolutionById[row.id]?.field ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: event.target.value, value: current[row.id]?.value ?? "" } }))}><option value="">Record only</option><option value="deadline_date">Deadline date</option><option value="status">Status</option><option value="fee_status">Fee status</option><option value="fee_cents">Fee amount (cents)</option><option value="guidelines_url">Guidelines URL</option><option value="submission_url">Submission URL</option><option value="location">Location</option><option value="title">Title</option></select>
+                              <NativeSelect className="mt-1 block w-full" value={resolutionById[row.id]?.field ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: event.target.value, value: current[row.id]?.value ?? "" } }))}><NativeSelectOption value="">Record only</NativeSelectOption><NativeSelectOption value="deadline_date">Deadline date</NativeSelectOption><NativeSelectOption value="status">Status</NativeSelectOption><NativeSelectOption value="fee_status">Fee status</NativeSelectOption><NativeSelectOption value="fee_cents">Fee amount (cents)</NativeSelectOption><NativeSelectOption value="guidelines_url">Guidelines URL</NativeSelectOption><NativeSelectOption value="submission_url">Submission URL</NativeSelectOption><NativeSelectOption value="location">Location</NativeSelectOption><NativeSelectOption value="title">Title</NativeSelectOption></NativeSelect>
                             </label>
-                            {resolutionById[row.id]?.field ? <label className="text-[11px] text-muted-foreground">Corrected value<input className="mt-1 block w-full border border-border px-2 py-1 text-xs" value={resolutionById[row.id]?.value ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: current[row.id]?.field ?? "", value: event.target.value } }))} /></label> : null}
+                            {resolutionById[row.id]?.field ? <label className="text-[11px] text-muted-foreground">Corrected value<Input className="mt-1 block" value={resolutionById[row.id]?.value ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: current[row.id]?.field ?? "", value: event.target.value } }))} /></label> : null}
                             <label className="text-[11px] text-muted-foreground">Official source URL
-                              <input className="mt-1 block w-full border border-border px-2 py-1 text-xs" type="url" value={resolutionById[row.id]?.evidenceUrl ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: event.target.value, field: current[row.id]?.field ?? "", value: current[row.id]?.value ?? "" } }))} placeholder="https://official-source.example" />
+                              <Input className="mt-1 block" type="url" value={resolutionById[row.id]?.evidenceUrl ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: event.target.value, field: current[row.id]?.field ?? "", value: current[row.id]?.value ?? "" } }))} placeholder="https://official-source.example" />
                             </label>
                           </div> : null}
                         </td>
@@ -406,10 +422,10 @@ export default function PlatformAdminSupport({
                       </p>
                     )}
                     {row.status !== "resolved" ? <div className="grid gap-2">
-                      <label className="text-xs text-muted-foreground">Verified correction<textarea className="mt-1 block w-full border border-border px-2 py-1 text-xs" value={resolutionById[row.id]?.correction ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: event.target.value, evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: current[row.id]?.field ?? "", value: current[row.id]?.value ?? "" } }))} /></label>
-                      <label className="text-xs text-muted-foreground">Official source URL<input className="mt-1 block w-full border border-border px-2 py-1 text-xs" type="url" value={resolutionById[row.id]?.evidenceUrl ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: event.target.value, field: current[row.id]?.field ?? "", value: current[row.id]?.value ?? "" } }))} /></label>
-                      <label className="text-xs text-muted-foreground">Apply to public field<select className="mt-1 block w-full border border-border px-2 py-1 text-xs" value={resolutionById[row.id]?.field ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: event.target.value, value: current[row.id]?.value ?? "" } }))}><option value="">Record only</option><option value="deadline_date">Deadline date</option><option value="status">Status</option><option value="fee_status">Fee status</option><option value="fee_cents">Fee amount (cents)</option><option value="guidelines_url">Guidelines URL</option><option value="submission_url">Submission URL</option><option value="location">Location</option><option value="title">Title</option></select></label>
-                      {resolutionById[row.id]?.field ? <label className="text-xs text-muted-foreground">Corrected value<input className="mt-1 block w-full border border-border px-2 py-1 text-xs" value={resolutionById[row.id]?.value ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: current[row.id]?.field ?? "", value: event.target.value } }))} /></label> : null}
+                      <label className="text-xs text-muted-foreground">Verified correction<Textarea className="mt-1 block" value={resolutionById[row.id]?.correction ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: event.target.value, evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: current[row.id]?.field ?? "", value: current[row.id]?.value ?? "" } }))} /></label>
+                      <label className="text-xs text-muted-foreground">Official source URL<Input className="mt-1 block" type="url" value={resolutionById[row.id]?.evidenceUrl ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: event.target.value, field: current[row.id]?.field ?? "", value: current[row.id]?.value ?? "" } }))} /></label>
+                      <label className="text-xs text-muted-foreground">Apply to public field<NativeSelect className="mt-1 block w-full" value={resolutionById[row.id]?.field ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: event.target.value, value: current[row.id]?.value ?? "" } }))}><NativeSelectOption value="">Record only</NativeSelectOption><NativeSelectOption value="deadline_date">Deadline date</NativeSelectOption><NativeSelectOption value="status">Status</NativeSelectOption><NativeSelectOption value="fee_status">Fee status</NativeSelectOption><NativeSelectOption value="fee_cents">Fee amount (cents)</NativeSelectOption><NativeSelectOption value="guidelines_url">Guidelines URL</NativeSelectOption><NativeSelectOption value="submission_url">Submission URL</NativeSelectOption><NativeSelectOption value="location">Location</NativeSelectOption><NativeSelectOption value="title">Title</NativeSelectOption></NativeSelect></label>
+                      {resolutionById[row.id]?.field ? <label className="text-xs text-muted-foreground">Corrected value<Input className="mt-1 block" value={resolutionById[row.id]?.value ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: current[row.id]?.field ?? "", value: event.target.value } }))} /></label> : null}
                     </div> : null}
                   </article>
                 ))}
@@ -498,20 +514,20 @@ function StatusSelect({
   return (
     <label className="block">
       <span className="sr-only">Status for {rowId}</span>
-      <select
+      <NativeSelect
         value={status}
         disabled={saving}
         onChange={(event) =>
           onChange(rowId, event.target.value as PlatformSupportStatus)
         }
-        className="h-9 min-w-32 border border-border bg-card px-2 text-xs text-foreground capitalize outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-wait disabled:opacity-60"
+        className="min-w-32"
       >
         {PLATFORM_SUPPORT_STATUSES.map((option) => (
-          <option key={option} value={option}>
+          <NativeSelectOption key={option} value={option}>
             {statusLabel(option)}
-          </option>
+          </NativeSelectOption>
         ))}
-      </select>
+      </NativeSelect>
     </label>
   );
 }

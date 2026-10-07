@@ -2,9 +2,12 @@
 
 import { useMemo, useTransition, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { CalendarDays, Check, ChevronDown, MapPin, Palette, RefreshCw, SlidersHorizontal, Tag } from 'lucide-react';
+import { CalendarDays, Check, MapPin, Palette, RefreshCw, SlidersHorizontal, Tag } from 'lucide-react';
 import { MISSA_TAXONOMY, taxonomyTermById, termsForBrowseLayer } from '@missa/taxonomy';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Switch } from '@/components/ui/switch';
 import { captureProductEvent } from '@/components/analytics-provider';
 import styles from '@/app/(passport)/opportunities/opportunities.module.css';
 
@@ -16,6 +19,19 @@ type FilterProps = {
   activeFilterCount: number;
   saveSearch?: ReactNode;
 };
+
+const filterSelectClass = 'max-w-44 *:data-[slot=native-select]:h-11 max-sm:max-w-36';
+const toggleLabelClass = 'min-h-11 whitespace-nowrap';
+
+/** Leading icon beside a filter select; the select itself carries the accessible name. */
+function FilterSelect({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <div className="group flex items-center gap-1.5">
+      <span className="flex group-has-[select:disabled]:opacity-50" aria-hidden="true">{icon}</span>
+      {children}
+    </div>
+  );
+}
 
 function selectedForFacet(params: URLSearchParams, facet: string): string | undefined {
   return params.getAll('taxonomy').find((id) => byId.get(id)?.facet === facet);
@@ -91,14 +107,12 @@ export function OpportunityFilters({ locations, activeFilterCount, saveSearch }:
   }
 
   const control = (label: string, icon: ReactNode, value: string | undefined, options: Array<{ id: string; label: string }>, facet: string, disabled = false) => (
-    <label className={`${styles.filterSelect} ${disabled ? 'opacity-55' : ''}`}>
-      {icon}<span className="sr-only">{label}</span>
-      <select aria-label={label} value={value ?? ''} disabled={disabled} onChange={(event) => changeTaxonomy(facet, event.target.value)}>
-        <option value="">{disabled ? `Choose ${label.toLowerCase()} first` : label}</option>
-        {options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-      </select>
-      <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden="true" />
-    </label>
+    <FilterSelect icon={icon}>
+      <NativeSelect aria-label={label} className={filterSelectClass} value={value ?? ''} disabled={disabled} onChange={(event) => changeTaxonomy(facet, event.target.value)}>
+        <NativeSelectOption value="">{disabled ? `Choose ${label.toLowerCase()} first` : label}</NativeSelectOption>
+        {options.map((option) => <NativeSelectOption key={option.id} value={option.id}>{option.label}</NativeSelectOption>)}
+      </NativeSelect>
+    </FilterSelect>
   );
 
   return (
@@ -107,12 +121,12 @@ export function OpportunityFilters({ locations, activeFilterCount, saveSearch }:
         {control('Field', <Palette className="size-4 text-muted-foreground" />, practiceFamilyId, practiceOptions.map((term) => ({ id: term.id, label: term.preferredLabel })), 'practice-family')}
         {control('Discipline', <Tag className="size-4 text-muted-foreground" />, disciplineId, disciplineOptions.map((term) => ({ id: term.id, label: term.preferredLabel })), 'discipline', !practiceFamilyId)}
         {control('Genre', <Tag className="size-4 text-muted-foreground" />, genreId, genreOptions.map((term) => ({ id: term.id, label: term.preferredLabel })), 'genre', !disciplineId)}
-        <label className={styles.filterSelect}><MapPin className="size-4 text-muted-foreground" /><span className="sr-only">Location</span><select aria-label="Location" value={searchParams.get('location') ?? ''} onChange={(event) => update('location', event.target.value)}><option value="">Location</option>{locations.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><ChevronDown className="size-3.5 text-muted-foreground" aria-hidden="true" /></label>
-        <label className={styles.filterSelect}><Tag className="size-4 text-muted-foreground" /><span className="sr-only">Fee</span><select aria-label="Fee" value={searchParams.get('fee') ?? ''} onChange={(event) => update('fee', event.target.value)}><option value="">Fee</option><option value="no-fee">No fee</option><option value="paid">Paid</option><option value="unknown">Not confirmed</option></select><ChevronDown className="size-3.5 text-muted-foreground" aria-hidden="true" /></label>
-        <label className={styles.filterSelect}><CalendarDays className="size-4 text-muted-foreground" /><span className="sr-only">Deadline</span><select aria-label="Deadline" value={searchParams.get('deadlineWithinDays') ?? ''} onChange={(event) => update('deadlineWithinDays', event.target.value)}><option value="">Deadline</option><option value="7">Next 7 days</option><option value="30">Next 30 days</option><option value="90">Next 90 days</option></select><ChevronDown className="size-3.5 text-muted-foreground" aria-hidden="true" /></label>
+        <FilterSelect icon={<MapPin className="size-4 text-muted-foreground" />}><NativeSelect aria-label="Location" className={filterSelectClass} value={searchParams.get('location') ?? ''} onChange={(event) => update('location', event.target.value)}><NativeSelectOption value="">Location</NativeSelectOption>{locations.map((option) => <NativeSelectOption key={option.value} value={option.value}>{option.label}</NativeSelectOption>)}</NativeSelect></FilterSelect>
+        <FilterSelect icon={<Tag className="size-4 text-muted-foreground" />}><NativeSelect aria-label="Fee" className={filterSelectClass} value={searchParams.get('fee') ?? ''} onChange={(event) => update('fee', event.target.value)}><NativeSelectOption value="">Fee</NativeSelectOption><NativeSelectOption value="no-fee">No fee</NativeSelectOption><NativeSelectOption value="paid">Paid</NativeSelectOption><NativeSelectOption value="unknown">Not confirmed</NativeSelectOption></NativeSelect></FilterSelect>
+        <FilterSelect icon={<CalendarDays className="size-4 text-muted-foreground" />}><NativeSelect aria-label="Deadline" className={filterSelectClass} value={searchParams.get('deadlineWithinDays') ?? ''} onChange={(event) => update('deadlineWithinDays', event.target.value)}><NativeSelectOption value="">Deadline</NativeSelectOption><NativeSelectOption value="7">Next 7 days</NativeSelectOption><NativeSelectOption value="30">Next 30 days</NativeSelectOption><NativeSelectOption value="90">Next 90 days</NativeSelectOption></NativeSelect></FilterSelect>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <label className={styles.toggle}><input type="checkbox" checked={searchParams.get('fee') === 'no-fee'} onChange={(event) => update('fee', 'no-fee', event.target.checked)} /><span className={styles.toggleTrack} />No fee</label>
-          <label className={styles.toggle}><input type="checkbox" checked={searchParams.get('openNow') !== '0'} onChange={(event) => update('openNow', event.target.checked ? undefined : '0', event.target.checked)} /><span className={styles.toggleTrack} />Open now</label>
+          <Label className={toggleLabelClass}><Switch checked={searchParams.get('fee') === 'no-fee'} onCheckedChange={(checked) => update('fee', 'no-fee', checked)} />No fee</Label>
+          <Label className={toggleLabelClass}><Switch checked={searchParams.get('openNow') !== '0'} onCheckedChange={(checked) => update('openNow', checked ? undefined : '0', checked)} />Open now</Label>
           {saveSearch}
           <Button type="button" variant="outline" size="sm"  onClick={clearAll}><SlidersHorizontal className="size-3.5" />{activeFilterCount ? `${activeFilterCount} filters` : 'Filter'}</Button>
         </div>

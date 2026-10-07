@@ -26,33 +26,7 @@
 .input {
   min-width: 0;
   flex: 1;
-  height: 44px;
-  border: 0;
-  background: transparent;
-  color: var(--foreground);
-  font-size: 15px;
-  outline: none;
-}
-
-.input::placeholder {
-  color: var(--muted-foreground);
-}
-
-.clearButton {
-  display: inline-grid;
-  width: 32px;
-  height: 32px;
-  place-items: center;
-  border: 0;
-  border-radius: var(--radius-md, 8px);
-  background: transparent;
-  color: var(--muted-foreground);
-  cursor: pointer;
-}
-
-.clearButton:hover {
-  color: var(--foreground);
-  background: var(--muted);
+  padding-inline: 0;
 }
 
 .submit {
@@ -62,9 +36,5 @@
 @media (max-width: 640px) {
   .form {
     padding-inline-start: 12px;
-  }
-
-  .input {
-    font-size: 16px;
   }
 }

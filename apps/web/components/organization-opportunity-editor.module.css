@@ -1,6 +1,6 @@
 .editor { margin-top: 24px; }
 .sections { display: flex; gap: 4px; overflow-x: auto; padding: 4px 0 12px; border-bottom: 1px solid var(--border); scrollbar-width: thin; }
-.sections button { flex: 0 0 auto; min-height: 44px; padding: 0 12px; border-radius: 7px; color: var(--muted-foreground); font-size: .74rem; font-weight: 650; }
+.sections button { flex: 0 0 auto; }
 .sections button[aria-current='step'] { background: color-mix(in srgb, var(--primary) 8%, white); color: var(--primary); }
 .panel { max-width: 780px; padding: 32px 0; }
 .panelHeader p, .panelHeader h2 { margin: 0; }
@@ -10,9 +10,6 @@
 .form { display: grid; gap: 22px; margin-top: 26px; }
 .form > div { display: grid; gap: 7px; }
 .form label { font-size: .78rem; font-weight: 700; }
-.form input, .form textarea { width: 100%; border: 1px solid var(--border); border-radius: 8px; background: var(--background); color: var(--foreground); font: inherit; font-size: .82rem; }
-.form input { min-height: 46px; padding: 0 12px; }
-.form textarea { min-height: 180px; padding: 12px; resize: vertical; }
 .form p { margin: 0; color: var(--muted-foreground); font-size: .72rem; line-height: 1.5; }
 .form p[role='alert'] { color: var(--destructive); }
 .form button { width: fit-content; min-height: 46px; }

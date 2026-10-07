@@ -268,8 +268,10 @@ export function WritingLibrary(props: WritingLibraryProps) {
                             <Item
                               variant="outline"
                               render={
-                                <button
+                                <Button
                                   type="button"
+                                  variant="ghost"
+                                  className="h-auto justify-start text-start whitespace-normal"
                                   onClick={() =>
                                     props.onShowProject(project.id)
                                   }

@@ -31,7 +31,7 @@ import { TaxonomyBrowsePicker } from "@/components/taxonomy-browse-picker";
 import { captureProductEvent } from "@/components/analytics-provider";
 import styles from "./library-product.module.css";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { NativeSelect } from "@/components/ui/native-select";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import {
   LIBRARY_FILE_ACCEPT,
   LIBRARY_FILE_TYPES_LABEL,
@@ -530,9 +530,11 @@ export function LibraryProduct({
           {view === "works" && visibleWorks.length ? (
             <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {visibleWorks.map((work) => (
-                <button
+                <Button
                   key={work.id}
                   type="button"
+                  variant="choice"
+                  size="choice"
                   aria-label={`Open ${work.title}`}
                   onClick={() =>
                     setSelection({
@@ -541,7 +543,7 @@ export function LibraryProduct({
                       href: workHref(work.id),
                     })
                   }
-                  className="group flex min-h-64 flex-col overflow-hidden rounded-xl border border-border bg-card text-start outline-offset-4 hover:border-primary focus-visible:outline-2 focus-visible:outline-ring"
+                  className={`${styles.workCard} group min-h-64 flex-col items-stretch overflow-hidden`}
                 >
                   <span className="flex w-full items-start justify-between gap-4 border-b border-border bg-secondary p-5">
                     <span
@@ -576,7 +578,7 @@ export function LibraryProduct({
                       </span>
                     </span>
                   </span>
-                </button>
+                </Button>
               ))}
             </div>
           ) : null}
@@ -590,9 +592,11 @@ export function LibraryProduct({
                   <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary">
                     <FileGlyph contentType={file.contentType} />
                   </span>
-                  <button
+                  <Button
                     type="button"
-                    className="min-w-0 flex-1 text-start outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto min-w-0 flex-1 flex-col items-start text-start whitespace-normal"
                     onClick={() =>
                       setSelection({ kind: "file", item: file, storageReady })
                     }
@@ -600,16 +604,16 @@ export function LibraryProduct({
                     <span className="block font-medium break-words">
                       {file.filename}
                     </span>
-                    <span className="mt-2 block text-xs text-muted-foreground">
+                    <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
                       {formatBytes(file.byteLength)} ·{" "}
                       {formatDate(file.createdAt)}
                     </span>
                     {file.linkedWorks.length ? (
-                      <span className="mt-2 block text-sm text-muted-foreground">
+                      <span className="block text-sm font-normal text-muted-foreground">
                         {file.linkedWorks.map((w) => w.title).join(", ")}
                       </span>
                     ) : null}
-                  </button>
+                  </Button>
                   <Button
                     type="button"
                     variant="ghost"
@@ -640,9 +644,11 @@ export function LibraryProduct({
                   key={answer.id}
                   className="flex min-w-0 flex-col rounded-xl border border-border p-5"
                 >
-                  <button
+                  <Button
                     type="button"
-                    className="flex-1 text-start outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
+                    variant="ghost"
+                    size="sm"
+                    className="-mx-3 h-auto flex-1 flex-col items-start justify-start text-start whitespace-normal"
                     aria-label={`Open ${answer.name}`}
                     onClick={() =>
                       setSelection({ kind: "answer", item: answer })
@@ -651,10 +657,10 @@ export function LibraryProduct({
                     <span className="block font-sans text-xl font-semibold">
                       {answer.name}
                     </span>
-                    <span className="mt-4 line-clamp-4 text-sm leading-relaxed break-words whitespace-pre-wrap text-muted-foreground">
+                    <span className="mt-2.5 line-clamp-4 text-sm leading-relaxed font-normal break-words whitespace-pre-wrap text-muted-foreground">
                       {answer.body}
                     </span>
-                  </button>
+                  </Button>
                   <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
                     <span className="text-xs text-muted-foreground">
                       {words(answer.body)} words
@@ -792,18 +798,19 @@ export function LibraryProduct({
                     <Label htmlFor="new-work-file">
                       Current file <span>Optional</span>
                     </Label>
-                    <select
+                    <NativeSelect
                       id="new-work-file"
+                      className="w-full"
                       value={workFileId}
                       onChange={(event) => setWorkFileId(event.target.value)}
                     >
-                      <option value="">No file yet</option>
+                      <NativeSelectOption value="">No file yet</NativeSelectOption>
                       {files.map((file) => (
-                        <option key={file.id} value={file.id}>
+                        <NativeSelectOption key={file.id} value={file.id}>
                           {file.filename}
-                        </option>
+                        </NativeSelectOption>
                       ))}
-                    </select>
+                    </NativeSelect>
                     <p>
                       Only the current file is linked today. Submitted files
                       remain in their receipts.

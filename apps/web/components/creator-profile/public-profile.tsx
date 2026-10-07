@@ -6,7 +6,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type HTMLAttributes,
   type ReactNode,
 } from "react";
@@ -29,6 +28,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import { AvailabilityChip } from "@/components/missa/availability-chip";
 import { ProvenanceBadge } from "@/components/missa/provenance-badge";
 import { ProfileConnect } from "./profile-connect";
@@ -541,14 +541,15 @@ function IdentityHeader({
             </span>
           </div>
           {identity}
-          <button
+          <Button
             type="button"
+            variant="link"
             className={styles.plateCredit}
             onClick={() => onOpen(featured)}
           >
             {featured.title}
             <ArrowRight aria-hidden="true" />
-          </button>
+          </Button>
         </div>
       </header>
     );
@@ -588,16 +589,17 @@ function FeaturedFigure({
           {excerpt && (
             <div className={styles.featuredExcerpt}>
               <p className="font-heading">{excerpt}</p>
-              <button type="button" onClick={() => onOpen(work)}>
+              <Button type="button" variant="link" onClick={() => onOpen(work)}>
                 Read the work <ArrowRight aria-hidden="true" />
-              </button>
+              </Button>
             </div>
           )}
         </div>
       ) : (
-        <button
+        <Button
           type="button"
-          className={styles.featuredText}
+          variant="ghost"
+          className={cn(styles.surface, styles.featuredText)}
           onClick={() => onOpen(work)}
         >
           <span className={cn(styles.eyebrow, "font-mono")}>Featured work</span>
@@ -605,16 +607,17 @@ function FeaturedFigure({
           <span className={styles.readLink}>
             Read the work <ArrowRight aria-hidden="true" />
           </span>
-        </button>
+        </Button>
       )}
       <figcaption className={styles.featuredCaption}>
-        <button
+        <Button
           type="button"
-          className="font-heading"
+          variant="ghost"
+          className={styles.surface}
           onClick={() => onOpen(work)}
         >
-          {work.title}
-        </button>
+          <span className="font-heading">{work.title}</span>
+        </Button>
         <span className="font-mono">
           {[formats.join(" · "), work.year].filter(Boolean).join(" — ")}
         </span>
@@ -641,14 +644,16 @@ function PlayButton({
 }) {
   const playing = player.isPlaying(work);
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="icon"
       className={cn(styles.play, className)}
       onClick={() => player.toggle(work)}
       aria-label={`${playing ? "Pause" : "Play"} ${work.title}`}
     >
       {playing ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}
-    </button>
+    </Button>
   );
 }
 
@@ -717,14 +722,16 @@ function WorkSection({
             className={styles.filter}
           >
             {(["All", ...formats] as const).map((format) => (
-              <button
+              <Button
                 key={format}
                 type="button"
+                variant="ghost"
+                size="sm"
                 aria-pressed={filter === format}
                 onClick={() => setFilter(format)}
               >
                 {format === "All" ? "All work" : format}
-              </button>
+              </Button>
             ))}
           </div>
         )}
@@ -774,18 +781,20 @@ function WorkCard({
   return (
     <article className={styles.card}>
       {work.image ? (
-        <button
+        <Button
           type="button"
-          className={styles.cardMedia}
+          variant="ghost"
+          className={cn(styles.surface, styles.cardMedia)}
           onClick={() => onOpen(work)}
           aria-label={`Open ${work.title}`}
         >
           <img src={work.image} alt={work.caption || ""} loading="lazy" />
-        </button>
+        </Button>
       ) : work.text.trim() ? (
-        <button
+        <Button
           type="button"
-          className={styles.cardText}
+          variant="ghost"
+          className={cn(styles.surface, styles.cardText)}
           onClick={() => onOpen(work)}
           aria-label={`Read ${work.title}`}
         >
@@ -797,7 +806,7 @@ function WorkCard({
           <span className={cn(styles.cardExcerpt, "font-heading")}>
             {excerpt}
           </span>
-        </button>
+        </Button>
       ) : work.audio ? (
         <div className={styles.cardSound}>
           <PlayButton work={work} player={player} />
@@ -830,9 +839,14 @@ function WorkCard({
         <span>{work.year}</span>
       </div>
       <Heading level={level} className={cn(styles.cardTitle, "font-heading")}>
-        <button type="button" onClick={() => onOpen(work)}>
+        <Button
+          type="button"
+          variant="ghost"
+          className={styles.surface}
+          onClick={() => onOpen(work)}
+        >
           {work.title}
-        </button>
+        </Button>
       </Heading>
       {lens === "visual" && work.caption && (
         <p className={styles.cardCaption}>{work.caption}</p>
@@ -931,16 +945,11 @@ function MiniPlayer({ player }: { player: Player }) {
             Couldn’t play this recording. Try again.
           </span>
         ) : (
-          <span
+          <Progress
             className={styles.miniTrack}
-            role="progressbar"
             aria-label="Playback position"
-            aria-valuenow={Math.round(player.progress)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            <span style={{ width: `${player.progress}%` } as CSSProperties} />
-          </span>
+            value={Math.round(player.progress)}
+          />
         )}
       </div>
       <PlayButton work={work} player={player} />

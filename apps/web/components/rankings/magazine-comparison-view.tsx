@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import type { MagazineRankingRow } from "@missa/radar-adapters";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { MagazineScheduleBadge } from "@/components/ui/magazine-schedule-badge";
 import { MagazineCitizenshipBadges } from "@/components/missa/magazine-citizenship-badges";
@@ -109,28 +110,28 @@ export function MagazineComparisonView({
             Add Magazine to Compare
           </label>
           <div className="relative max-w-md">
-            <input
+            <Input
               id="compare-magazine-search"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search magazine by name to add..."
-              className="min-h-11 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             />
             {searchResults.length > 0 ? (
               <ul className="absolute z-20 mt-1 w-full rounded-lg border border-border bg-popover py-1 shadow-lg">
                 {searchResults.map((mag) => (
                   <li key={mag.profileId}>
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
                       onClick={() => addMagazine(mag.profileId)}
-                      className="flex min-h-11 w-full items-center justify-between px-3 py-2 text-left text-sm text-foreground hover:bg-muted/70 focus-visible:outline-2 focus-visible:outline-ring"
+                      className="w-full justify-between text-left"
                     >
                       <span className="font-medium">{mag.name}</span>
                       <span className="font-mono text-xs text-muted-foreground">
                         #{mag.rankPosition} ({mag.totalScore} pts)
                       </span>
-                    </button>
+                    </Button>
                   </li>
                 ))}
               </ul>

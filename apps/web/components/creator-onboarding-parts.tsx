@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useId, type ReactNode } from "react";
 import Link from "next/link";
 import { Check, Lock } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
@@ -83,11 +84,11 @@ export function OnboardingStepper({
                 />
               ) : null}
               {reachable ? (
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   disabled={disabled}
                   onClick={() => onSelect(index)}
-                  className="flex min-h-11 items-center gap-2 rounded-lg px-2 outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
                 >
                   {marker}
                   {label}
@@ -95,7 +96,7 @@ export function OnboardingStepper({
                     {active ? "" : step.label}
                     {done ? " (done)" : ""}
                   </span>
-                </button>
+                </Button>
               ) : (
                 <span
                   className="flex min-h-11 items-center gap-2 px-2"

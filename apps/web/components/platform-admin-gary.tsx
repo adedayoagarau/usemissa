@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import type { GaryDashboardData, GaryQueueAction, GaryReviewRow } from "@missa/radar-adapters";
 import { DataAreaHeader, MetricCard, WarningList } from "@/components/platform-admin";
 import { AdminConfirmationAction } from "@/components/platform-admin-actions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import type { AdminArea } from "@/lib/platformAdmin";
 
 const statusClass: Record<string, string> = {
@@ -55,7 +58,6 @@ function ReviewActions({ row }: { row: GaryReviewRow }) {
       setMessage(error instanceof Error ? error.message : "Action failed");
     } finally { setBusy(undefined); }
   }
-  const button = "min-h-9 rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50";
   return <div>
     <div className="flex flex-wrap gap-2">
       {row.status !== "published" && <AdminConfirmationAction
@@ -75,8 +77,8 @@ function ReviewActions({ row }: { row: GaryReviewRow }) {
         ]}
         onConfirm={() => void act("publish")}
       />}
-      {(row.status === "failed" || row.status === "held" || row.status === "needs_human") && <button className={button} disabled={Boolean(busy)} onClick={() => void act("retry")}>Review again</button>}
-      {!['held', 'published', 'rejected'].includes(row.status) && <button className={button} disabled={Boolean(busy)} onClick={() => void act("hold")}>Hold</button>}
+      {(row.status === "failed" || row.status === "held" || row.status === "needs_human") && <Button type="button" variant="outline" size="sm" disabled={Boolean(busy)} onClick={() => void act("retry")}>Review again</Button>}
+      {!['held', 'published', 'rejected'].includes(row.status) && <Button type="button" variant="outline" size="sm" disabled={Boolean(busy)} onClick={() => void act("hold")}>Hold</Button>}
       {!['published', 'rejected'].includes(row.status) && <AdminConfirmationAction
         label="Reject"
         title={`Reject “${row.title}”?`}
@@ -108,7 +110,6 @@ export default function PlatformAdminGary({ area }: { area: AdminArea<GaryDashbo
     const haystack = `${row.title} ${row.organizer} ${row.status}`.toLowerCase();
     return matchesFilter && haystack.includes(query.toLowerCase());
   }), [area.data.rows, filter, query]);
-  const selectClass = "min-h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground";
   return <div className="space-y-8">
     <DataAreaHeader area={area} title="Gary control room" description="Track discovery, morning AI review, publication, source freshness, Railway worker health, and email delivery without using the command line." />
     <WarningList warnings={area.warnings} />
@@ -138,10 +139,10 @@ export default function PlatformAdminGary({ area }: { area: AdminArea<GaryDashbo
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div><h2 id="gary-review-queue" className="text-xl font-semibold">Morning review queue</h2><p className="mt-1 text-sm text-muted-foreground">Gary publishes high-confidence calls automatically. Use these controls only for exceptions.</p></div>
         <div className="flex flex-wrap gap-2">
-          <input className={`${selectClass} min-w-56`} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search title or journal" aria-label="Search Gary review queue" />
-          <select className={selectClass} value={filter} onChange={(event) => setFilter(event.target.value)} aria-label="Filter Gary review queue">
-            <option value="attention">Needs attention</option><option value="queued">Waiting</option><option value="published">Published</option><option value="failed">Failed</option><option value="all">All</option>
-          </select>
+          <Input className="w-auto min-w-56" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search title or journal" aria-label="Search Gary review queue" />
+          <NativeSelect value={filter} onChange={(event) => setFilter(event.target.value)} aria-label="Filter Gary review queue">
+            <NativeSelectOption value="attention">Needs attention</NativeSelectOption><NativeSelectOption value="queued">Waiting</NativeSelectOption><NativeSelectOption value="published">Published</NativeSelectOption><NativeSelectOption value="failed">Failed</NativeSelectOption><NativeSelectOption value="all">All</NativeSelectOption>
+          </NativeSelect>
         </div>
       </div>
       {rows.length === 0 ? <div className="rounded-xl border border-dashed border-border p-8 text-center"><p className="font-medium">Nothing in this view</p><p className="mt-1 text-sm text-muted-foreground">Gary has no matching exceptions right now.</p></div> :

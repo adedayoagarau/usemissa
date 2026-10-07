@@ -11,6 +11,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -290,9 +299,9 @@ function FilterPanel({
     <form className={styles.panel} onSubmit={(event) => event.preventDefault()}>
       <div className={styles.heading}>
         <h2>Search filters</h2>
-        <button type="button" onClick={clearAll}>
+        <Button type="button" variant="link" onClick={clearAll}>
           Clear all
-        </button>
+        </Button>
       </div>
 
       <fieldset className={styles.group}>
@@ -335,31 +344,33 @@ function FilterPanel({
 
       <label className={styles.selectField}>
         <span>Location or eligibility reach</span>
-        <select
+        <NativeSelect
+          className={styles.select}
           value={searchParams.get("location") ?? ""}
           onChange={(event) => update("location", event.target.value)}
         >
-          <option value="">Anywhere</option>
+          <NativeSelectOption value="">Anywhere</NativeSelectOption>
           {locations.map((location) => (
-            <option key={location.value} value={location.value}>
+            <NativeSelectOption key={location.value} value={location.value}>
               {location.label}
-            </option>
+            </NativeSelectOption>
           ))}
-        </select>
+        </NativeSelect>
       </label>
 
       <label className={styles.selectField}>
         <span>Deadline</span>
-        <select
+        <NativeSelect
+          className={styles.select}
           value={searchParams.get("deadline") ?? searchParams.get("deadlineWithinDays") ?? ""}
           onChange={(event) => updateDeadline(event.target.value)}
         >
-          <option value="">Any time</option>
-          <option value="7">Closing this week</option>
-          <option value="30">Next 30 days</option>
-          <option value="90">Next 90 days</option>
-          <option value="rolling">Rolling / year-round</option>
-        </select>
+          <NativeSelectOption value="">Any time</NativeSelectOption>
+          <NativeSelectOption value="7">Closing this week</NativeSelectOption>
+          <NativeSelectOption value="30">Next 30 days</NativeSelectOption>
+          <NativeSelectOption value="90">Next 90 days</NativeSelectOption>
+          <NativeSelectOption value="rolling">Rolling / year-round</NativeSelectOption>
+        </NativeSelect>
       </label>
 
       <label className={styles.checkRow}>
@@ -373,26 +384,35 @@ function FilterPanel({
 
       <label className={styles.selectField}>
         <span>Fee</span>
-        <select
+        <NativeSelect
+          className={styles.select}
           value={searchParams.get("fee") ?? ""}
           onChange={(event) => update("fee", event.target.value)}
         >
-          <option value="">Any fee</option>
-          <option value="no-fee">No fee</option>
-          <option value="paid">Application fee</option>
-          <option value="unknown">Fee not listed</option>
-        </select>
+          <NativeSelectOption value="">Any fee</NativeSelectOption>
+          <NativeSelectOption value="no-fee">No fee</NativeSelectOption>
+          <NativeSelectOption value="paid">Application fee</NativeSelectOption>
+          <NativeSelectOption value="unknown">Fee not listed</NativeSelectOption>
+        </NativeSelect>
       </label>
 
-      <details className={styles.more}>
-        <summary>
+      <Collapsible className={styles.more}>
+        <CollapsibleTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              className={`${styles.moreTrigger} h-auto w-full justify-between text-left whitespace-normal`}
+            />
+          }
+        >
           <span>
             <strong>More category filters</strong>
             <small>Keep each category separate.</small>
           </span>
           <ChevronDown aria-hidden="true" />
-        </summary>
-        <div className={styles.moreFields}>
+        </CollapsibleTrigger>
+        <CollapsibleContent className={styles.moreFields}>
           {visibleFacets
             .filter((facet) => facet.key !== "practice-family")
             .map((facet) => {
@@ -403,24 +423,25 @@ function FilterPanel({
               return (
                 <label key={facet.key} className={styles.selectField}>
                   <span>{facet.label}</span>
-                  <select
+                  <NativeSelect
+                    className={styles.select}
                     value={selected}
                     onChange={(event) =>
                       setFacet(facet.key, event.target.value)
                     }
                   >
-                    <option value="">Any</option>
+                    <NativeSelectOption value="">Any</NativeSelectOption>
                     {termsForFacet(facet.key).map((term) => (
-                      <option key={term.id} value={term.id}>
+                      <NativeSelectOption key={term.id} value={term.id}>
                         {term.preferredLabel}
-                      </option>
+                      </NativeSelectOption>
                     ))}
-                  </select>
+                  </NativeSelect>
                 </label>
               );
             })}
-        </div>
-      </details>
+        </CollapsibleContent>
+      </Collapsible>
 
       <div className={styles.status} aria-live="polite">
         {pending ? (

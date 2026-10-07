@@ -123,10 +123,10 @@ function DataTable({ dataset }: { dataset: DataSet }) {
                   const SortIcon = !active ? ArrowUpDown : sort.direction === 'asc' ? ArrowUp : ArrowDown;
                   return (
                     <TableHead key={column.key} aria-sort={active ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
-                      <button type="button" onClick={() => toggleSort(column.key)} className="inline-flex min-h-8 items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                      <Button type="button" variant="ghost" size="xs" onClick={() => toggleSort(column.key)} className="-ms-2">
                         {column.label}
                         <SortIcon className={`size-3 ${active ? 'text-foreground' : 'opacity-50'}`} aria-hidden="true" />
-                      </button>
+                      </Button>
                     </TableHead>
                   );
                 })}

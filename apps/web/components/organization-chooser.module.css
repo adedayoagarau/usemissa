@@ -4,9 +4,8 @@
 .chooser > header p { color: var(--accent-deep); font-size: .68rem; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
 .chooser > header h2 { margin-top: 5px; font-family: var(--font-heading), Georgia, serif; font-size: 2rem; font-weight: 560; }
 .chooser > header > span { color: var(--muted-foreground); font-size: .78rem; }
-.search { display: flex; align-items: center; gap: 8px; width: min(100%, 460px); min-height: 46px; margin-bottom: 16px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; }
-.search svg { width: 16px; }
-.search input { width: 100%; min-height: 44px; outline: none; }
+.search { position: relative; display: block; width: min(100%, 460px); margin-bottom: 16px; }
+.search svg { position: absolute; top: 50%; left: 12px; width: 16px; color: var(--muted-foreground); transform: translateY(-50%); pointer-events: none; }
 .list { border-top: 1px solid var(--border); }
 .list article { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto auto; gap: 16px; align-items: center; min-height: 84px; padding: 12px 0; border-bottom: 1px solid var(--border); }
 .mark { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--primary) 7%, white); color: var(--primary); }
@@ -21,5 +20,4 @@
 .empty > svg { width: 22px; color: var(--primary); }
 .empty h3 { margin-top: 12px; }
 .empty p { margin: 8px 0; }
-.empty button { min-height: 44px; color: var(--primary); font-weight: 700; }
 @media (max-width: 620px) { .list article { grid-template-columns: 44px minmax(0, 1fr) auto; } .role { grid-column: 2; width: fit-content; } .list article > a { grid-column: 3; grid-row: 1 / span 2; } }

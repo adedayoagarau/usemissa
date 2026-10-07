@@ -9,7 +9,13 @@ import {
   type Transition,
 } from "framer-motion";
 import { Play } from "lucide-react";
-import { useEffect, useRef, useState, type PointerEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent,
+  type RefObject,
+} from "react";
 
 import {
   setHeroMotionPaused,
@@ -25,6 +31,7 @@ import {
   TrackerItemVignette,
   type VignetteCall,
 } from "./homepage-vignettes";
+import { Button } from "@/components/ui/button";
 import { weekBeforeReminder } from "@/lib/homepageShowcase";
 import styles from "./homepage-morph.module.css";
 
@@ -127,7 +134,7 @@ export function HomepageMorph({ call }: { call: VignetteCall | null }) {
   const prefersReduced = useReducedMotion();
   const hydrated = useHydrated();
   const reduced = hydrated && Boolean(prefersReduced);
-  const stage = useRef<HTMLDivElement>(null);
+  const stage = useRef<HTMLElement>(null);
   const canvas = useRef<HTMLDivElement>(null);
   const inView = useInView(stage, { amount: 0.4 });
   const [index, setIndex] = useState(0);
@@ -213,7 +220,7 @@ export function HomepageMorph({ call }: { call: VignetteCall | null }) {
     );
   }
 
-  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+  const onPointerMove = (event: PointerEvent<HTMLElement>) => {
     if (event.pointerType !== "mouse") return;
     const box = event.currentTarget.getBoundingClientRect();
     tiltY.set(((event.clientX - box.left) / box.width - 0.5) * MAX_TILT * 2);
@@ -226,11 +233,13 @@ export function HomepageMorph({ call }: { call: VignetteCall | null }) {
   const toggleHold = () => setHeroMotionPaused(!held);
 
   return (
-    <div
-      ref={stage}
+    <Button
+      // The stage renders as a div, while Button types its ref for a button element.
+      ref={stage as RefObject<HTMLButtonElement | null>}
+      nativeButton={false}
+      render={<div />}
+      variant="ghost"
       className={styles.stage}
-      role="button"
-      tabIndex={0}
       aria-pressed={held}
       aria-label={held ? "Play the product animation" : "Pause the product animation"}
       onPointerEnter={(event) => {
@@ -244,12 +253,6 @@ export function HomepageMorph({ call }: { call: VignetteCall | null }) {
       onFocus={() => setAttending(true)}
       onBlur={() => setAttending(false)}
       onClick={toggleHold}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          toggleHold();
-        }
-      }}
     >
       <div className={styles.canvas} ref={canvas} aria-hidden="true">
         <motion.div className={styles.tilt} style={{ rotateX: tiltX, rotateY: tiltY }}>
@@ -309,6 +312,6 @@ export function HomepageMorph({ call }: { call: VignetteCall | null }) {
           ) : null}
         </AnimatePresence>
       </div>
-    </div>
+    </Button>
   );
 }

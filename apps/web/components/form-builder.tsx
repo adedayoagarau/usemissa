@@ -3,7 +3,9 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SUBMISSION_TAXONOMY_OPTIONS, taxonomyLabelFor } from '@/lib/taxonomyOptions';
 
@@ -115,17 +117,17 @@ export function FormBuilder({ organizationId, openCallId, existingPath }: { orga
         <div className="mt-2 space-y-2">
           {taxonomyAssignments.map((assignment, index) => (
             <div key={`${assignment.termId}-${assignment.rule}-${index}`} className="flex flex-wrap items-center gap-2">
-              <select aria-label="Taxonomy term" className="h-9 min-w-48 flex-1 rounded-md border border-border bg-background px-2 text-sm" value={assignment.termId} onChange={(event) => setTaxonomyAssignments((current) => current.map((item, itemIndex) => (itemIndex === index ? { ...item, termId: event.target.value } : item)))}>
-                <option value="">Choose a field term</option>
+              <NativeSelect aria-label="Taxonomy term" className="min-w-48 flex-1 *:data-[slot=native-select]:h-9" value={assignment.termId} onChange={(event) => setTaxonomyAssignments((current) => current.map((item, itemIndex) => (itemIndex === index ? { ...item, termId: event.target.value } : item)))}>
+                <NativeSelectOption value="">Choose a field term</NativeSelectOption>
                 {SUBMISSION_TAXONOMY_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
+                  <NativeSelectOption key={option.value} value={option.value}>
                     {option.label} · {option.facet}
-                  </option>
+                  </NativeSelectOption>
                 ))}
-              </select>
-              <select
+              </NativeSelect>
+              <NativeSelect
                 aria-label="Taxonomy rule"
-                className="h-9 rounded-md border border-border bg-background px-2 text-sm"
+                className="*:data-[slot=native-select]:h-9"
                 value={assignment.rule}
                 onChange={(event) =>
                   setTaxonomyAssignments((current) =>
@@ -141,11 +143,11 @@ export function FormBuilder({ organizationId, openCallId, existingPath }: { orga
                   )
                 }
               >
-                <option value="accepted">Accepted</option>
-                <option value="preferred">Preferred</option>
-                <option value="required">Required</option>
-                <option value="excluded">Excluded</option>
-              </select>
+                <NativeSelectOption value="accepted">Accepted</NativeSelectOption>
+                <NativeSelectOption value="preferred">Preferred</NativeSelectOption>
+                <NativeSelectOption value="required">Required</NativeSelectOption>
+                <NativeSelectOption value="excluded">Excluded</NativeSelectOption>
+              </NativeSelect>
               <Button size="sm" variant="outline" type="button" onClick={() => setTaxonomyAssignments((current) => current.filter((_, itemIndex) => itemIndex !== index))}>
                 Remove
               </Button>
@@ -195,7 +197,7 @@ export function FormBuilder({ organizationId, openCallId, existingPath }: { orga
             </Select>
             <Input className="flex-1" placeholder="Field label" value={field.label} onChange={(e) => updateField(i, { label: e.target.value })} />
             <label className="flex items-center gap-1 text-xs text-muted-foreground">
-              <input type="checkbox" checked={field.required} onChange={(e) => updateField(i, { required: e.target.checked })} />
+              <Checkbox checked={field.required} onCheckedChange={(checked) => updateField(i, { required: checked })} />
               required
             </label>
             <Button size="sm" variant="outline" type="button" onClick={() => moveField(i, -1)} disabled={i === 0}>

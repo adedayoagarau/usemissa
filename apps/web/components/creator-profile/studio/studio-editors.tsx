@@ -20,6 +20,7 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { PortfolioPublicationPicker } from "@/components/portfolio-publication-picker";
 import { PortfolioLinkPreview } from "@/components/portfolio-link-preview";
@@ -344,8 +345,9 @@ function ItemList<T extends { id?: string }>({
               className={cn(styles.item, expanded && styles.itemOpen)}
             >
               <div className={styles.itemRow}>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   className={styles.itemToggle}
                   aria-expanded={expanded}
                   onClick={() => setOpen(expanded ? undefined : key)}
@@ -355,7 +357,7 @@ function ItemList<T extends { id?: string }>({
                     <span className={styles.itemMeta}>{metaOf(item)}</span>
                   )}
                   <ChevronDown aria-hidden="true" className={styles.chevron} />
-                </button>
+                </Button>
                 <span className={styles.itemTools}>
                   <Button
                     type="button"
@@ -418,8 +420,9 @@ function ItemList<T extends { id?: string }>({
         {removed && (
           <>
             Removed “{titleOf(removed.item).trim() || `Untitled ${noun}`}”.{" "}
-            <button
+            <Button
               type="button"
+              variant="link"
               onClick={() => {
                 const next = [...items];
                 next.splice(removed.index, 0, removed.item);
@@ -428,7 +431,7 @@ function ItemList<T extends { id?: string }>({
               }}
             >
               Undo
-            </button>
+            </Button>
           </>
         )}
       </p>
@@ -524,8 +527,10 @@ export function BasicsEditor({ draft, update, upload, onError }: EditorProps) {
           {draft.selected.map((item) => (
             <li key={item}>
               {item}
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon-xs"
                 aria-label={`Remove ${item}`}
                 onClick={() =>
                   field("selected")(
@@ -534,7 +539,7 @@ export function BasicsEditor({ draft, update, upload, onError }: EditorProps) {
                 }
               >
                 <X aria-hidden="true" />
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
@@ -564,10 +569,16 @@ export function BasicsEditor({ draft, update, upload, onError }: EditorProps) {
           {PRACTICE_SUGGESTIONS.filter(
             (item) => !draft.selected.includes(item),
           ).map((item) => (
-            <button key={item} type="button" onClick={() => addPractice(item)}>
+            <Button
+              key={item}
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={() => addPractice(item)}
+            >
               <Plus aria-hidden="true" />
               {item}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -718,25 +729,27 @@ export function AppearanceEditor({
       />
       <fieldset className={styles.group}>
         <legend>Craft lens</legend>
-        <div
+        <RadioGroup
           className={styles.choiceGrid}
-          role="radiogroup"
           aria-label="Craft lens"
+          value={draft.lens}
+          onValueChange={(value) =>
+            update((current) => ({
+              ...current,
+              lens: value as PortfolioData["lens"],
+            }))
+          }
         >
           {PORTFOLIO_LENSES.map((lens) => (
-            <button
-              key={lens}
-              type="button"
-              role="radio"
-              aria-checked={draft.lens === lens}
-              className={styles.choice}
-              onClick={() => update((current) => ({ ...current, lens }))}
-            >
-              <span className={styles.choiceTitle}>{LENSES[lens].label}</span>
+            <label key={lens} className={styles.choice}>
+              <span className={styles.choiceHead}>
+                <RadioGroupItem value={lens} aria-label={LENSES[lens].label} />
+                <span className={styles.choiceTitle}>{LENSES[lens].label}</span>
+              </span>
               <span className={styles.choiceLead}>{LENSES[lens].lead}</span>
-            </button>
+            </label>
           ))}
-        </div>
+        </RadioGroup>
         <Button
           type="button"
           variant="outline"
@@ -753,50 +766,65 @@ export function AppearanceEditor({
       </fieldset>
       <fieldset className={styles.group}>
         <legend>Theme</legend>
-        <div className={styles.themes} role="radiogroup" aria-label="Theme">
+        <RadioGroup
+          className={styles.themes}
+          aria-label="Theme"
+          value={draft.theme}
+          onValueChange={(value) =>
+            update((current) => ({
+              ...current,
+              theme: value as PortfolioData["theme"],
+            }))
+          }
+        >
           {PORTFOLIO_THEMES.map((theme) => (
-            <button
-              key={theme}
-              type="button"
-              role="radio"
-              aria-checked={draft.theme === theme}
-              className={styles.theme}
-              onClick={() => update((current) => ({ ...current, theme }))}
-            >
+            <label key={theme} className={styles.theme}>
               <span
                 data-creator-theme={theme}
                 className={cn(styles.swatch, "font-heading")}
+                aria-hidden="true"
               >
                 Aa
               </span>
-              {THEME_LABELS[theme]}
-            </button>
+              <span className={styles.choiceHead}>
+                <RadioGroupItem
+                  value={theme}
+                  aria-label={THEME_LABELS[theme]}
+                />
+                {THEME_LABELS[theme]}
+              </span>
+            </label>
           ))}
-        </div>
+        </RadioGroup>
       </fieldset>
       <fieldset className={styles.group}>
         <legend>Top of the page</legend>
-        <div
+        <RadioGroup
           className={styles.choiceGrid}
-          role="radiogroup"
           aria-label="Top of the page"
+          value={draft.hero}
+          onValueChange={(value) =>
+            update((current) => ({
+              ...current,
+              hero: value as PortfolioData["hero"],
+            }))
+          }
         >
           {PORTFOLIO_HEROES.map((hero) => (
-            <button
-              key={hero}
-              type="button"
-              role="radio"
-              aria-checked={draft.hero === hero}
-              className={styles.choice}
-              onClick={() => update((current) => ({ ...current, hero }))}
-            >
-              <span className={styles.choiceTitle}>
-                {HERO_COPY[hero].label}
+            <label key={hero} className={styles.choice}>
+              <span className={styles.choiceHead}>
+                <RadioGroupItem
+                  value={hero}
+                  aria-label={HERO_COPY[hero].label}
+                />
+                <span className={styles.choiceTitle}>
+                  {HERO_COPY[hero].label}
+                </span>
               </span>
               <span className={styles.choiceLead}>{HERO_COPY[hero].lead}</span>
-            </button>
+            </label>
           ))}
-        </div>
+        </RadioGroup>
         {draft.hero === "plate" && !plateReady && (
           <p className={styles.notice}>
             Feature a work with an image to use this. Until then, visitors see

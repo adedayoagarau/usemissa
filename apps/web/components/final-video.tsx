@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import styles from '@/app/home.module.css';
 
 type FinalVideoProps = {
@@ -104,9 +105,11 @@ export function FinalVideo({ videoUrl, poster }: FinalVideoProps) {
         <video ref={videoRef} muted loop playsInline preload="none" poster={poster} />
         <div className={styles.halftone} />
       </div>
-      <button
+      <Button
         className={styles.finalVideoControl}
         type="button"
+        variant="outline"
+        size="sm"
         onClick={togglePlayback}
         disabled={reducedMotion}
         aria-label={
@@ -119,7 +122,7 @@ export function FinalVideo({ videoUrl, poster }: FinalVideoProps) {
         aria-pressed={isPlaying}
       >
         {isPlaying ? 'Pause film' : 'Play film'}
-      </button>
+      </Button>
     </>
   );
 }

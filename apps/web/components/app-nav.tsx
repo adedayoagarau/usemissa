@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList } from '@/components/ui/navigation-menu';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Menu, X } from 'lucide-react';
@@ -74,13 +75,13 @@ export function AppNav({ email, userId, isAdmin = false, organizations = [] }: {
     return (
       <label className={`flex min-w-0 items-center gap-2 ${className}`}>
         <span className="sr-only"><Sp>Organization</Sp></span>
-        <select aria-label="Organization" value={organizations.some((organization) => organization.id === currentOrganizationId) ? currentOrganizationId! : (organizations[0]?.id ?? '')} onChange={(event) => handleOrganizationChange(event.target.value)} className="min-h-11 max-w-52 min-w-0 rounded-md border border-border bg-background px-2.5 text-xs font-medium text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+        <NativeSelect aria-label="Organization" value={organizations.some((organization) => organization.id === currentOrganizationId) ? currentOrganizationId! : (organizations[0]?.id ?? '')} onChange={(event) => handleOrganizationChange(event.target.value)} className="max-w-52 min-w-0 *:data-[slot=native-select]:h-11">
           {organizations.map((organization) => (
-            <option key={organization.id} value={organization.id}>
+            <NativeSelectOption key={organization.id} value={organization.id}>
               {organization.name}
-            </option>
+            </NativeSelectOption>
           ))}
-        </select>
+        </NativeSelect>
       </label>
     );
   }
@@ -120,9 +121,9 @@ export function AppNav({ email, userId, isAdmin = false, organizations = [] }: {
         {organizationPicker('ml-1')}
       </div>
 
-      <button type="button" className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg border border-border text-foreground hover:bg-muted lg:hidden" aria-label={mobileNavOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}>
+      <Button type="button" variant="outline" size="icon" className="lg:hidden" aria-label={mobileNavOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}>
         {mobileNavOpen ? <X className="size-4" /> : <Menu className="size-4" />}
-      </button>
+      </Button>
 
       <DropdownMenu>
         <DropdownMenuTrigger render={<Button variant="account" size="account" />} className="ml-auto shrink-0">

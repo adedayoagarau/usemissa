@@ -339,9 +339,11 @@ export function ProfileStudio({
           <div className={styles.railGroup}>
             <p className={styles.railLabel}>Profile</p>
             {(["basics", "appearance"] as const).map((id) => (
-              <button
+              <Button
                 key={id}
                 type="button"
+                variant="ghost"
+                size="sm"
                 className={styles.railItem}
                 aria-current={panel === id ? "true" : undefined}
                 onClick={() => open(id)}
@@ -350,7 +352,7 @@ export function ProfileStudio({
                 <span className={styles.railHint}>
                   {id === "appearance" ? LENSES[draft.lens].label : ""}
                 </span>
-              </button>
+              </Button>
             ))}
           </div>
           <div className={styles.railGroup}>
@@ -363,8 +365,10 @@ export function ProfileStudio({
                     key={module.id}
                     className={cn(!module.visible && styles.moduleHidden)}
                   >
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       className={styles.railItem}
                       aria-current={panel === module.id ? "true" : undefined}
                       onClick={() => open(module.id)}
@@ -375,7 +379,7 @@ export function ProfileStudio({
                           {count}
                         </span>
                       )}
-                    </button>
+                    </Button>
                     <span className={styles.moduleTools}>
                       <Button
                         variant="ghost"
@@ -413,14 +417,16 @@ export function ProfileStudio({
             </p>
           </div>
           <div className={styles.railGroup}>
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               className={styles.railItem}
               aria-current={panel === "publish" ? "true" : undefined}
               onClick={() => open("publish")}
             >
               Address and publishing
-            </button>
+            </Button>
           </div>
           {suggestions.length > 0 && (
             <div className={styles.suggestions}>

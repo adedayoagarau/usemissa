@@ -125,31 +125,6 @@
   font-size: 0.875rem;
 }
 
-.remove {
-  display: inline-flex;
-  width: 40px;
-  height: 40px;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 9999px;
-  background: transparent;
-  color: var(--ink-2);
-  cursor: pointer;
-}
-
-.remove svg {
-  width: 14px;
-  height: 14px;
-}
-
-.remove:hover,
-.remove:focus-visible {
-  background: var(--surface-muted);
-  color: var(--ink);
-}
-
-.remove:focus-visible,
 .textLink:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;

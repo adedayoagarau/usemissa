@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
+import { ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
@@ -67,16 +70,19 @@ export default function PlatformAdminActivityChart({ daily }: { daily: Array<{ d
           <Area dataKey={series} type="monotone" stroke={`var(--color-${series})`} fill={`var(--color-${series})`} fillOpacity={0.12} strokeWidth={2} isAnimationActive={false} />
         </AreaChart>
       </ChartContainer>
-      <details className="text-xs text-muted-foreground">
-        <summary className="cursor-pointer">View as table</summary>
-        <div className="mt-2 max-h-56 overflow-y-auto">
-          <table className="w-full text-left">
+      <Collapsible className="text-xs">
+        <CollapsibleTrigger render={<Button type="button" variant="link" size="xs" />}>
+          View as table
+          <ChevronDown aria-hidden="true" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2 max-h-56 overflow-y-auto">
+          <table className="w-full text-left text-muted-foreground">
             <caption className="sr-only">Daily product events and waitlist signups</caption>
             <thead><tr><th scope="col" className="py-1 font-medium">Day</th><th scope="col" className="py-1 text-right font-medium">Events</th><th scope="col" className="py-1 text-right font-medium">Signups</th></tr></thead>
             <tbody>{daily.map((row) => <tr key={row.day} className="border-t border-border"><td className="py-1 font-mono">{row.day}</td><td className="py-1 text-right font-mono tabular-nums">{row.events}</td><td className="py-1 text-right font-mono tabular-nums">{row.signups}</td></tr>)}</tbody>
           </table>
-        </div>
-      </details>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }

@@ -8,6 +8,8 @@ import {
   termsForBrowseLayer,
   type TaxonomyBrowseLayerId,
 } from '@missa/taxonomy';
+import { Button } from '@/components/ui/button';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 
 export type TaxonomyPreferenceValue = 'include' | 'prefer' | 'exclude';
 
@@ -80,17 +82,17 @@ export function TaxonomyBrowsePicker({
     return (
       <label key={layerId} className="min-w-0 flex-1 text-xs font-medium text-muted-foreground">
         <span className="sr-only">{label}</span>
-        <select
+        <NativeSelect
           id={`${idPrefix}-${layerId}`}
           aria-label={label}
           value=""
           disabled={disabled}
           onChange={(event) => addTerm(event.target.value)}
-          className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm font-normal text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full *:data-[slot=native-select]:h-11"
         >
-          <option value="">{disabled ? `Choose ${label.toLowerCase()} first` : label}</option>
-          {options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-        </select>
+          <NativeSelectOption value="">{disabled ? `Choose ${label.toLowerCase()} first` : label}</NativeSelectOption>
+          {options.map((option) => <NativeSelectOption key={option.id} value={option.id}>{option.label}</NativeSelectOption>)}
+        </NativeSelect>
       </label>
     );
   }
@@ -111,18 +113,18 @@ export function TaxonomyBrowsePicker({
               <span key={termId} className="inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2 py-1 text-xs text-foreground">
                 <span>{taxonomyLabelFor(termId)}</span>
                 {preference && (
-                  <select
+                  <NativeSelect
+                    size="sm"
                     aria-label={`Preference for ${taxonomyLabelFor(termId)}`}
                     value={preference.preference}
                     onChange={(event) => changePreference(termId, event.target.value as TaxonomyPreferenceValue)}
-                    className="h-7 rounded border border-border bg-background px-1.5 text-[11px]"
                   >
-                    <option value="include">Show me opportunities like this</option>
-                    <option value="prefer">Especially interested</option>
-                    <option value="exclude">Do not show this field</option>
-                  </select>
+                    <NativeSelectOption value="include">Show me opportunities like this</NativeSelectOption>
+                    <NativeSelectOption value="prefer">Especially interested</NativeSelectOption>
+                    <NativeSelectOption value="exclude">Do not show this field</NativeSelectOption>
+                  </NativeSelect>
                 )}
-                <button type="button" aria-label={`Remove ${taxonomyLabelFor(termId)}`} onClick={() => removeTerm(termId)} className="rounded px-1 text-muted-foreground hover:bg-muted hover:text-foreground">×</button>
+                <Button type="button" variant="ghost" size="icon-xs" aria-label={`Remove ${taxonomyLabelFor(termId)}`} onClick={() => removeTerm(termId)}>×</Button>
               </span>
             );
           })}

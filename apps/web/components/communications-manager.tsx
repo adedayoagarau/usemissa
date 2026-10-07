@@ -118,14 +118,16 @@ export function CommunicationsManager(props: {
             <Empty variant="bordered" size="spacious"><EmptyHeader><EmptyTitle>No letters yet</EmptyTitle><EmptyDescription>Compose the first one from a template. Nothing is sent until it is approved.</EmptyDescription></EmptyHeader>{props.canManage ? <Button type="button" variant="outline" onClick={() => setTab('compose')}><PenLine aria-hidden="true" />Compose a letter</Button> : null}</Empty>
           ) : (
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)]">
-              <ol className="divide-y divide-border rounded-lg border border-border" aria-label="Letter batches">
+              <ol className="grid content-start gap-2" aria-label="Letter batches">
                 {batches.map((batch) => (
                   <li key={batch.id}>
-                    <button type="button" onClick={() => setSelectedId(batch.id)} aria-current={selected?.id === batch.id ? 'true' : undefined} className="grid w-full gap-1 px-3 py-3 text-left hover:bg-muted aria-[current=true]:bg-accent">
+                    <Button type="button" variant="choice" size="choice" onClick={() => setSelectedId(batch.id)} aria-current={selected?.id === batch.id ? 'true' : undefined} data-selected={selected?.id === batch.id} className="min-h-0">
+                      <span className="grid w-full min-w-0 gap-1">
                       <span className="flex items-center justify-between gap-2"><strong className="truncate text-sm text-foreground">{batch.kindLabel}</strong><LetterStateBadge status={batch.status} /></span>
                       <span className="truncate text-xs text-muted-foreground">{callTitle(batch.openCallId)} · {batch.recipients.length} {batch.recipients.length === 1 ? 'recipient' : 'recipients'}</span>
                       <span className="font-mono text-[11px] text-muted-foreground">{when(batch.updatedAt)}</span>
-                    </button>
+                      </span>
+                    </Button>
                   </li>
                 ))}
               </ol>

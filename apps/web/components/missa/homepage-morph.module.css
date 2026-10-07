@@ -3,10 +3,21 @@
  * shared vignettes of shipped UI.
  */
 
+/* The stage is a Button rendered as a block <div>: it keeps the page's own
+   type and surface, so the control chrome is reset here. */
 .stage {
   position: relative;
+  display: block;
+  height: auto;
   min-width: 0;
+  padding: 0;
+  border: 0;
   border-radius: var(--radius-xl);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  white-space: normal;
+  translate: none;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -14,6 +25,7 @@
 .stage:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 4px;
+  box-shadow: none;
 }
 
 /* No panel: the shape floats on the page itself. */

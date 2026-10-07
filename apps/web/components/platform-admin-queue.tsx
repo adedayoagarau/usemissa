@@ -19,6 +19,9 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { AdminOperationButton } from "./platform-admin-actions";
 import type {
   AdminArea,
@@ -254,14 +257,15 @@ function QueueDetail({
             </p>
           )}
         </div>
-        <button
+        <Button
           type="button"
+          variant="account"
           onClick={onClose}
           aria-label="Back to worklist"
-          className="flex min-h-11 shrink-0 items-center justify-center gap-2 px-2 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className="shrink-0"
         >
           <ArrowLeft className="size-4 xl:hidden" aria-hidden="true" /><span className="text-xs xl:hidden">Worklist</span><X className="hidden size-4 xl:block" aria-hidden="true" />
-        </button>
+        </Button>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <MaturityTag maturity={row.maturity} />
@@ -383,11 +387,13 @@ function QueueTable({
                   className={`border-b border-border last:border-0 ${selected ? "bg-accent" : "hover:bg-muted/30"}`}
                 >
                   <td
-                    className="border-l-2 border-transparent px-4 py-3 align-top data-[selected=true]:border-primary"
+                    className="border-l-2 border-transparent px-2 py-3 align-top data-[selected=true]:border-primary"
                     data-selected={selected}
                   >
-                    <button
+                    <Button
                       type="button"
+                      variant="link"
+                      size="xs"
                       onClick={() => onSelect(row.id)}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
@@ -395,34 +401,36 @@ function QueueTable({
                           onSelect(row.id);
                         }
                       }}
-                      className="flex w-full min-w-0 items-start gap-2 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                      className="h-auto w-full min-w-0 items-start justify-start"
                     >
                       <SeverityMark row={row} />
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium text-foreground">
+                      <span className="min-w-0 text-left">
+                        <span className="block truncate text-sm font-medium text-foreground">
                           {row.title}
                         </span>
                         {row.subtitle && (
-                          <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                          <span className="mt-0.5 block truncate text-xs font-normal text-muted-foreground">
                             {row.subtitle}
                           </span>
                         )}
                       </span>
-                    </button>
+                    </Button>
                   </td>
-                  <td className="px-4 py-3 align-top">
-                    <button
+                  <td className="px-2 py-3 align-top">
+                    <Button
                       type="button"
+                      variant="link"
+                      size="xs"
                       onClick={() => onSelect(row.id)}
-                      className="block max-w-full text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                      className="h-auto max-w-full flex-col items-start"
                     >
-                      <span className="block truncate text-foreground">
+                      <span className="block max-w-full truncate text-sm font-normal text-foreground">
                         {row.reason}
                       </span>
-                      <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                      <span className="mt-0.5 block max-w-full truncate text-xs font-normal text-muted-foreground">
                         {row.owner ?? "Unassigned"}
                       </span>
-                    </button>
+                    </Button>
                   </td>
                   <td className="px-4 py-3 align-top">
                     <span className="block truncate text-foreground">
@@ -432,11 +440,13 @@ function QueueTable({
                       {humanize(row.status)}
                     </span>
                   </td>
-                  <td className="px-4 py-3 align-top">
-                    <button
+                  <td className="px-2 py-3 align-top">
+                    <Button
                       type="button"
+                      variant="link"
+                      size="xs"
                       onClick={() => onSelect(row.id)}
-                      className="text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                      className="h-auto flex-col items-start"
                     >
                       <span
                         className={`block font-mono text-xs font-medium whitespace-nowrap ${row.severity === "high" ? "text-destructive" : row.severity === "medium" ? "text-warning" : "text-foreground"}`}
@@ -444,11 +454,11 @@ function QueueTable({
                         {row.age}
                       </span>
                       {row.ageAt && (
-                        <span className="mt-0.5 block font-mono text-[10px] whitespace-nowrap text-muted-foreground">
+                        <span className="mt-0.5 block font-mono text-[10px] font-normal whitespace-nowrap text-muted-foreground">
                           {formatUtc(row.ageAt)}
                         </span>
                       )}
-                    </button>
+                    </Button>
                   </td>
                   <td className="px-4 py-3 align-top">
                     <MaturityTag maturity={row.maturity} />
@@ -470,14 +480,16 @@ function QueueTable({
               key={row.id}
               className={selected ? "bg-accent" : undefined}
             >
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="choice"
                 data-queue-row={row.id}
                 onClick={() => onSelect(row.id)}
-                className="flex min-h-24 w-full items-start gap-3 p-4 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
+                className="items-start"
               >
                 <SeverityMark row={row} />
-                <span className="min-w-0 flex-1">
+                <span className="min-w-0 flex-1 text-left font-normal whitespace-normal">
                   <span className="block font-medium text-foreground">
                     {row.title}
                   </span>
@@ -497,7 +509,7 @@ function QueueTable({
                   className="mt-1 size-4 shrink-0 text-muted-foreground"
                   aria-hidden="true"
                 />
-              </button>
+              </Button>
               <div className="flex items-center justify-between gap-3 px-4 pb-4 pl-11">
                 <MaturityTag maturity={row.maturity} />
                 <QueueAction action={row.action} />
@@ -556,20 +568,25 @@ function LaneHealth({
         {counts.map(({ queue, count }) => {
           const selected = activeQueue === queue;
           return (
-            <button
+            <Button
               key={queue}
               type="button"
+              variant="choice"
               onClick={() => onSelect(selected ? "all" : queue)}
               aria-pressed={selected}
-              className={`min-h-16 border px-3 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${selected ? "border-primary bg-accent text-primary" : "border-border hover:border-primary/50 hover:bg-muted/30"}`}
+              data-selected={selected}
+              size="choice"
+              className="min-h-16 min-w-0"
             >
-              <span className="block truncate text-xs font-medium text-foreground">
-                {queueLabels[queue]}
+              <span className="block w-full min-w-0">
+                <span className="block truncate text-xs font-medium text-foreground">
+                  {queueLabels[queue]}
+                </span>
+                <span className="mt-1 block font-mono text-lg font-normal text-foreground tabular-nums">
+                  {count}
+                </span>
               </span>
-              <span className="mt-1 block font-mono text-lg text-foreground tabular-nums">
-                {count}
-              </span>
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -716,14 +733,15 @@ export default function PlatformAdminOperationsQueue({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={() => window.location.reload()}
-            className="flex min-h-9 items-center gap-2 border border-border bg-card px-3 text-xs font-medium text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             <RefreshCw className="size-3.5" aria-hidden="true" />
             Refresh
-          </button>
+          </Button>
           <AdminOperationButton
             action="run-radar-tick"
             label="Run bounded tick"
@@ -824,13 +842,14 @@ export default function PlatformAdminOperationsQueue({
                   active
                 </span>
                 {activeFilterCount > 0 && (
-                  <button
+                  <Button
                     type="button"
+                    variant="link"
+                    size="xs"
                     onClick={clearFilters}
-                    className="font-medium text-accent-deep underline decoration-accent-tint underline-offset-4 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                   >
                     Clear
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -840,13 +859,13 @@ export default function PlatformAdminOperationsQueue({
                   className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
                   aria-hidden="true"
                 />
-                <input
+                <Input
                   ref={searchRef}
                   value={search}
                   onChange={(event) => { setSearch(event.target.value); replaceUrl({ q: event.target.value.trim() || undefined, item: undefined }); setSelectedId(undefined); }}
                   placeholder="Search by ID, item, reason, owner…"
                   aria-label="Search operations queue"
-                  className="h-10 w-full border border-border bg-card pr-12 pl-9 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="pr-12 pl-9"
                 />
                 <span className="pointer-events-none absolute top-1/2 right-3 hidden -translate-y-1/2 font-mono text-[10px] text-muted-foreground sm:inline">
                   ⌘K
@@ -855,37 +874,37 @@ export default function PlatformAdminOperationsQueue({
               <label className="sr-only" htmlFor="queue-filter">
                 Queue filter
               </label>
-              <select
+              <NativeSelect
                 id="queue-filter"
+                className="w-full"
                 value={queueFilter}
                 onChange={(event) =>
                   selectQueue(event.target.value as QueueFilter)
                 }
-                className="h-10 border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               >
-                <option value="all">All queues</option>
+                <NativeSelectOption value="all">All queues</NativeSelectOption>
                 {queueOrder.map((queue) => (
-                  <option key={queue} value={queue}>
+                  <NativeSelectOption key={queue} value={queue}>
                     {queueLabels[queue]}
-                  </option>
+                  </NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
               <label className="sr-only" htmlFor="severity-filter">
                 Severity filter
               </label>
-              <select
+              <NativeSelect
                 id="severity-filter"
+                className="w-full"
                 value={severityFilter}
                 onChange={(event) =>
                   { const value = event.target.value as SeverityFilter; setSeverityFilter(value); setSelectedId(undefined); replaceUrl({ severity: value === 'all' ? undefined : value, item: undefined }); }
                 }
-                className="h-10 border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               >
-                <option value="all">All severity</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
+                <NativeSelectOption value="all">All severity</NativeSelectOption>
+                <NativeSelectOption value="high">High</NativeSelectOption>
+                <NativeSelectOption value="medium">Medium</NativeSelectOption>
+                <NativeSelectOption value="low">Low</NativeSelectOption>
+              </NativeSelect>
             </div>
           </div>
           {filteredRows.length > 0 ? (
@@ -911,13 +930,15 @@ export default function PlatformAdminOperationsQueue({
                   : "Adjust the search or filters. The queue is read from the current backend snapshot, not mock data."}
               </p>
               {data.queue.summary.open > 0 && (
-                <button
+                <Button
                   type="button"
+                  variant="link"
+                  size="xs"
                   onClick={clearFilters}
-                  className="mt-4 text-xs font-medium text-accent-deep underline decoration-accent-tint underline-offset-4 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="mt-4"
                 >
                   Clear filters
-                </button>
+                </Button>
               )}
             </div>
           )}

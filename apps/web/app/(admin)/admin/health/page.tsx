@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { CheckCircle2, CircleAlert, CircleDashed, CircleX } from 'lucide-react';
 import { WEB_VITAL_THRESHOLDS, readAlerts } from '@missa/radar-adapters';
+import { buttonVariants } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AdminPageFrame } from '@/components/platform-admin';
 import TimeSeriesChart from '@/components/admin-time-series';
 import { AnalyticsHeader, BarList, NotConnected, Panel, PeriodPicker, StatGroup, StatTile, formatCount, formatPercent } from '@/components/admin-observability-ui';
@@ -133,12 +135,16 @@ export default async function AdminHealthPage({ searchParams }: { searchParams: 
                 </div>
               )}
               {data.incidents.length > 0 && (
-                <details className="rounded-xl border border-border bg-card px-4 py-3 text-sm">
-                  <summary className="cursor-pointer font-medium text-foreground">{data.incidents.length} failed checks in the last 7 days</summary>
-                  <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-                    {data.incidents.map((incident) => <li key={`${incident.target}-${incident.at}`}><span className="font-mono">{when(incident.at)}</span> · {incident.target} · {incident.status ?? 'no response'} {incident.error ? `· ${incident.error}` : ''}</li>)}
-                  </ul>
-                </details>
+                <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm">
+                  <Collapsible>
+                    <CollapsibleTrigger className={buttonVariants({ variant: 'link', size: 'xs' })}>{data.incidents.length} failed checks in the last 7 days</CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                        {data.incidents.map((incident) => <li key={`${incident.target}-${incident.at}`}><span className="font-mono">{when(incident.at)}</span> · {incident.target} · {incident.status ?? 'no response'} {incident.error ? `· ${incident.error}` : ''}</li>)}
+                      </ul>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
               )}
             </section>
 

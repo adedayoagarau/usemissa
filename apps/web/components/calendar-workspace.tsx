@@ -23,6 +23,29 @@ import Link from "next/link";
 import Image from "next/image";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuGroup,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import { FilterChip } from "@/components/missa/filter-chip";
 import {
   calendarDeadlineFactEvents,
   calendarFilterFor,
@@ -158,7 +181,7 @@ export function CalendarWorkspace({
   initialView?: CalendarView;
 }) {
   const sp = useSp();
-  const editorRef = useRef<HTMLElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const editorTriggerRef = useRef<HTMLElement | null>(null);
   const pendingMutation = useRef<{ signature: string; key: string } | null>(
     null,
@@ -178,8 +201,6 @@ export function CalendarWorkspace({
     [busy, setBusy] = useState(false),
     [announcement, setAnnouncement] = useState(""),
     [contextMenu, setContextMenu] = useState<{
-      x: number;
-      y: number;
       day: string;
       event?: EventItem;
     }>(),
@@ -200,7 +221,6 @@ export function CalendarWorkspace({
   const year = cursor.getFullYear(),
     month = cursor.getMonth();
   const goalCount = events.filter((event) => event.kind === "goal").length;
-  const editorOpen = Boolean(editing);
   async function load(loadYear = year) {
     setBusy(true);
     try {
@@ -422,15 +442,6 @@ export function CalendarWorkspace({
     return () => window.clearTimeout(timer);
   }, [providers.connections]);
   useEffect(() => {
-    const close = () => setContextMenu(undefined);
-    window.addEventListener("click", close);
-    window.addEventListener("scroll", close, true);
-    return () => {
-      window.removeEventListener("click", close);
-      window.removeEventListener("scroll", close, true);
-    };
-  }, []);
-  useEffect(() => {
     if (!opportunityPicker) return;
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
@@ -474,38 +485,20 @@ export function CalendarWorkspace({
       controller.abort();
     };
   }, [opportunityPicker, opportunityQuery]);
-  useEffect(() => {
-    if (!editorOpen) return;
-    const editor = editorRef.current;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !saving) {
-        event.preventDefault();
-        setEditing(undefined);
-        return;
-      }
-      if (event.key !== "Tab" || !editor) return;
-      const controls = [
-        ...editor.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        ),
-      ];
-      const first = controls[0],
-        last = controls.at(-1);
-      if (!first || !last) return;
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
+  // The month grid owns one context menu; the right-clicked (or long-pressed)
+  // day and event are read from the data attributes under the pointer.
+  function contextTargetFrom(event: Event | undefined) {
+    const target = event?.target instanceof Element ? event.target : null;
+    const day =
+      target?.closest<HTMLElement>("[data-day]")?.dataset.day ??
+      isoDay(cursor);
+    const eventId =
+      target?.closest<HTMLElement>("[data-event-id]")?.dataset.eventId;
+    return {
+      day,
+      event: eventId ? events.find((item) => item.id === eventId) : undefined,
     };
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      requestAnimationFrame(() => editorTriggerRef.current?.focus());
-    };
-  }, [editorOpen, saving]);
+  }
   const first = new Date(year, month, 1),
     start = new Date(first);
   start.setDate(1 - ((first.getDay() + 6) % 7));
@@ -976,9 +969,10 @@ export function CalendarWorkspace({
     .slice()
     .sort((a, b) => a.startAt.localeCompare(b.startAt));
   const laneButton = (event: EventItem) => (
-    <button
+    <Button
       key={event.id}
       type="button"
+      variant="outline"
       className={`${styles.laneEvent} ${styles[event.color]}`}
       onClick={() => setSelected(event)}
     >
@@ -988,7 +982,7 @@ export function CalendarWorkspace({
           ? `${event.sourceLabel ?? KIND_LABELS[event.kind]} · ${event.confidence === "changed" ? "Changed" : event.confidence === "predicted" ? "Predicted" : "Needs checking"}`
           : (event.sourceLabel ?? KIND_LABELS[event.kind])}
       </small>
-    </button>
+    </Button>
   );
   const monthEvents = visible.filter((event) => {
     const date = new Date(event.startAt);
@@ -1050,15 +1044,24 @@ export function CalendarWorkspace({
           ) : null}
         </div>
         {active ? (
-          <button onClick={() => disconnect(provider)}>Disconnect</button>
+          <Button variant="outline" onClick={() => disconnect(provider)}>
+            Disconnect
+          </Button>
         ) : providers.availability[provider] ? (
-          <a href={`/api/me/calendar/connections/${provider}/start`}>
+          <a
+            href={`/api/me/calendar/connections/${provider}/start`}
+            className={buttonVariants({ variant: "outline" })}
+          >
             {failed ? "Reconnect" : "Connect"}
           </a>
         ) : (
-          <button disabled title={`${label} OAuth is not configured`}>
+          <Button
+            variant="outline"
+            disabled
+            title={`${label} OAuth is not configured`}
+          >
             Unavailable
-          </button>
+          </Button>
         )}
       </article>
     );
@@ -1094,7 +1097,8 @@ export function CalendarWorkspace({
             </div>
           </dl>
           <div className={styles.heroActions}>
-            <button
+            <Button
+              variant="outline"
               className={styles.connectionButton}
               data-state={
                 connectionProblem
@@ -1113,34 +1117,40 @@ export function CalendarWorkspace({
                 <Link2 />
               )}
               {connectionLabel}
-            </button>
-            <button
-              className={styles.secondaryAction}
-              onClick={() => addOpportunity()}
-            >
+            </Button>
+            <Button variant="outline" onClick={() => addOpportunity()}>
               <CalendarDays />
               Add opportunity
-            </button>
-            <button className={styles.primary} onClick={() => create()}>
+            </Button>
+            <Button onClick={() => create()}>
               <Plus />
               Add time
-            </button>
+            </Button>
           </div>
         </div>
       </header>
       <section className={styles.shell}>
         <header className={styles.toolbar}>
-          <div>
-            <button
+          <div className={styles.toolbarDate}>
+            <Button
+              variant="outline"
+              size="icon"
               aria-label={`Previous ${view}`}
               onClick={() => shiftCursor(-1)}
             >
               <ChevronLeft />
-            </button>
-            <button onClick={() => setCursor(new Date())}>Today</button>
-            <button aria-label={`Next ${view}`} onClick={() => shiftCursor(1)}>
+            </Button>
+            <Button variant="outline" onClick={() => setCursor(new Date())}>
+              Today
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label={`Next ${view}`}
+              onClick={() => shiftCursor(1)}
+            >
               <ChevronRight />
-            </button>
+            </Button>
             <h2
               className={`font-sans ${view === "week" ? styles.weekTitle : ""}`}
             >
@@ -1152,36 +1162,39 @@ export function CalendarWorkspace({
                   })}
             </h2>
           </div>
-          <label>
-            <Search />
-            <span className="sr-only">Search events</span>
-            <input
+          <InputGroup className={`h-11 ${styles.search}`}>
+            <InputGroupAddon>
+              <Search aria-hidden="true" />
+            </InputGroupAddon>
+            <InputGroupInput
+              aria-label="Search events"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search your time"
             />
-          </label>
-          <nav>
-            {(["month", "week", "day", "agenda"] as View[]).map((v) => (
-              <button
-                key={v}
-                aria-pressed={view === v}
-                onClick={() => setView(v)}
-              >
-                {v}
-              </button>
-            ))}
-          </nav>
+          </InputGroup>
+          <Tabs
+            className={styles.views}
+            value={view}
+            onValueChange={(value) => setView(value as View)}
+          >
+            <TabsList size="responsive" aria-label="Calendar view">
+              {(["month", "week", "day", "agenda"] as View[]).map((v) => (
+                <TabsTrigger key={v} value={v} className={styles.viewTab}>
+                  {v}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         </header>
         <div className={styles.legend} aria-label="Calendar filters">
           {calendarFilters.map((filter) => (
-            <button
+            <FilterChip
               key={filter.key}
-              type="button"
               className={styles.filterButton}
               data-active={filters[filter.key]}
-              aria-pressed={filters[filter.key]}
-              onClick={() =>
+              selected={filters[filter.key]}
+              onSelectedChange={() =>
                 setFilters((current) => ({
                   ...current,
                   [filter.key]: !current[filter.key],
@@ -1189,16 +1202,17 @@ export function CalendarWorkspace({
               }
             >
               <i className={styles[filter.color]} /> {filter.label}
-            </button>
+            </FilterChip>
           ))}
           {Object.values(filters).some((active) => !active) ? (
-            <button
+            <Button
               type="button"
-              className={styles.resetFilters}
+              variant="link"
+              size="sm"
               onClick={() => setFilters(ALL_FILTERS)}
             >
               Show all
-            </button>
+            </Button>
           ) : null}
           <small>
             Drag time blocks to another day. Use the labels to show or hide a
@@ -1218,10 +1232,19 @@ export function CalendarWorkspace({
                     ),
                   )}
                 </div>
-                <div
-                  className={styles.grid}
-                  role="group"
-                  aria-label={`${format(cursor.toISOString(), { month: "long", year: "numeric" })} calendar`}
+                <ContextMenu
+                  onOpenChange={(open, details) => {
+                    if (open) setContextMenu(contextTargetFrom(details.event));
+                  }}
+                >
+                <ContextMenuTrigger
+                  render={
+                    <div
+                      className={styles.grid}
+                      role="group"
+                      aria-label={`${format(cursor.toISOString(), { month: "long", year: "numeric" })} calendar`}
+                    />
+                  }
                 >
                   {days.map((d) => {
                     const key = isoDay(d),
@@ -1229,16 +1252,9 @@ export function CalendarWorkspace({
                     return (
                       <div
                         key={key}
+                        data-day={key}
                         className={`${styles.day} ${d.getMonth() !== cursor.getMonth() ? styles.other : ""} ${key === isoDay(new Date()) ? styles.today : ""} ${key === isoDay(cursor) ? styles.selectedDay : ""}`}
                         onDoubleClick={() => create(key)}
-                        onContextMenu={(event) => {
-                          event.preventDefault();
-                          setContextMenu({
-                            x: event.clientX,
-                            y: event.clientY,
-                            day: key,
-                          });
-                        }}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={(e) => {
                           const item = events.find(
@@ -1249,7 +1265,10 @@ export function CalendarWorkspace({
                           if (item) void move(item, key);
                         }}
                       >
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          className={styles.dayNumber}
                           onClick={() => {
                             setCursor(d);
                             setSelected(undefined);
@@ -1257,109 +1276,99 @@ export function CalendarWorkspace({
                           aria-label={`Open ${format(d.toISOString(), { dateStyle: "full" })}`}
                         >
                           {d.getDate()}
-                        </button>
+                        </Button>
                         {items.slice(0, 3).map((e) => (
-                          <button
+                          <div
                             key={e.id}
-                            draggable={
-                              e.kind === "personal" || e.kind === "goal"
-                            }
-                            onDragStart={(x) =>
-                              x.dataTransfer.setData(
-                                "text/calendar-event",
-                                e.id,
-                              )
-                            }
-                            onClick={() =>
-                              e.kind === "personal" ? edit(e) : setSelected(e)
-                            }
-                            onKeyDown={(keyboardEvent) => {
-                              if (
-                                keyboardEvent.key === "ArrowLeft" ||
-                                keyboardEvent.key === "ArrowRight"
-                              ) {
-                                keyboardEvent.preventDefault();
-                                moveWithKeyboard(
-                                  e,
-                                  keyboardEvent.key === "ArrowRight"
-                                    ? "next"
-                                    : "previous",
-                                );
-                              }
-                            }}
-                            aria-keyshortcuts="ArrowLeft ArrowRight"
-                            onContextMenu={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              setContextMenu({
-                                x: event.clientX,
-                                y: event.clientY,
-                                day: key,
-                                event: e,
-                              });
-                            }}
+                            data-event-id={e.id}
                             className={`${styles.event} ${styles[e.color]}`}
                           >
-                            {e.kind === "personal" ? (
-                              <span
-                                className={styles.resizeHandle}
-                                role="button"
-                                tabIndex={0}
-                                aria-label={`Shorten ${e.title}`}
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  void resizeEvent(e, -30);
-                                }}
-                              >
-                                −
-                              </span>
-                            ) : null}
-                            <span
-                              className={styles.eventIcon}
-                              aria-hidden="true"
+                            <Button
+                              variant="ghost"
+                              className={styles.eventMain}
+                              draggable={
+                                e.kind === "personal" || e.kind === "goal"
+                              }
+                              onDragStart={(x) =>
+                                x.dataTransfer.setData(
+                                  "text/calendar-event",
+                                  e.id,
+                                )
+                              }
+                              onClick={() =>
+                                e.kind === "personal" ? edit(e) : setSelected(e)
+                              }
+                              onKeyDown={(keyboardEvent) => {
+                                if (
+                                  keyboardEvent.key === "ArrowLeft" ||
+                                  keyboardEvent.key === "ArrowRight"
+                                ) {
+                                  keyboardEvent.preventDefault();
+                                  moveWithKeyboard(
+                                    e,
+                                    keyboardEvent.key === "ArrowRight"
+                                      ? "next"
+                                      : "previous",
+                                  );
+                                }
+                              }}
+                              aria-keyshortcuts="ArrowLeft ArrowRight"
                             >
-                              {e.kind === "tracker" ? (
-                                <OpportunityMark
-                                  label={e.title}
-                                  tone={e.color}
-                                />
-                              ) : e.kind === "personal" ? (
-                                <GripVertical />
-                              ) : e.kind === "goal" ? (
-                                <Target />
-                              ) : e.kind === "reminder" ? (
-                                <Bell />
-                              ) : e.kind === "obligation" ? (
-                                <CheckCircle2 />
-                              ) : e.kind === "forecast" ? (
-                                <Clock3 />
-                              ) : (
-                                <CalendarDays />
-                              )}
-                            </span>
-                            <span className={styles.eventCopy}>
-                              <strong>{e.title}</strong>
-                              <small>
-                                {e.allDay
-                                  ? e.sourceLabel
-                                  : `${format(e.startAt, { hour: "numeric", minute: "2-digit" })} · ${e.sourceLabel ?? "Scheduled time"}`}
-                              </small>
-                            </span>
-                            {e.kind === "personal" ? (
                               <span
-                                className={styles.resizeHandle}
-                                role="button"
-                                tabIndex={0}
-                                aria-label={`Extend ${e.title}`}
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  void resizeEvent(e, 30);
-                                }}
+                                className={styles.eventIcon}
+                                aria-hidden="true"
                               >
-                                +
+                                {e.kind === "tracker" ? (
+                                  <OpportunityMark
+                                    label={e.title}
+                                    tone={e.color}
+                                  />
+                                ) : e.kind === "personal" ? (
+                                  <GripVertical />
+                                ) : e.kind === "goal" ? (
+                                  <Target />
+                                ) : e.kind === "reminder" ? (
+                                  <Bell />
+                                ) : e.kind === "obligation" ? (
+                                  <CheckCircle2 />
+                                ) : e.kind === "forecast" ? (
+                                  <Clock3 />
+                                ) : (
+                                  <CalendarDays />
+                                )}
                               </span>
+                              <span className={styles.eventCopy}>
+                                <strong>{e.title}</strong>
+                                <small>
+                                  {e.allDay
+                                    ? e.sourceLabel
+                                    : `${format(e.startAt, { hour: "numeric", minute: "2-digit" })} · ${e.sourceLabel ?? "Scheduled time"}`}
+                                </small>
+                              </span>
+                            </Button>
+                            {e.kind === "personal" ? (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  className={`${styles.resizeHandle} ${styles.resizeStart}`}
+                                  aria-label={`Shorten ${e.title}`}
+                                  onClick={() => void resizeEvent(e, -30)}
+                                >
+                                  −
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  className={styles.resizeHandle}
+                                  aria-label={`Extend ${e.title}`}
+                                  onClick={() => void resizeEvent(e, 30)}
+                                >
+                                  +
+                                </Button>
+                              </>
                             ) : null}
-                          </button>
+                          </div>
                         ))}
                         {items.length > 3 ? (
                           <small>+{items.length - 3} more</small>
@@ -1367,7 +1376,59 @@ export function CalendarWorkspace({
                       </div>
                     );
                   })}
-                </div>
+                </ContextMenuTrigger>
+                <ContextMenuContent
+                  className={styles.contextMenu}
+                  finalFocus={false}
+                >
+                  {contextMenu?.event ? (
+                    <ContextMenuGroup>
+                      <ContextMenuLabel className={styles.contextMenuTitle}>
+                        {contextMenu.event.title}
+                      </ContextMenuLabel>
+                      {contextMenu.event.kind === "personal" ? (
+                        <ContextMenuItem
+                          onClick={() => edit(contextMenu.event!)}
+                        >
+                          Edit time
+                        </ContextMenuItem>
+                      ) : (
+                        <ContextMenuItem
+                          onClick={() => setSelected(contextMenu.event)}
+                        >
+                          Open details
+                        </ContextMenuItem>
+                      )}
+                      {contextMenu.event.kind === "goal" ? (
+                        <ContextMenuItem
+                          onClick={() => setSelected(contextMenu.event)}
+                        >
+                          Move goal date
+                        </ContextMenuItem>
+                      ) : null}
+                      {contextMenu.event.kind === "personal" ? (
+                        <ContextMenuItem
+                          variant="destructive"
+                          onClick={() => void remove(contextMenu.event)}
+                        >
+                          Delete
+                        </ContextMenuItem>
+                      ) : null}
+                    </ContextMenuGroup>
+                  ) : null}
+                  <ContextMenuItem
+                    onClick={() => addOpportunity(contextMenu?.day)}
+                  >
+                    <Plus /> Add opportunity
+                  </ContextMenuItem>
+                  <ContextMenuItem onClick={() => create(contextMenu?.day)}>
+                    <Clock3 /> Add preparation time
+                  </ContextMenuItem>
+                  <ContextMenuItem onClick={() => create(contextMenu?.day)}>
+                    <CalendarDays /> New personal event
+                  </ContextMenuItem>
+                </ContextMenuContent>
+                </ContextMenu>
               </>
             ) : view === "week" ? (
               <div className={styles.weekScroller}>
@@ -1418,7 +1479,8 @@ export function CalendarWorkspace({
                       }}
                       onDoubleClick={() => create(key)}
                     >
-                      <button
+                      <Button
+                        variant="ghost"
                         className={styles.weekDayHeading}
                         onClick={() => {
                           setCursor(day);
@@ -1431,98 +1493,98 @@ export function CalendarWorkspace({
                         <strong className={isToday ? styles.weekToday : ""}>
                           {day.getDate()}
                         </strong>
-                      </button>
+                      </Button>
                       <div className={styles.weekDayEvents}>
                         {items.length ? (
                           items.map((event) => (
-                            <button
+                            <div
                               key={event.id}
-                              draggable={
-                                event.kind === "personal" ||
-                                event.kind === "goal"
-                              }
-                              onDragStart={(drag) =>
-                                drag.dataTransfer.setData(
-                                  "text/calendar-event",
-                                  event.id,
-                                )
-                              }
-                              onClick={() =>
-                                event.kind === "personal"
-                                  ? edit(event)
-                                  : setSelected(event)
-                              }
-                              onKeyDown={(keyboardEvent) => {
-                                if (
-                                  keyboardEvent.key === "ArrowLeft" ||
-                                  keyboardEvent.key === "ArrowRight"
-                                ) {
-                                  keyboardEvent.preventDefault();
-                                  moveWithKeyboard(
-                                    event,
-                                    keyboardEvent.key === "ArrowRight"
-                                      ? "next"
-                                      : "previous",
-                                  );
-                                }
-                              }}
-                              aria-keyshortcuts="ArrowLeft ArrowRight"
                               className={`${styles.weekEvent} ${styles[event.color]}`}
                             >
+                              <Button
+                                variant="ghost"
+                                className={styles.weekEventMain}
+                                draggable={
+                                  event.kind === "personal" ||
+                                  event.kind === "goal"
+                                }
+                                onDragStart={(drag) =>
+                                  drag.dataTransfer.setData(
+                                    "text/calendar-event",
+                                    event.id,
+                                  )
+                                }
+                                onClick={() =>
+                                  event.kind === "personal"
+                                    ? edit(event)
+                                    : setSelected(event)
+                                }
+                                onKeyDown={(keyboardEvent) => {
+                                  if (
+                                    keyboardEvent.key === "ArrowLeft" ||
+                                    keyboardEvent.key === "ArrowRight"
+                                  ) {
+                                    keyboardEvent.preventDefault();
+                                    moveWithKeyboard(
+                                      event,
+                                      keyboardEvent.key === "ArrowRight"
+                                        ? "next"
+                                        : "previous",
+                                    );
+                                  }
+                                }}
+                                aria-keyshortcuts="ArrowLeft ArrowRight"
+                              >
+                                <span>
+                                  {event.kind === "tracker" ? (
+                                    <OpportunityMark
+                                      label={event.title}
+                                      tone={event.color}
+                                    />
+                                  ) : event.allDay ? (
+                                    "All day"
+                                  ) : (
+                                    format(event.startAt, {
+                                      hour: "numeric",
+                                      minute: "2-digit",
+                                    })
+                                  )}
+                                </span>
+                                <strong>{event.title}</strong>
+                                <small>{event.sourceLabel}</small>
+                              </Button>
                               {event.kind === "personal" ? (
-                                <span
-                                  className={styles.resizeHandle}
-                                  role="button"
-                                  tabIndex={0}
-                                  aria-label={`Shorten ${event.title}`}
-                                  onClick={(keyboardEvent) => {
-                                    keyboardEvent.stopPropagation();
-                                    void resizeEvent(event, -30);
-                                  }}
-                                >
-                                  −
+                                <span className={styles.resizeControls}>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-xs"
+                                    className={styles.resizeHandle}
+                                    aria-label={`Shorten ${event.title}`}
+                                    onClick={() => void resizeEvent(event, -30)}
+                                  >
+                                    −
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-xs"
+                                    className={styles.resizeHandle}
+                                    aria-label={`Extend ${event.title}`}
+                                    onClick={() => void resizeEvent(event, 30)}
+                                  >
+                                    +
+                                  </Button>
                                 </span>
                               ) : null}
-                              <span>
-                                {event.kind === "tracker" ? (
-                                  <OpportunityMark
-                                    label={event.title}
-                                    tone={event.color}
-                                  />
-                                ) : event.allDay ? (
-                                  "All day"
-                                ) : (
-                                  format(event.startAt, {
-                                    hour: "numeric",
-                                    minute: "2-digit",
-                                  })
-                                )}
-                              </span>
-                              <strong>{event.title}</strong>
-                              <small>{event.sourceLabel}</small>
-                              {event.kind === "personal" ? (
-                                <span
-                                  className={styles.resizeHandle}
-                                  role="button"
-                                  tabIndex={0}
-                                  aria-label={`Extend ${event.title}`}
-                                  onClick={(keyboardEvent) => {
-                                    keyboardEvent.stopPropagation();
-                                    void resizeEvent(event, 30);
-                                  }}
-                                >
-                                  +
-                                </span>
-                              ) : null}
-                            </button>
+                            </div>
                           ))
                         ) : (
-                          <button
+                          <Button
+                            variant="ghost"
                             className={styles.weekEmpty}
                             onClick={() => create(key)}
                           >
                             + Add time
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </section>
@@ -1561,8 +1623,10 @@ export function CalendarWorkspace({
                 ) : null}
                 {agenda.length ? (
                   agenda.map((e) => (
-                    <button
+                    <Button
                       key={e.id}
+                      variant="ghost"
+                      className={styles.agendaItem}
                       onClick={() =>
                         e.kind === "personal" ? edit(e) : setSelected(e)
                       }
@@ -1594,7 +1658,7 @@ export function CalendarWorkspace({
                           {e.sourceLabel ?? e.location ?? "Personal event"}
                         </small>
                       </span>
-                    </button>
+                    </Button>
                   ))
                 ) : (
                   <p>
@@ -1609,13 +1673,15 @@ export function CalendarWorkspace({
           {selected ? (
             <aside className={styles.inspector}>
               <>
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   className={styles.close}
                   onClick={() => setSelected(undefined)}
                   aria-label="Close"
                 >
                   <X />
-                </button>
+                </Button>
                 <div className={styles.inspectorKicker}>
                   {selected.kind === "tracker" ? (
                     <OpportunityMark
@@ -1723,22 +1789,26 @@ export function CalendarWorkspace({
                           What should happen to your preparation time?
                         </dd>
                         <span className={styles.reconciliationActions}>
-                          <button
+                          <Button
+                            variant="outline"
+                            size="sm"
                             disabled={saving}
                             onClick={() =>
                               void resolveDeadline("move-preparation")
                             }
                           >
                             Move preparation
-                          </button>
-                          <button
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
                             disabled={saving}
                             onClick={() =>
                               void resolveDeadline("keep-preparation")
                             }
                           >
                             Leave it
-                          </button>
+                          </Button>
                         </span>
                       </span>
                     </div>
@@ -1768,13 +1838,15 @@ export function CalendarWorkspace({
                           ) : selected.syncStatus === "failed" ? (
                             <>
                               {`Sync failed${selected.syncError ? ` · ${selected.syncError}` : ""}`}{" "}
-                              <button
+                              <Button
+                                variant="link"
+                                size="xs"
                                 className={styles.inlineAction}
                                 disabled={saving}
                                 onClick={() => void retrySync(selected)}
                               >
                                 Retry
-                              </button>
+                              </Button>
                             </>
                           ) : selected.syncStatus === "running" ? (
                             "Syncing now"
@@ -1808,13 +1880,13 @@ export function CalendarWorkspace({
                     ) : null}
                     {selected.opportunityId &&
                     canSetDeadlineReminder(selected) ? (
-                      <button
-                        className={buttonVariants({ variant: "outline" })}
+                      <Button
+                        variant="outline"
                         disabled={saving}
                         onClick={() => void addReminder(selected)}
                       >
                         <Bell /> Set reminder
-                      </button>
+                      </Button>
                     ) : null}
                     {selected.kind === "goal" && selected.sourceId ? (
                       <div className={styles.goalMoveControl}>
@@ -1822,13 +1894,15 @@ export function CalendarWorkspace({
                           Move goal date
                         </label>
                         <div>
-                          <input
+                          <Input
                             id="goal-calendar-date"
                             type="date"
+                            size="compact"
                             defaultValue={selected.startAt.slice(0, 10)}
                           />
-                          <button
+                          <Button
                             type="button"
+                            size="sm"
                             onClick={() => {
                               const value = (
                                 document.getElementById(
@@ -1843,7 +1917,7 @@ export function CalendarWorkspace({
                             }}
                           >
                             Move
-                          </button>
+                          </Button>
                         </div>
                         <small>This changes the date on your Goal too.</small>
                       </div>
@@ -1861,18 +1935,21 @@ export function CalendarWorkspace({
                     ) : null}
                     {selected.purpose === "preparation" &&
                     selected.opportunityId ? (
-                      <button
+                      <Button
+                        variant="outline"
                         disabled={saving}
                         onClick={() => void addReminder(selected)}
                       >
                         <Bell /> Set reminder
-                      </button>
+                      </Button>
                     ) : null}
-                    <button onClick={() => edit(selected)}>Edit</button>
-                    <button onClick={() => void remove()}>
+                    <Button variant="outline" onClick={() => edit(selected)}>
+                      Edit
+                    </Button>
+                    <Button variant="outline" onClick={() => void remove()}>
                       <Trash2 />
                       Delete
-                    </button>
+                    </Button>
                   </footer>
                 )}
               </>
@@ -1918,108 +1995,21 @@ export function CalendarWorkspace({
           </Link>
         </nav>
       </section>
-      {contextMenu ? (
-        <div
-          className={styles.contextMenu}
-          style={{
-            left: Math.min(contextMenu.x, window.innerWidth - 230),
-            top: Math.min(contextMenu.y, window.innerHeight - 210),
-          }}
-          role="menu"
-          onClick={(event) => event.stopPropagation()}
-        >
-          {contextMenu.event ? (
-            <>
-              <p>{contextMenu.event.title}</p>
-              {contextMenu.event.kind === "personal" ? (
-                <button
-                  role="menuitem"
-                  onClick={() => {
-                    edit(contextMenu.event!);
-                    setContextMenu(undefined);
-                  }}
-                >
-                  Edit time
-                </button>
-              ) : (
-                <button
-                  role="menuitem"
-                  onClick={() => {
-                    setSelected(contextMenu.event);
-                    setContextMenu(undefined);
-                  }}
-                >
-                  Open details
-                </button>
-              )}
-              {contextMenu.event.kind === "goal" ? (
-                <button
-                  role="menuitem"
-                  onClick={() => {
-                    setSelected(contextMenu.event);
-                    setContextMenu(undefined);
-                  }}
-                >
-                  Move goal date
-                </button>
-              ) : null}
-              {contextMenu.event.kind === "personal" ? (
-                <button
-                  role="menuitem"
-                  onClick={() => {
-                    void remove(contextMenu.event);
-                    setContextMenu(undefined);
-                  }}
-                >
-                  Delete
-                </button>
-              ) : null}
-            </>
-          ) : null}
-          <button
-            role="menuitem"
-            onClick={() => addOpportunity(contextMenu.day)}
-          >
-            <Plus /> Add opportunity
-          </button>
-          <button
-            role="menuitem"
-            onClick={() => {
-              create(contextMenu.day);
-              setContextMenu(undefined);
-            }}
-          >
-            <Clock3 /> Add preparation time
-          </button>
-          <button
-            role="menuitem"
-            onClick={() => {
-              create(contextMenu.day);
-              setContextMenu(undefined);
-            }}
-          >
-            <CalendarDays /> New personal event
-          </button>
-        </div>
-      ) : null}
-      {pendingGoalMove ? (
-        <div
-          className={styles.backdrop}
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !saving)
-              setPendingGoalMove(undefined);
-          }}
-        >
-          <section
+      <Dialog
+        open={Boolean(pendingGoalMove)}
+        onOpenChange={(open) => {
+          if (!open && !saving) setPendingGoalMove(undefined);
+        }}
+      >
+        {pendingGoalMove ? (
+          <DialogContent
             className={styles.moveConfirm}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="move-goal-title"
+            showCloseButton={false}
           >
             <p>Change goal date</p>
-            <h2 id="move-goal-title" className="font-heading">
+            <DialogTitle id="move-goal-title" className="font-heading">
               Move “{pendingGoalMove.event.title}”?
-            </h2>
+            </DialogTitle>
             <div className={styles.moveDates}>
               <span>
                 <small>Currently</small>
@@ -2044,13 +2034,14 @@ export function CalendarWorkspace({
               time stays where you placed it.
             </p>
             <footer>
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 disabled={saving}
                 onClick={() => setPendingGoalMove(undefined)}
               >
                 Keep current date
-              </button>
+              </Button>
               <Button
                 type="button"
                 disabled={saving}
@@ -2059,248 +2050,256 @@ export function CalendarWorkspace({
                 {saving ? "Moving…" : "Move goal date"}
               </Button>
             </footer>
-          </section>
-        </div>
-      ) : null}
-      {opportunityPicker ? (
-        <div
-          className={styles.backdrop}
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget)
-              setOpportunityPicker(false);
-          }}
+          </DialogContent>
+        ) : null}
+      </Dialog>
+      <Dialog
+        open={opportunityPicker}
+        onOpenChange={(open) => {
+          if (!open) setOpportunityPicker(false);
+        }}
+      >
+        <DialogContent
+          className={styles.opportunityPicker}
+          showCloseButton={false}
+          initialFocus={() =>
+            document.getElementById("calendar-opportunity-search")
+          }
         >
-          <section
-            className={styles.opportunityPicker}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="opportunity-picker-title"
-          >
-            <header className={styles.opportunityPickerHeader}>
-              <Image
-                src="/media/calendar/calendar-sailboat.jpg"
-                alt=""
-                fill
-                sizes="600px"
+          <header className={styles.opportunityPickerHeader}>
+            <Image
+              src="/media/calendar/calendar-sailboat.jpg"
+              alt=""
+              fill
+              sizes="600px"
+            />
+            <div className={styles.opportunityPickerHeading}>
+              <span><Sp>Missa catalog</Sp></span>
+              <DialogTitle
+                id="opportunity-picker-title"
+                className="font-heading"
+              >
+                Add an opportunity
+              </DialogTitle>
+              <p>
+                Find the opportunity you want to work on. We’ll add its
+                deadline first.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setOpportunityPicker(false)}
+              aria-label="Close"
+            >
+              <X />
+            </Button>
+          </header>
+          <div className={styles.opportunityPickerBody}>
+            <label htmlFor="calendar-opportunity-search">
+              Search opportunities
+            </label>
+            <Autocomplete
+              items={opportunities}
+              itemToStringValue={(item) => item.title}
+              onValueChange={(value) => setOpportunityQuery(value)}
+              openOnInputClick
+            >
+              <AutocompleteInput
+                id="calendar-opportunity-search"
+                placeholder={sp("Title, organization, or discipline")}
               />
-              <div className={styles.opportunityPickerHeading}>
-                <span><Sp>Missa catalog</Sp></span>
-                <h2 id="opportunity-picker-title" className="font-heading">
-                  Add an opportunity
-                </h2>
-                <p>
-                  Find the opportunity you want to work on. We’ll add its
-                  deadline first.
-                </p>
-              </div>
-              <button
-                onClick={() => setOpportunityPicker(false)}
-                aria-label="Close"
-              >
-                <X />
-              </button>
-            </header>
-            <div className={styles.opportunityPickerBody}>
-              <label htmlFor="calendar-opportunity-search">
-                Search opportunities
-              </label>
-              <Autocomplete
-                items={opportunities}
-                itemToStringValue={(item) => item.title}
-                onValueChange={(value) => setOpportunityQuery(value)}
-                openOnInputClick
-              >
-                <AutocompleteInput
-                  id="calendar-opportunity-search"
-                  autoFocus
-                  placeholder={sp("Title, organization, or discipline")}
-                />
-                <AutocompleteContent className={styles.opportunityPopup}>
-                  {opportunityLoading ? (
-                    <div className={styles.pickerState}>
-                      Loading opportunities…
-                    </div>
-                  ) : opportunityError ? (
-                    <div className={styles.pickerState} role="alert">
-                      {opportunityError}
-                    </div>
-                  ) : (
-                    <>
-                      <AutocompleteEmpty>
-                        No matching opportunities.
-                      </AutocompleteEmpty>
-                      <AutocompleteList>
-                        {(item: OpportunityOption) => {
-                          const saved = applications.some(
-                            (application) =>
-                              application.opportunityId === item.id,
-                          );
-                          const scheduled = events.some(
-                            (event) =>
-                              event.opportunityId === item.id &&
-                              event.purpose === "preparation",
-                          );
-                          return (
-                            <AutocompleteItem
-                              className={styles.opportunityItem}
-                              key={item.id}
-                              value={item}
-                              onClick={() =>
-                                chooseOpportunity(item, contextMenu?.day)
-                              }
-                            >
-                              <OpportunityMark
-                                label={item.organizationName ?? item.title}
-                                tone={scheduled ? "forest" : "blue"}
-                              />
-                              <span className={styles.opportunityResult}>
-                                <strong>{item.title}</strong>
-                                <small>
-                                  {item.organizationName ??
-                                    sp("Organization not listed")}
-                                </small>
-                                <span>
+              <AutocompleteContent className={styles.opportunityPopup}>
+                {opportunityLoading ? (
+                  <div className={styles.pickerState}>
+                    Loading opportunities…
+                  </div>
+                ) : opportunityError ? (
+                  <div className={styles.pickerState} role="alert">
+                    {opportunityError}
+                  </div>
+                ) : (
+                  <>
+                    <AutocompleteEmpty>
+                      No matching opportunities.
+                    </AutocompleteEmpty>
+                    <AutocompleteList>
+                      {(item: OpportunityOption) => {
+                        const saved = applications.some(
+                          (application) =>
+                            application.opportunityId === item.id,
+                        );
+                        const scheduled = events.some(
+                          (event) =>
+                            event.opportunityId === item.id &&
+                            event.purpose === "preparation",
+                        );
+                        return (
+                          <AutocompleteItem
+                            className={styles.opportunityItem}
+                            key={item.id}
+                            value={item}
+                            onClick={() =>
+                              chooseOpportunity(item, contextMenu?.day)
+                            }
+                          >
+                            <OpportunityMark
+                              label={item.organizationName ?? item.title}
+                              tone={scheduled ? "forest" : "blue"}
+                            />
+                            <span className={styles.opportunityResult}>
+                              <strong>{item.title}</strong>
+                              <small>
+                                {item.organizationName ??
+                                  sp("Organization not listed")}
+                              </small>
+                              <span>
+                                <i>
+                                  {item.type?.replaceAll("-", " ") ??
+                                    "Opportunity"}
+                                </i>
+                                {item.discipline ? (
                                   <i>
-                                    {item.type?.replaceAll("-", " ") ??
-                                      "Opportunity"}
+                                    {item.discipline.replaceAll("-", " ")}
                                   </i>
-                                  {item.discipline ? (
-                                    <i>
-                                      {item.discipline.replaceAll("-", " ")}
-                                    </i>
-                                  ) : null}
-                                  <b>
-                                    {item.deadline
-                                      ? `Closes ${format(`${item.deadline.slice(0, 10)}T12:00:00`, { month: "short", day: "numeric", year: "numeric" })}`
-                                      : item.deadlineKind === "rolling"
-                                        ? "Rolling"
-                                        : "Deadline not listed"}
-                                  </b>
-                                </span>
-                                <em
-                                  className={
-                                    saved
-                                      ? styles.opportunitySaved
-                                      : styles.opportunityNew
-                                  }
-                                >
-                                  {scheduled
-                                    ? "On your calendar"
-                                    : saved
-                                      ? "Saved"
-                                      : "Add to calendar"}
-                                </em>
+                                ) : null}
+                                <b>
+                                  {item.deadline
+                                    ? `Closes ${format(`${item.deadline.slice(0, 10)}T12:00:00`, { month: "short", day: "numeric", year: "numeric" })}`
+                                    : item.deadlineKind === "rolling"
+                                      ? "Rolling"
+                                      : "Deadline not listed"}
+                                </b>
                               </span>
-                            </AutocompleteItem>
-                          );
-                        }}
-                      </AutocompleteList>
-                    </>
-                  )}
-                </AutocompleteContent>
-              </Autocomplete>
-              <footer>
-                <span>Press Esc to close</span>
-                <button onClick={() => setOpportunityPicker(false)}>
-                  Cancel
-                </button>
-              </footer>
-            </div>
-          </section>
-        </div>
-      ) : null}
-      {connectionsOpen ? (
-        <div
-          className={styles.backdrop}
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setConnectionsOpen(false);
-          }}
-        >
-          <section
-            className={`${styles.modal} ${styles.connectionModal}`}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="calendar-connections-title"
-          >
-            <header className={styles.connectionHeader}>
-              <Image
-                src="/media/calendar/calendar-sailboat.jpg"
-                alt=""
-                fill
-                sizes="720px"
-              />
-              <div>
-                <span>Calendar settings</span>
-                <h2 id="calendar-connections-title" className="font-heading">
-                  Connect your calendar
-                </h2>
-                <p>
-                  Send deadlines and the time you plan in Missa to another
-                  calendar.
-                </p>
-              </div>
-              <button
-                onClick={() => setConnectionsOpen(false)}
-                aria-label="Close"
+                              <em
+                                className={
+                                  saved
+                                    ? styles.opportunitySaved
+                                    : styles.opportunityNew
+                                }
+                              >
+                                {scheduled
+                                  ? "On your calendar"
+                                  : saved
+                                    ? "Saved"
+                                    : "Add to calendar"}
+                              </em>
+                            </span>
+                          </AutocompleteItem>
+                        );
+                      }}
+                    </AutocompleteList>
+                  </>
+                )}
+              </AutocompleteContent>
+            </Autocomplete>
+            <footer>
+              <span>Press Esc to close</span>
+              <Button
+                variant="accentOutline"
+                onClick={() => setOpportunityPicker(false)}
               >
-                <X />
-              </button>
-            </header>
-            <div className={styles.connectionBody}>
-              <div className={styles.providerGrid}>
-                {providerCard("google", "Google Calendar")}
-                {providerCard("microsoft", "Outlook Calendar")}
-              </div>
-              <div className={styles.localCalendar}>
-                <div>
-                  <CalendarDays />
-                  <span>
-                    <strong>Another calendar app</strong>
-                    <small>
-                      Use a private calendar link with Apple Calendar or another
-                      app.
-                    </small>
-                  </span>
-                </div>
-                <CalendarFeedCard userId={userId} />
-              </div>
+                Cancel
+              </Button>
+            </footer>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={connectionsOpen} onOpenChange={setConnectionsOpen}>
+        <DialogContent
+          className={`${styles.modal} ${styles.connectionModal}`}
+          showCloseButton={false}
+        >
+          <header className={styles.connectionHeader}>
+            <Image
+              src="/media/calendar/calendar-sailboat.jpg"
+              alt=""
+              fill
+              sizes="720px"
+            />
+            <div>
+              <span>Calendar settings</span>
+              <DialogTitle
+                id="calendar-connections-title"
+                className="font-heading"
+              >
+                Connect your calendar
+              </DialogTitle>
+              <p>
+                Send deadlines and the time you plan in Missa to another
+                calendar.
+              </p>
             </div>
-          </section>
-        </div>
-      ) : null}
-      {editing ? (
-        <div className={styles.backdrop}>
-          <section
-            ref={editorRef}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setConnectionsOpen(false)}
+              aria-label="Close"
+            >
+              <X />
+            </Button>
+          </header>
+          <div className={styles.connectionBody}>
+            <div className={styles.providerGrid}>
+              {providerCard("google", "Google Calendar")}
+              {providerCard("microsoft", "Outlook Calendar")}
+            </div>
+            <div className={styles.localCalendar}>
+              <div>
+                <CalendarDays />
+                <span>
+                  <strong>Another calendar app</strong>
+                  <small>
+                    Use a private calendar link with Apple Calendar or another
+                    app.
+                  </small>
+                </span>
+              </div>
+              <CalendarFeedCard userId={userId} />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={Boolean(editing)}
+        disablePointerDismissal
+        onOpenChange={(open) => {
+          if (!open && !saving) setEditing(undefined);
+        }}
+      >
+        {editing ? (
+          <DialogContent
             className={styles.modal}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="calendar-editor"
+            showCloseButton={false}
+            initialFocus={titleInputRef}
+            finalFocus={editorTriggerRef}
           >
             <header>
               <div>
-                <h2 id="calendar-editor" className="font-sans">
+                <DialogTitle id="calendar-editor" className="font-sans">
                   {selected ? "Edit time" : "Add time"}
-                </h2>
+                </DialogTitle>
                 <span className={styles.modalHint}>
                   {editing.purpose === "preparation"
                     ? "Set aside time for an application you want to work on."
                     : "Add time to your calendar."}
                 </span>
               </div>
-              <button
+              <Button
+                variant="outline"
+                size="icon"
                 disabled={saving}
                 onClick={() => setEditing(undefined)}
                 aria-label="Close"
               >
                 <X />
-              </button>
+              </Button>
             </header>
             <label>
               Title
-              <input
+              <Input
+                ref={titleInputRef}
                 disabled={saving}
-                autoFocus
                 value={editing.title ?? ""}
                 onChange={(e) =>
                   setEditing({ ...editing, title: e.target.value })
@@ -2363,7 +2362,7 @@ export function CalendarWorkspace({
             <div className={styles.row}>
               <label>
                 Starts
-                <input
+                <Input
                   disabled={saving}
                   type="datetime-local"
                   value={editing.startAt ?? ""}
@@ -2374,7 +2373,7 @@ export function CalendarWorkspace({
               </label>
               <label>
                 Ends
-                <input
+                <Input
                   disabled={saving}
                   type="datetime-local"
                   value={editing.endAt ?? ""}
@@ -2386,7 +2385,7 @@ export function CalendarWorkspace({
             </div>
             <label>
               Location
-              <input
+              <Input
                 disabled={saving}
                 value={editing.location ?? ""}
                 onChange={(e) =>
@@ -2396,7 +2395,8 @@ export function CalendarWorkspace({
             </label>
             <label>
               Notes
-              <textarea
+              <Textarea
+                className={styles.notes}
                 disabled={saving}
                 value={editing.description ?? ""}
                 onChange={(e) =>
@@ -2407,10 +2407,12 @@ export function CalendarWorkspace({
             <fieldset>
               <legend>Colour</legend>
               {["ink", "sage", "blue", "ochre", "rose"].map((c) => (
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="icon-xs"
                   key={c}
-                  className={styles[c]}
+                  className={`${styles.swatch} ${styles[c]}`}
                   aria-label={c}
                   aria-pressed={editing.color === c}
                   onClick={() => setEditing({ ...editing, color: c })}
@@ -2418,12 +2420,11 @@ export function CalendarWorkspace({
               ))}
             </fieldset>
             <label className={styles.checkbox}>
-              <input
+              <Checkbox
                 disabled={saving}
-                type="checkbox"
                 checked={editing.allDay ?? false}
-                onChange={(e) =>
-                  setEditing({ ...editing, allDay: e.target.checked })
+                onCheckedChange={(checked) =>
+                  setEditing({ ...editing, allDay: checked })
                 }
               />
               All-day event
@@ -2438,16 +2439,20 @@ export function CalendarWorkspace({
               </p>
             ) : null}
             <footer>
-              <button disabled={saving} onClick={() => setEditing(undefined)}>
+              <Button
+                variant="outline"
+                disabled={saving}
+                onClick={() => setEditing(undefined)}
+              >
                 Cancel
-              </button>
+              </Button>
               <Button disabled={saving} onClick={save}>
                 {saving ? "Saving…" : "Save event"}
               </Button>
             </footer>
-          </section>
-        </div>
-      ) : null}
+          </DialogContent>
+        ) : null}
+      </Dialog>
       <p className="sr-only" aria-live="polite">
         {announcement}
       </p>

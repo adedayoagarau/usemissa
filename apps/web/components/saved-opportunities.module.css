@@ -6,13 +6,8 @@
 .header > a { padding: 0 16px; background: var(--primary); color: var(--primary-foreground); }
 .header svg, .actions svg { width: 16px; height: 16px; }
 .tools { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px 0; }
-.tools label { display: flex; min-height: 44px; width: min(100%, 420px); align-items: center; gap: 10px; padding: 0 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
-.tools label:focus-within { border-color: var(--ring); outline: 3px solid color-mix(in srgb, var(--ring) 20%, transparent); }
-.tools label svg { width: 18px; color: var(--muted-foreground); }
-.tools input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--foreground); font: inherit; }
-.tools > div { display: flex; flex-wrap: wrap; gap: 8px; }
-.tools button { min-height: 44px; padding: 0 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--card); color: var(--muted-foreground); font: inherit; font-size: .875rem; }
-.tools button[aria-pressed='true'] { border-color: var(--primary); background: var(--accent); color: var(--accent-foreground); font-weight: 650; }
+.tools .search { width: min(100%, 420px); }
+.tools .scopes { display: flex; flex-wrap: wrap; gap: 8px; }
 .resultHeading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 8px 0 20px; }
 .resultHeading h2 { margin: 0; font-size: 1.125rem; }
 .resultHeading span { color: var(--muted-foreground); font-size: .8125rem; }
@@ -37,6 +32,7 @@
 .empty > svg { width: 28px; height: 28px; color: var(--primary); }
 .empty h2, .empty p { margin: 0; }
 .empty p { max-width: 500px; color: var(--muted-foreground); line-height: 1.55; }
-.empty a, .empty button { min-height: 44px; margin-top: 8px; padding: 0 16px; border: 0; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); font: inherit; font-weight: 650; }
-@media (max-width: 760px) { .header, .tools { align-items: stretch; flex-direction: column; } .header > a { width: 100%; } .tools label { width: 100%; } .tools > div { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; } .tools button { flex: 0 0 auto; } .grid { grid-template-columns: 1fr; } }
+.empty a { min-height: 44px; margin-top: 8px; padding: 0 16px; border: 0; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); font: inherit; font-weight: 650; }
+.empty button { margin-top: 8px; }
+@media (max-width: 760px) { .header, .tools { align-items: stretch; flex-direction: column; } .header > a { width: 100%; } .tools .search { width: 100%; } .tools .scopes { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; } .tools button { flex: 0 0 auto; } .grid { grid-template-columns: 1fr; } }
 @media (max-width: 440px) { .header { padding-top: 8px; } .header h1 { font-size: 2.75rem; } .card { padding: 20px; } .card dl { grid-template-columns: 1fr; } .actions { align-items: stretch; flex-direction: column; } .actions a { width: 100%; } }

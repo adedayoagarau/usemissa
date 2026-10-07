@@ -253,19 +253,21 @@ function Navigation({
           </div>
         </div>
         <div className="mt-3">
-          <button
+          <Button
             type="button"
+            variant="account"
+            size="sm"
             onClick={() => {
               void fetch("/api/auth/logout", { method: "POST" }).then(() => {
                 rememberSignedIn(false);
                 window.location.assign("/login");
               });
             }}
-            className="flex min-h-9 w-full items-center gap-2 text-left text-xs text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="w-full justify-start"
           >
             <LogOut className="size-3.5" aria-hidden="true" />
             Sign out
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -174,6 +174,7 @@
   border-radius: 8px;
   color: var(--foreground);
   font-size: 14px;
+  font-weight: 400;
   text-align: left;
 }
 .railItem:hover {
@@ -396,6 +397,7 @@
   border-radius: 999px;
   color: var(--muted-foreground);
   font-size: 13px;
+  font-weight: 400;
 }
 .field .suggestions button:hover {
   border-style: solid;
@@ -479,7 +481,9 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 8px;
+  height: auto;
   padding: 6px 4px 6px 14px;
+  font-weight: 400;
   text-align: left;
 }
 .itemTitle {
@@ -529,6 +533,9 @@
   font-size: 13px;
 }
 .undo button {
+  height: auto;
+  padding: 0;
+  font-size: inherit;
   color: var(--primary);
   font-weight: 600;
   text-decoration: underline;
@@ -633,15 +640,20 @@
   padding: 12px 14px;
   border: 1px solid var(--studio-line);
   border-radius: 10px;
-  text-align: left;
+  cursor: pointer;
 }
 .choice:hover {
   border-color: var(--input);
 }
-.choice[aria-checked="true"] {
+.choice:has([data-checked]) {
   border-color: var(--primary);
   background: var(--accent-tint);
   box-shadow: inset 0 0 0 1px var(--primary);
+}
+.choiceHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .choiceTitle {
   font-size: 14px;
@@ -665,8 +677,9 @@
   border: 1px solid var(--studio-line);
   border-radius: 12px;
   font-size: 12px;
+  cursor: pointer;
 }
-.theme[aria-checked="true"] {
+.theme:has([data-checked]) {
   border-color: var(--primary);
   box-shadow: inset 0 0 0 1px var(--primary);
 }

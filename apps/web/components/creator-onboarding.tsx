@@ -1024,14 +1024,14 @@ export function CreatorOnboarding({
                               </strong>
                               {timezoneDetected ? " · from this device" : ""}
                             </span>
-                            <button
+                            <Button
                               type="button"
-                              className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline"
+                              variant="link"
                               onClick={() => setEditingTimezone(true)}
                             >
                               Change
                               <span className="sr-only"> time zone</span>
-                            </button>
+                            </Button>
                           </p>
                         )}
                       </section>
@@ -1201,9 +1201,9 @@ export function CreatorOnboarding({
                             ) : handleCheck.state === "error" ? (
                               <>
                                 <span>{handleCheck.message}</span>
-                                <button
+                                <Button
                                   type="button"
-                                  className="inline-flex min-h-11 items-center gap-1.5 font-medium text-primary underline-offset-4 hover:underline"
+                                  variant="link"
                                   onClick={() => setHandleRetry((n) => n + 1)}
                                 >
                                   <RotateCw
@@ -1211,7 +1211,7 @@ export function CreatorOnboarding({
                                     className="size-3.5"
                                   />
                                   Check again
-                                </button>
+                                </Button>
                               </>
                             ) : (
                               "Letters, numbers, and hyphens. You can change it once every 30 days."
@@ -1223,10 +1223,10 @@ export function CreatorOnboarding({
                                 Try:
                               </span>
                               {handleSuggestions.map((suggestion) => (
-                                <button
+                                <Button
                                   key={suggestion}
                                   type="button"
-                                  className="inline-flex min-h-11 items-center rounded-lg border border-border px-3 text-sm hover:border-foreground/30 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                                  variant="outline"
                                   onClick={() => {
                                     setHandleValue(suggestion);
                                     setHandleCheck({ state: "idle" });
@@ -1236,7 +1236,7 @@ export function CreatorOnboarding({
                                   }}
                                 >
                                   @{suggestion}
-                                </button>
+                                </Button>
                               ))}
                             </div>
                           ) : null}

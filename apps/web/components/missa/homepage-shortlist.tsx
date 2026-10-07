@@ -194,14 +194,15 @@ export function ShortlistBar() {
               <Link href={`/opportunities/${encodeURIComponent(item.id)}`}>
                 {item.title}
               </Link>
-              <button
+              <Button
                 type="button"
-                className={styles.remove}
+                variant="ghost"
+                size="icon-sm"
                 aria-label={`Remove ${item.title}`}
                 onClick={() => remove(item.id)}
               >
                 <X aria-hidden="true" />
-              </button>
+              </Button>
             </li>
           ))}
           {extra > 0 ? <li className={styles.more}>and {extra} more</li> : null}
@@ -216,13 +217,14 @@ export function ShortlistBar() {
           <Link href={`/login?next=${KEEP_SHORTLIST_NEXT}`} className={styles.textLink}>
             Log in
           </Link>
-          <button
+          <Button
             type="button"
+            variant="link"
             className={`${styles.textLink} ${styles.clear}`}
             onClick={clear}
           >
             Clear
-          </button>
+          </Button>
         </div>
       </div>
     </section>

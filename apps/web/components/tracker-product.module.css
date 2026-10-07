@@ -191,18 +191,8 @@
   height: 14px;
 }
 
-.firstSaveDismiss,
-.reopenGuidance {
-  min-height: 44px;
-  color: var(--muted-foreground);
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
 .reopenGuidance {
   margin-bottom: 18px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 .importContext p,
@@ -233,8 +223,7 @@
 }
 
 .quietLink,
-.primaryLink,
-.quietButton {
+.primaryLink {
   display: inline-flex;
   min-height: 44px;
   align-items: center;
@@ -250,15 +239,13 @@
   text-decoration: none;
 }
 
-.quietLink:hover,
-.quietButton:hover {
+.quietLink:hover {
   border-color: color-mix(in srgb, var(--primary) 42%, transparent);
   background: var(--tracker-soft);
 }
 
 .quietLink svg,
-.primaryLink svg,
-.quietButton svg {
+.primaryLink svg {
   width: 16px;
   height: 16px;
 }
@@ -282,8 +269,6 @@
   flex: 0 0 auto;
   padding: 0 14px;
   color: var(--muted-foreground);
-  font-size: 0.84rem;
-  font-weight: 600;
 }
 
 .views > button[data-active="true"] {
@@ -312,24 +297,12 @@
 }
 
 .moreViews select {
-  appearance: none;
   min-height: 44px;
-  padding: 0 26px 0 4px;
-  background: transparent;
-  font-size: 0.82rem;
-  font-weight: 600;
-  outline: none;
 }
 
-.moreViews svg {
+.moreViews > svg {
   width: 15px;
   height: 15px;
-}
-
-.moreViews svg:last-child {
-  position: absolute;
-  right: 6px;
-  pointer-events: none;
 }
 
 .toolbar {
@@ -345,35 +318,8 @@
 }
 
 .search {
-  display: flex;
   width: min(100%, 450px);
   min-height: 44px;
-  align-items: center;
-  gap: 9px;
-  padding: 0 12px;
-  border: 1px solid var(--tracker-border);
-  border-radius: 10px;
-  background: var(--background);
-}
-
-.search svg {
-  width: 16px;
-  height: 16px;
-  color: var(--muted-foreground);
-}
-
-.search input {
-  min-width: 0;
-  flex: 1;
-  background: transparent;
-  font-size: 0.88rem;
-  outline: none;
-}
-
-.search button {
-  min-height: 36px;
-  color: var(--muted-foreground);
-  font-size: 0.73rem;
 }
 
 .liveStatus {
@@ -392,27 +338,7 @@
 }
 
 .layoutSwitch {
-  display: inline-flex;
-  gap: 3px;
   margin: 4px 0 22px;
-  padding: 3px;
-  border-radius: 10px;
-  background: var(--muted);
-}
-
-.layoutSwitch button {
-  min-height: 38px;
-  padding: 0 13px;
-  border-radius: 8px;
-  color: var(--muted-foreground);
-  font-size: 0.78rem;
-  font-weight: 650;
-}
-
-.layoutSwitch button[data-active="true"] {
-  background: var(--background);
-  color: var(--foreground);
-  box-shadow: 0 1px 3px color-mix(in srgb, var(--ink) 10%, transparent);
 }
 
 .actionsLayout,
@@ -487,6 +413,13 @@
   flex: 0 0 auto;
   align-items: center;
   gap: 6px;
+}
+
+.attentionButton {
+  padding-inline: 0;
+}
+
+.attention a {
   color: var(--accent-deep);
   font-size: 0.77rem;
   font-weight: 700;
@@ -496,19 +429,6 @@
 .attentionButton svg {
   width: 14px;
   height: 14px;
-}
-
-.attentionButton {
-  padding: 0;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  cursor: pointer;
-}
-
-.attentionButton:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
 }
 
 .deadlineText {
@@ -734,13 +654,7 @@
 }
 
 .itemControls select {
-  width: 100%;
   min-height: 42px;
-  padding: 0 10px;
-  border: 1px solid var(--tracker-border);
-  border-radius: 9px;
-  background: var(--background);
-  font-size: 0.78rem;
 }
 
 .itemError {
@@ -1098,8 +1012,7 @@
   }
 
   .moreViews select {
-    max-width: 80px;
-    padding-left: 2px;
+    max-width: 112px;
   }
 
   .toolbar {
