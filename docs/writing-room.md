@@ -1,4 +1,7 @@
-# Writing room (`/write`)
+# Writing room (`/doc`)
+
+The room lives at `/doc`. The old `/write` address redirects there, with the
+entry it names, so earlier links keep working.
 
 Status: behind sign-in, not linked from public pages. Migrations 0095, 0096 and
 0097 must be applied before account saving works in an environment. What comes
@@ -33,7 +36,7 @@ The **Private** popover on the page says:
 | --- | --- |
 | Missa adds no AI here. Nothing suggests, rewrites or finishes your words. | The page has no such feature. `lib/writing-boundary.test.ts` fails if a writing-module file imports an AI or model SDK. |
 | Your writing is never sent to an AI service or used to train one. | Text goes only to `PUT /api/me/writing/[id]` and the database. Sentry drops request bodies and has no session replay; PostHog runs without autocapture or session recording; analytics records the path, never the query or text. |
-| Missa’s automated systems don’t read it. | Only `lib/writing-repository.ts` reads `creator_writing_entries`, and only the writing routes and `/write` import it. `lib/writing-boundary.test.ts` fails when any other file names the table or imports the repository. `/write` sends `Permissions-Policy: tools=()` and registers no WebMCP tools. |
+| Missa’s automated systems don’t read it. | Only `lib/writing-repository.ts` reads `creator_writing_entries`, and only the writing routes and `/doc` import it. `lib/writing-boundary.test.ts` fails when any other file names the table or imports the repository. `/doc` (and `/write`) send `Permissions-Policy: tools=()` and registers no WebMCP tools. |
 | Deleting an entry removes it from your account. | `DELETE` removes the row. Audit events record creation and deletion with no text. Database backups follow the provider's retention; the privacy notice should say so before launch. |
 | Extensions you add to your browser can still read pages you open. | Stated plainly, because Missa cannot control them. |
 
@@ -58,9 +61,15 @@ chapbook (5.5 × 8.5 in).
 - **Pages are added, moved and deleted** from More. Arrow keys cross from the
   end of one page to the start of the next. Backspace on an empty page removes
   it.
-- **Text that runs past the bottom margin** is marked with a dashed line and a
-  “Move the rest to a new page” button. Pages do not split text by
-  themselves: where a page ends is the writer's choice.
+- **Text flows from page to page.** In printed-pages view, paragraphs that
+  run past a page's bottom margin move to the top of a page that continues it,
+  made when needed, and the caret goes with them. Deleting text brings
+  paragraphs back, and an empty continuing page goes away. A page the writer
+  adds is never merged into another, so a page set apart for a poem stays
+  apart. Text moves a whole paragraph at a time, so a paragraph is never split
+  into two; a single paragraph longer than the page is marked so the writer
+  can break it. Format changes reach every page a text flows across, and
+  plain text gains no blank lines at these breaks (`continues` on the page).
 - **Two views.** Printed pages show each sheet at its real proportions, scaled
   to the window. Draft drops the paper and is the default below 768px wide.
 - **Print or save as PDF** uses the browser's print dialog with the paper size
@@ -138,10 +147,12 @@ erases the other's.
   AI, collaboration or cloud packages is installed, and the boundary test
   still rejects AI SDK imports. Each page is its own editor, so a page's
   format cannot leak into the next.
-- **Pages break where the writer says.** Automatic reflow across pages would
-  move a poem's lines without asking; marking the overflow and offering a move
-  keeps the layout in the writer's hands.
-- **Outside the creator shell.** `/write` has its own auth gate and no
+- **Text flows, pages the writer adds stay put.** Writers expect prose to
+  continue onto the next page by itself, as in a word processor. Flow happens
+  only between a page and the pages made to continue it, so a page the writer
+  added for a poem is never pulled into another. Changed from stage 2's first
+  version, which marked overflow and left the move to the writer.
+- **Outside the creator shell.** `/doc` has its own auth gate and no
   navigation rail; it links back to Home. A **Write** link is added to the
   creator navigation.
 - **Rendered in the browser only.** The room reads device drafts before its

@@ -519,8 +519,8 @@ export function WritingRoom({
   useEffect(() => {
     const target =
       inAccount || current.state !== "ready"
-        ? `/write?entry=${encodeURIComponent(current.id)}`
-        : "/write";
+        ? `/doc?entry=${encodeURIComponent(current.id)}`
+        : "/doc";
     if (`${window.location.pathname}${window.location.search}` !== target) {
       window.history.replaceState(window.history.state, "", target);
     }
@@ -590,7 +590,9 @@ export function WritingRoom({
 
   function addPage() {
     const pages = [...current.doc.pages];
-    const at = active ? activeIndex + 1 : pages.length;
+    let at = active ? activeIndex + 1 : pages.length;
+    // A new page goes after the text that flows on from this one.
+    while (pages[at]?.continues) at += 1;
     const format = pages[Math.min(activeIndex, pages.length - 1)]!.format;
     const page = emptyPage(format);
     pages.splice(at, 0, page);
@@ -600,17 +602,28 @@ export function WritingRoom({
   }
 
   function movePage(step: -1 | 1) {
-    const pages = [...current.doc.pages];
+    // A page moved by hand stands on its own; the text after it no longer flows from it.
+    const pages = current.doc.pages.map((page, index) =>
+      index === activeIndex || index === activeIndex + 1
+        ? { ...page, continues: false }
+        : page,
+    );
     const to = activeIndex + step;
     if (to < 0 || to >= pages.length) return;
     const [page] = pages.splice(activeIndex, 1);
     pages.splice(to, 0, page!);
+    if (pages[to + 1]?.continues)
+      pages[to + 1] = { ...pages[to + 1]!, continues: false };
     change({ doc: { ...current.doc, pages } });
   }
 
   function deletePage() {
     if (current.doc.pages.length < 2) return;
-    const pages = current.doc.pages.filter((_, index) => index !== activeIndex);
+    const pages = current.doc.pages
+      .filter((_, index) => index !== activeIndex)
+      .map((page, index) =>
+        index === 0 && page.continues ? { ...page, continues: false } : page,
+      );
     setActive(null);
     change({ doc: { ...current.doc, pages } });
     setPageDeleteOpen(false);
@@ -1742,7 +1755,7 @@ function WritingNotices({
         </AlertDescription>
         <AlertAction>
           <Link
-            href="/login?next=/write"
+            href="/login?next=/doc"
             className={buttonVariants({ variant: "outline", size: "sm" })}
           >
             Sign in

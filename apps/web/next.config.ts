@@ -30,6 +30,7 @@ const webMcpBlockedRoutes = [
   "/organization/:organizationId/submissions/:submissionId/:path*",
   "/workspace/settings/:path*",
   // The writing room: no browser agent tools where a creator writes.
+  "/doc",
   "/write",
 ];
 
