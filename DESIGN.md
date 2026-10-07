@@ -610,6 +610,7 @@ An AI-generated component that duplicates an approved item fails review.
 | Present portfolio work         | `PortfolioWorkCard`           | media with aspect ratio, editorial title, credits, accessible captions                         |
 | Operate submissions            | `SubmissionTable`             | `Table`, semantic workflow states, row actions, responsive labelled records                    |
 | Confirm destructive work       | `DestructiveConfirmation`     | `AlertDialog`, explicit object name and consequence, destructive final action                  |
+| Read a long-form guide         | `GuideArticle`                | Collection-palette cover with `EditorialMotif`, `GuideToc` (sticky rail, `Collapsible` when narrow), short-answer panel, `Table` that becomes labelled records when narrow, `Alert` callouts (tip, note, watch out), `GuideChecklist` on `Checkbox`, live calls with `FeeBadge`, `Accordion` FAQ kept in the DOM (`hiddenUntilFound`), `Collapsible` sources |
 
 ### Component specification template
 

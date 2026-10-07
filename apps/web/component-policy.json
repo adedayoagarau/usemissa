@@ -387,7 +387,13 @@
     "composition.collection-cover": {
       "semantic": "DiscoveryCollectionPage",
       "appearance": "editorial-collection-palette",
-      "composition": ["EditorialTypography", "DecorativeSvg", "Link"]
+      "composition": ["EditorialTypography", "EditorialMotif", "Link"]
+    },
+    "composition.guide-article": {
+      "semantic": "GuideArticle",
+      "implementation": "apps/web/components/missa/guide-article.tsx",
+      "appearance": "editorial-collection-palette",
+      "composition": ["EditorialTypography", "EditorialMotif", "GuideToc", "Alert", "Table", "GuideChecklist", "Accordion", "Collapsible", "PersonAvatar", "FeeBadge", "Button"]
     },
     "composition.manuscript-match": {
       "semantic": "ManuscriptMatchWizard",
@@ -1189,6 +1195,24 @@
       "motion": "never",
       "boundary": "Before you submit: required materials, word limit against saved text, page limit, anonymous-review name check across titles, file names, and saved text, and file types. Each row is Passed, Needs attention, or Check manually with the status written beside its icon; anything Missa cannot read (file contents, page counts, document properties, unrecorded file types) is Check manually, never Passed."
     },
+    "EditorialMotif": {
+      "base": "custom",
+      "motion": "never",
+      "implementation": "components/missa/editorial-motif.tsx",
+      "boundary": "Decorative cover motif (orbit, burst, steps, frame) in currentColor for discovery collection and guide covers. Always inside an aria-hidden cover."
+    },
+    "GuideChecklist": {
+      "base": "Checkbox",
+      "motion": "never",
+      "implementation": "components/missa/guide-checklist.tsx",
+      "boundary": "A checklist inside a guide article. Ticks stay in this browser and Copy list puts the items on the clipboard. Not an application record."
+    },
+    "GuideToc": {
+      "base": "Collapsible",
+      "motion": "never",
+      "implementation": "components/missa/guide-toc.tsx",
+      "boundary": "On this page for a guide: a sticky rail marking the current section with aria-current=location on wide screens, a closed Collapsible on narrow ones."
+    },
     "GoalSubmissionProgress": {
       "base": "Progress",
       "implementation": "components/missa/goal-submission-progress.tsx",
@@ -1356,6 +1380,7 @@
     "CreatorCv": ["EditorialTypography", "PrintStyles", "ProvenanceMark"],
     "ProfileConnect": ["Button", "Dialog", "Field", "Input", "NativeSelect", "Textarea"],
     "ProfileInbox": ["Tabs", "Button", "Empty", "Link"],
+    "GuideArticle": ["EditorialMotif", "GuideToc", "Alert", "Table", "GuideChecklist", "Accordion", "Collapsible", "PersonAvatar", "FeeBadge", "Button"],
     "WritingRoom": ["WritingPages", "WritingFormatBar", "WritingFormatSheet", "WritingLibrary", "Button", "DropdownMenu", "Popover", "Dialog", "AlertDialog", "Alert"]
   },
   "motion": {

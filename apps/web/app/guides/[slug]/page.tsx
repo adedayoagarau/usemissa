@@ -13,6 +13,8 @@ import {
   discoveryGuides,
 } from '@/lib/discoveryGuides';
 import { JsonLd, absoluteUrl, breadcrumbJsonLd, pageMetadata } from '@/lib/seo';
+import { guideArticle, guideArticles } from '@/lib/guideArticles';
+import { GuideArticlePage, guideArticleMetadata } from './guide-article-page';
 import styles from '../../public-editorial.module.css';
 
 /** Static reading served from the CDN; the related calls refresh hourly. */
@@ -32,11 +34,13 @@ function feeLabel(item: OpportunityBrowseProjection): string {
 }
 
 export function generateStaticParams() {
-  return discoveryGuides.map((guide) => ({ slug: guide.slug }));
+  return [...guideArticles.map((article) => ({ slug: article.slug })), ...discoveryGuides.map((guide) => ({ slug: guide.slug }))];
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
+  const article = guideArticle(slug);
+  if (article) return guideArticleMetadata(article);
   const guide = discoveryGuide(slug);
   if (!guide) notFound();
   return pageMetadata({ title: guide.title, description: guide.description, path: `/guides/${guide.slug}` });
@@ -44,6 +48,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function GuidePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const article = guideArticle(slug);
+  if (article) return <GuideArticlePage article={article} />;
   const guide = discoveryGuide(slug);
   if (!guide) notFound();
   let items: OpportunityBrowseProjection[] = [];

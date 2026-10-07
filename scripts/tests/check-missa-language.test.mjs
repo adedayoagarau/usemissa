@@ -41,3 +41,10 @@ test("skips internal surfaces for messaging rules, not taxonomy rules", () => {
 test("honours the allow comment", () => {
   assert.deepEqual(ids(`<q>The opportunity layer</q> {/* missa-language-allow: quoting the old deck */}`), []);
 });
+
+test("reads guide Markdown as prose, ignoring link targets", () => {
+  const guide = "apps/web/content/guides/where-to-find-open-calls.md";
+  assert.deepEqual(ids("Missa helps you unlock the next call.", guide), ["filler verbs"]);
+  assert.deepEqual(ids("Read the [guidelines](https://example.com/journey-smart).", guide), []);
+  assert.deepEqual(ids("Check the fee on the [organizer's page](https://example.com).", guide), []);
+});

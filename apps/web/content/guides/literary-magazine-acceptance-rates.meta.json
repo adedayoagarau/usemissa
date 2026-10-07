@@ -1,0 +1,25 @@
+{
+  "slug": "literary-magazine-acceptance-rates",
+  "title": "Literary magazine acceptance rates, and what they don’t tell you",
+  "seoTitle": "Literary Magazine Acceptance Rates: What the Numbers Mean",
+  "description": "Where literary magazine acceptance rates come from, what’s known about The Paris Review and other top magazines, and how to build a sensible submission list.",
+  "summary": "Where acceptance-rate numbers come from, what they say about The Paris Review and others, and how to use them without reading too much in.",
+  "section": "Magazines and writing",
+  "primaryKeyword": "literary magazine acceptance rates",
+  "secondaryKeywords": [
+    "paris review acceptance rate",
+    "how hard is it to get into the paris review",
+    "paris review poetry acceptance rate",
+    "most selective literary magazines"
+  ],
+  "answer": "Most literary magazine acceptance rates come from writers’ own reports to trackers like Duotrope and Chill Subs, not from the magazines. They describe that sample, not your chances. The Paris Review gives no acceptance rate in its guidelines. Read any number with its source and date, then weigh fit, reading periods and response times.",
+  "keyPoints": [
+    "Most acceptance rates are tracker figures from writers’ own reports, not official magazine numbers.",
+    "Duotrope’s 0.00% for The Paris Review means no acceptance reports in its sample.",
+    "Official response times we checked run from two months to a year."
+  ],
+  "illustrationAlt": "Illustration of a small reported sample beside a larger submission pool, with three steps: reported sample, source context, your shortlist.",
+  "liveCalls": "magazines",
+  "cta": { "label": "Browse magazines reading now", "href": "/discover/magazines" },
+  "related": ["best-literary-magazines-to-submit-to", "duotrope-alternatives"]
+}

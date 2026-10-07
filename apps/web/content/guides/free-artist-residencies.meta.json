@@ -1,0 +1,26 @@
+{
+  "slug": "free-artist-residencies",
+  "title": "Artist residencies with no application fee",
+  "seoTitle": "Free artist residencies: no application fee, some funded",
+  "description": "How to find residencies that are free to apply to, which ones cover travel, housing or a stipend, and what “fully funded” usually leaves out.",
+  "summary": "Find residencies that are free to apply to, and check what housing, stipends and travel really cover before you say yes.",
+  "section": "Residencies and funding",
+  "primaryKeyword": "free artist residencies",
+  "secondaryKeywords": [
+    "no application fee residency",
+    "fully funded artist residencies",
+    "paid artist residencies",
+    "residencies with stipend",
+    "funded writing residencies"
+  ],
+  "answer": "Yes, some artist residencies charge no application fee, and some also give you housing, a studio or a stipend. Those are separate things. Before you count on a residency, check the application fee, what attending costs, what the stipend covers, who pays for travel and when the money arrives. “Fully funded” should come with a written list.",
+  "keyPoints": [
+    "No application fee and a funded stay are separate questions; check both.",
+    "Ask when the money arrives: some stipends and reimbursements are paid only after the stay.",
+    "Visas, insurance, materials and lost income can stay with you, even when “fully funded”."
+  ],
+  "illustrationAlt": "Illustration separating application fees, residency support and personal costs.",
+  "liveCalls": "residencies-no-fee",
+  "cta": { "label": "See no-fee residencies", "href": "/discover/residencies-no-fee" },
+  "related": ["how-to-apply-artist-residency", "fully-funded-opportunities-nigeria-africa"]
+}
