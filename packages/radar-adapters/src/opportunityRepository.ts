@@ -1022,6 +1022,17 @@ export function buildOpportunityBrowseQuery(
       searchValue,
     );
   }
+  if (query.mentionsAny?.length) {
+    // Some search documents carry taxonomy term ids such as
+    // taxterm_pf-interdisciplinary-hybrid-and-emerging-practice; strip them
+    // so only the listing's own words can match.
+    addCondition(
+      conditions,
+      values,
+      "regexp_replace(o.search_document, 'taxterm_[a-z0-9_-]+', ' ', 'gi') ilike any($VALUE::text[])",
+      query.mentionsAny.map((term) => `%${term.replace(/[\\%_]/g, "\\$&")}%`),
+    );
+  }
   addCursorCondition(conditions, values, query);
 
   const accountId = context?.accountId;

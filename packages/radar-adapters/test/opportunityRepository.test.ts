@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { PGlite } from "@electric-sql/pglite";
 import { opportunityDetailResponseSchema } from "@missa/contracts";
 import {
   PostgresOpportunityRepository,
@@ -136,6 +137,40 @@ test("taxonomyMatch any matches opportunities with at least one selected hierarc
   } finally {
     if (previous === undefined) delete process.env.MISSA_TAXONOMY_READS;
     else process.env.MISSA_TAXONOMY_READS = previous;
+  }
+});
+
+test("mentionsAny matches any word in the listing's own text, not taxonomy labels or term ids", async () => {
+  const built = buildOpportunityBrowseQuery(
+    { ...baseQuery, mentionsAny: ["emerging", "disabled", "100%_"] },
+    undefined,
+    { taxonomyReads: true },
+  );
+  assert.doesNotMatch(built.text, /taxonomy_term_labels/);
+  const condition = built.text.match(
+    /regexp_replace\(o\.search_document, '[^']+', ' ', 'gi'\) ilike any\(\$(\d+)::text\[\]\)/,
+  );
+  assert.ok(condition, "mentionsAny condition is missing");
+  const patterns = built.values[Number(condition[1]) - 1];
+  assert.deepEqual(patterns, ["%emerging%", "%disabled%", "%100\\%\\_%"]);
+
+  const db = new PGlite();
+  try {
+    const result = await db.query<{ id: string }>(
+      `select o.id from (values
+        ('career', 'open call for emerging artists'),
+        ('access', 'residency for disabled writers'),
+        ('practice', 'festival grant taxterm_pf-interdisciplinary-hybrid-and-emerging-practice'),
+        ('literal', 'fee waived 100%_ of the time'),
+        ('wildcard', 'fee waived 1000 of the time')
+      ) as o(id, search_document)
+      where ${condition[0].replace(`$${condition[1]}`, "$1")}
+      order by o.id`,
+      [patterns],
+    );
+    assert.deepEqual(result.rows.map((row) => row.id), ["access", "career", "literal"]);
+  } finally {
+    await db.close();
   }
 });
 

@@ -26,6 +26,12 @@ export interface OpportunityRepositoryQuery {
   confirmedDatesOnly?: boolean;
   ids?: string[];
   query?: string;
+  /**
+   * Matches when the listing's own text contains any of these words. Unlike
+   * `query`, taxonomy labels and stored taxonomy term ids are not searched, so
+   * "emerging" does not match "Interdisciplinary, hybrid & emerging practice".
+   */
+  mentionsAny?: string[];
   category?: string;
   types?: OpportunityType[];
   disciplines?: string[];

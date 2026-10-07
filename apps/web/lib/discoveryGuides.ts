@@ -212,7 +212,12 @@ export const discoveryCollections: DiscoveryCollection[] = [
     audience: 'Disabled, d/Deaf, chronically ill, and neurodivergent artists and writers seeking accessible, supportive opportunities.',
     checklist: ['Accessibility provisions and accommodations', 'Remote vs in-person participation options', 'Application format flexibility', 'Deadline, eligibility, and grant or stipend terms'],
     relatedGuideSlug: 'verify-an-opportunity-before-applying',
-    query: { ...baseQuery, query: 'disability' },
+    // 'disability' alone misses "artists with disabilities" and calls that say
+    // only disabled, d/Deaf, chronically ill or neurodivergent.
+    query: {
+      ...baseQuery,
+      mentionsAny: ['disability', 'disabilities', 'disabled', 'deaf', 'chronically ill', 'chronic illness', 'neurodivergent', 'neurodiverse', 'neurodiversity'],
+    },
   },
   {
     slug: 'emerging-writers-artists',
@@ -222,7 +227,9 @@ export const discoveryCollections: DiscoveryCollection[] = [
     audience: 'Debut authors, early-career visual artists, emerging performers, and recent graduates.',
     checklist: ['Definition of "emerging" or career-stage requirements', 'Accepted genres and portfolio limits', 'Mentorship, exhibition, or publication deliverables', 'Official guidelines and deadline date'],
     relatedGuideSlug: 'find-submission-opportunities',
-    query: { ...baseQuery, query: 'emerging' },
+    // A free-text query for 'emerging' also matches the taxonomy label for
+    // interdisciplinary and hybrid work, which says nothing about career stage.
+    query: { ...baseQuery, mentionsAny: ['emerging'] },
   },
   {
     slug: 'jobs-for-creators',
