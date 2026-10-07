@@ -422,3 +422,60 @@ test("text flows onto the next page and back as it is written", async ({
   await expect(first).toContainText("Line 45 and on");
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
 });
+
+test("a page becomes a free canvas with boxes placed by hand and kept", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await signIn(page);
+  await page.goto("/doc");
+  const first = pageText(page, 0);
+  await expect(first).toBeFocused();
+  await first.pressSequentially("wind");
+
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitemradio", { name: "Free canvas" }).click();
+  const box = page.locator('[data-slot="writing-box"]');
+  await expect(box).toHaveCount(1);
+  await expect(box.first()).toContainText("wind");
+
+  // The handle moves the box by keyboard, 10 mm a press with Shift.
+  const handle = page.getByRole("button", { name: /^Move text box 1/ });
+  await handle.focus();
+  const before = await box.first().evaluate((element) => element.style.left);
+  for (let step = 0; step < 4; step += 1)
+    await page.keyboard.press("Shift+ArrowRight");
+  await page.keyboard.press("Shift+ArrowDown");
+  await page.keyboard.press("]");
+  const left = await box.first().evaluate((element) => element.style.left);
+  expect(parseFloat(left) - parseFloat(before)).toBeCloseTo(40, 5);
+  await expect(box.first()).toHaveAttribute("style", /rotate\(15deg\)/);
+
+  // A second box goes where the writer puts it.
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitem", { name: "Add a text box" }).click();
+  await expect(box).toHaveCount(2);
+  await page.keyboard.type("sand");
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(
+    (
+      await new AxeBuilder({ page })
+        .include('[data-slot="writing-page"]')
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+
+  await page.reload();
+  await expect(box).toHaveCount(2);
+  await expect(box.filter({ hasText: "wind" })).toHaveAttribute(
+    "style",
+    new RegExp(`left: ${parseFloat(left)}mm.*rotate\\(15deg\\)`),
+  );
+  await expect(box.filter({ hasText: "sand" })).toBeVisible();
+
+  // Back to flowing text, every word kept in reading order.
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitemradio", { name: "Flowing text" }).click();
+  await expect(box).toHaveCount(0);
+  await expect(pageText(page, 0)).toHaveText(/sand.*wind|wind.*sand/);
+});

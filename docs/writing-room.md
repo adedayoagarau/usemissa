@@ -84,6 +84,28 @@ depth 40) before saving. `body` stays the plain text of every page, used for
 the word count, previews and the plain-text download. Entries saved before
 pages existed open as one page with their text unchanged.
 
+## Free canvas
+
+Any page can switch between **Flowing text** and **Free canvas** (More, This
+page's layout). A canvas page holds text boxes placed in millimetres from the
+page's top left corner, each with its own width and turn, for concrete and
+visual poetry. It prints exactly as set.
+
+- Switching to a canvas puts the page's text in one box inside its margins.
+  Switching back joins the boxes in reading order (top to bottom, then left to
+  right), every word and space kept.
+- A box moves by dragging its handle. From the keyboard, with the handle
+  focused, arrow keys move it 1 mm (10 mm with Shift), Alt with left or right
+  narrows or widens it, and `[` and `]` turn it 15°. The box's menu turns,
+  straightens, widens, narrows, brings to front, sends to back or deletes it.
+- New boxes come from **Add a text box** in More, or by double-clicking or
+  double-tapping the paper where the box should go.
+- Text never flows into or out of a canvas page. Plain text, word counts and
+  compile read the boxes in reading order. Compile adds a piece's title only
+  to a flowing first page.
+- Positions are kept to a tenth of a millimetre and checked on the server
+  (up to 200 boxes a page).
+
 ## Projects
 
 A project gathers pieces (entries) into one body of work: a poetry

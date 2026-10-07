@@ -20,6 +20,10 @@ import TextAlign from "@tiptap/extension-text-align";
 import { writingTypeface } from "@/components/missa/writing-typefaces";
 import { cn } from "@/lib/utils";
 import {
+  CanvasSheet,
+  type CanvasCallbacks,
+} from "@/components/missa/writing-canvas";
+import {
   PAGE_SIZES,
   emptyPage,
   type FlowPage,
@@ -115,7 +119,53 @@ const PageKeys = Extension.create<{
   },
 });
 
-function viewMounted(editor: Editor | null): boolean {
+/** The editor setup every page and text box shares. */
+export function writingExtensions() {
+  return [
+    StarterKit.configure({
+      code: false,
+      codeBlock: false,
+      link: false,
+      heading: { levels: [1, 2] },
+    }),
+    TextAlign.configure({
+      types: ["heading", "paragraph"],
+      alignments: ["left", "center", "right", "justify"],
+    }),
+  ];
+}
+
+export const WRITING_TEXT_CLASS =
+  "outline-none [&_p]:m-0 [&_p]:min-h-[1lh] [&_h1]:m-0 [&_h1]:text-[1.6em] [&_h1]:font-medium [&_h2]:m-0 [&_h2]:text-[1.25em] [&_h2]:font-medium [&_blockquote]:ms-[2em] [&_blockquote]:italic [&_hr]:my-[1lh] [&_hr]:border-border [&_ul]:ps-[1.5em] [&_ul]:list-disc [&_ol]:ps-[1.5em] [&_ol]:list-decimal";
+
+/** Tab writes a tab in a text box too; Escape, then Tab, leaves it. */
+export const TabKeys = Extension.create({
+  name: "tabKeys",
+  addStorage() {
+    return { leaving: false };
+  },
+  onUpdate() {
+    this.storage.leaving = false;
+  },
+  addKeyboardShortcuts() {
+    return {
+      Escape: () => {
+        this.storage.leaving = true;
+        return false;
+      },
+      Tab: ({ editor }) => {
+        if (this.storage.leaving) {
+          this.storage.leaving = false;
+          return false;
+        }
+        editor.view.dispatch(editor.state.tr.insertText("\t"));
+        return true;
+      },
+    };
+  },
+});
+
+export function viewMounted(editor: Editor | null): boolean {
   if (!editor || editor.isDestroyed) return false;
   try {
     return Boolean(editor.view.dom);
@@ -125,7 +175,7 @@ function viewMounted(editor: Editor | null): boolean {
 }
 
 /** Whether the editor's view is in the page; nothing may touch the view before. */
-function useViewMounted(editor: Editor | null): boolean {
+export function useViewMounted(editor: Editor | null): boolean {
   return useSyncExternalStore(
     (notify) => {
       if (!editor) return () => undefined;
@@ -143,7 +193,7 @@ function useViewMounted(editor: Editor | null): boolean {
   );
 }
 
-function pageTextStyle(
+export function pageTextStyle(
   document: WritingDocument,
   page: FlowPage,
 ): CSSProperties {
@@ -187,16 +237,7 @@ function PageSheet({
       content: page.content as JSONContent,
       parseOptions: { preserveWhitespace: "full" },
       extensions: [
-        StarterKit.configure({
-          code: false,
-          codeBlock: false,
-          link: false,
-          heading: { levels: [1, 2] },
-        }),
-        TextAlign.configure({
-          types: ["heading", "paragraph"],
-          alignments: ["left", "center", "right", "justify"],
-        }),
+        ...writingExtensions(),
         PageKeys.configure({ pageId: page.id, callbacks }),
       ],
       editorProps: {
@@ -204,8 +245,7 @@ function PageSheet({
           "aria-label": `Page ${index + 1}`,
           "aria-describedby": "writing-page-keys",
           "data-slot": "writing-page-text",
-          class:
-            "outline-none [&_p]:m-0 [&_p]:min-h-[1lh] [&_h1]:m-0 [&_h1]:text-[1.6em] [&_h1]:font-medium [&_h2]:m-0 [&_h2]:text-[1.25em] [&_h2]:font-medium [&_blockquote]:ms-[2em] [&_blockquote]:italic [&_hr]:my-[1lh] [&_hr]:border-border [&_ul]:ps-[1.5em] [&_ul]:list-disc [&_ol]:ps-[1.5em] [&_ol]:list-decimal",
+          class: WRITING_TEXT_CLASS,
         },
       },
       onUpdate: ({ editor: current }) =>
@@ -342,6 +382,27 @@ export function WritingPages({
     latest.current = document;
   }, [document]);
 
+  const canvasCallbacks = useRef<CanvasCallbacks>({
+    onBlocks: () => undefined,
+    onFocus: () => undefined,
+  });
+  useEffect(() => {
+    canvasCallbacks.current = {
+      onBlocks: (pageId, blocks) => {
+        const current = latest.current;
+        const next = {
+          ...current,
+          pages: current.pages.map((page) =>
+            page.id === pageId ? { ...page, blocks } : page,
+          ),
+        };
+        latest.current = next;
+        onChange(next);
+      },
+      onFocus: onActiveEditor,
+    };
+  }, [onActiveEditor, onChange]);
+
   const callbacks = useRef<PageCallbacks>({
     onContent: () => undefined,
     onFocus: () => undefined,
@@ -390,7 +451,8 @@ export function WritingPages({
 
   useEffect(() => {
     const element = desk.current;
-    if (!element || view !== "page") return;
+    // Canvas pages keep their paper in both views, so the scale is kept in both.
+    if (!element) return;
     const size = PAGE_SIZES[document.pageSize];
     const resize = () => {
       const available = element.clientWidth - 32;
@@ -512,6 +574,8 @@ export function WritingPages({
     const pages = latest.current.pages;
     for (let index = 0; index < pages.length; index += 1) {
       const page = pages[index]!;
+      // Text never flows into or out of a canvas page.
+      if (page.kind === "canvas") continue;
       const editor = editors.get(page.id);
       const marker = markers.get(page.id);
       // A page still appearing is measured on the next frame.
@@ -585,21 +649,35 @@ export function WritingPages({
       <p id="writing-page-keys" className="sr-only">
         Tab writes a tab. To leave the page, press Escape, then Tab.
       </p>
-      {document.pages.map((page, index) => (
-        <PageSheet
-          key={page.id}
-          document={document}
-          page={page}
-          index={index}
-          view={view}
-          scale={scale}
-          spellcheck={spellcheck}
-          readOnly={readOnly}
-          callbacks={callbacks}
-          editors={editors}
-          markers={markers}
-        />
-      ))}
+      {document.pages.map((page, index) =>
+        page.kind === "canvas" ? (
+          <CanvasSheet
+            key={page.id}
+            document={document}
+            page={page}
+            index={index}
+            scale={scale}
+            spellcheck={spellcheck}
+            readOnly={readOnly}
+            editors={editors}
+            callbacks={canvasCallbacks}
+          />
+        ) : (
+          <PageSheet
+            key={page.id}
+            document={document}
+            page={page}
+            index={index}
+            view={view}
+            scale={scale}
+            spellcheck={spellcheck}
+            readOnly={readOnly}
+            callbacks={callbacks}
+            editors={editors}
+            markers={markers}
+          />
+        ),
+      )}
     </div>
   );
 }
