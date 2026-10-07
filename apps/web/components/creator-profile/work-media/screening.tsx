@@ -52,7 +52,6 @@ export function VideoEmbed({
           src={videoEmbedSrc(source, { startAt: started.at })}
           title={`${title} (${source.providerName})`}
           allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-          allowFullScreen
           referrerPolicy="strict-origin-when-cross-origin"
         />
       ) : (
