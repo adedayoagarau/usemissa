@@ -26,7 +26,7 @@ export function SubmissionStatusTimeline({ timeline, organizationName, compact =
         </div>
         <SubmissionStageBadge step={timeline.current.id} label={timeline.current.label} />
       </header>
-      <ol className="mt-5 grid gap-0" aria-label="Submission journey">
+      <ol className="mt-5 grid gap-0" aria-label="Submission progress">
         {timeline.steps.map((step, index) => {
           const last = index === timeline.steps.length - 1;
           const date = formatDate(step.at);
