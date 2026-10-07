@@ -3,6 +3,9 @@ import { PlateImage } from "./plate-image";
 import { RecordingPlayer } from "./recording-player";
 import styles from "./work-page.module.css";
 
+/** Fragment Mono is for counts: "Poem 1 of 9" is set in it, a plain "Recording" is not. */
+const counted = (label: string) => (/\d/.test(label) ? "font-mono" : "");
+
 function Reading({ text }: { text: string }) {
   return (
     <div className={`${styles.reading} font-heading`}>
@@ -22,7 +25,9 @@ function TextPart({ part, many }: { part: WorkPart; many: boolean }) {
     >
       <header className={styles.partHead}>
         {many && part.title && (
-          <p className={`${styles.partLabel} font-mono`}>{part.label}</p>
+          <p className={`${styles.partLabel} ${counted(part.label)}`}>
+            {part.label}
+          </p>
         )}
         <h2
           id={`${part.anchor}-title`}
@@ -63,7 +68,7 @@ function Plates({ parts }: { parts: WorkPart[] }) {
                 ) : (
                   <span />
                 )}
-                <span className="font-mono">{part.label}</span>
+                <span className={counted(part.label)}>{part.label}</span>
               </figcaption>
             </figure>
           </li>
@@ -91,7 +96,7 @@ export function Recording({
   return (
     <section id={anchor} className={styles.recording} aria-labelledby={id}>
       <header className={styles.partHead}>
-        <p className={`${styles.partLabel} font-mono`}>{label}</p>
+        <p className={`${styles.partLabel} ${counted(label)}`}>{label}</p>
         <h2 id={id} className={`${styles.partTitle} font-heading`}>
           {title}
         </h2>
