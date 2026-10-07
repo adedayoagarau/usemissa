@@ -484,25 +484,19 @@ export function HomepageFooter() {
               <div>
                 <span>Calls</span>
                 <Link href="/opportunities">Opportunities</Link>
-                <Link href={`/opportunities?${categorySearch(["residency"])}`}>
-                  Residencies
-                </Link>
-                <Link href={`/opportunities?${categorySearch(["grant"])}`}>
-                  Grants
-                </Link>
-                <Link
-                  href={`/opportunities?${categorySearch(["magazine", "pitch"])}`}
-                >
-                  Publications
-                </Link>
+                <Link href="/discover/residencies">Residencies</Link>
+                <Link href="/discover/grants">Grants</Link>
+                <Link href="/discover/fellowships">Fellowships</Link>
+                <Link href="/discover/magazines">Magazine submissions</Link>
+                <Link href="/discover/poetry">Poetry</Link>
               </div>
               <div>
                 <span>Explore</span>
-                <Link
-                  href={`/opportunities?${categorySearch(["award", "contest"])}`}
-                >
-                  Prizes
+                <Link href="/discover/contests">Contests</Link>
+                <Link href="/discover/emerging-writers-artists">
+                  For emerging artists and writers
                 </Link>
+                <Link href="/countries">Calls by country</Link>
                 <Link href={`/opportunities?${categorySearch(["exhibition"])}`}>
                   Exhibitions
                 </Link>
@@ -519,6 +513,7 @@ export function HomepageFooter() {
                 <span>Tools &amp; guides</span>
                 <Link href="/rankings/magazines">Magazine rankings</Link>
                 <Link href="/methodology">How Missa works</Link>
+                <Link href="/guides">Guides</Link>
                 <Link href="/about">About us</Link>
                 <a href={contactMailto()}>Get in touch</a>
               </div>

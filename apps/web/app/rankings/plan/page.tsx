@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { PublicSiteShell } from "@/components/public-site-shell";
@@ -16,11 +17,14 @@ import { planningCandidate } from "@/lib/magazineFacts";
 /** Served from the CDN and regenerated at most every five minutes. */
 export const revalidate = 300;
 
-export const metadata: Metadata = {
-  title: "Your magazine shortlist | Missa",
+// A personal working page: shareable, but kept out of search results.
+export const metadata: Metadata = pageMetadata({
+  title: "Your magazine shortlist",
   description:
     "Build a shortlist of literary magazines for your next submission: a few reaches, a few good fits and a few safer bets, sorted by genre, fees, pay and response time.",
-};
+  path: "/rankings/plan",
+  noIndex: true,
+});
 
 export default async function SubmissionPlanPage() {
   const repository = getMagazineRankingRepository();

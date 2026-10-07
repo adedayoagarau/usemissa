@@ -9,9 +9,9 @@ export function generateMetadata({
 }): Promise<Metadata> {
   return listingMetadata(
     {
-      title: "Grant foundations | Missa",
+      title: "Grant funders for artists and writers",
       description:
-        "Explore grant foundations and organizations supporting artists and writers.",
+        "Foundations and organizations that fund artists and writers, with their open grants, fellowships and awards and a link to each funder's page.",
       path: "/grants",
     },
     searchParams,

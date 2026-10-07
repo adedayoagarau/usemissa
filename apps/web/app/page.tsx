@@ -21,7 +21,7 @@ import {
   getPublicOpportunityBrowse,
   type OpportunityBrowseWithFacets,
 } from "@/lib/publicOpportunityReads";
-import { pageMetadata } from "@/lib/seo";
+import { JsonLd, pageMetadata, siteEntityJsonLd } from "@/lib/seo";
 import styles from "@/components/missa/homepage-standard.module.css";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -58,7 +58,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const raw = searchParams ? await searchParams : {};
   return pageMetadata({
-    title: "Missa: open calls, grants and residencies",
+    title: "Missa: open calls, grants and residencies for artists and writers",
     description:
       "Open calls, grants, residencies and magazines, each with its fee, who can apply and the organizer's page. Save the ones you want and get reminded before they close.",
     path: "/",
@@ -141,6 +141,7 @@ export default async function HomePage({
 
   return (
     <div className={styles.page} data-density="spacious">
+      <JsonLd data={siteEntityJsonLd()} />
       <MissaSiteHeader current="Home" omitLinks={["For organizations"]} />
       <PublicDiscoveryEvent
         eventName="public.discovery_view"

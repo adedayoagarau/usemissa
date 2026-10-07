@@ -8,12 +8,12 @@ export default function JournalDetailLoading() {
       <p className="text-sm font-semibold tracking-[0.2em] text-primary uppercase">
         Missa directory
       </p>
-      <h1
+      <p
         id="journal-loading-heading"
         className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl"
       >
         Loading profile…
-      </h1>
+      </p>
       <p
         className="mt-4 text-lg leading-7 text-muted-foreground"
         role="status"
