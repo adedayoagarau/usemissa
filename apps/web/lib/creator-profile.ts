@@ -1,10 +1,14 @@
-import type {
-  PortfolioAvailability,
-  PortfolioData,
-  PortfolioEvent,
-  PortfolioLens,
-  PortfolioModule,
-  PortfolioWork,
+import {
+  isAddonModule,
+  orderedModules,
+  type PortfolioAddon,
+  type PortfolioAvailability,
+  type PortfolioData,
+  type PortfolioEvent,
+  type PortfolioLens,
+  type PortfolioModule,
+  type PortfolioTheme,
+  type PortfolioWork,
 } from "./creator-portfolio-schema";
 
 export type WorkFormat = "Writing" | "Images" | "Sound" | "Link";
@@ -38,43 +42,172 @@ export function readingMinutes(value: string) {
 
 export const LENSES: Record<
   PortfolioLens,
-  { label: string; lead: string; order: PortfolioModule[] }
+  {
+    label: string;
+    lead: string;
+    order: PortfolioModule[];
+    /** Add-ons this craft switches on first. A creator can change any of it. */
+    addons: PortfolioAddon[];
+    /** The theme that suits the craft; applying it is the creator's choice. */
+    theme: PortfolioTheme;
+  }
 > = {
   mixed: {
     label: "Mixed",
     lead: "Leads with your most recent work, whatever its format.",
-    order: ["work", "upcoming", "shelf", "record", "press", "about"],
+    order: [
+      "work",
+      "upcoming",
+      "shelf",
+      "record",
+      "press",
+      "about",
+      "shows",
+      "editions",
+      "collaborators",
+      "booking",
+      "services",
+      "teaching",
+      "support",
+    ],
+    addons: [],
+    theme: "sage",
   },
   writing: {
     label: "Writing",
     lead: "Leads with reading. Text keeps its line breaks.",
-    order: ["work", "shelf", "record", "upcoming", "press", "about"],
+    order: [
+      "work",
+      "shelf",
+      "record",
+      "upcoming",
+      "press",
+      "about",
+      "shows",
+      "editions",
+      "collaborators",
+      "booking",
+      "services",
+      "teaching",
+      "support",
+    ],
+    addons: [],
+    theme: "sage",
   },
   visual: {
     label: "Visual",
     lead: "Leads with images and wall-label captions.",
-    order: ["work", "upcoming", "record", "shelf", "press", "about"],
+    order: [
+      "work",
+      "editions",
+      "shows",
+      "upcoming",
+      "record",
+      "shelf",
+      "press",
+      "about",
+      "collaborators",
+      "booking",
+      "services",
+      "teaching",
+      "support",
+    ],
+    addons: ["editions", "shows"],
+    theme: "mineral",
   },
   sound: {
     label: "Sound",
     lead: "Leads with listening. Audio plays inline.",
-    order: ["work", "upcoming", "shelf", "press", "record", "about"],
+    order: [
+      "work",
+      "upcoming",
+      "shelf",
+      "press",
+      "record",
+      "about",
+      "booking",
+      "collaborators",
+      "shows",
+      "editions",
+      "services",
+      "teaching",
+      "support",
+    ],
+    addons: ["booking", "collaborators"],
+    theme: "night",
   },
   stage: {
     label: "Stage",
     lead: "Leads with the next date, then the work.",
-    order: ["upcoming", "work", "press", "record", "shelf", "about"],
+    order: [
+      "upcoming",
+      "work",
+      "press",
+      "record",
+      "shelf",
+      "about",
+      "booking",
+      "collaborators",
+      "shows",
+      "editions",
+      "services",
+      "teaching",
+      "support",
+    ],
+    addons: ["booking", "collaborators"],
+    theme: "night",
   },
   film: {
     label: "Film",
     lead: "Leads with the work, then screenings and press.",
-    order: ["work", "upcoming", "press", "record", "shelf", "about"],
+    order: [
+      "work",
+      "upcoming",
+      "shows",
+      "press",
+      "record",
+      "shelf",
+      "about",
+      "collaborators",
+      "booking",
+      "editions",
+      "services",
+      "teaching",
+      "support",
+    ],
+    addons: ["shows", "collaborators"],
+    theme: "night",
   },
   design: {
     label: "Design",
     lead: "Leads with projects, then clients and credits.",
-    order: ["work", "record", "press", "shelf", "upcoming", "about"],
+    order: [
+      "work",
+      "services",
+      "record",
+      "press",
+      "shelf",
+      "upcoming",
+      "about",
+      "collaborators",
+      "shows",
+      "editions",
+      "booking",
+      "teaching",
+      "support",
+    ],
+    addons: ["services"],
+    theme: "default",
   },
+};
+
+export type ModuleGroup = "presence" | "work" | "record" | "connect";
+
+export const MODULE_GROUPS: Record<ModuleGroup, string> = {
+  presence: "Presence",
+  work: "Work",
+  record: "Record",
+  connect: "Connect",
 };
 
 export const MODULE_LABELS: Record<PortfolioModule, string> = {
@@ -84,19 +217,90 @@ export const MODULE_LABELS: Record<PortfolioModule, string> = {
   record: "Track record",
   press: "Press",
   about: "About and contact",
+  editions: "Editions",
+  shows: "Shows and performances",
+  collaborators: "Collaborators",
+  booking: "Booking kit",
+  services: "Services",
+  teaching: "Teaching",
+  support: "Support",
+};
+
+/** What each add-on is for, in the words the studio and the library use. */
+export const ADDON_META: Record<
+  PortfolioAddon,
+  { group: ModuleGroup; summary: string }
+> = {
+  editions: {
+    group: "work",
+    summary:
+      "Prints and multiples with edition size and what’s left. Enquiries only, no checkout.",
+  },
+  shows: {
+    group: "record",
+    summary:
+      "A CV-style history of exhibitions, premieres and screenings, sorted by year.",
+  },
+  collaborators: {
+    group: "record",
+    summary:
+      "Credit the people who made the work. Both sides confirm before it shows.",
+  },
+  booking: {
+    group: "connect",
+    summary:
+      "Tech rider, press kit and bios for programmers, with file type and size shown.",
+  },
+  services: {
+    group: "connect",
+    summary:
+      "What you offer, typical timing and how you price. Rates are optional.",
+  },
+  teaching: {
+    group: "connect",
+    summary:
+      "Workshops and classes with dates and places left. Requests go to your inbox.",
+  },
+  support: {
+    group: "connect",
+    summary:
+      "One link to a patronage or tip page, clearly marked as leaving Missa.",
+  },
+};
+
+/** The name a section carries in the studio and in the visitor's section nav. */
+export const MODULE_NAV_LABELS: Partial<Record<PortfolioModule, string>> = {
+  work: "Work",
+  record: "Record",
+  shows: "Shows",
+  collaborators: "People",
+  booking: "Booking",
 };
 
 export function applyLensOrder(
   modules: PortfolioData["modules"],
   lens: PortfolioLens,
 ) {
-  const visibility = new Map(
-    modules.map((module) => [module.id, module.visible]),
+  const current = new Map(
+    orderedModules(modules).map((module) => [module.id, module]),
   );
-  return LENSES[lens].order.map((id) => ({
-    id,
-    visible: visibility.get(id) ?? true,
-  }));
+  return LENSES[lens].order.map((id) => {
+    const entry = current.get(id) ?? { id, visible: true };
+    return isAddonModule(id)
+      ? { id, visible: entry.visible, added: entry.added === true }
+      : { id, visible: entry.visible };
+  });
+}
+
+/** Switch on the add-ons a craft usually needs, keeping what's already on. */
+export function applyLensAddons(
+  modules: PortfolioData["modules"],
+  lens: PortfolioLens,
+) {
+  const switchOn = new Set<PortfolioModule>(LENSES[lens].addons);
+  return orderedModules(modules).map((entry) =>
+    switchOn.has(entry.id) ? { ...entry, added: true } : entry,
+  );
 }
 
 export function upcomingEvents(

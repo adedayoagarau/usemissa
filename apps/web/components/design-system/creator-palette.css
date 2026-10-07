@@ -1,4 +1,5 @@
 /* Creator themes use the existing Missa palette; no typography or layout overrides. */
+[data-creator-theme="default"],
 [data-creator-theme="white"] {
   --creator-canvas: var(--surface);
 }

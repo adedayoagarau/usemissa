@@ -7,8 +7,6 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type HTMLAttributes,
-  type ReactNode,
 } from "react";
 import {
   ArrowRight,
@@ -34,7 +32,8 @@ import { ProvenanceBadge } from "@/components/missa/provenance-badge";
 import { ProfileConnect } from "./profile-connect";
 import { cn } from "@/lib/utils";
 import {
-  orderedModules,
+  activeModules,
+  isAddonModule,
   type PortfolioData,
   type PortfolioModule,
   type PortfolioWork,
@@ -42,6 +41,7 @@ import {
 import {
   EVENT_STATUS_COPY,
   MODULE_LABELS,
+  MODULE_NAV_LABELS,
   eventCalendarFile,
   eventDateParts,
   featuredWork,
@@ -54,16 +54,11 @@ import {
 } from "@/lib/creator-profile";
 import "@/components/design-system/creator-palette.css";
 import styles from "./public-profile.module.css";
+import { ADDON_SECTIONS } from "./sections";
+import { Heading, SectionHead, hostname, safeHref } from "./sections/shared";
+import type { ProfileMode } from "./sections/types";
 
-export type ProfileMode = "page" | "preview" | "embedded";
-
-function Heading({
-  level,
-  ...props
-}: { level: number } & HTMLAttributes<HTMLHeadingElement>) {
-  const Tag = `h${Math.min(6, Math.max(1, level))}` as "h2";
-  return <Tag {...props} />;
-}
+export type { ProfileMode };
 
 function practiceLine(practices: string[]) {
   const items = practices
@@ -80,23 +75,6 @@ function practiceLine(practices: string[]) {
 
 function firstName(name: string) {
   return name.trim().split(/\s+/)[0] || "this creator";
-}
-
-function safeHref(value: string) {
-  try {
-    const url = new URL(value);
-    return ["http:", "https:"].includes(url.protocol) ? url.href : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function hostname(value: string) {
-  try {
-    return new URL(value).hostname.replace(/^www\./, "");
-  } catch {
-    return value;
-  }
 }
 
 function useAudioPlayer() {
@@ -185,25 +163,34 @@ export function PublicCreatorProfile({
   const contactHref = portfolio.contact.email
     ? `mailto:${portfolio.contact.email}`
     : undefined;
-  const filled: Record<PortfolioModule, boolean> = {
-    work: gridWorks.length > 0,
-    upcoming: events.length > 0,
-    shelf: portfolio.shelf.length > 0,
-    record: portfolio.record.length > 0,
-    press: portfolio.press.length > 0,
-    about: Boolean(
-      portfolio.bio.trim() ||
-      contactHref ||
-      portfolio.contact.website ||
-      portfolio.contact.instagram ||
-      portfolio.contact.newsletter,
-    ),
+  const filled = (id: PortfolioModule): boolean => {
+    if (isAddonModule(id)) return ADDON_SECTIONS[id].filled(portfolio, date);
+    switch (id) {
+      case "work":
+        return gridWorks.length > 0;
+      case "upcoming":
+        return events.length > 0;
+      case "shelf":
+        return portfolio.shelf.length > 0;
+      case "record":
+        return portfolio.record.length > 0;
+      case "press":
+        return portfolio.press.length > 0;
+      case "about":
+        return Boolean(
+          portfolio.bio.trim() ||
+          contactHref ||
+          portfolio.contact.website ||
+          portfolio.contact.instagram ||
+          portfolio.contact.newsletter,
+        );
+    }
   };
   // Embedded marketing samples show identity and work only.
-  const modules = orderedModules(portfolio.modules).filter(
+  const modules = activeModules(portfolio.modules).filter(
     (module) =>
       module.visible &&
-      filled[module.id] &&
+      filled(module.id) &&
       (mode !== "embedded" || module.id === "work"),
   );
   const Container = mode === "page" ? "main" : "div";
@@ -241,7 +228,7 @@ export function PublicCreatorProfile({
           <nav aria-label="Profile sections" className={styles.sectionNav}>
             {modules.map((module) => (
               <a key={module.id} href={`#profile-${module.id}`}>
-                {MODULE_LABELS[module.id]}
+                {MODULE_NAV_LABELS[module.id] ?? MODULE_LABELS[module.id]}
                 {module.id === "work" && (
                   <span className="font-mono">{works.length}</span>
                 )}
@@ -321,6 +308,22 @@ export function PublicCreatorProfile({
                   sample={sample}
                 />
               );
+            default: {
+              const { Section } = ADDON_SECTIONS[module.id];
+              return (
+                <Section
+                  key={module.id}
+                  id={id}
+                  portfolio={portfolio}
+                  name={name}
+                  address={address}
+                  level={level + 1}
+                  mode={mode}
+                  today={date}
+                  canContact={portfolio.inquiries || Boolean(contactHref)}
+                />
+              );
+            }
           }
         })}
         {modules.length === 0 && !featured && (
@@ -649,35 +652,6 @@ function PlayButton({
     >
       {playing ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}
     </button>
-  );
-}
-
-function SectionHead({
-  level,
-  title,
-  count,
-  children,
-}: {
-  level: number;
-  title: string;
-  count?: number;
-  children?: ReactNode;
-}) {
-  return (
-    <div className={styles.sectionHead}>
-      <Heading
-        level={level}
-        className={cn(styles.sectionTitle, "font-heading")}
-      >
-        {title}
-        {count !== undefined && (
-          <span className={cn(styles.count, "font-mono")}>
-            {String(count).padStart(2, "0")}
-          </span>
-        )}
-      </Heading>
-      {children}
-    </div>
   );
 }
 

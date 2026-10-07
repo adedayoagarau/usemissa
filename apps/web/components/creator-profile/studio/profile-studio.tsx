@@ -26,9 +26,13 @@ import { PortfolioHandleField } from "@/components/portfolio-handle-field";
 import { PublicCreatorProfile } from "@/components/creator-profile/public-profile";
 import { cn } from "@/lib/utils";
 import {
+  activeModules,
+  isAddonModule,
   orderedModules,
   publicPortfolioProjection,
+  setAddon,
   withServerProvenance,
+  type PortfolioAddon,
   type PortfolioData,
   type PortfolioModule,
 } from "@/lib/creator-portfolio-schema";
@@ -49,6 +53,10 @@ import {
   ShelfEditor,
   WorkEditor,
 } from "./studio-editors";
+import { ADDON_EDITORS } from "./addons";
+import { AddAddonMenu } from "./addons/add-addon-menu";
+import { AddonFrame } from "./addons/addon-frame";
+import { SharePanel } from "./share-panel";
 import {
   PREVIEW_OWNER,
   useProfileDraft,
@@ -59,6 +67,7 @@ import styles from "./profile-studio.module.css";
 type Action = "publish" | "rename" | "unpublish" | "import" | null;
 
 function moduleCount(draft: PortfolioData, id: PortfolioModule) {
+  if (isAddonModule(id)) return ADDON_EDITORS[id].count(draft);
   switch (id) {
     case "work":
       return draft.works.length;
@@ -138,7 +147,16 @@ export function ProfileStudio({
   );
   const suggestions = useMemo(() => profileSuggestions(draft), [draft]);
   const blocking = suggestions.filter((item) => item.blocking);
-  const modules = orderedModules(draft.modules);
+  const modules = activeModules(draft.modules);
+  const addedAddons = useMemo(
+    () =>
+      new Set(
+        modules.flatMap((module) =>
+          isAddonModule(module.id) ? [module.id] : [],
+        ),
+      ),
+    [modules],
+  );
   const address = controller.currentHandle || draft.handle;
 
   const open = (next: StudioPanel) => {
@@ -150,13 +168,40 @@ export function ProfileStudio({
         ?.focus({ preventScroll: false }),
     );
   };
-  const moveModule = (index: number, by: number) =>
+  // Moves among the sections on the profile, stepping over switched-off add-ons.
+  const moveModule = (id: PortfolioModule, by: number) =>
     update((current) => {
-      const next = orderedModules(current.modules);
-      const [item] = next.splice(index, 1);
-      next.splice(index + by, 0, item);
-      return { ...current, modules: next };
+      const all = orderedModules(current.modules);
+      const active = activeModules(current.modules);
+      const target =
+        active[active.findIndex((module) => module.id === id) + by];
+      if (!target) return current;
+      const [item] = all.splice(
+        all.findIndex((module) => module.id === id),
+        1,
+      );
+      all.splice(
+        all.findIndex((module) => module.id === target.id) + (by > 0 ? 1 : 0),
+        0,
+        item,
+      );
+      return { ...current, modules: all };
     });
+  const addAddon = (id: PortfolioAddon) => {
+    update((current) => ({
+      ...current,
+      modules: setAddon(current.modules, id, true),
+    }));
+    open(id);
+  };
+  const switchOffAddon = (id: PortfolioAddon) => {
+    update((current) => ({
+      ...current,
+      modules: setAddon(current.modules, id, false),
+    }));
+    setPanel("appearance");
+    setView("index");
+  };
   const toggleModule = (id: PortfolioModule, visible: boolean) =>
     update((current) => ({
       ...current,
@@ -382,7 +427,7 @@ export function ProfileStudio({
                         size="icon-xs"
                         disabled={index === 0}
                         aria-label={`Move ${MODULE_LABELS[module.id]} up`}
-                        onClick={() => moveModule(index, -1)}
+                        onClick={() => moveModule(module.id, -1)}
                       >
                         <ArrowUp aria-hidden="true" />
                       </Button>
@@ -391,7 +436,7 @@ export function ProfileStudio({
                         size="icon-xs"
                         disabled={index === modules.length - 1}
                         aria-label={`Move ${MODULE_LABELS[module.id]} down`}
-                        onClick={() => moveModule(index, 1)}
+                        onClick={() => moveModule(module.id, 1)}
                       >
                         <ArrowDown aria-hidden="true" />
                       </Button>
@@ -408,6 +453,7 @@ export function ProfileStudio({
                 );
               })}
             </ol>
+            <AddAddonMenu added={addedAddons} onAdd={addAddon} />
             <p className={styles.railNote}>
               Empty sections are left out for visitors.
             </p>
@@ -421,6 +467,14 @@ export function ProfileStudio({
             >
               Address and publishing
             </button>
+            <Button
+              variant="ghost"
+              className={styles.railItem}
+              aria-current={panel === "share" ? "true" : undefined}
+              onClick={() => open("share")}
+            >
+              Share kit
+            </Button>
           </div>
           {suggestions.length > 0 && (
             <div className={styles.suggestions}>
@@ -475,6 +529,27 @@ export function ProfileStudio({
           )}
           {panel === "press" && <PressEditor {...editorProps} />}
           {panel === "about" && <ContactEditor {...editorProps} />}
+          {isAddonModule(panel as PortfolioModule) &&
+            addedAddons.has(panel as PortfolioAddon) &&
+            (() => {
+              const id = panel as PortfolioAddon;
+              const { Editor } = ADDON_EDITORS[id];
+              return (
+                <AddonFrame id={id} onSwitchOff={() => switchOffAddon(id)}>
+                  <Editor {...editorProps} isAccount={isAccount} />
+                </AddonFrame>
+              );
+            })()}
+          {panel === "share" && (
+            <SharePanel
+              draft={draft}
+              handle={controller.currentHandle}
+              published={Boolean(controller.publishedAt)}
+              changedSincePublish={controller.changedSincePublish}
+              isAccount={isAccount}
+              onPublish={() => startAction("publish")}
+            />
+          )}
           {panel === "publish" && (
             <PublishPanel
               controller={controller}

@@ -5,7 +5,8 @@ import {
 } from "./creator-portfolio-schema";
 import { featuredWork } from "./creator-profile";
 
-export type StudioPanel = "basics" | "appearance" | PortfolioModule | "publish";
+export type StudioPanel =
+  "basics" | "appearance" | PortfolioModule | "share" | "publish";
 
 export type ProfileSuggestion = {
   id: string;

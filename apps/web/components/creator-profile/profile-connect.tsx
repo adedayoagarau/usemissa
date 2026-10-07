@@ -32,6 +32,24 @@ export const INQUIRY_TOPIC_OPTIONS = [
   { value: "other", label: "Something else" },
 ] as const;
 
+/** A request from another part of the profile to open the message form. */
+export type InquiryRequest = {
+  /** One of the inquiry topics; defaults to a commission. */
+  topic?: (typeof INQUIRY_TOPIC_OPTIONS)[number]["value"];
+  /** Text to start the message with, such as "About Indigo Hours III:". */
+  message?: string;
+};
+
+const INQUIRY_EVENT = "missa:profile-inquiry";
+
+/**
+ * Opens the profile's message form, optionally with a topic and a first line.
+ * Sections such as Editions and Teaching call this instead of owning a form.
+ */
+export function requestInquiry(request: InquiryRequest = {}) {
+  window.dispatchEvent(new CustomEvent(INQUIRY_EVENT, { detail: request }));
+}
+
 type Viewer = {
   signedIn: boolean;
   isOwner: boolean;
@@ -93,6 +111,9 @@ export function ProfileConnect({
   const [notice, setNotice] = useState("");
   const [writing, setWriting] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const [preset, setPreset] = useState<{ key: number } & InquiryRequest>({
+    key: 0,
+  });
 
   useEffect(() => {
     if (!live || !handle) return;
@@ -118,6 +139,22 @@ export function ProfileConnect({
   const isOwner = viewer?.isOwner ?? false;
   const canWrite = inquiries && (viewer?.inquiries ?? true) && !isOwner;
   const canInvite = (viewer?.organizations.length ?? 0) > 0;
+
+  useEffect(() => {
+    const open = (event: Event) => {
+      const request = (event as CustomEvent<InquiryRequest>).detail ?? {};
+      if (canWrite) {
+        setPreset((current) => ({ ...request, key: current.key + 1 }));
+        setWriting(true);
+      } else if (contactHref && !isOwner) {
+        const url = new URL(contactHref);
+        if (request.message) url.searchParams.set("subject", request.message);
+        window.location.assign(url.toString());
+      }
+    };
+    window.addEventListener(INQUIRY_EVENT, open);
+    return () => window.removeEventListener(INQUIRY_EVENT, open);
+  }, [canWrite, contactHref, isOwner]);
 
   const toggleFollow = async () => {
     if (!live || !handle) {
@@ -208,6 +245,8 @@ export function ProfileConnect({
         sample={sample}
         defaultName={viewer?.senderName ?? ""}
         defaultEmail={viewer?.senderEmail ?? ""}
+        key={preset.key}
+        preset={preset}
       />
       {canInvite && handle && (
         <InviteDialog
@@ -229,6 +268,7 @@ function InquiryDialog({
   sample,
   defaultName,
   defaultEmail,
+  preset,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -238,6 +278,8 @@ function InquiryDialog({
   sample?: boolean;
   defaultName: string;
   defaultEmail: string;
+  /** A topic and first line asked for by another section; `key` marks each ask. */
+  preset: { key: number } & InquiryRequest;
 }) {
   const ids = {
     name: useId(),
@@ -245,11 +287,17 @@ function InquiryDialog({
     topic: useId(),
     message: useId(),
   };
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    name: string;
+    email: string;
+    topic: NonNullable<InquiryRequest["topic"]>;
+    message: string;
+    website: string;
+  }>({
     name: "",
     email: "",
-    topic: "commission",
-    message: "",
+    topic: preset.topic ?? "commission",
+    message: preset.message ?? "",
     website: "",
   });
   const [state, setState] = useState<
@@ -361,7 +409,10 @@ function InquiryDialog({
                 value={form.topic}
                 className={styles.select}
                 onChange={(event) =>
-                  setForm({ ...form, topic: event.target.value })
+                  setForm({
+                    ...form,
+                    topic: event.target.value as typeof form.topic,
+                  })
                 }
               >
                 {INQUIRY_TOPIC_OPTIONS.map((option) => (
@@ -550,9 +601,11 @@ function InviteDialog({
           </p>
         ) : available.length === 0 ? (
           <p className={styles.hint}>
-            {options.length
-              ? `${first} already has an invitation for each of your open calls.`
-              : <Sp>Your organization has no open, published calls right now.</Sp>}
+            {options.length ? (
+              `${first} already has an invitation for each of your open calls.`
+            ) : (
+              <Sp>Your organization has no open, published calls right now.</Sp>
+            )}
           </p>
         ) : (
           <form className={styles.form} onSubmit={submit}>

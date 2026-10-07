@@ -4,6 +4,7 @@ import test from "node:test";
 import { portfolioSchema } from "./creator-portfolio-schema";
 import { profileSuggestions } from "./creator-profile-suggestions";
 import {
+  applyLensAddons,
   applyLensOrder,
   availabilityLabel,
   availabilityState,
@@ -58,10 +59,28 @@ test("lens order keeps each section's visibility", () => {
     "stage",
   );
   assert.deepEqual(
-    order.map((module) => module.id),
+    order.slice(0, 6).map((module) => module.id),
     ["upcoming", "work", "press", "record", "shelf", "about"],
   );
   assert.equal(order.find((module) => module.id === "press")?.visible, false);
+  // Every add-on follows, still switched off.
+  assert.equal(order.length, 13);
+  assert.equal(
+    order.slice(6).every((module) => module.added === false),
+    true,
+  );
+});
+
+test("a craft lens switches on its usual add-ons and keeps the rest as they were", () => {
+  const modules = applyLensAddons(
+    applyLensOrder([{ id: "services", visible: true, added: true }], "visual"),
+    "visual",
+  );
+  const on = (id: string) => modules.find((m) => m.id === id)?.added;
+  assert.equal(on("editions"), true);
+  assert.equal(on("shows"), true);
+  assert.equal(on("services"), true, "an add-on already on stays on");
+  assert.equal(on("booking"), false);
 });
 
 test("work formats come from content, not declared disciplines", () => {
