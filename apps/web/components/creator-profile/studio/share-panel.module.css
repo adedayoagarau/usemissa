@@ -1,0 +1,268 @@
+/*
+ * The share kit panel. Studio-only: a column of sections, each a short heading,
+ * what it is for, a preview and the actions. Spacing is Comfortable: 16px inside
+ * a section, 40px between sections.
+ */
+.panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 40px;
+}
+/* The heading sits closer to what it introduces than sections do to each other. */
+.head {
+  margin-block-end: -16px;
+}
+.section {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+}
+.sectionHead {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sectionHead h3 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.sectionHead p {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Previews */
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+.storyFigure,
+.eventFigure {
+  width: 100%;
+  max-width: 220px;
+}
+.caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+.caption span {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.frame {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-subtle);
+}
+.linkFrame {
+  width: 100%;
+  max-width: 480px;
+}
+.storyFrame {
+  width: 100%;
+}
+.image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.image:not([data-ready]) {
+  opacity: 0;
+}
+.skeleton {
+  position: absolute;
+  inset: 0;
+  border-radius: 0;
+}
+.failed {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  color: var(--destructive);
+  font-size: 13px;
+  text-align: center;
+}
+.failed svg {
+  width: 20px;
+  height: 20px;
+}
+.failed p {
+  margin: 0;
+}
+.eventPreview {
+  pointer-events: none;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.hint {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+/* Event list */
+.events {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.events li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.events li:last-child {
+  border-bottom: 1px solid var(--border);
+}
+.eventText {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 180px;
+  flex-direction: column;
+  gap: 2px;
+}
+.eventTitle {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.eventMeta {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.empty {
+  padding: 24px;
+}
+
+/* Signature */
+.signature {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.signatureLabel {
+  color: var(--muted-foreground);
+  font-size: 13px;
+  font-weight: 600;
+}
+.signaturePreview {
+  overflow-x: auto;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.manual {
+  width: 100%;
+  font-size: 12px;
+}
+
+/* Feedback */
+.status {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--foreground);
+  font-size: 14px;
+  line-height: 1.4;
+}
+.status svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--primary);
+}
+.statusFailed {
+  color: var(--destructive);
+}
+.statusFailed svg {
+  color: currentColor;
+}
+.changes {
+  margin: 0;
+}
+.changesAction {
+  display: block;
+  margin-top: 12px;
+}
+.copyRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+/* The link has its own line so none of it is cut off. */
+.linkField {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+/* Before the first publish */
+.locked {
+  gap: 24px;
+  padding: 32px 24px;
+}
+.get {
+  display: flex;
+  width: 100%;
+  max-width: 340px;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: start;
+}
+.get li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.get strong {
+  font-size: 14px;
+}
+.get span {
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.loadingTitle {
+  height: 28px;
+  width: 40%;
+}
+.loadingFrame {
+  aspect-ratio: 1200 / 630;
+  width: 100%;
+  max-width: 480px;
+}

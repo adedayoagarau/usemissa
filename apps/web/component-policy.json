@@ -243,6 +243,30 @@
       "appearance": "tabbed-messages-invitations-followers-following-with-archive",
       "boundary": "Senders never see the creator's address unless the creator replies by email; organizations are not told when an invitation is declined."
     },
+    "composition.creator-share-kit": {
+      "semantic": "SharePanel",
+      "implementation": "components/creator-profile/studio/share-panel.tsx",
+      "composition": ["Button", "Alert", "Empty", "Skeleton", "Input", "Textarea", "EventCard", "QrCodeSvg"],
+      "appearance": "stacked-sections-with-generated-previews-downloads-event-links-signature-and-copy-actions",
+      "states": ["not-published", "needs-an-account", "published", "published-with-changes", "loading-picture", "picture-failed", "copied", "copy-refused", "no-events", "no-featured-image"],
+      "boundary": "Drawn only from the published profile: before the first publish it explains what is coming and offers Publish through the studio's own dialog; after changes it says the kit shows the last published version. Pictures come from /@handle/share.png and /@handle/story.png, event cards from /@handle/events/<id>. The signature (emails/creator-signature.ts) is text-only HTML with no stylesheet, image or tracking, and every field escaped. Copying uses the async Clipboard API, then a selection copy, then hands the text over to copy by hand."
+    },
+    "composition.creator-event-card": {
+      "semantic": "EventCard",
+      "implementation": "components/creator-profile/share/event-card.tsx",
+      "page": "components/creator-profile/share/event-card-page.tsx",
+      "composition": ["Button", "QrCodeSvg", "PrintStyles"],
+      "appearance": "a6-print-card-sized-from-its-own-width-with-a-qr-code-to-the-profile",
+      "boundary": "One upcoming, published event with an id; unknown, past and unpublished events are the same 404 and the page is never indexed. The QR code (lib/qr-code.ts, inline SVG, error correction M, four-module quiet zone) always encodes the profile's https address. Print uses the browser's print dialog, which also saves a PDF; the page sets the A6 paper size in millimetres."
+    },
+    "composition.creator-share-image": {
+      "semantic": "CreatorShareImages",
+      "implementation": "components/creator-profile/share-image.tsx",
+      "story": "components/creator-profile/share/story-image.tsx",
+      "composition": ["EditorialTypography"],
+      "appearance": "link-card-1200x630-and-story-1080x1920-drawn-through-next-og",
+      "boundary": "Generated PNGs. next/og cannot read CSS variables or the page's fonts, so colours come from the shared email constants (the Missa tokens as hex) and Newsreader, Instrument Sans and Fragment Mono are fetched as TTF, with the renderer's default face as the fallback. The story quotes the featured work only in the maker's own line breaks and never writes about the work."
+    },
     "composition.writing-room": {
       "semantic": "WritingRoom",
       "implementation": "components/missa/writing-room.tsx",
@@ -1410,6 +1434,8 @@
     "CreatorCv": ["EditorialTypography", "PrintStyles", "ProvenanceMark"],
     "ProfileConnect": ["Button", "Dialog", "Field", "Input", "NativeSelect", "Textarea"],
     "ProfileInbox": ["Tabs", "Button", "Empty", "Link"],
+    "ShareKit": ["Button", "Alert", "Empty", "Skeleton", "Input", "Textarea", "EventCard"],
+    "EventCard": ["EditorialTypography", "PrintStyles", "QrCodeSvg"],
     "WritingRoom": ["WritingPages", "WritingFormatBar", "WritingFormatSheet", "WritingLibrary", "Button", "DropdownMenu", "Popover", "Dialog", "AlertDialog", "Alert"]
   },
   "motion": {

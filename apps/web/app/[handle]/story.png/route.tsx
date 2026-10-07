@@ -3,11 +3,12 @@ import {
   publishedMediaDataUrl,
 } from "@/lib/published-portfolio";
 import { featuredWork } from "@/lib/creator-profile";
-import { creatorShareImage } from "@/components/creator-profile/share-image";
 import { loadShareFonts } from "@/components/creator-profile/share/fonts";
+import { creatorStoryImage } from "@/components/creator-profile/share/story-image";
 
 export const dynamic = "force-dynamic";
 
+/** The 1080 × 1920 story, drawn from the published profile. */
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ handle: string }> },
@@ -16,15 +17,13 @@ export async function GET(
   if (!loaded) return new Response("Not found", { status: 404 });
   const { portfolio, resolved } = loaded;
   const featured = featuredWork(portfolio.works);
-  const [photo, image, fonts] = await Promise.all([
-    portfolio.photo ? publishedMediaDataUrl(portfolio.photo) : undefined,
+  const [image, fonts] = await Promise.all([
     featured?.image ? publishedMediaDataUrl(featured.image) : undefined,
     loadShareFonts(),
   ]);
-  return creatorShareImage({
+  return creatorStoryImage({
     portfolio,
     handleKey: resolved.handleKey,
-    photo,
     image,
     fonts,
   });
