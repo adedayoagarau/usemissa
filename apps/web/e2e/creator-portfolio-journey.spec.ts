@@ -12,7 +12,23 @@ async function expectNoOverflow(page: Page) {
   ).toBeTruthy();
 }
 
+/** Colour transitions in flight give axe a half-faded colour; let them end first. */
+async function settleTransitions(page: Page) {
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter(
+          (animation) =>
+            animation.effect?.getComputedTiming().iterations !== Infinity,
+        )
+        .map((animation) => animation.finished.catch(() => undefined)),
+    ),
+  );
+}
+
 async function expectAccessible(page: Page, include = "main") {
+  await settleTransitions(page);
   const audit = await new AxeBuilder({ page })
     .include(include)
     .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
