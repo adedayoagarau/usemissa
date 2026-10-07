@@ -22,11 +22,11 @@ export function PublishOpportunityAction({ organizationId, opportunity, disabled
   const { pending, error, setError, run } = useOrganizationAction();
   return (
     <AlertDialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) setError(''); }}>
-      <AlertDialogTrigger render={<Button type="button" disabled={disabled} />}><Send aria-hidden="true" />Publish Opportunity</AlertDialogTrigger>
+      <AlertDialogTrigger render={<Button type="button" disabled={disabled} />}><Send aria-hidden="true" />Publish call</AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Publish “{opportunity.title}”?</AlertDialogTitle>
-          <AlertDialogDescription>Applicants can find it on your public Organization page and apply through the saved submission form straight away. You can close it to new submissions later.</AlertDialogDescription>
+          <AlertDialogDescription>Applicants can find it on your public organization page and apply through the saved submission form straight away. You can close it to new submissions later.</AlertDialogDescription>
         </AlertDialogHeader>
         <OrganizationActionError message={error} title="Not published" />
         <AlertDialogFooter>
@@ -35,10 +35,10 @@ export function PublishOpportunityAction({ organizationId, opportunity, disabled
             type="button"
             disabled={pending}
             onClick={() => run(async () => {
-              const result = await organizationMutation(opportunityUrl(organizationId, opportunity.id, '/publish'), { method: 'POST', body: opportunity.revision ? { expectedRevision: opportunity.revision } : {}, fallbackError: 'This Opportunity could not be published. It is still a draft.' });
+              const result = await organizationMutation(opportunityUrl(organizationId, opportunity.id, '/publish'), { method: 'POST', body: opportunity.revision ? { expectedRevision: opportunity.revision } : {}, fallbackError: 'This call couldn’t be published. It’s still a draft.' });
               if (!result.ok) return result.error;
               setOpen(false);
-              toast.success('Opportunity published. Applicants can apply now.');
+              toast.success('Call published. Applicants can apply now.');
               router.refresh();
             })}
           >
@@ -71,14 +71,14 @@ export function CloseOpportunityAction({ organizationId, opportunity, disabled }
             variant="destructive"
             disabled={pending}
             onClick={() => run(async () => {
-              const result = await organizationMutation(opportunityUrl(organizationId, opportunity.id), { method: 'DELETE', ...(opportunity.revision ? { body: { expectedRevision: opportunity.revision } } : {}), fallbackError: 'This Opportunity could not be closed. It is still accepting submissions.' });
+              const result = await organizationMutation(opportunityUrl(organizationId, opportunity.id), { method: 'DELETE', ...(opportunity.revision ? { body: { expectedRevision: opportunity.revision } } : {}), fallbackError: 'This call couldn’t be closed. It’s still accepting submissions.' });
               if (!result.ok) return result.error;
               setOpen(false);
-              toast.success('Opportunity closed to new submissions.');
+              toast.success('Call closed to new submissions.');
               router.refresh();
             })}
           >
-            <PendingLabel pending={pending} idle="Close Opportunity" busy="Closing…" />
+            <PendingLabel pending={pending} idle="Close call" busy="Closing…" />
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

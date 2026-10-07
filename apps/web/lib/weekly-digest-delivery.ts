@@ -1,6 +1,7 @@
 import { buildWeeklyDigest, creatorFitRankingFromEnv, creatorPoolFor, weeklyDigestIsEmpty, weeklyDigestRecipients } from '@missa/radar-adapters';
 import { renderWeeklyDigestEmail } from '../emails/weekly-digest';
 import { sendMail } from './mail-service';
+import { accountSpellings } from './account-spelling';
 
 export type WeeklyDigestReport = { status: 'sent' | 'skipped' | 'partial'; sent: number; empty: number; failed: number; reason?: string };
 
@@ -22,7 +23,9 @@ export async function deliverWeeklyDigests(): Promise<WeeklyDigestReport> {
   let sent = 0;
   let empty = 0;
   let failed = 0;
-  for (const recipient of await weeklyDigestRecipients(pool)) {
+  const recipients = await weeklyDigestRecipients(pool);
+  const spellings = await accountSpellings(pool, recipients.map((recipient) => recipient.accountId));
+  for (const recipient of recipients) {
     const digest = await buildWeeklyDigest(pool, recipient.accountId, undefined, {
       creatorFit,
       digestKey: recipient.idempotencyKey,
@@ -31,7 +34,7 @@ export async function deliverWeeklyDigests(): Promise<WeeklyDigestReport> {
       empty += 1;
       continue;
     }
-    const { subject, html, text } = renderWeeklyDigestEmail({ accountId: recipient.accountId, email: recipient.email, digest });
+    const { subject, html, text } = renderWeeklyDigestEmail({ accountId: recipient.accountId, email: recipient.email, digest, spelling: spellings.get(recipient.accountId) });
     const report = await sendMail({
       recipientEmail: recipient.email,
       recipientAccountId: recipient.accountId,

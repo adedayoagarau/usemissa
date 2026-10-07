@@ -11,6 +11,7 @@ These instructions apply to every AI-authored UI change in this repository.
 | Installed Studio inventory                | `apps/web/component-catalogue.json` |
 | Reusable AI UI directive                  | `docs/ai-ui-build-directive.md`     |
 | Directory filters and creator portfolio integration | `docs/directory-portfolio-integration-handoff.md` |
+| Messaging, taglines, and microcopy        | `docs/missa-messaging.md`           |
 
 ## Before building UI
 
@@ -37,6 +38,14 @@ These instructions apply to every AI-authored UI change in this repository.
    animations in feature code.
 8. If no approved component works, record the registries and local variants
    inspected plus the functional or accessibility gap before creating custom UI.
+
+## Before writing copy
+
+1. Read `docs/missa-messaging.md`. It sets the lead lines, the voice, the fun
+   dial, the microcopy patterns and the words to avoid.
+2. Check every product claim against shipped code before you write it.
+3. Run `npm run check:language`. The Claude Code hook in `.claude/settings.json`
+   runs it after each edit, and CI runs it on every pull request.
 
 ## Required handoff evidence
 

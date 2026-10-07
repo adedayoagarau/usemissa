@@ -13,7 +13,7 @@ export default function OpportunitiesLoading() {
         <p className={styles.loadingEyebrow}>Opportunities</p>
         <h1 id="opportunities-loading-heading">Finding open calls…</h1>
         <p className={styles.loadingStatus} role="status" aria-live="polite">
-          Loading the opportunity catalogue.
+          Reading the fine print…
         </p>
         <Skeleton className={styles.loadingSearch} />
         <div className={styles.loadingGrid} aria-hidden="true">

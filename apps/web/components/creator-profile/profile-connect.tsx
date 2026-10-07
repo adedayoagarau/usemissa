@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import styles from "./profile-connect.module.css";
+import { Sp } from "@/components/missa/spelling";
 
 export const INQUIRY_TOPIC_OPTIONS = [
   { value: "commission", label: "A commission" },
@@ -551,7 +552,7 @@ function InviteDialog({
           <p className={styles.hint}>
             {options.length
               ? `${first} already has an invitation for each of your open calls.`
-              : "Your organization has no open, published calls right now."}
+              : <Sp>Your organization has no open, published calls right now.</Sp>}
           </p>
         ) : (
           <form className={styles.form} onSubmit={submit}>

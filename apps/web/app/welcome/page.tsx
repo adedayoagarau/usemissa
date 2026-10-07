@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { LiquidGlassWelcome } from "@/components/missa/liquid-glass-welcome";
 
 export const metadata: Metadata = {
-  title: "Make room for what’s next",
+  title: "Welcome",
   description:
-    "Find opportunities, make space for your practice, and take your next step with Missa.",
+    "Find the call. Make the deadline. Open calls, grants and residencies with the fee, the rules and a reminder before each one closes.",
   robots: { index: false, follow: false },
 };
 

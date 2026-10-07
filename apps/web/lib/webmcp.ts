@@ -53,6 +53,7 @@ const BLOCKED_PATHS = [
   /^\/(?:my-submissions|tracker\/submissions)\/[^/]+(?:\/|$)/u,
   /^\/organization\/[^/]+\/(?:settings|submissions\/[^/]+)(?:\/|$)/u,
   /^\/workspace\/settings(?:\/|$)/u,
+  /^\/write(?:\/|$)/u,
 ];
 
 const CREATOR_PATHS = new Set([
@@ -359,7 +360,7 @@ function searchOpportunitiesTool(context: ToolContext): MissaWebMcpTool {
     name: "missa.search_opportunities",
     title: "Search Missa opportunities",
     description:
-      "Search Missa's source-attributed opportunity catalogue with bounded public filters. Results describe discovery records, not eligibility or provider acceptance.",
+      "Search Missa's source-attributed opportunity catalog with bounded public filters. Results describe discovery records, not eligibility or provider acceptance.",
     inputSchema: {
       type: "object",
       properties: {

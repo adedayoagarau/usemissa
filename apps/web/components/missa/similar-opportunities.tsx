@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { SimilarMatch, SimilarReason } from "@/lib/similar-opportunities";
 import { SheetSectionHeading } from "./sheet-section-heading";
+import { Sp } from "@/components/missa/spelling";
 
 const HEADINGS: Record<SimilarReason, { title: string; description: string }> =
   {
@@ -136,7 +137,7 @@ export function SimilarOpportunities({
       <SheetSectionHeading id="sheet-similar-title" eyebrow="Similar open calls">
         {heading.title}
       </SheetSectionHeading>
-      <p className="text-sm text-muted-foreground">{heading.description}</p>
+      <p className="text-sm text-muted-foreground"><Sp>{heading.description}</Sp></p>
       <ul className="divide-y divide-border border-y border-border">
         {data.matches.map((match) => (
           <li key={match.id} className="space-y-3 py-4">

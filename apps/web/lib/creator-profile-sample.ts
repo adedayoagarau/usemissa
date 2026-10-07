@@ -40,7 +40,7 @@ export function sampleCreatorPortfolio(): PortfolioData {
         kind: "Poem sequence",
         year: String(year),
         summary:
-          "Poems and photographs made on trains, one per journey, over three years.",
+          "Poems and photographs made on trains, one per trip, over three years.",
         caption: "Archival pigment prints and nine poems",
         text: "The train window holds the lake\nthe way a palm holds water —\nbriefly, and with all of itself.\n\nA heron lifts. The carriage keeps\nits small promises: the next stop,\nthe next stop, the tea gone cold.\n\nI write the hills down as they leave.\nNot to keep them. To be the kind\nof person who was there.",
         image: "/media/creator-preview-landscape.webp",

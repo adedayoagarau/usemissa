@@ -13,7 +13,7 @@ error or a polyfill.
 | Creator workspace                                                | Public tools plus bounded application summaries                                                               | Notes, saved answers, files, material contents, status mutation, or submission                                    |
 | Organization workspace                                           | Public tools plus open-call metadata and redacted submission summaries                                        | Submitter identity, answers, files, reviewer identity, work titles, publication, decisions, messaging, or exports |
 | Reviewer workspace                                               | Public tools plus reviewer-scoped assignment summaries                                                        | Work contents, scoring, recommendations, recusal, or review submission                                            |
-| Auth, admin, claims, settings/billing, and receipt/detail routes | None; `Permissions-Policy: tools=()`                                                                          | Every WebMCP capability                                                                                           |
+| Auth, admin, claims, settings/billing, and receipt/detail routes, and the writing room (`/write`) | None; `Permissions-Policy: tools=()`                                                                          | Every WebMCP capability                                                                                           |
 
 All tool registrations:
 

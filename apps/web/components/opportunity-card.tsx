@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { opportunityFreshness } from "@/lib/opportunityFreshness";
 import { cleanTitleOrLabel } from "@/lib/textUtils";
+import { Sp } from "@/components/missa/spelling";
 
 function deadlineCopy(deadline: OpportunityBrowseProjection["deadline"]): {
   label: string;
@@ -139,8 +140,9 @@ export function OpportunityCard({
             </span>
           </h2>
           <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-            {cleanTitleOrLabel(item.organizationName) ||
-              "Organization not confirmed"}
+            {cleanTitleOrLabel(item.organizationName) || (
+              <Sp>Organization not confirmed</Sp>
+            )}
           </p>
           <p className="mt-2 flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
             {practiceLabels.map((label) => (

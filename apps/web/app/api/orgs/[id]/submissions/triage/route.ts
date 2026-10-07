@@ -20,7 +20,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
   const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status, headers });
-  if (workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: 'Bulk triage runs on the compatibility workspace; use per-Work decisions while relational authority is enabled.' }, { status: 503, headers });
+  if (workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: 'Bulk triage runs on the compatibility workspace; decide each piece on its own while relational authority is enabled.' }, { status: 503, headers });
   const parsed = schema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: 'Choose an action and between 1 and 500 submissions' }, { status: 400, headers });
   const input = parsed.data;

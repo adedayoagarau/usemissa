@@ -39,7 +39,7 @@ test("public country and organization routes state their actual scope", async ({
     }),
   ).toHaveAttribute("href", "/for-organizations");
   await expect(
-    page.getByRole("link", { name: "Create account", exact: true }),
+    page.getByRole("link", { name: "Get Missa free", exact: true }),
   ).toHaveAttribute("href", "/signup");
   await expect(
     page.getByRole("heading", { name: "Nigeria and worldwide listings" }),
@@ -95,6 +95,6 @@ test("mobile public navigation keeps both account entry points", async ({ page }
     navigation.getByRole("link", { name: "For organizations", exact: true }),
   ).toHaveAttribute("href", "/for-organizations");
   await expect(
-    navigation.getByRole("link", { name: "Create account", exact: true }),
+    navigation.getByRole("link", { name: "Get Missa free", exact: true }),
   ).toHaveAttribute("href", "/signup");
 });

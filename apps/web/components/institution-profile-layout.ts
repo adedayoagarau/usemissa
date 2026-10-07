@@ -38,12 +38,12 @@ export const PROFILE_LAYOUTS: Record<ProfileKind, ProfileLayout> = {
     calls: "Residency opportunities",
     guidance: "Planning your application",
     media: "Spaces & residency media",
-    signature: "Space, time & creative practice",
+    signature: "Space & time to make work",
   },
   grant_foundation: {
     order: ["about", "opportunities", "guidance", "focus"],
     about: "About the foundation",
-    focus: "Areas of practice",
+    focus: "What they fund",
     calls: "Funding opportunities",
     guidance: "Application guidance",
     media: "Foundation media",
@@ -70,7 +70,7 @@ export const PROFILE_LAYOUTS: Record<ProfileKind, ProfileLayout> = {
   organization: {
     order: ["about", "opportunities", "focus", "guidance"],
     about: "About the organization",
-    focus: "Areas of practice",
+    focus: "Areas of focus",
     calls: "Opportunities",
     guidance: "Application guidance",
     media: "Organization media",

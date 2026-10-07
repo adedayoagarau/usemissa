@@ -60,10 +60,10 @@ function RubricScoreForm({ assignmentId, existing, locked, rubric }: { assignmen
         {rubric.criteria.map((criterion) => (
           <Field key={criterion.id}>
             <FieldLabel htmlFor={`criterion-${assignmentId}-${criterion.id}`}>{criterion.label}{criterion.weight > 1 ? <span className="font-normal text-muted-foreground"> · weight {criterion.weight}</span> : null}</FieldLabel>
-            <NativeSelect className="w-full"><select id={`criterion-${assignmentId}-${criterion.id}`} value={scores[criterion.id] === undefined ? '' : String(scores[criterion.id])} onChange={(event) => setScores((current) => ({ ...current, [criterion.id]: event.target.value === '' ? undefined : Number(event.target.value) }))}>
+            <NativeSelect className="w-full" id={`criterion-${assignmentId}-${criterion.id}`} value={scores[criterion.id] === undefined ? '' : String(scores[criterion.id])} onChange={(event) => setScores((current) => ({ ...current, [criterion.id]: event.target.value === '' ? undefined : Number(event.target.value) }))}>
               <NativeSelectOption value="">Not scored</NativeSelectOption>
               {Array.from({ length: criterion.maxScore + 1 }, (_, value) => <NativeSelectOption key={value} value={String(value)}>{value} of {criterion.maxScore}</NativeSelectOption>)}
-            </select></NativeSelect>
+            </NativeSelect>
             {criterion.description ? <FieldDescription>{criterion.description}</FieldDescription> : null}
           </Field>
         ))}
@@ -154,7 +154,7 @@ export function DeclareConflictButton({ assignmentId }: { assignmentId: string }
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Declare a conflict of interest</DialogTitle>
-            <DialogDescription>Use this if you know the submitter, have worked on this Work, or cannot read it fairly. The organization sees your reason; the submitter never does.</DialogDescription>
+            <DialogDescription>Use this if you know the submitter, have worked on this piece, or can’t read it fairly. The organization sees your reason; the submitter never does.</DialogDescription>
           </DialogHeader>
           <Field>
             <FieldLabel htmlFor={`conflict-${assignmentId}`}>Why you should not read this</FieldLabel>

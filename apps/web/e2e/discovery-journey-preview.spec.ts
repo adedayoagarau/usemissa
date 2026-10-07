@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 test('connected preview preserves pages and simulates signup', async ({page})=>{
   test.setTimeout(120000);
   await page.goto('/design-system/discovery-journey/home');
-  await expect(page.getByRole('heading',{name:'Opportunities and grants for every creator'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Find the call. Make the deadline.'})).toBeVisible();
   await page.getByRole('navigation',{name:'Review sequence'}).getByRole('link',{name:'Opportunities',exact:true}).click();
   await expect(page).toHaveURL(/discovery-journey\/opportunities/);
   await page.screenshot({path:'/private/tmp/missa-current-opportunities.png'});

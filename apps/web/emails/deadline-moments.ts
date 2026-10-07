@@ -15,6 +15,7 @@ import { deadlineMomentText, renderDeadlineMoment, type DeadlineMomentProps, typ
 import { buildUnsubscribeUrl, type EmailCategory } from '../lib/email-tokens';
 import { noticeChange, readableNoticeText } from '../lib/notice-change';
 import { siteUrl } from '../lib/siteUrl';
+import { sp, type Spelling } from '../lib/spelling';
 
 /** What a deadline-moment email needs to know about one Tracker notice. */
 export type DeadlineMomentNotice = {
@@ -51,6 +52,8 @@ export type DeadlineMomentEmailProps = {
   notice: DeadlineMomentNotice;
   /** Render time; defaults to now. */
   now?: Date;
+  /** UK readers get UK spelling (lib/spelling.ts). */
+  spelling?: Spelling;
 };
 
 const url = (path: string) => new URL(path, `${siteUrl()}/`).toString();
@@ -218,7 +221,7 @@ function responseOverdue(props: DeadlineMomentEmailProps, now: Date): DeadlineMo
     },
     action: { label: 'Log a response', url: url(`/tracker?view=awaiting&application=${encodeURIComponent(n.opportunityId)}`) },
     secondary: { label: 'View Opportunity', url: url(`/opportunities/${encodeURIComponent(n.opportunityId)}`) },
-    note: 'A short, polite follow-up after the stated reply time is normal. You write and send it yourself; Missa never contacts an organisation for you.',
+    note: sp('A short, polite follow-up after the stated reply time is normal. You write and send it yourself; Missa never contacts an organization for you.', props.spelling),
     footer: {
       reason: 'You get this because you set a response check-in for this call.',
       preferencesUrl: url('/inbox'),
@@ -250,8 +253,8 @@ const reminderFooter = (reason: string): DeadlineMomentProps['footer'] => ({
   preferencesUrl: preferencesUrl(),
   preferencesLabel: 'Change reminders',
 });
-const openingFooter = (): DeadlineMomentProps['footer'] => ({
-  reason: 'You get this because you saved this call or follow its organisation.',
+const openingFooter = (spelling?: Spelling): DeadlineMomentProps['footer'] => ({
+  reason: sp('You get this because you saved this call or follow its organization.', spelling),
   preferencesUrl: preferencesUrl(),
   preferencesLabel: 'Change opening alerts',
 });
@@ -306,7 +309,7 @@ function tierEnding(props: DeadlineMomentEmailProps, now: Date): DeadlineMomentP
     },
     action: { label: 'Open your Tracker', url: noticeLink(n, trackerLink(n)) },
     secondary: { label: 'View Opportunity', url: opportunityLink(n) },
-    note: 'Fees come from the official page. Check it before you pay; organisations sometimes change them.',
+    note: sp('Fees come from the official page. Check it before you pay; organizations sometimes change them.', props.spelling),
     footer: reminderFooter(trackedReason(n)),
   };
 }
@@ -380,7 +383,7 @@ function timeToQuery(props: DeadlineMomentEmailProps, now: Date): DeadlineMoment
     },
     action: { label: 'Log a response', url: noticeLink(n, trackerLink(n, 'awaiting')) },
     secondary: { label: 'View Opportunity', url: opportunityLink(n) },
-    note: 'You write and send any follow-up yourself; Missa never contacts an organisation for you.',
+    note: sp('You write and send any follow-up yourself; Missa never contacts an organization for you.', props.spelling),
     footer: reminderFooter('You get this because this submission is still waiting for a response.'),
   };
 }
@@ -403,8 +406,8 @@ function opensSoon(props: DeadlineMomentEmailProps, now: Date): DeadlineMomentPr
       ]),
     },
     action: { label: 'View Opportunity', url: noticeLink(n, opportunityLink(n)) },
-    note: 'Predicted dates come from past cycles. Missa tells you again when the organisation confirms them.',
-    footer: openingFooter(),
+    note: sp('Predicted dates come from past cycles. Missa tells you again when the organization confirms them.', props.spelling),
+    footer: openingFooter(props.spelling),
   };
 }
 
@@ -425,7 +428,7 @@ function forecastChanged(props: DeadlineMomentEmailProps, now: Date): DeadlineMo
     },
     action: { label: 'View Opportunity', url: noticeLink(n, opportunityLink(n)) },
     note: 'Your Tracker and Calendar use the confirmed dates from now on.',
-    footer: openingFooter(),
+    footer: openingFooter(props.spelling),
   };
 }
 

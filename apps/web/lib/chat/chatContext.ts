@@ -206,7 +206,7 @@ export function buildOpportunityAssistantPayload(plan: OpportunitySearchPlan, pa
   const results = page.items.map(resultFor);
   const evidence = results.map((result) => result.source);
   const searchLabel = plan.query || (plan.types.length ? plan.types.join(', ') : 'published opportunities');
-  const answer = results.length > 0 ? `I found ${page.total} published ${searchLabel} record${page.total === 1 ? '' : 's'}. The first ${results.length} are below with their official-source links. Review consequential details on the source before acting. ${results.slice(0, 3).map(resultSummary).join(' ')}` : `I could not find a published Opportunity matching “${searchLabel}” in Missa’s current collection. Try broader words for what you make, another Opportunity type, or a different fee description.`;
+  const answer = results.length > 0 ? `I found ${page.total} published ${searchLabel} record${page.total === 1 ? '' : 's'}. The first ${results.length} are below with their official-source links. Review consequential details on the source before acting. ${results.slice(0, 3).map(resultSummary).join(' ')}` : `I could not find a published Opportunity matching “${searchLabel}” in Missa’s current collection. Try broader words for what you make, another type of call, or a different fee.`;
 
   return {
     intent: 'opportunity-search',

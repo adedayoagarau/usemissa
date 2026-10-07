@@ -33,6 +33,7 @@ import {
   type WeekAction,
 } from "@/lib/season-plan";
 import styles from "./season-product.module.css";
+import { Sp, useSp } from "@/components/missa/spelling";
 
 /** The capacity response from GET /api/me/planning/capacity. */
 type CapacityItem = {
@@ -150,7 +151,7 @@ function SectionHeading({ id, title, description }: { id: string; title: string;
   return (
     <header className={styles.sectionHeading}>
       <h2 id={id} className="font-heading">{title}</h2>
-      <p>{description}</p>
+      <p><Sp>{description}</Sp></p>
     </header>
   );
 }
@@ -554,6 +555,7 @@ function FeeBudgetSection({ budget, short }: { budget: ReturnType<typeof feeBudg
 }
 
 function ComingBack({ rows, short }: { rows: ReturnType<typeof comingBack>; short: (date: string) => string }) {
+  const sp = useSp();
   return (
     <section className={styles.section} aria-labelledby="season-returning">
       <SectionHeading id="season-returning" title="Coming back" description="Calls you track or whose organization you follow that have closed, with when Missa expects them to return. These dates are predictions from past cycles." />
@@ -580,7 +582,7 @@ function ComingBack({ rows, short }: { rows: ReturnType<typeof comingBack>; shor
                     ? ` to ${short(row.forecast.expectedOpenEnd)}`
                     : ""}
                   {" · "}
-                  {row.relation === "tracked" ? "In your Tracker" : `You follow ${row.organizationName ?? "this organization"}`}
+                  {row.relation === "tracked" ? "In your Tracker" : `You follow ${row.organizationName ?? sp("this organization")}`}
                 </span>
               </div>
               <DateConfidenceBadge state="predicted" label={`Predicted from ${row.forecast.basedOnCycles} cycles`} />

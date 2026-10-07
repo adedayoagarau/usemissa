@@ -62,14 +62,14 @@ export function AssignReviewerDialog({ organizationId, submissionId, openCallId,
               const assigned = await organizationMutation(orgApi(organizationId, `/review-rounds/${encodeURIComponent(roundId)}/assign`), { method: 'POST', body: { submissionId, reviewerAccountId: reviewer }, fallbackError: 'The reviewer could not be assigned. Nothing changed.' });
               if (!assigned.ok) return assigned.error;
               setOpen(false);
-              toast.success(`${reviewers.find((item) => item.accountId === reviewer)?.label ?? 'Reviewer'} assigned. They see this Submission in their review queue.`);
+              toast.success(`${reviewers.find((item) => item.accountId === reviewer)?.label ?? 'Reviewer'} assigned. They see this submission in their review queue.`);
               router.refresh();
             });
           }}
         >
           <DialogHeader>
             <DialogTitle>Assign a reviewer</DialogTitle>
-            <DialogDescription>The reviewer sees only this Submission’s material, under your review privacy setting. Assigning someone does not notify the submitter.</DialogDescription>
+            <DialogDescription>The reviewer sees only this submission’s material, under your review privacy setting. Assigning someone does not notify the submitter.</DialogDescription>
           </DialogHeader>
           <Field>
             <FieldLabel htmlFor={`reviewer-${submissionId}`}>Reviewer</FieldLabel>
@@ -83,7 +83,7 @@ export function AssignReviewerDialog({ organizationId, submissionId, openCallId,
               {rounds.map((item) => <NativeSelectOption key={item.id} value={item.id}>{item.name}</NativeSelectOption>)}
               <NativeSelectOption value={NEW_ROUND}>Start a new round…</NativeSelectOption>
             </NativeSelect>
-            <FieldDescription>Rounds belong to the Opportunity, so other Submissions can join the same round.</FieldDescription>
+            <FieldDescription>Rounds belong to the call, so other submissions can join the same round.</FieldDescription>
           </Field>
           {round === NEW_ROUND ? (
             <Field>
@@ -91,7 +91,7 @@ export function AssignReviewerDialog({ organizationId, submissionId, openCallId,
               <Input id={`round-name-${submissionId}`} required maxLength={120} value={roundName} onChange={(event) => setRoundName(event.target.value)} />
             </Field>
           ) : null}
-          {duplicate ? <p className="text-sm text-muted-foreground" role="status">This person is already assigned to this Submission in that round. Choose another reviewer or round.</p> : null}
+          {duplicate ? <p className="text-sm text-muted-foreground" role="status">This person is already assigned to this submission in that round. Choose another reviewer or round.</p> : null}
           <OrganizationActionError message={error} />
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>

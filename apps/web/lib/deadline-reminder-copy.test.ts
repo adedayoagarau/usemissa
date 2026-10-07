@@ -86,7 +86,7 @@ test('time to follow up only fires past a stated or observed window', () => {
   const observed = responseClock({ submittedOn: '2026-08-01', today: '2026-09-20', observed: { p50Days: 20, p90Days: 40, sampleSize: 8 } });
   assert.equal(observed.state, 'time-to-query');
   assert.equal(timeToQueryCopy({ applicationTitle: 'Spring issue', organizationName: 'Harbor Review', clock: observed }).body,
-    'You sent Spring issue 50 days ago. Nine in ten Missa creators heard back within 40 days.');
+    'You sent Spring issue 50 days ago. Nine in ten people who tracked this call on Missa heard back within 40 days.');
   const few = responseClock({ submittedOn: '2026-08-01', today: '2026-09-20', observed: { p50Days: 20, p90Days: 40, sampleSize: 4 } });
   assert.equal(shouldNotifyResponseClock(few), false, 'fewer than five reports are ignored');
   assert.equal(timeToQueryDedupeKey('t1', '2026-08-01', 'past-stated'), 'time-to-query:t1:2026-08-01:past-stated', 'the Tracker status is not part of the key');

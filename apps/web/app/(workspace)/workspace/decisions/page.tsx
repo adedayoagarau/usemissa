@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getWorkspacePageAccess } from '@/lib/workspacePage';
+import { Sp } from "@/components/missa/spelling";
 
 export default async function WorkspaceDecisionsPage({ searchParams }: { searchParams: Promise<{ organizationId?: string }> }) {
   const access = await getWorkspacePageAccess(searchParams, 'workspace/decisions', 'decisions.read');
@@ -7,7 +8,7 @@ export default async function WorkspaceDecisionsPage({ searchParams }: { searchP
     return (
       <main className="mx-auto max-w-2xl px-6 py-12">
         <h1 className="font-heading text-3xl font-medium text-foreground">Decisions</h1>
-        <p className="mt-2 text-muted-foreground">Join an organization to view its decisions.</p>
+        <p className="mt-2 text-muted-foreground"><Sp>Join an organization to view its decisions.</Sp></p>
       </main>
     );
   const decisions = access.workspace.decisionsForOrganization(access.organizationId).sort((a, b) => b.decidedAt.localeCompare(a.decidedAt));
@@ -41,7 +42,7 @@ export default async function WorkspaceDecisionsPage({ searchParams }: { searchP
       </section>
       <section className="mt-8 overflow-x-auto rounded-xl border border-border bg-card">
         <table className="w-full min-w-[760px] text-left text-sm">
-          <caption className="sr-only">Organization decisions</caption>
+          <caption className="sr-only"><Sp>Organization decisions</Sp></caption>
           <thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground">
             <tr>
               <th scope="col" className="px-4 py-3 font-medium">
@@ -72,7 +73,7 @@ export default async function WorkspaceDecisionsPage({ searchParams }: { searchP
             ))}
           </tbody>
         </table>
-        {rows.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">No decisions are recorded for this organization yet.</p>}
+        {rows.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground"><Sp>No decisions are recorded for this organization yet.</Sp></p>}
       </section>
       <p className="mt-4 text-xs text-muted-foreground">
         <Link href={`/workspace/messages?organizationId=${encodeURIComponent(access.organizationId)}`} className="font-medium text-accent-deep underline decoration-accent-tint underline-offset-4">

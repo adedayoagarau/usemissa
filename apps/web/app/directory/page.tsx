@@ -18,7 +18,7 @@ export function generateMetadata({
 }): Promise<Metadata> {
   return listingMetadata(
     {
-      title: "Directory — Arts Organizations, Residencies & Publishers | Missa",
+      title: "Directory — arts organizations, residencies and publishers | Missa",
       description:
         "Explore Missa's directory of artist residencies, grant foundations, literary journals, small presses, and contemporary galleries worldwide.",
       path: "/directory",

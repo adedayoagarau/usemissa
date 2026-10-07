@@ -223,7 +223,7 @@ test("material changes require acknowledgement and a closed Opportunity blocks S
   });
   await createAccount(page, `first-save-closed-${Date.now()}@example.com`);
   await expect(
-    page.getByRole("heading", { name: "This Opportunity is closed" }),
+    page.getByRole("heading", { name: "This call is closed" }),
   ).toBeVisible();
   await expect(page.getByText(/did not add it to your Tracker/)).toBeVisible();
 });

@@ -198,6 +198,17 @@
       "appearance": "tabbed-messages-invitations-followers-following-with-archive",
       "boundary": "Senders never see the creator's address unless the creator replies by email; organizations are not told when an invitation is declined."
     },
+    "composition.writing-room": {
+      "semantic": "WritingRoom",
+      "implementation": "components/missa/writing-room.tsx",
+      "composition": ["WritingSurface", "Button", "ButtonGroup", "DropdownMenu", "Popover", "Sheet", "Item", "Empty", "Alert", "AlertDialog", "Sonner"],
+      "appearance": "full-page-plain-text-with-controls-that-fade-while-the-timer-runs",
+      "boundary": "Plain text the creator writes. Kept on the device until the account confirms it, and never overwritten by another device: refused text becomes a separate entry. No AI, suggestions, rewriting or analysis; only apps/web/lib/writing-repository.ts reads the text (enforced by lib/writing-boundary.test.ts). No WebMCP tools on /write."
+    },
+    "input.writing-page": {
+      "semantic": "WritingSurface",
+      "boundary": "The page a creator writes on in the writing room. Long text inside a form stays input.long-text (Field + Textarea)."
+    },
     "composition.auth-shell": {
       "semantic": "AuthShell",
       "implementation": "apps/web/components/auth-shell.tsx",
@@ -1144,6 +1155,12 @@
       "implementation": "components/missa/upgrade-hint.tsx",
       "motion": "never",
       "boundary": "One calm line naming what a plan adds and a link to /plan. Says what the creator gets, never what they lose; no alarm colour, no modal."
+    },
+    "WritingSurface": {
+      "base": "textarea",
+      "implementation": "components/missa/writing-surface.tsx",
+      "motion": "never",
+      "boundary": "Borderless, full-height plain-text page with a 42rem measure, in the writer's choice of the open-licence faces in components/missa/writing-typefaces.ts (DESIGN.md typography rule 9) at 16-28px (set in rem). The caret marks focus. Gap recorded: the installed Textarea and the 20 local Studio textarea variants are bordered, labelled form fields; none is a document surface."
     }
   },
   "productCompositions": {
@@ -1215,7 +1232,8 @@
     ],
     "CreatorCv": ["EditorialTypography", "PrintStyles", "ProvenanceMark"],
     "ProfileConnect": ["Button", "Dialog", "Field", "Input", "NativeSelect", "Textarea"],
-    "ProfileInbox": ["Tabs", "Button", "Empty", "Link"]
+    "ProfileInbox": ["Tabs", "Button", "Empty", "Link"],
+    "WritingRoom": ["WritingSurface", "Button", "DropdownMenu", "Popover", "Sheet", "Item", "AlertDialog", "Alert"]
   },
   "motion": {
     "requiresChangingState": true,

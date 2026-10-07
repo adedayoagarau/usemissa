@@ -54,7 +54,7 @@ test("mobile swipe, reduced motion, stats and zoom", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.locator("a").filter({ hasText: "Open opportunities ↗" }),
+    page.locator("a").filter({ hasText: "Open calls ↗" }),
   ).toBeVisible({ timeout: 25000 });
   expect(
     await page.evaluate(
@@ -92,7 +92,7 @@ test("failed counts never become invented zeros; retry recovers", async ({
     .getByRole("button", { name: "Try again", exact: true })
     .click();
   await expect(
-    page.locator("a").filter({ hasText: "Open opportunities ↗" }),
+    page.locator("a").filter({ hasText: "Open calls ↗" }),
   ).toBeVisible({ timeout: 25000 });
 });
 

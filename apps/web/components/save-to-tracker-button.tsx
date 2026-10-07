@@ -55,14 +55,14 @@ export function SaveToTrackerButton({
       disabled={pending}
       aria-label={
         pending
-          ? "Saving Opportunity"
+          ? "Saving call"
           : !signedIn
             ? opportunityTitle
               ? `Save ${opportunityTitle} privately — sign in required`
-              : "Save this Opportunity privately — sign in required"
+              : "Save this call privately — sign in required"
             : opportunityTitle
               ? `Save ${opportunityTitle} privately`
-              : "Save Opportunity privately"
+              : "Save this call privately"
       }
       onClick={() => {
         startTransition(async () => {
@@ -108,7 +108,7 @@ export function SaveToTrackerButton({
               actionLabel?: string;
             };
             if (!response.ok || !body.receipt) {
-              showSaveFailure(body, "We could not save this Opportunity.");
+              showSaveFailure(body, "Couldn’t save this call.");
               return;
             }
             rememberFirstSaveReceipt(body.receipt);
@@ -124,7 +124,7 @@ export function SaveToTrackerButton({
             router.push("/tracker");
           } catch {
             toast.error(
-              "We could not save this Opportunity. Your Tracker is unchanged. Try again.",
+              "Couldn’t save this call. Your Tracker is unchanged. Try again.",
             );
           }
         });
