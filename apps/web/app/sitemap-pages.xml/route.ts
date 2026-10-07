@@ -1,3 +1,4 @@
+import { guideArticleLastModified, guideArticles } from "@/lib/guideArticles";
 import { discoveryCollections, discoveryGuides } from "@/lib/discoveryGuides";
 import { getPublicProfileCountryCounts } from "@/lib/publicProfileReads";
 import type { SitemapEntry } from "@/lib/sitemapData";
@@ -56,6 +57,10 @@ export async function GET() {
     ...STATIC_PATHS.map((path) => ({ path })),
     ...discoveryCollections.map((collection) => ({
       path: `/discover/${collection.slug}`,
+    })),
+    ...guideArticles.map((article) => ({
+      path: `/guides/${article.slug}`,
+      lastModified: guideArticleLastModified(article).toISOString(),
     })),
     ...discoveryGuides.map((guide) => ({ path: `/guides/${guide.slug}` })),
     ...(countryHubs ?? []),

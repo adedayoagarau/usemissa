@@ -26,7 +26,7 @@ process.chdir(repoRoot);
 const args = process.argv.slice(2);
 const mode = args.includes('--hook') ? 'hook' : args.includes('--report') ? 'report' : args.includes('--all') ? 'all' : 'changed';
 const baseArg = args.includes('--base') ? args[args.indexOf('--base') + 1] : null;
-const productFile = /\.(?:[cm]?[jt]sx?)$/u;
+const productFile = /\.(?:[cm]?[jt]sx?)$|^apps\/web\/content\/.*\.(?:md|meta\.json)$/u;
 
 function git(gitArgs, { allowFailure = false } = {}) {
   try {
