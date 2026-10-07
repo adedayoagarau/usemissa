@@ -202,6 +202,10 @@
   align-items: center;
   gap: 2px;
 }
+/* Let a long label wrap so every row's controls line up at the right edge. */
+.moduleList .railItem {
+  min-width: 0;
+}
 .moduleHidden .railItem {
   color: var(--muted-foreground);
   text-decoration: line-through;
