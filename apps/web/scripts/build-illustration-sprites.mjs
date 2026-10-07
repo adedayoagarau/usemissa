@@ -5,6 +5,7 @@
  *   public/illustrations/library-v2/compact/{covers,scenes,spots}/*.svg
  *     -> public/illustrations/library-v2/covers.svg   (every call cover)
  *     -> public/illustrations/library-v2/homepage.svg (the homepage's scenes and spots)
+ *     -> public/illustrations/library-v2/empty-states.svg (art for empty states)
  *     -> components/illustrations/library-v2.generated.ts (ids and viewBoxes)
  *
  * <use> keeps the page's CSS custom properties (--art-ink, --art-accent,
@@ -31,6 +32,11 @@ const SPRITES = [
     file: "homepage.svg",
     group: ["scenes", "spots"],
     names: ["hero", "after-find", "questions", "close", "tracker", "reminders", "portfolio"],
+  },
+  {
+    file: "empty-states.svg",
+    group: ["scenes", "spots"],
+    names: ["searching", "reading", "making-work", "celebrate", "library", "studio-key", "inbox"],
   },
 ];
 

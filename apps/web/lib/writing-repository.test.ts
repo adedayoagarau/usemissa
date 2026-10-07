@@ -4,6 +4,7 @@ import { after, before, test } from "node:test";
 import { creatorPoolFor } from "@missa/radar-adapters";
 import { newWritingEntryId } from "./writing.ts";
 import { WritingRepository } from "./writing-repository.ts";
+import { newWritingProjectId } from "./writing-projects.ts";
 
 /**
  * Real-Postgres coverage for the writing room's storage. Skipped without
@@ -23,7 +24,7 @@ const q = async <T extends Record<string, unknown>>(
 before(async () => {
   if (!databaseUrl) return;
   const schema = await q<{ ready: boolean }>(
-    `select to_regclass('public.creator_writing_entries') is not null as ready`,
+    `select to_regclass('public.creator_writing_projects') is not null as ready`,
   );
   ready = Boolean(schema[0]?.ready);
 });
@@ -42,7 +43,7 @@ after(async () => {
 function dbTest(name: string, body: () => Promise<void>) {
   test(name, { skip: !databaseUrl }, async (t) => {
     if (!ready) {
-      t.skip("migration 0095 is not applied to this database");
+      t.skip("migrations 0095 to 0097 are not applied to this database");
       return;
     }
     await body();
@@ -300,3 +301,147 @@ dbTest(
     assert.equal(phone.kind, "conflict");
   },
 );
+
+dbTest(
+  "a project starts with its template's pieces, and a retry adds nothing",
+  async () => {
+    const owner = await account();
+    const id = newWritingProjectId();
+    const created = await repository().createProject(owner, {
+      id,
+      title: "Harmattan",
+      template: "novel",
+    });
+    assert.equal(created.kind, "created");
+    assert.deepEqual(
+      created.kind === "created" && created.entries.map((entry) => entry.title),
+      ["Chapter 1", "Chapter 2", "Chapter 3", "Characters", "Notes"],
+    );
+    assert.ok(
+      created.kind === "created" &&
+        created.entries.every((entry) => entry.projectId === id),
+    );
+    const again = await repository().createProject(owner, {
+      id,
+      title: "Harmattan",
+      template: "novel",
+    });
+    assert.equal(again.kind, "exists");
+    const pieces = await q(
+      `select count(*)::int as n from creator_writing_entries where project_id=$1`,
+      [id],
+    );
+    assert.equal(pieces[0]?.n, 5);
+
+    const stranger = await account();
+    const taken = await repository().createProject(stranger, {
+      id,
+      title: "Mine",
+      template: "blank",
+    });
+    assert.equal(taken.kind, "taken");
+  },
+);
+
+dbTest(
+  "pieces are placed, ordered, carded and compiled without touching their text",
+  async () => {
+    const owner = await account();
+    const project = newWritingProjectId();
+    await repository().createProject(owner, {
+      id: project,
+      title: "Poems",
+      template: "blank",
+    });
+    const first = newWritingEntryId();
+    const second = newWritingEntryId();
+    for (const [id, body] of [
+      [first, "first poem"],
+      [second, "second poem"],
+    ] as const) {
+      const saved = await repository().save(owner, id, {
+        title: body,
+        body,
+        document: null,
+        baseRevision: 0,
+        projectId: project,
+      });
+      assert.equal(saved.kind === "saved" && saved.entry.projectId, project);
+    }
+    assert.ok(await repository().orderPieces(owner, project, [second, first]));
+    let compiled = await repository().compile(owner, project);
+    assert.deepEqual(
+      compiled?.entries.map((entry) => entry.body),
+      ["second poem", "first poem"],
+    );
+
+    const carded = await repository().changePiece(owner, first, {
+      synopsis: "About the light",
+      status: "revised",
+    });
+    assert.ok(carded && carded !== "no-project");
+    assert.equal(carded.synopsis, "About the light");
+    assert.equal(carded.status, "revised");
+    assert.equal(
+      carded.revision,
+      1,
+      "card changes leave the text's revision alone",
+    );
+
+    const loose = await repository().changePiece(owner, second, {
+      projectId: null,
+    });
+    assert.ok(loose && loose !== "no-project" && loose.projectId === null);
+    compiled = await repository().compile(owner, project);
+    assert.deepEqual(
+      compiled?.entries.map((entry) => entry.id),
+      [first],
+    );
+
+    const stranger = await account();
+    assert.equal(
+      await repository().changePiece(stranger, first, { status: "final" }),
+      null,
+    );
+    assert.equal(await repository().compile(stranger, project), null);
+    const otherProject = newWritingProjectId();
+    await repository().createProject(stranger, {
+      id: otherProject,
+      title: "Theirs",
+      template: "blank",
+    });
+    assert.equal(
+      await repository().changePiece(owner, first, { projectId: otherProject }),
+      "no-project",
+    );
+    const elsewhere = newWritingEntryId();
+    const placed = await repository().save(owner, elsewhere, {
+      title: "",
+      body: "not theirs",
+      document: null,
+      baseRevision: 0,
+      projectId: otherProject,
+    });
+    assert.equal(
+      placed.kind === "saved" && placed.entry.projectId,
+      null,
+      "a piece is never created in another account's project",
+    );
+  },
+);
+
+dbTest("deleting a project keeps its pieces as loose pieces", async () => {
+  const owner = await account();
+  const project = newWritingProjectId();
+  const created = await repository().createProject(owner, {
+    id: project,
+    title: "Application",
+    template: "application",
+  });
+  assert.equal(created.kind, "created");
+  assert.ok(await repository().deleteProject(owner, project));
+  const list = await repository().list(owner);
+  assert.equal(list.length, 4);
+  assert.ok(list.every((entry) => entry.projectId === null));
+  assert.equal(await repository().deleteProject(owner, project), false);
+});

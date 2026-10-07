@@ -18,7 +18,6 @@ import {
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
 import { writingTypeface } from "@/components/missa/writing-typefaces";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   PAGE_SIZES,
@@ -36,6 +35,11 @@ import {
  *
  * Page view draws real printed pages at their paper size; draft view drops
  * the paper and keeps the format, for small screens.
+ *
+ * In page view, text flows between pages as it is written: paragraphs that
+ * run past a page's bottom margin move to the top of a page that continues
+ * it, and come back when there is room again. A page the writer adds is never
+ * merged into another, so a page set apart for a poem stays apart.
  */
 
 const MM = 96 / 25.4;
@@ -161,10 +165,9 @@ function PageSheet({
   scale,
   spellcheck,
   readOnly,
-  autofocus,
   callbacks,
   editors,
-  onMoveOverflow,
+  markers,
 }: {
   document: WritingDocument;
   page: FlowPage;
@@ -173,16 +176,14 @@ function PageSheet({
   scale: number;
   spellcheck: boolean;
   readOnly: boolean;
-  autofocus: boolean;
   callbacks: { current: PageCallbacks };
   editors: PageEditors;
-  onMoveOverflow: (pageId: string, fromBlock: number) => void;
+  markers: Map<string, HTMLDivElement>;
 }) {
   const editor = useEditor(
     {
       immediatelyRender: true,
       editable: !readOnly,
-      autofocus: autofocus ? "end" : false,
       content: page.content as JSONContent,
       parseOptions: { preserveWhitespace: "full" },
       extensions: [
@@ -233,20 +234,19 @@ function PageSheet({
       editor.view.dom.setAttribute("spellcheck", String(spellcheck));
   }, [editor, mounted, spellcheck]);
 
-  // In page view, find the first block that runs past the bottom margin.
+  // Text flows on to the next page by itself. Only a first paragraph taller
+  // than the whole page can't flow, and is marked so the writer can break it.
   const marker = useRef<HTMLDivElement>(null);
-  const [overflowFrom, setOverflowFrom] = useState<number | null>(null);
+  const [tooTall, setTooTall] = useState(false);
   useEffect(() => {
     if (!editor || !mounted || view !== "page" || !viewMounted(editor)) return;
     const measure = () => {
       const limit = marker.current?.getBoundingClientRect().top;
-      if (limit === undefined) return;
-      if (!viewMounted(editor)) return;
-      const blocks = [...editor.view.dom.children];
-      const index = blocks.findIndex(
-        (block) => block.getBoundingClientRect().bottom > limit + 1,
+      if (limit === undefined || !viewMounted(editor)) return;
+      const first = editor.view.dom.firstElementChild;
+      setTooTall(
+        Boolean(first && first.getBoundingClientRect().bottom > limit + 1),
       );
-      setOverflowFrom(index === -1 ? null : index);
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -258,7 +258,7 @@ function PageSheet({
   const { margins } = page.format;
   const face = writingTypeface(page.format.typeface ?? document.typeface);
   const paged = view === "page";
-  const overflowing = paged && overflowFrom !== null;
+  const overflowing = paged && tooTall;
 
   return (
     <section
@@ -289,7 +289,12 @@ function PageSheet({
         </div>
         {paged ? (
           <div
-            ref={marker}
+            ref={(element) => {
+              if (element) markers.set(page.id, element);
+              else if (markers.get(page.id) === marker.current)
+                markers.delete(page.id);
+              marker.current = element;
+            }}
             aria-hidden="true"
             className={cn(
               "pointer-events-none absolute inset-x-0 border-t border-dashed print:hidden",
@@ -299,18 +304,11 @@ function PageSheet({
           />
         ) : null}
       </div>
-      {overflowing ? (
-        <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground print:hidden">
-          <span>Page {index + 1} runs past its bottom margin.</span>
-          {overflowFrom ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onMoveOverflow(page.id, overflowFrom)}
-            >
-              Move the rest to a new page
-            </Button>
-          ) : null}
+      {overflowing && !readOnly ? (
+        <p className="max-w-prose text-center text-sm text-muted-foreground print:hidden">
+          The first paragraph on page {index + 1} is longer than the page. Press
+          Enter where you’d like it to break, and the rest moves to the next
+          page.
         </p>
       ) : null}
     </section>
@@ -339,7 +337,6 @@ export function WritingPages({
   const latest = useRef(document);
   const desk = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
-  const [focusPage, setFocusPage] = useState<string | null>(null);
 
   useEffect(() => {
     latest.current = document;
@@ -405,40 +402,176 @@ export function WritingPages({
     return () => observer.disconnect();
   }, [document.pageSize, view]);
 
-  function moveOverflow(pageId: string, fromBlock: number) {
-    const editor = editors.get(pageId);
-    const current = latest.current;
-    const index = current.pages.findIndex((page) => page.id === pageId);
-    if (!editor || index === -1) return;
-    const blocks = (editor.getJSON().content ?? []) as JsonNode[];
-    const kept = blocks.slice(0, fromBlock);
-    const moved = blocks.slice(fromBlock);
-    if (!kept.length || !moved.length) return;
-    const page = current.pages[index]!;
-    const nextPage = current.pages[index + 1];
-    const pages = [...current.pages];
-    pages[index] = { ...page, content: { type: "doc", content: kept } };
-    if (nextPage && editors.get(nextPage.id)) {
-      // Moved text goes to the top of the next page.
-      const nextEditor = editors.get(nextPage.id)!;
-      nextEditor.commands.insertContentAt(0, moved as JSONContent[]);
-      pages[index + 1] = {
-        ...nextPage,
-        content: nextEditor.getJSON() as JsonNode,
-      };
-    } else {
-      const created = emptyPage(page.format);
-      created.content = { type: "doc", content: moved };
-      pages.splice(index + 1, 0, created);
-      setFocusPage(created.id);
+  const [markers] = useState(() => new Map<string, HTMLDivElement>());
+  // A page that just sent text on is not refilled at once, so a paragraph
+  // on the edge never bounces between two pages.
+  const pushedAt = useRef(new Map<string, number>());
+  const frame = useRef(0);
+
+  /**
+   * Moves the paragraphs from `fromBlock` on to the top of the page that
+   * continues this one. When there is no such page yet, it adds an empty one
+   * first and leaves the text in place; the move happens once that page is on
+   * screen, in one step with the caret, so no keystroke lands on the wrong page.
+   */
+  function push(index: number, fromBlock: number): "moved" | "waiting" {
+    const pages = latest.current.pages;
+    const page = pages[index]!;
+    const next = pages[index + 1];
+    const nextEditor = next?.continues ? editors.get(next.id) : undefined;
+    if (!next?.continues) {
+      const created: FlowPage = { ...emptyPage(page.format), continues: true };
+      const after = [...pages];
+      after.splice(index + 1, 0, created);
+      pushedAt.current.set(created.id, performance.now());
+      const updated = { ...latest.current, pages: after };
+      latest.current = updated;
+      onChange(updated);
+      return "waiting";
     }
-    editor.commands.setContent({ type: "doc", content: kept } as JSONContent, {
-      emitUpdate: false,
+    if (!nextEditor || !viewMounted(nextEditor)) return "waiting";
+    const editor = editors.get(page.id)!;
+    const state = editor.state;
+    let pos = 0;
+    state.doc.forEach((_node, offset, child) => {
+      if (child === fromBlock) pos = offset;
     });
-    const next = { ...current, pages };
-    latest.current = next;
-    onChange(next);
+    const moved = (state.doc.content.cut(pos).toJSON() ?? []) as JsonNode[];
+    const caret =
+      editor.isFocused && state.selection.from >= pos
+        ? state.selection.from - pos
+        : null;
+    pushedAt.current.set(page.id, performance.now());
+    // A page made for this move holds one empty paragraph; the text replaces it.
+    const replaceEmpty = nextEditor.isEmpty;
+    editor.view.dispatch(
+      state.tr
+        .delete(pos, state.doc.content.size)
+        .setMeta("addToHistory", false),
+    );
+    nextEditor
+      .chain()
+      .setMeta("addToHistory", false)
+      .insertContentAt(
+        replaceEmpty ? { from: 0, to: nextEditor.state.doc.content.size } : 0,
+        moved as JSONContent[],
+        { updateSelection: false },
+      )
+      .run();
+    if (caret !== null) nextEditor.commands.focus(caret);
+    return "moved";
   }
+
+  /** Brings the first paragraph of the continuing page back to the end of this page. */
+  function pull(index: number) {
+    const pages = latest.current.pages;
+    const page = pages[index]!;
+    const next = pages[index + 1]!;
+    const editor = editors.get(page.id)!;
+    const nextEditor = editors.get(next.id)!;
+    const nextState = nextEditor.state;
+    const node = nextState.doc.child(0);
+    const end = editor.state.doc.content.size;
+    const caret =
+      nextEditor.isFocused && nextState.selection.from <= node.nodeSize
+        ? nextState.selection.from
+        : null;
+    const emptyPageLeft = nextState.doc.childCount === 1;
+    if (!(emptyPageLeft && nextEditor.isEmpty)) {
+      editor
+        .chain()
+        .setMeta("addToHistory", false)
+        .insertContentAt(end, node.toJSON() as JSONContent, {
+          updateSelection: false,
+        })
+        .run();
+    }
+    if (emptyPageLeft) {
+      const current = latest.current;
+      const updated = {
+        ...current,
+        pages: current.pages.filter((item) => item.id !== next.id),
+      };
+      latest.current = updated;
+      onChange(updated);
+    } else {
+      nextEditor.view.dispatch(
+        nextState.tr.delete(0, node.nodeSize).setMeta("addToHistory", false),
+      );
+    }
+    if (caret !== null) editor.commands.focus(end + caret);
+    else if (emptyPageLeft && nextEditor.isFocused)
+      editor.commands.focus("end");
+  }
+
+  /**
+   * One step of flowing text between pages: "moved" when it moved text, so the
+   * caller can look again; "waiting" when a page is still appearing; "done".
+   */
+  function flowStep(): "moved" | "waiting" | "done" {
+    const pages = latest.current.pages;
+    for (let index = 0; index < pages.length; index += 1) {
+      const page = pages[index]!;
+      const editor = editors.get(page.id);
+      const marker = markers.get(page.id);
+      // A page still appearing is measured on the next frame.
+      if (!editor || !marker || !viewMounted(editor)) return "waiting";
+      const limit = marker.getBoundingClientRect().top;
+      const blocks = [...editor.view.dom.children];
+      const over = blocks.findIndex(
+        (block) => block.getBoundingClientRect().bottom > limit + 1,
+      );
+      if (over > 0) return push(index, over);
+      const next = pages[index + 1];
+      if (over !== -1 || !next?.continues) continue;
+      const nextEditor = editors.get(next.id);
+      if (!nextEditor || !viewMounted(nextEditor)) return "waiting";
+      // An empty page the text flowed onto goes, unless the writer is on it.
+      const fresh =
+        performance.now() - (pushedAt.current.get(next.id) ?? 0) < 1000;
+      if (nextEditor.isEmpty && !nextEditor.isFocused && !fresh) {
+        pull(index);
+        return "moved";
+      }
+      if (performance.now() - (pushedAt.current.get(page.id) ?? 0) < 400)
+        continue;
+      const first = nextEditor.view.dom.firstElementChild;
+      const last = blocks.at(-1);
+      if (!first || !last) continue;
+      const style = getComputedStyle(first);
+      const need =
+        first.getBoundingClientRect().height +
+        (parseFloat(style.marginTop) + parseFloat(style.marginBottom)) * scale;
+      const room = limit - last.getBoundingClientRect().bottom;
+      if (need + 4 <= room) {
+        pull(index);
+        return "moved";
+      }
+    }
+    return "done";
+  }
+
+  // Text flows after every change, and when the paper, format or zoom change.
+  useEffect(() => {
+    if (view !== "page" || readOnly) return;
+    cancelAnimationFrame(frame.current);
+    let frames = 0;
+    const run = () => {
+      // Each step changes the page at once, so the next one measures afresh.
+      for (let moves = 0; moves < 100; moves += 1) {
+        const step = flowStep();
+        if (step === "done") return;
+        if (step === "waiting") {
+          if (frames++ < 30) frame.current = requestAnimationFrame(run);
+          return;
+        }
+      }
+    };
+    frame.current = requestAnimationFrame(run);
+    return () => cancelAnimationFrame(frame.current);
+    // flowStep reads the latest pages through refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [document, view, readOnly, scale]);
 
   return (
     <div
@@ -462,10 +595,9 @@ export function WritingPages({
           scale={scale}
           spellcheck={spellcheck}
           readOnly={readOnly}
-          autofocus={page.id === focusPage}
           callbacks={callbacks}
           editors={editors}
-          onMoveOverflow={moveOverflow}
+          markers={markers}
         />
       ))}
     </div>

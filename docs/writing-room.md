@@ -1,7 +1,11 @@
-# Writing room (`/write`)
+# Writing room (`/doc`)
 
-Status: behind sign-in, not linked from public pages. Migrations 0095 and 0096
-must be applied before account saving works in an environment.
+The room lives at `/doc`. The old `/write` address redirects there, with the
+entry it names, so earlier links keep working.
+
+Status: behind sign-in, not linked from public pages. Migrations 0095, 0096 and
+0097 must be applied before account saving works in an environment. What comes
+next is in `docs/writing-roadmap.md`.
 
 ## What it is
 
@@ -32,7 +36,7 @@ The **Private** popover on the page says:
 | --- | --- |
 | Missa adds no AI here. Nothing suggests, rewrites or finishes your words. | The page has no such feature. `lib/writing-boundary.test.ts` fails if a writing-module file imports an AI or model SDK. |
 | Your writing is never sent to an AI service or used to train one. | Text goes only to `PUT /api/me/writing/[id]` and the database. Sentry drops request bodies and has no session replay; PostHog runs without autocapture or session recording; analytics records the path, never the query or text. |
-| Missa’s automated systems don’t read it. | Only `lib/writing-repository.ts` reads `creator_writing_entries`, and only the writing routes and `/write` import it. `lib/writing-boundary.test.ts` fails when any other file names the table or imports the repository. `/write` sends `Permissions-Policy: tools=()` and registers no WebMCP tools. |
+| Missa’s automated systems don’t read it. | Only `lib/writing-repository.ts` reads `creator_writing_entries`, and only the writing routes and `/doc` import it. `lib/writing-boundary.test.ts` fails when any other file names the table or imports the repository. `/doc` (and `/write`) send `Permissions-Policy: tools=()` and registers no WebMCP tools. |
 | Deleting an entry removes it from your account. | `DELETE` removes the row. Audit events record creation and deletion with no text. Database backups follow the provider's retention; the privacy notice should say so before launch. |
 | Extensions you add to your browser can still read pages you open. | Stated plainly, because Missa cannot control them. |
 
@@ -57,9 +61,15 @@ chapbook (5.5 × 8.5 in).
 - **Pages are added, moved and deleted** from More. Arrow keys cross from the
   end of one page to the start of the next. Backspace on an empty page removes
   it.
-- **Text that runs past the bottom margin** is marked with a dashed line and a
-  “Move the rest to a new page” button. Pages do not split text by
-  themselves: where a page ends is the writer's choice.
+- **Text flows from page to page.** In printed-pages view, paragraphs that
+  run past a page's bottom margin move to the top of a page that continues it,
+  made when needed, and the caret goes with them. Deleting text brings
+  paragraphs back, and an empty continuing page goes away. A page the writer
+  adds is never merged into another, so a page set apart for a poem stays
+  apart. Text moves a whole paragraph at a time, so a paragraph is never split
+  into two; a single paragraph longer than the page is marked so the writer
+  can break it. Format changes reach every page a text flows across, and
+  plain text gains no blank lines at these breaks (`continues` on the page).
 - **Two views.** Printed pages show each sheet at its real proportions, scaled
   to the window. Draft drops the paper and is the default below 768px wide.
 - **Print or save as PDF** uses the browser's print dialog with the paper size
@@ -73,6 +83,38 @@ server checks the shape and limits (500 pages, 2,000,000 characters, nesting
 depth 40) before saving. `body` stays the plain text of every page, used for
 the word count, previews and the plain-text download. Entries saved before
 pages existed open as one page with their text unchanged.
+
+## Projects
+
+A project gathers pieces (entries) into one body of work: a poetry
+collection, a story, a novel, an essay or an application.
+
+- **Templates.** A new project can start blank or with its template's first
+  pieces, created in one statement with the project: a story gets Draft and
+  Notes; a novel gets three chapters, Characters and Notes; an application gets
+  Artist statement, Project description, Bio and Work sample notes.
+- **Binder.** The library sheet shows projects and loose pieces. A project's
+  binder lists its pieces in order. Pieces are reordered by dragging the handle
+  (the installed `Sortable`) or with Move up and Move down in each piece's menu,
+  which is the keyboard and screen reader path. A piece moves between projects,
+  or back to loose pieces, from the same menu.
+- **Outline.** Each piece has a synopsis and a status (Idea, First draft,
+  Revised, Final), shown in order with word counts. Only the writer sees them.
+- **Compile.** Joins every piece in order into one manuscript: paper size,
+  an optional title page, and each piece's title at the top of its first page.
+  Each page keeps its own format. The result opens in place of the editor, to
+  print, save as PDF or download as plain text. Words kept on the device but not
+  yet confirmed by the account are compiled too.
+- **A new piece in a project** is created there when it is first saved, even
+  if it was started offline; a piece that forks after a conflict stays in the
+  same project.
+- **Deleting a project keeps its pieces.** They become loose pieces.
+
+Ordering, moving and the index card never change a piece's revision, which
+tracks its text alone, so reordering on one device never conflicts with
+writing on another. A project belongs to one account, and the composite key
+`(project_id, account_id)` makes a piece in another account's project
+impossible.
 
 ## Saving model
 
@@ -105,10 +147,12 @@ erases the other's.
   AI, collaboration or cloud packages is installed, and the boundary test
   still rejects AI SDK imports. Each page is its own editor, so a page's
   format cannot leak into the next.
-- **Pages break where the writer says.** Automatic reflow across pages would
-  move a poem's lines without asking; marking the overflow and offering a move
-  keeps the layout in the writer's hands.
-- **Outside the creator shell.** `/write` has its own auth gate and no
+- **Text flows, pages the writer adds stay put.** Writers expect prose to
+  continue onto the next page by itself, as in a word processor. Flow happens
+  only between a page and the pages made to continue it, so a page the writer
+  added for a poem is never pulled into another. Changed from stage 2's first
+  version, which marked overflow and left the move to the writer.
+- **Outside the creator shell.** `/doc` has its own auth gate and no
   navigation rail; it links back to Home. A **Write** link is added to the
   creator navigation.
 - **Rendered in the browser only.** The room reads device drafts before its
@@ -168,20 +212,26 @@ erases the other's.
 
 - `lib/writing-document.test.ts` (spaces and tabs kept exactly, page text
   order, rejected documents).
-- `lib/writing.test.ts`, `lib/writing-sync.test.ts` (16 cases, including title
-  and page changes and device drafts kept before pages existed; device-first
+- `lib/writing-projects.test.ts` (compile keeps every page and its format,
+  unique page ids, plain-text compile, request checks).
+- `lib/writing.test.ts`, `lib/writing-sync.test.ts` (17 cases, including title
+  and page changes, device drafts kept before pages existed, and a piece that
+  is created in its project and stays there when it forks; device-first
   saving, retries, offline, conflicts, deletes elsewhere, halted saving,
   broken device storage, deletes racing saves, two offline tabs sharing one
   browser), `lib/writing-repository.test.ts`
   (real Postgres: revisions, replays, conflicts, account isolation, deletion,
-  audit events without text, export), `lib/writing-boundary.test.ts`.
+  audit events without text, export, projects from templates, piece order, cards, compile order, no piece in another account's project, deleting a project keeps its pieces), `lib/writing-boundary.test.ts`.
 - `e2e/writing-room.spec.ts` (relational): sign-in redirect, `tools=()` header,
   autosave, reload, offline and back, entries, focus return, promise, delete,
   axe on the page, the entries sheet and the typeface menu, timer hiding and
   keyboard reveal, a typeface choice kept across a reload, and a second page
   with its own line spacing, letter spacing and alignment, with tabs and
   spaces, kept across a reload, axe on the format panel, and an A4 sheet at
-  210mm wide.
+  210mm wide; and a project from a template, opening and writing a piece,
+  reordering by menu, outline status and synopsis kept across a reload,
+  compile, moving a loose piece in, and deleting the project with its pieces
+  kept, with axe on the new-project dialog, the binder and the outline.
 - Print output checked as PDF: one sheet per page at the paper size, each
   page's own format, no controls.
 - Checked in Chromium at 1440×900, 390×844 and 720×450 (200% zoom), with long
@@ -196,8 +246,10 @@ Apply the migrations once per environment, in order:
 ```sh
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/migrations/0095_creator_writing.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/migrations/0096_creator_writing_pages.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/migrations/0097_creator_writing_projects.sql
 ```
 
-0096 adds nullable or defaulted columns only and can run before the code
-ships. Without it, saves fail and text stays on the device with a retry notice.
+0096 and 0097 add a table and nullable or defaulted columns only, so each can
+run before its code ships. 0097 uses `ON DELETE SET NULL (project_id)`, which
+needs Postgres 15 or later. Without it, saves fail and text stays on the device with a retry notice.
 Without `DATABASE_URL`, the room keeps text in the browser only and says so.

@@ -46,3 +46,18 @@
   color: var(--primary-foreground);
   --art-accent: var(--accent-tint);
 }
+
+/* Empty states: the drawing in the text colour, so it reads in both themes. */
+.emptyArt {
+  display: block;
+  width: min(240px, 70%);
+  margin: 0 auto 12px;
+}
+
+.emptyArt[data-size="spot"] {
+  width: min(128px, 45%);
+}
+
+.emptyArt .art {
+  color: var(--foreground);
+}

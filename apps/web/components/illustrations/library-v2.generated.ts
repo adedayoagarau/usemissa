@@ -70,6 +70,34 @@ export const ILLUSTRATIONS = {
   "spot-portfolio": {
     "sprite": "homepage.svg",
     "viewBox": "-13.9 -23.5 638.8 511"
+  },
+  "scene-searching": {
+    "sprite": "empty-states.svg",
+    "viewBox": "-43.2 -35 703.4 468.9"
+  },
+  "scene-reading": {
+    "sprite": "empty-states.svg",
+    "viewBox": "-60.2 -45.5 709.5 473"
+  },
+  "scene-making-work": {
+    "sprite": "empty-states.svg",
+    "viewBox": "-62.4 -46.2 729.7 486.5"
+  },
+  "scene-celebrate": {
+    "sprite": "empty-states.svg",
+    "viewBox": "-82.1 -55.9 760.1 506.8"
+  },
+  "spot-library": {
+    "sprite": "empty-states.svg",
+    "viewBox": "-30.6 -35 666.2 533"
+  },
+  "spot-studio-key": {
+    "sprite": "empty-states.svg",
+    "viewBox": "11.8 6.5 572.5 458"
+  },
+  "spot-inbox": {
+    "sprite": "empty-states.svg",
+    "viewBox": "16.6 -5.9 565.9 452.7"
   }
 } as const;
 

@@ -311,13 +311,6 @@
   border-bottom: 1px solid var(--border);
 }
 
-/* The messaging guide labels AI illustrations once per page. */
-.coverNote {
-  margin: var(--space-row, 16px) 0 0;
-  color: var(--muted-foreground);
-  font-size: 13px;
-}
-
 .resultsMeta {
   margin: 0;
   flex: 0 0 auto;

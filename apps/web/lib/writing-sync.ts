@@ -23,6 +23,8 @@ export type WritingDraft = {
   /** The account revision this text was written on; 0 for an entry not yet saved. */
   baseRevision: number;
   updatedAt: string;
+  /** The project the entry is in; a new entry is created there. */
+  projectId?: string | null;
 };
 
 export type WritingSaveOutcome =
@@ -40,7 +42,7 @@ export type WritingTransport = (
   id: string,
   content: WritingContent,
   baseRevision: number,
-  options: { keepalive: boolean },
+  options: { keepalive: boolean; projectId?: string | null },
 ) => Promise<WritingSaveOutcome>;
 
 export type WritingDeviceStore = {
@@ -110,6 +112,8 @@ export class WritingSync {
   private readonly firstPending = new Map<string, number>();
   private readonly retryDelay = new Map<string, number>();
   private readonly rejected = new Map<string, string>();
+  /** The project each entry was last edited in, so later saves and forks stay there. */
+  private readonly placement = new Map<string, string | null>();
   private readonly discarded = new Set<string>();
   /** Entries this room has loaded or changed; other drafts on the device belong to other tabs. */
   private readonly touched = new Set<string>();
@@ -195,9 +199,14 @@ export class WritingSync {
     return !this.deviceOk && this.drafts.size > 0;
   }
 
-  edit(id: string, content: WritingContent) {
+  /**
+   * Records new text for an entry. `projectId` names the project the entry
+   * belongs to, so an entry started inside a project is created there.
+   */
+  edit(id: string, content: WritingContent, projectId?: string | null) {
     if (this.discarded.has(id)) return;
     this.touched.add(id);
+    if (projectId !== undefined) this.placement.set(id, projectId);
     const confirmed = this.confirmed.get(id);
     const existing = this.drafts.get(id);
     const baseRevision = existing?.baseRevision ?? confirmed?.revision ?? 0;
@@ -220,10 +229,21 @@ export class WritingSync {
       content,
       baseRevision,
       updatedAt: new Date(this.options.now()).toISOString(),
+      projectId: this.placement.get(id) ?? existing?.projectId ?? null,
     });
     this.persistSoon();
     this.schedulePush(id);
     this.emit();
+  }
+
+  /** Records that an entry moved to another project, so a draft not yet saved follows it. */
+  place(id: string, projectId: string | null) {
+    this.placement.set(id, projectId);
+    const draft = this.drafts.get(id);
+    if (draft && draft.projectId !== projectId) {
+      this.drafts.set(id, { ...draft, projectId });
+      this.persistSoon();
+    }
   }
 
   /** Saves everything now, for example when the page is being hidden. */
@@ -326,6 +346,7 @@ export class WritingSync {
     }
     this.firstPending.delete(id);
     const sent = { content: draft.content, baseRevision: draft.baseRevision };
+    const projectId = draft.projectId ?? null;
     const run = (async () => {
       let outcome: WritingSaveOutcome;
       try {
@@ -333,9 +354,7 @@ export class WritingSync {
           id,
           sent.content,
           sent.baseRevision,
-          {
-            keepalive,
-          },
+          { keepalive, projectId },
         );
       } catch {
         outcome = { kind: "failed" };
@@ -397,7 +416,9 @@ export class WritingSync {
           content: draft.content,
           baseRevision: 0,
           updatedAt: new Date(this.options.now()).toISOString(),
+          projectId: draft.projectId ?? null,
         });
+        this.placement.set(to, draft.projectId ?? null);
         this.persistNow();
         this.handlers.onForked?.({
           from: id,
@@ -534,6 +555,10 @@ export function browserWritingDeviceStore(key: string): WritingDeviceStore {
                   content,
                   baseRevision: draft.baseRevision,
                   updatedAt: draft.updatedAt,
+                  projectId:
+                    typeof draft.projectId === "string"
+                      ? draft.projectId
+                      : null,
                 },
               ]
             : [];
@@ -567,11 +592,15 @@ export const httpWritingTransport: WritingTransport = async (
   id,
   content,
   baseRevision,
-  { keepalive },
+  { keepalive, projectId },
 ) => {
   let response: Response;
   try {
-    const payload = JSON.stringify({ ...content, baseRevision });
+    const payload = JSON.stringify({
+      ...content,
+      baseRevision,
+      projectId: projectId ?? null,
+    });
     response = await fetch(`/api/me/writing/${encodeURIComponent(id)}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },

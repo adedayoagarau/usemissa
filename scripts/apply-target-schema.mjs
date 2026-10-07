@@ -124,6 +124,7 @@ const migrationFiles = [
   '0094_intermediary_publication_hold.sql',
   '0095_creator_writing.sql',
   '0096_creator_writing_pages.sql',
+  '0097_creator_writing_projects.sql',
 ];
 
 

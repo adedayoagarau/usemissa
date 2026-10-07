@@ -802,9 +802,6 @@ export function CreatorOnboarding({
                             />
                           ))}
                         </div>
-                        <p className="mt-3 text-xs text-muted-foreground">
-                          Images made with AI.
-                        </p>
                       </fieldset>
 
                       {availableRefinements.length ? (
@@ -884,9 +881,6 @@ export function CreatorOnboarding({
                       </div>
                       <p className="mt-6 text-center text-sm text-muted-foreground">
                         Skip this to see every kind of call.
-                      </p>
-                      <p className="mt-2 text-center text-xs text-muted-foreground">
-                        Images made with AI.
                       </p>
                     </fieldset>
                   ) : null}

@@ -1,6 +1,7 @@
 import { CreatorRepositoryBase, creatorPoolFor } from "@missa/radar-adapters";
 import {
   countWords,
+  newWritingEntryId,
   sameWritingContent,
   writingPreview,
   WRITING_LIST_LIMIT,
@@ -8,9 +9,17 @@ import {
   type WritingEntrySummary,
   type WritingSaveRequest,
 } from "./writing.ts";
+import {
+  PROJECT_TEMPLATES,
+  PROJECTS_MAX,
+  type PieceChange,
+  type ProjectTemplateId,
+  type WritingProject,
+} from "./writing-projects.ts";
 
 /**
- * The only code that reads or writes creator_writing_entries (migrations 0095, 0096).
+ * The only code that reads or writes creator_writing_entries and
+ * creator_writing_projects (migrations 0095, 0096, 0097).
  * Every query is scoped to one account. writing-boundary.test.ts fails when
  * another file names the table, so nothing else can read a creator's writing.
  */
@@ -21,6 +30,10 @@ type Row = {
   body?: string;
   document?: string | null;
   preview?: string;
+  project_id: string | null;
+  position: number;
+  synopsis: string;
+  status: string;
   word_count: number;
   revision: number;
   created_at: Date;
@@ -32,15 +45,37 @@ export type WritingSaveResult =
   | { kind: "conflict"; current: WritingEntry }
   | { kind: "not-found" };
 
-const SUMMARY_COLUMNS =
-  "id,title,left(regexp_replace(btrim(left(body,400)),'\\s+',' ','g'),120) as preview,word_count,revision,created_at,updated_at";
-const ENTRY_COLUMNS =
-  "id,title,body,document,word_count,revision,created_at,updated_at";
+const CARD_COLUMNS = "project_id,position,synopsis,status";
+const SUMMARY_COLUMNS = `id,title,left(regexp_replace(btrim(left(body,400)),'\\s+',' ','g'),120) as preview,${CARD_COLUMNS},word_count,revision,created_at,updated_at`;
+const ENTRY_COLUMNS = `id,title,body,document,${CARD_COLUMNS},word_count,revision,created_at,updated_at`;
+const PROJECT_COLUMNS = "id,title,template,created_at,updated_at";
+
+type ProjectRow = {
+  id: string;
+  title: string;
+  template: ProjectTemplateId;
+  created_at: Date;
+  updated_at: Date;
+};
+
+function project(row: ProjectRow): WritingProject {
+  return {
+    id: row.id,
+    title: row.title,
+    template: row.template,
+    createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString(),
+  };
+}
 
 function summary(row: Row): WritingEntrySummary {
   return {
     id: row.id,
     title: row.title,
+    projectId: row.project_id,
+    position: row.position,
+    synopsis: row.synopsis,
+    status: row.status,
     preview: writingPreview(row.preview ?? row.body ?? ""),
     wordCount: row.word_count,
     revision: row.revision,
@@ -94,8 +129,10 @@ export class WritingRepository extends CreatorRepositoryBase {
       request.baseRevision === 0
         ? await this.query<Row>(
             `with inserted as (
-               insert into creator_writing_entries (id,account_id,body,word_count,title,document)
-               values ($1,$2,$3,$4,$5,$6)
+               insert into creator_writing_entries (id,account_id,body,word_count,title,document,project_id,position)
+               select $1,$2,$3,$4,$5,$6,p.id,
+                 coalesce((select max(position)+1 from creator_writing_entries where account_id=$2 and project_id=p.id),0)
+               from (select (select id from creator_writing_projects where id=$7 and account_id=$2) as id) p
                on conflict (id) do nothing
                returning ${ENTRY_COLUMNS}
              ), audited as (
@@ -110,6 +147,7 @@ export class WritingRepository extends CreatorRepositoryBase {
               wordCount,
               request.title,
               request.document,
+              request.projectId ?? null,
             ],
           )
         : await this.query<Row>(
@@ -133,27 +171,8 @@ export class WritingRepository extends CreatorRepositoryBase {
     const current = await this.get(accountId, id);
     if (!current) return { kind: "not-found" };
     if (sameWritingContent(current, request)) {
-      const {
-        id: storedId,
-        title,
-        preview,
-        wordCount: words,
-        revision,
-        createdAt,
-        updatedAt,
-      } = current;
-      return {
-        kind: "saved",
-        entry: {
-          id: storedId,
-          title,
-          preview,
-          wordCount: words,
-          revision,
-          createdAt,
-          updatedAt,
-        },
-      };
+      const { body: _body, document: _document, ...stored } = current;
+      return { kind: "saved", entry: stored };
     }
     return { kind: "conflict", current };
   }
@@ -170,6 +189,213 @@ export class WritingRepository extends CreatorRepositoryBase {
       [accountId, id],
     );
     return result.rowCount === 1;
+  }
+
+  async listProjects(accountId: string): Promise<WritingProject[]> {
+    const result = await this.query<ProjectRow>(
+      `select ${PROJECT_COLUMNS} from creator_writing_projects where account_id=$1 order by updated_at desc limit $2`,
+      [accountId, PROJECTS_MAX],
+    );
+    return result.rows.map(project);
+  }
+
+  /**
+   * Creates a project and its template's first pieces in one statement. A
+   * retried create returns the project already made and adds nothing.
+   */
+  async createProject(
+    accountId: string,
+    request: { id: string; title: string; template: ProjectTemplateId },
+  ): Promise<
+    | {
+        kind: "created";
+        project: WritingProject;
+        entries: WritingEntrySummary[];
+      }
+    | { kind: "exists"; project: WritingProject }
+    | { kind: "taken" }
+    | { kind: "limit" }
+  > {
+    const titles = [...PROJECT_TEMPLATES[request.template].pieces];
+    const ids = titles.map(() => newWritingEntryId());
+    const result = await this.query<{
+      project: ProjectRow | null;
+      entries: Row[] | null;
+    }>(
+      `with allowed as (
+         select (select count(*) from creator_writing_projects where account_id=$2) < $7 as ok
+       ), created as (
+         insert into creator_writing_projects (id,account_id,title,template)
+         select $1,$2,$3,$4 from allowed where ok
+         on conflict (id) do nothing
+         returning ${PROJECT_COLUMNS}
+       ), pieces as (
+         insert into creator_writing_entries (id,account_id,title,project_id,position)
+         select t.id,$2,t.title,c.id,(t.n-1)::int
+         from created c, unnest($5::text[],$6::text[]) with ordinality as t(id,title,n)
+         returning ${ENTRY_COLUMNS}
+       ), audited as (
+         insert into audit_events (account_id,action,target_type,target_id)
+         select $2,'writing.project_created','writing_project',id from created
+       )
+       select (select row_to_json(c) from created c) as project,
+              (select json_agg(p order by p.position) from pieces p) as entries`,
+      [
+        request.id,
+        accountId,
+        request.title,
+        request.template,
+        ids,
+        titles,
+        PROJECTS_MAX,
+      ],
+    );
+    const row = result.rows[0];
+    if (row?.project) {
+      const revive = (value: Row): Row => ({
+        ...value,
+        created_at: new Date(value.created_at),
+        updated_at: new Date(value.updated_at),
+      });
+      return {
+        kind: "created",
+        project: project({
+          ...row.project,
+          created_at: new Date(row.project.created_at),
+          updated_at: new Date(row.project.updated_at),
+        }),
+        entries: (row.entries ?? []).map((value) => summary(revive(value))),
+      };
+    }
+    const existing = await this.query<ProjectRow & { account_id: string }>(
+      `select ${PROJECT_COLUMNS},account_id from creator_writing_projects where id=$1`,
+      [request.id],
+    );
+    const found = existing.rows[0];
+    if (!found) return { kind: "limit" };
+    return found.account_id === accountId
+      ? { kind: "exists", project: project(found) }
+      : { kind: "taken" };
+  }
+
+  async renameProject(
+    accountId: string,
+    id: string,
+    title: string,
+  ): Promise<WritingProject | null> {
+    const result = await this.query<ProjectRow>(
+      `update creator_writing_projects set title=$3, updated_at=now()
+       where account_id=$1 and id=$2 returning ${PROJECT_COLUMNS}`,
+      [accountId, id, title],
+    );
+    return result.rows[0] ? project(result.rows[0]) : null;
+  }
+
+  /** Deletes a project. Its pieces stay in the account as loose pieces. */
+  async deleteProject(accountId: string, id: string): Promise<boolean> {
+    const result = await this.query<{ id: string }>(
+      `with deleted as (
+         delete from creator_writing_projects where account_id=$1 and id=$2 returning id
+       ), audited as (
+         insert into audit_events (account_id,action,target_type,target_id)
+         select $1,'writing.project_deleted','writing_project',id from deleted
+       )
+       select id from deleted`,
+      [accountId, id],
+    );
+    return result.rowCount === 1;
+  }
+
+  /**
+   * Puts the named pieces in the project, in this order. Pieces of the
+   * project left out keep their place after the named ones.
+   */
+  async orderPieces(
+    accountId: string,
+    projectId: string,
+    entryIds: string[],
+  ): Promise<boolean> {
+    const result = await this.query<{ id: string }>(
+      `with owned as (
+         update creator_writing_projects set updated_at=now()
+         where account_id=$1 and id=$2 returning id
+       ), named as (
+         update creator_writing_entries e
+         set project_id=o.id, position=(t.n-1)::int
+         from owned o, unnest($3::text[]) with ordinality as t(id,n)
+         where e.account_id=$1 and e.id=t.id
+         returning e.id
+       ), rest as (
+         update creator_writing_entries e
+         set position=cardinality($3::text[]) + r.n::int
+         from (
+           select id, row_number() over (order by position, created_at) as n
+           from creator_writing_entries
+           where account_id=$1 and project_id=$2 and not (id = any($3::text[]))
+         ) r, owned o
+         where e.id=r.id
+         returning e.id
+       )
+       select id from owned`,
+      [accountId, projectId, entryIds],
+    );
+    return result.rowCount === 1;
+  }
+
+  /** Moves a piece between projects or changes its index card. Never changes its text or revision. */
+  async changePiece(
+    accountId: string,
+    id: string,
+    change: PieceChange,
+  ): Promise<WritingEntrySummary | "no-project" | null> {
+    if (change.projectId) {
+      const owned = await this.query(
+        `select 1 from creator_writing_projects where account_id=$1 and id=$2`,
+        [accountId, change.projectId],
+      );
+      if (!owned.rowCount) return "no-project";
+    }
+    const moving = change.projectId !== undefined;
+    const result = await this.query<Row>(
+      `update creator_writing_entries e set
+         project_id = case when $3 then $4::text else e.project_id end,
+         position = case
+           when $3 and $4::text is not null and e.project_id is distinct from $4::text then
+             coalesce((select max(position)+1 from creator_writing_entries where account_id=$1 and project_id=$4::text),0)
+           when $3 and $4::text is null then 0
+           else e.position end,
+         synopsis = coalesce($5, e.synopsis),
+         status = coalesce($6, e.status)
+       where e.account_id=$1 and e.id=$2
+       returning ${SUMMARY_COLUMNS}`,
+      [
+        accountId,
+        id,
+        moving,
+        change.projectId ?? null,
+        change.synopsis ?? null,
+        change.status ?? null,
+      ],
+    );
+    return result.rows[0] ? summary(result.rows[0]) : null;
+  }
+
+  /** A project and its pieces, in order, with their full text, for compiling. */
+  async compile(
+    accountId: string,
+    projectId: string,
+  ): Promise<{ project: WritingProject; entries: WritingEntry[] } | null> {
+    const found = await this.query<ProjectRow>(
+      `select ${PROJECT_COLUMNS} from creator_writing_projects where account_id=$1 and id=$2`,
+      [accountId, projectId],
+    );
+    if (!found.rows[0]) return null;
+    const result = await this.query<Row>(
+      `select ${ENTRY_COLUMNS} from creator_writing_entries
+       where account_id=$1 and project_id=$2 order by position, created_at`,
+      [accountId, projectId],
+    );
+    return { project: project(found.rows[0]), entries: result.rows.map(entry) };
   }
 
   /** Every entry with its full text, for the creator's own account export. */

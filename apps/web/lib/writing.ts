@@ -90,7 +90,12 @@ export function sameWritingContent(
 export type WritingSaveRequest = WritingContent & {
   /** The stored revision this text was written on; 0 for an entry not yet saved. */
   baseRevision: number;
+  /** The project a new entry starts in. Read only when the entry is created. */
+  projectId?: string | null;
 };
+
+const PROJECT_ID =
+  /^project_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export function parseWritingSaveRequest(
   value: unknown,
@@ -102,6 +107,7 @@ export function parseWritingSaveRequest(
   const baseRevision: unknown = Reflect.get(value, "baseRevision");
   const title: unknown = Reflect.get(value, "title") ?? "";
   const document: unknown = Reflect.get(value, "document") ?? null;
+  const projectId: unknown = Reflect.get(value, "projectId") ?? null;
   if (typeof body !== "string") return { error: "Body must be text." };
   if (body.length > WRITING_BODY_MAX) {
     return {
@@ -127,12 +133,31 @@ export function parseWritingSaveRequest(
   ) {
     return { error: "Refresh this entry before saving again." };
   }
-  return { title, body, document: document as string | null, baseRevision };
+  if (
+    projectId !== null &&
+    (typeof projectId !== "string" || !PROJECT_ID.test(projectId))
+  ) {
+    return { error: "Project not found." };
+  }
+  return {
+    title,
+    body,
+    document: document as string | null,
+    baseRevision,
+    projectId: projectId as string | null,
+  };
 }
 
 export type WritingEntrySummary = {
   id: string;
   title: string;
+  /** The project the piece belongs to; null for a loose piece. */
+  projectId: string | null;
+  /** Order within its project. */
+  position: number;
+  /** The writer's index card for the piece. */
+  synopsis: string;
+  status: string;
   preview: string;
   wordCount: number;
   revision: number;
