@@ -305,7 +305,24 @@ export function sampleCreatorPortfolio(): PortfolioData {
         "Riley Chen is a poet, sound artist and photographer based between Vancouver and Taipei.",
       longBio:
         "Riley Chen writes poems, records fields and photographs rooms to trace the quiet geographies that hold us. Their first collection, Field notes from the in-between, appeared with Northlight Press.",
-      files: [],
+      // Design samples have no server, so these carry the facts a server would
+      // have read from the stored files. Their addresses are not real downloads.
+      files: [
+        {
+          id: "bf_1",
+          label: "Tech rider",
+          file: "/api/creator/portfolio-media/0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a01",
+          type: "pdf",
+          bytes: 245_760,
+        },
+        {
+          id: "bf_2",
+          label: "Press kit",
+          file: "/api/creator/portfolio-media/0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a02",
+          type: "zip",
+          bytes: 18 * 1024 * 1024,
+        },
+      ],
     },
     services: [
       {

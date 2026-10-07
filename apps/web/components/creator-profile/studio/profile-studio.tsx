@@ -33,6 +33,7 @@ import { PublicCreatorProfile } from "@/components/creator-profile/public-profil
 import { cn } from "@/lib/utils";
 import {
   activeModules,
+  createItemId,
   isAddonModule,
   orderedModules,
   publicPortfolioProjection,
@@ -43,6 +44,10 @@ import {
   type PortfolioModule,
 } from "@/lib/creator-portfolio-schema";
 import { importLocalPortfolio } from "@/lib/creator-portfolio-draft";
+import {
+  MAX_COLLABORATOR_LOOKUPS,
+  collaboratorHandleKey,
+} from "@/lib/portfolio-collaborators";
 import { LENSES, MODULE_LABELS } from "@/lib/creator-profile";
 import { sampleCreatorPortfolio } from "@/lib/creator-profile-sample";
 import {
@@ -62,6 +67,7 @@ import {
 import { ADDON_EDITORS } from "./addons";
 import { AddAddonMenu } from "./addons/add-addon-menu";
 import { AddonFrame } from "./addons/addon-frame";
+import { useStudioFacts } from "./addons/studio-facts";
 import { SharePanel } from "./share-panel";
 import {
   PREVIEW_OWNER,
@@ -113,11 +119,17 @@ export function ProfileStudio({
   ownerId,
   initialName = "",
   seedWithSample = false,
+  creditPrefill,
 }: {
   ownerId: string;
   initialName?: string;
   /** Design review only: start an empty device draft from the sample creator. */
   seedWithSample?: boolean;
+  /**
+   * Arriving from another creator's "Credit as collaborator": switch the
+   * Collaborators add-on on and start a row for them.
+   */
+  creditPrefill?: { handle: string; name: string };
 }) {
   const controller = useProfileDraft(
     ownerId,
@@ -125,9 +137,18 @@ export function ProfileStudio({
     seedWithSample ? sampleCreatorPortfolio : undefined,
   );
   const { draft, update, state, isAccount } = controller;
-  const [panel, setPanel] = useState<StudioPanel>("basics");
+  const facts = useStudioFacts(draft, isAccount);
+  // Arriving to credit someone starts in the Collaborators editor.
+  const creditKey = creditPrefill
+    ? collaboratorHandleKey(creditPrefill.handle)
+    : null;
+  const [panel, setPanel] = useState<StudioPanel>(
+    creditKey ? "collaborators" : "basics",
+  );
   // Phones show the section list and one editor at a time.
-  const [view, setView] = useState<"index" | "editor">("index");
+  const [view, setView] = useState<"index" | "editor">(
+    creditKey ? "editor" : "index",
+  );
   const [device, setDevice] = useState<"desktop" | "phone">("desktop");
   const [mobilePreview, setMobilePreview] = useState(false);
   const [action, setAction] = useState<Action>(null);
@@ -146,10 +167,14 @@ export function ProfileStudio({
       ),
     [controller.outcomes],
   );
-  // The preview applies the same provenance rule the server applies on save.
+  // The preview applies the same provenance rule the server applies on save,
+  // with the credits and file facts the server has reported.
   const projection = useMemo(
-    () => publicPortfolioProjection(withServerProvenance(draft, verified)),
-    [draft, verified],
+    () =>
+      publicPortfolioProjection(
+        withServerProvenance(draft, verified, facts.server),
+      ),
+    [draft, verified, facts.server],
   );
   const suggestions = useMemo(() => profileSuggestions(draft), [draft]);
   const blocking = suggestions.filter((item) => item.blocking);
@@ -203,6 +228,39 @@ export function ProfileStudio({
       );
       return { ...current, modules: [...next, ...rest] };
     });
+  // "Credit as collaborator" on another profile lands here once the draft has
+  // loaded: switch Collaborators on and start a row for that creator, once.
+  const credited = useRef(false);
+  useEffect(() => {
+    if (!creditPrefill || !creditKey || credited.current || !ready) return;
+    credited.current = true;
+    if (creditKey === controller.currentHandle) return;
+    update((current) => {
+      const modules = setAddon(current.modules, "collaborators", true);
+      const listed = current.collaborators.some(
+        (entry) => collaboratorHandleKey(entry.handle) === creditKey,
+      );
+      if (listed || current.collaborators.length >= MAX_COLLABORATOR_LOOKUPS)
+        return { ...current, modules };
+      return {
+        ...current,
+        modules,
+        collaborators: [
+          ...current.collaborators,
+          {
+            id: createItemId("c"),
+            handle: creditKey,
+            name: creditPrefill.name,
+            role: "",
+            confirmed: false,
+          },
+        ],
+      };
+    });
+    requestAnimationFrame(() =>
+      editorHeading.current?.querySelector("h2")?.focus(),
+    );
+  }, [creditPrefill, creditKey, ready, controller.currentHandle, update]);
   const addAddon = (id: PortfolioAddon) => {
     update((current) => ({
       ...current,
@@ -586,7 +644,14 @@ export function ProfileStudio({
               const { Editor } = ADDON_EDITORS[id];
               return (
                 <AddonFrame id={id} onSwitchOff={() => switchOffAddon(id)}>
-                  <Editor {...editorProps} isAccount={isAccount} />
+                  <Editor
+                    {...editorProps}
+                    isAccount={isAccount}
+                    facts={facts}
+                    creditHandle={
+                      id === "collaborators" ? creditKey : undefined
+                    }
+                  />
                 </AddonFrame>
               );
             })()}

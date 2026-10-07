@@ -1,0 +1,21 @@
+/* The mark is 28px tall to sit in a row; its tap area is 44px. */
+.target {
+  position: relative;
+}
+.target::after {
+  content: "";
+  position: absolute;
+  inset: -8px 0;
+}
+
+/* Awaiting is a credit only its owner can see, so it is drawn as a dashed
+   outline: provisional, not yet part of the page. The label and the clock icon
+   carry the meaning as well, never the outline alone. */
+.awaiting {
+  border: 1px dashed var(--border-strong);
+  background: transparent;
+  color: var(--muted-foreground);
+}
+.awaiting:hover {
+  background: var(--muted);
+}

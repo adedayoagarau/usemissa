@@ -294,7 +294,13 @@ const bookingFileSchema = z.object({
   file: media,
   /** Derived from the stored file on read; a client value is never trusted. */
   type: z.enum(BOOKING_FILE_TYPES).optional(),
-  bytes: count,
+  /** Up to the 20 MB the media route stores; the `count` cap is far too small. */
+  bytes: z
+    .number()
+    .int()
+    .min(0)
+    .max(20 * 1024 * 1024)
+    .optional(),
 });
 
 const serviceSchema = z.object({
@@ -682,11 +688,15 @@ export function publicationIssue(draft: PortfolioData): string | undefined {
 /** Publish only what the preview shows; hidden and untitled items stay private. */
 /**
  * What visitors may see. Publishing stores this with `keepOutcomeIds` so each
- * read can re-verify Confirmed entries; every read strips the ids again.
+ * read can re-verify Confirmed entries, and with `keepPendingCollaborators` so
+ * the people credited can confirm against it; every read strips both again.
  */
 export function publicPortfolioProjection(
   draft: PortfolioData,
-  { keepOutcomeIds = false }: { keepOutcomeIds?: boolean } = {},
+  {
+    keepOutcomeIds = false,
+    keepPendingCollaborators = false,
+  }: { keepOutcomeIds?: boolean; keepPendingCollaborators?: boolean } = {},
   today = new Date().toISOString().slice(0, 10),
 ): PortfolioData {
   const modules = orderedModules(draft.modules);
@@ -738,11 +748,16 @@ export function publicPortfolioProjection(
       "shows",
       draft.shows.filter((item) => item.title.trim()),
     ),
-    // Both sides confirm before a credit shows.
+    // Both sides confirm before a credit shows. Publishing keeps the credits
+    // that are still waiting (`keepPendingCollaborators`) so the other creator
+    // can confirm them against this snapshot; every read drops them again.
     collaborators: show(
       "collaborators",
       draft.collaborators.filter(
-        (item) => item.confirmed && item.name.trim() && item.handle.trim(),
+        (item) =>
+          (item.confirmed || keepPendingCollaborators) &&
+          item.name.trim() &&
+          item.handle.trim(),
       ),
     ),
     booking: visible.has("booking")

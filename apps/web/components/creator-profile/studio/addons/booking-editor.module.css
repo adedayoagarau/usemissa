@@ -1,0 +1,5 @@
+/* The type and size of a stored file, in the data font like everywhere else. */
+.facts {
+  color: var(--foreground);
+  font-size: 13px;
+}

@@ -6,6 +6,7 @@ import {
   BadgeCheck,
   ArrowUp,
   ChevronDown,
+  FileText,
   ImageUp,
   Music,
   Plus,
@@ -60,7 +61,10 @@ import styles from "./profile-studio.module.css";
 export type Update = (
   change: (current: PortfolioData) => PortfolioData,
 ) => void;
-export type Upload = (file: File, kind: "image" | "audio") => Promise<string>;
+export type Upload = (
+  file: File,
+  kind: "image" | "audio" | "document",
+) => Promise<string>;
 export type EditorProps = {
   draft: PortfolioData;
   update: Update;
@@ -202,26 +206,33 @@ export function MediaField({
   value,
   kind,
   hint,
+  required,
+  detail,
   onChange,
   upload,
   onError,
 }: {
   label: string;
   value: string;
-  kind: "image" | "audio";
+  kind: "image" | "audio" | "document";
   hint?: string;
+  /** Hides the "optional" note, for a file the item cannot do without. */
+  required?: boolean;
+  /** What the server found in a file it holds, such as "PDF · 240 KB". */
+  detail?: ReactNode;
   onChange: (value: string) => void;
   upload: Upload;
   onError: (message: string) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
-  const Icon = kind === "audio" ? Music : ImageUp;
+  const Icon =
+    kind === "audio" ? Music : kind === "document" ? FileText : ImageUp;
   return (
     <div className={styles.field}>
       <span className={styles.label}>
         {label}
-        <span className={styles.optional}> · optional</span>
+        {!required && <span className={styles.optional}> · optional</span>}
       </span>
       <div className={styles.media}>
         {value && kind === "image" && (
@@ -242,7 +253,9 @@ export function MediaField({
             accept={
               kind === "audio"
                 ? "audio/*"
-                : "image/jpeg,image/png,image/webp,image/gif"
+                : kind === "document"
+                  ? "application/pdf,application/zip,.pdf,.zip"
+                  : "image/jpeg,image/png,image/webp,image/gif"
             }
             onChange={async (event) => {
               const file = event.target.files?.[0];
@@ -281,11 +294,14 @@ export function MediaField({
             </Button>
           )}
         </div>
+        {detail && <p className={styles.hint}>{detail}</p>}
         <p className={styles.hint}>
           {hint ??
             (kind === "audio"
               ? "MP3, WAV, OGG, FLAC or M4A · up to 20 MB."
-              : "JPG, PNG, WebP or GIF · up to 20 MB.")}
+              : kind === "document"
+                ? "PDF or ZIP · up to 20 MB."
+                : "JPG, PNG, WebP or GIF · up to 20 MB.")}
         </p>
       </div>
     </div>
@@ -304,6 +320,7 @@ export function ItemList<T extends { id?: string }>({
   empty,
   emptyArt,
   max,
+  initialOpen,
   children,
 }: {
   items: T[];
@@ -317,9 +334,11 @@ export function ItemList<T extends { id?: string }>({
   /** A drawing above the empty message, for the lists that start a profile. */
   emptyArt?: ReactNode;
   max: number;
+  /** The id of the item to show open when the list first appears. */
+  initialOpen?: string;
   children: (item: T, change: (patch: Partial<T>) => void) => ReactNode;
 }) {
-  const [open, setOpen] = useState<string | undefined>();
+  const [open, setOpen] = useState<string | undefined>(initialOpen);
   const [removed, setRemoved] = useState<{ item: T; index: number } | null>(
     null,
   );

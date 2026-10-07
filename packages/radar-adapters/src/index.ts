@@ -72,6 +72,9 @@ export {
   type CreatorProfileView,
   type CreatorPrivacyInput,
   type AcceptedOutcome,
+  type PortfolioMediaFact,
+  type PublishedCreditList,
+  MAX_HANDLE_LOOKUPS,
 } from "./creatorProfileRepository.js";
 export {
   INQUIRY_TOPICS,
