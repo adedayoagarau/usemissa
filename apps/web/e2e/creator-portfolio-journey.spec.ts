@@ -369,7 +369,7 @@ test("sample profile opens the message form but never sends, and Follow explains
     return route.abort();
   });
   await page.goto("/design-system/creator-profile-v2");
-  await page.getByRole("button", { name: "Get in touch" }).click();
+  await page.getByRole("button", { name: "Get in touch", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Write to Riley" });
   await expect(dialog).toContainText("email address stays private");
   await dialog.getByLabel("Your name").fill("Ada Mensah");
@@ -458,14 +458,14 @@ test("creators can turn messages and invitations off in the studio", async ({
   const editor = page.getByRole("region", { name: "Edit section" });
   const preview = page.getByRole("region", { name: "Live preview" });
   await expect(
-    preview.getByRole("button", { name: "Get in touch" }),
+    preview.getByRole("button", { name: "Get in touch", exact: true }),
   ).toBeVisible();
   await rail.getByRole("button", { name: /^About and contact/ }).click();
   await editor
     .getByRole("switch", { name: "Let visitors message you through Missa" })
     .click();
   await expect(
-    preview.getByRole("button", { name: "Get in touch" }),
+    preview.getByRole("button", { name: "Get in touch", exact: true }),
   ).toHaveCount(0);
   await expect(
     editor.getByRole("switch", {
