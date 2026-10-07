@@ -188,6 +188,7 @@
         "Textarea",
         "NativeSelect",
         "Switch",
+        "DatePickerField",
         "Dialog",
         "Combobox",
         "PortfolioLinkPreview",
