@@ -225,7 +225,7 @@ test("pages keep their own format and every space and tab", async ({
   // A second page, with its own format.
   await page.getByRole("button", { name: "More" }).click();
   await page
-    .getByRole("menuitem", { name: "Add a page after this one" })
+    .getByRole("menuitem", { name: "Section break, own format" })
     .click();
   const second = pageText(page, 1);
   await expect(second).toBeFocused();
@@ -670,4 +670,103 @@ test("a piece is written for a call: its limit counted and its blind reading che
   ).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByText("11 words", { exact: true })).toBeVisible();
+});
+
+test("Ctrl+Enter breaks the page as in Google Docs; Backspace joins it again", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await signIn(page);
+  await page.goto("/doc");
+  const first = pageText(page, 0);
+  await expect(first).toBeFocused();
+  await first.pressSequentially("Before the break");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("after it");
+  // The caret at the start of the second line: the break goes there. The
+  // editor reads a caret the browser moved on its next selection event.
+  await page.keyboard.press("Home");
+  await page.waitForTimeout(150);
+  await page.keyboard.press("Control+Enter");
+  const second = pageText(page, 1);
+  await expect(second).toBeFocused();
+  await expect(first).toHaveText("Before the break");
+  await expect(second).toHaveText("after it");
+  const breaks = page.locator('[data-slot="writing-break"]');
+  await expect(breaks).toHaveText(["Page break"]);
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+  // A page break keeps the section's format: a change reaches both pages.
+  await page.getByRole("button", { name: "Page format" }).click();
+  const format = page.getByRole("dialog", { name: "Format" });
+  await expect(format).toContainText("This section, 2 pages");
+  await format.getByRole("radio", { name: "Center" }).click();
+  await page.keyboard.press("Escape");
+  const align = (index: number) =>
+    pageText(page, index).evaluate(
+      (element) =>
+        getComputedStyle(element.parentElement!.parentElement!).textAlign,
+    );
+  expect(await align(0)).toBe("center");
+  expect(await align(1)).toBe("center");
+
+  // Kept across a reload.
+  await page.reload();
+  await expect(pageText(page, 1)).toHaveText("after it");
+  await expect(breaks).toHaveText(["Page break"]);
+
+  // A section break starts a format of its own.
+  await pageText(page, 1).click();
+  await page.waitForTimeout(150);
+  await page.keyboard.press("End");
+  await page.waitForTimeout(150);
+  await page.getByRole("button", { name: "More" }).click();
+  await page
+    .getByRole("menuitem", { name: "Section break, own format" })
+    .click();
+  await expect(pageText(page, 2)).toBeFocused();
+  await expect(breaks).toHaveText(["Page break", "Section break"]);
+  await page.keyboard.type("a new part");
+  await page.getByRole("button", { name: "Page format" }).click();
+  await expect(format).toContainText("This page");
+  await format.getByRole("radio", { name: "Right" }).click();
+  await page.keyboard.press("Escape");
+  expect(await align(2)).toBe("right");
+  expect(await align(1)).toBe("center");
+
+  // Backspace at the start of a section with its own format asks for the menu.
+  await pageText(page, 2).click();
+  // ProseMirror reads a mouse selection a moment after the click.
+  await page.waitForTimeout(150);
+  await page.keyboard.press("Control+Home");
+  await page.waitForTimeout(150);
+  await page.keyboard.press("Backspace");
+  await expect(page.getByText("This page has its own format.")).toBeVisible();
+  await expect(breaks).toHaveCount(2);
+
+  // Backspace at the start of the page after a page break joins it again.
+  await pageText(page, 1).click();
+  // ProseMirror reads a mouse selection a moment after the click.
+  await page.waitForTimeout(150);
+  await page.keyboard.press("Control+Home");
+  await page.waitForTimeout(150);
+  await page.keyboard.press("Backspace");
+  await expect(breaks).toHaveText(["Section break"]);
+  await expect(pageText(page, 0)).toHaveText("Before the breakafter it");
+  await expect(pageText(page, 1)).toHaveText("a new part");
+
+  // The menu removes a section break, taking the section's format.
+  await pageText(page, 1).click();
+  await page.waitForTimeout(150);
+  await page.getByRole("button", { name: "More" }).click();
+  await page
+    .getByRole("menuitem", {
+      name: "Remove the section break before this page",
+    })
+    .click();
+  await expect(breaks).toHaveCount(0);
+  await expect(pageText(page, 0)).toHaveText(
+    "Before the breakafter ita new part",
+  );
+  expect(await align(0)).toBe("center");
 });

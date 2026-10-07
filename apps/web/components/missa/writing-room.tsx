@@ -42,6 +42,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -54,6 +55,7 @@ import {
 import type { Editor } from "@tiptap/react";
 import {
   WritingPages,
+  type PageCommands,
   type PageEditors,
   type PagesView,
 } from "@/components/missa/writing-pages";
@@ -91,8 +93,8 @@ import {
 } from "@/lib/writing";
 import {
   documentText,
-  emptyPage,
   newCanvasBlock,
+  pageStart,
   toCanvasPage,
   toFlowPage,
   newDocument,
@@ -378,6 +380,13 @@ export function WritingRoom({
     () => prefs.view ?? (window.innerWidth < 768 ? "draft" : "page"),
   );
   const [editors] = useState<PageEditors>(() => new Map());
+  const pageCommands = useRef<PageCommands | null>(null);
+  // Shortcut hints in menus follow the keyboard the writer has.
+  const [mac] = useState(
+    () =>
+      typeof navigator !== "undefined" &&
+      /Mac|iPhone|iPad/u.test(navigator.platform || navigator.userAgent),
+  );
   const [compiledEditors] = useState<PageEditors>(() => new Map());
   const [active, setActive] = useState<{
     pageId: string;
@@ -423,6 +432,16 @@ export function WritingRoom({
     current.doc.pages.findIndex((page) => page.id === active?.pageId),
   );
   const activePage = current.doc.pages[activeIndex];
+  const activeStart = pageStart(current.doc.pages, activeIndex);
+  // Only a break between two pages of flowing text can be removed.
+  const activeBreak =
+    (activeStart === "page-break" || activeStart === "section-break") &&
+    activePage?.kind === "flow" &&
+    current.doc.pages[activeIndex - 1]?.kind === "flow"
+      ? activeStart === "page-break"
+        ? "page break"
+        : "section break"
+      : null;
   const inAccount = sync.saved(current.id);
   const pending = syncState.pending.includes(current.id);
   const running = timer.endsAt !== null;
@@ -690,32 +709,19 @@ export function WritingRoom({
     requestAnimationFrame(focus);
   }
 
-  function addPage() {
-    const pages = [...current.doc.pages];
-    let at = active ? activeIndex + 1 : pages.length;
-    // A new page goes after the text that flows on from this one.
-    while (pages[at]?.continues) at += 1;
-    const format = pages[Math.min(activeIndex, pages.length - 1)]!.format;
-    const page = emptyPage(format);
-    pages.splice(at, 0, page);
-    change({ doc: { ...current.doc, pages } });
-    // The new page takes focus once it is on screen.
-    requestAnimationFrame(() => editors.get(page.id)?.commands.focus("start"));
-  }
-
   function movePage(step: -1 | 1) {
     // A page moved by hand stands on its own; the text after it no longer flows from it.
     const pages = current.doc.pages.map((page, index) =>
       index === activeIndex || index === activeIndex + 1
-        ? { ...page, continues: false }
+        ? { ...page, continues: false, pageBreak: false }
         : page,
     );
     const to = activeIndex + step;
     if (to < 0 || to >= pages.length) return;
     const [page] = pages.splice(activeIndex, 1);
     pages.splice(to, 0, page!);
-    if (pages[to + 1]?.continues)
-      pages[to + 1] = { ...pages[to + 1]!, continues: false };
+    if (pages[to + 1]?.continues || pages[to + 1]?.pageBreak)
+      pages[to + 1] = { ...pages[to + 1]!, continues: false, pageBreak: false };
     change({ doc: { ...current.doc, pages } });
   }
 
@@ -724,7 +730,9 @@ export function WritingRoom({
     const pages = current.doc.pages
       .filter((_, index) => index !== activeIndex)
       .map((page, index) =>
-        index === 0 && page.continues ? { ...page, continues: false } : page,
+        index === 0 && (page.continues || page.pageBreak)
+          ? { ...page, continues: false, pageBreak: false }
+          : page,
       );
     setActive(null);
     change({ doc: { ...current.doc, pages } });
@@ -1426,6 +1434,12 @@ export function WritingRoom({
               key={current.mount}
               document={current.doc}
               onChange={changeDocument}
+              commandsRef={pageCommands}
+              onJoinRefused={() =>
+                toast.info(
+                  "This page has its own format. To join it to the page before, choose More, then Remove the section break before this page.",
+                )
+              }
               view={view}
               spellcheck={prefs.spellcheck}
               readOnly={current.state !== "ready"}
@@ -1643,10 +1657,40 @@ export function WritingRoom({
                 </DropdownMenuLabel>
                 <DropdownMenuItem
                   disabled={current.state !== "ready"}
-                  onClick={addPage}
+                  onClick={() =>
+                    pageCommands.current?.breakPage(
+                      active?.pageId ?? null,
+                      "page",
+                    )
+                  }
                 >
-                  Add a page after this one
+                  Page break
+                  <DropdownMenuShortcut>
+                    {mac ? "⌘↵" : "Ctrl+Enter"}
+                  </DropdownMenuShortcut>
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={current.state !== "ready"}
+                  onClick={() =>
+                    pageCommands.current?.breakPage(
+                      active?.pageId ?? null,
+                      "section",
+                    )
+                  }
+                >
+                  Section break, own format
+                </DropdownMenuItem>
+                {activeBreak ? (
+                  <DropdownMenuItem
+                    disabled={current.state !== "ready"}
+                    onClick={() => {
+                      if (activePage)
+                        pageCommands.current?.joinPage(activePage.id, true);
+                    }}
+                  >
+                    Remove the {activeBreak} before this page
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem
                   disabled={current.state !== "ready" || activeIndex === 0}
                   onClick={() => movePage(-1)}

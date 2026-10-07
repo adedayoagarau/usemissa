@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/tooltip";
 import { WRITING_TYPEFACES } from "@/components/missa/writing-typefaces";
 import {
-  flowChain,
+  sectionPages,
   LETTER_SPACINGS,
   LINE_HEIGHTS,
   MARGIN_PRESETS,
@@ -217,7 +217,7 @@ export function WritingFormatBar({
         </ToolButton>
       ))}
       <ToolButton
-        label="Section break"
+        label="Scene break"
         disabled={off}
         onClick={() => chain().setHorizontalRule().run()}
       >
@@ -273,9 +273,10 @@ export function WritingFormatSheet({
   const page = document.pages[pageIndex] ?? document.pages[0]!;
   const format = page.format;
 
-  // Pages the text flows across share one format, so a change reaches them all.
+  // A section's pages share one format: the pages its text flows across and
+  // the pages after a page break. A change reaches them all.
   const chain = new Set(
-    flowChain(document.pages, Math.max(0, document.pages.indexOf(page))).map(
+    sectionPages(document.pages, Math.max(0, document.pages.indexOf(page))).map(
       (index) => document.pages[index]!.id,
     ),
   );
@@ -368,7 +369,7 @@ export function WritingFormatSheet({
           <FieldSet>
             <FieldLegend>
               {chain.size > 1
-                ? `This page and the ${chain.size - 1} its text flows onto`
+                ? `This section, ${chain.size} pages`
                 : "This page"}
             </FieldLegend>
             <FieldGroup>

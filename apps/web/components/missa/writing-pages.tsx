@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Fragment,
   useEffect,
   useRef,
   useState,
@@ -12,9 +13,11 @@ import {
   EditorContent,
   Extension,
   useEditor,
+  wrappingInputRule,
   type Editor,
   type JSONContent,
 } from "@tiptap/react";
+import { BulletList } from "@tiptap/extension-list";
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
 import { writingTypeface } from "@/components/missa/writing-typefaces";
@@ -27,6 +30,8 @@ import {
 import {
   PAGE_SIZES,
   emptyPage,
+  pageStart,
+  sectionPages,
   type FlowPage,
   type JsonNode,
   type WritingDocument,
@@ -45,6 +50,11 @@ import {
  * run past a page's bottom margin move to the top of a page that continues
  * it, and come back when there is room again. A page the writer adds is never
  * merged into another, so a page set apart for a poem stays apart.
+ *
+ * As in Google Docs and Word, Ctrl or ⌘ + Enter breaks the page: the text after
+ * the caret starts a new page in the same section, with the same format. A
+ * section break starts a page with a format of its own. Backspace at the start
+ * of a page removes the break before it.
  */
 
 const MM = 96 / 25.4;
@@ -53,14 +63,33 @@ export type PagesView = "page" | "draft";
 
 export type PageEditors = Map<string, Editor>;
 
+export type PageBreakKind = "page" | "section";
+
+/** Commands the room gives its menus: breaks and joins at the page in hand. */
+export type PageCommands = {
+  /** Breaks the page at the caret, or adds a page after `pageId` when it has none. */
+  breakPage: (pageId: string | null, kind: PageBreakKind) => void;
+  /**
+   * Removes the break before a page, so its text flows on from the page
+   * before. A section break joins only when `adoptFormat` is set or the
+   * formats already match. Returns whether it joined.
+   */
+  joinPage: (pageId: string, adoptFormat: boolean) => boolean;
+};
+
 type PageCallbacks = {
   onContent: (pageId: string, content: JsonNode) => void;
   onFocus: (pageId: string, editor: Editor) => void;
   onExit: (pageId: string, direction: "up" | "down") => boolean;
   onRemoveEmpty: (pageId: string) => boolean;
+  onBreak: (pageId: string) => boolean;
+  onJoin: (pageId: string) => boolean;
 };
 
-/** Tab writes a tab. Escape, then Tab, leaves the page for the next control. */
+/**
+ * Tab writes a tab, or nests a list item. Escape, then Tab, leaves the page
+ * for the next control. Ctrl or ⌘ + Enter breaks the page.
+ */
 const PageKeys = Extension.create<{
   pageId: string;
   callbacks: { current: PageCallbacks };
@@ -69,7 +98,9 @@ const PageKeys = Extension.create<{
   addOptions() {
     return {
       pageId: "",
-      callbacks: { current: null as unknown as PageCallbacks },
+      // Not a plain object: Tiptap copies plain-object options deeply, which
+      // would freeze the room's callbacks at the moment the page was made.
+      callbacks: null as unknown as { current: PageCallbacks },
     };
   },
   addStorage() {
@@ -89,9 +120,13 @@ const PageKeys = Extension.create<{
           this.storage.leaving = false;
           return false;
         }
+        if (editor.can().sinkListItem("listItem"))
+          return editor.commands.sinkListItem("listItem");
         editor.view.dispatch(editor.state.tr.insertText("\t"));
         return true;
       },
+      "Mod-Enter": () =>
+        this.options.callbacks.current.onBreak(this.options.pageId),
       ArrowDown: ({ editor }) => {
         const { selection, doc } = editor.state;
         if (!selection.empty || selection.$head.after(1) !== doc.content.size)
@@ -110,25 +145,41 @@ const PageKeys = Extension.create<{
       },
       Backspace: ({ editor }) => {
         const { selection } = editor.state;
-        if (!selection.empty || selection.from > 1 || !editor.isEmpty)
+        if (!selection.empty || selection.from > 1) return false;
+        if (editor.isEmpty)
+          return this.options.callbacks.current.onRemoveEmpty(
+            this.options.pageId,
+          );
+        // At the very start of the page's first paragraph: remove the break.
+        if (selection.$from.depth !== 1 || selection.$from.parentOffset !== 0)
           return false;
-        return this.options.callbacks.current.onRemoveEmpty(
-          this.options.pageId,
-        );
+        return this.options.callbacks.current.onJoin(this.options.pageId);
       },
     };
   },
 });
 
 /** The editor setup every page and text box shares. */
+/**
+ * "- ", "+ " or "* " starts a list only at the start of a line, so a dash
+ * after a tab or spaces in a poem stays as typed.
+ */
+const LineStartBulletList = BulletList.extend({
+  addInputRules() {
+    return [wrappingInputRule({ find: /^([-+*])\s$/, type: this.type })];
+  },
+});
+
 export function writingExtensions() {
   return [
     StarterKit.configure({
       code: false,
       codeBlock: false,
       link: false,
+      bulletList: false,
       heading: { levels: [1, 2] },
     }),
+    LineStartBulletList,
     TextAlign.configure({
       types: ["heading", "paragraph"],
       alignments: ["left", "center", "right", "justify"],
@@ -365,6 +416,8 @@ export function WritingPages({
   readOnly,
   editors,
   onActiveEditor,
+  commandsRef,
+  onJoinRefused,
   before,
 }: {
   before?: ReactNode;
@@ -375,6 +428,10 @@ export function WritingPages({
   readOnly: boolean;
   editors: PageEditors;
   onActiveEditor: (pageId: string, editor: Editor) => void;
+  /** Filled with the break and join commands for the room's menus. */
+  commandsRef?: { current: PageCommands | null };
+  /** Backspace met a section break whose page has a format of its own. */
+  onJoinRefused?: () => void;
 }) {
   const latest = useRef(document);
   const desk = useRef<HTMLDivElement>(null);
@@ -410,6 +467,105 @@ export function WritingPages({
     onFocus: () => undefined,
     onExit: () => false,
     onRemoveEmpty: () => false,
+    onBreak: () => false,
+    onJoin: () => false,
+  });
+
+  function update(pages: FlowPage[]) {
+    const next = { ...latest.current, pages };
+    latest.current = next;
+    onChange(next);
+  }
+
+  /** Focuses a page once it is on screen. */
+  function focusWhenReady(pageId: string, where: "start" | "end") {
+    let tries = 0;
+    const attempt = () => {
+      const editor = editors.get(pageId);
+      if (editor && viewMounted(editor)) editor.commands.focus(where);
+      else if (tries++ < 30) requestAnimationFrame(attempt);
+    };
+    requestAnimationFrame(attempt);
+  }
+
+  function breakPage(pageId: string | null, kind: PageBreakKind) {
+    const pages = latest.current.pages;
+    const found = pageId ? pages.findIndex((page) => page.id === pageId) : -1;
+    const index = found === -1 ? pages.length - 1 : found;
+    const page = pages[index]!;
+    const editor = page.kind === "flow" ? editors.get(page.id) : undefined;
+    let tail: JsonNode[] = [];
+    let at = index + 1;
+    if (editor && viewMounted(editor) && found !== -1) {
+      // The text after the caret moves to the new page. The move stays out of
+      // undo: undoing half of it would leave the text on both pages.
+      const tr = editor.state.tr.setMeta("addToHistory", false);
+      if (!tr.selection.empty) tr.deleteSelection();
+      const pos = tr.selection.from;
+      tail = (tr.doc.cut(pos).content.toJSON() ?? []) as JsonNode[];
+      tr.delete(pos, tr.doc.content.size);
+      editor.view.dispatch(tr);
+    } else {
+      // No caret on the page: the new page goes after the text flowing from it.
+      while (pages[at]?.continues) at += 1;
+    }
+    const current = latest.current.pages;
+    const created: FlowPage = {
+      ...emptyPage(page.format),
+      ...(tail.length ? { content: { type: "doc", content: tail } } : {}),
+      ...(kind === "page" && page.kind === "flow" ? { pageBreak: true } : {}),
+    };
+    const after = [...current];
+    after.splice(at, 0, created);
+    update(after);
+    focusWhenReady(created.id, "start");
+  }
+
+  function joinPage(pageId: string, adoptFormat: boolean): boolean {
+    const pages = latest.current.pages;
+    const index = pages.findIndex((page) => page.id === pageId);
+    const start = pageStart(pages, index);
+    const page = pages[index];
+    const previous = pages[index - 1];
+    if (
+      !page ||
+      !previous ||
+      page.kind !== "flow" ||
+      previous.kind !== "flow" ||
+      start === "first" ||
+      start === "flow"
+    )
+      return false;
+    const sameFormat =
+      JSON.stringify(page.format) === JSON.stringify(previous.format);
+    if (start === "section-break" && !sameFormat && !adoptFormat) return false;
+    // The joined pages take the format of the section they join.
+    const section = new Set(
+      sectionPages(pages, index).map((at) => pages[at]!.id),
+    );
+    update(
+      pages.map((item) =>
+        item.id === pageId
+          ? {
+              ...item,
+              continues: true,
+              pageBreak: false,
+              format: previous.format,
+            }
+          : section.has(item.id)
+            ? { ...item, format: previous.format }
+            : item,
+      ),
+    );
+    return true;
+  }
+
+  useEffect(() => {
+    if (!commandsRef) return;
+    commandsRef.current = { breakPage, joinPage };
+    return () => {
+      commandsRef.current = null;
+    };
   });
   useEffect(() => {
     callbacks.current = {
@@ -448,8 +604,19 @@ export function WritingPages({
         editors.get(previous.id)?.commands.focus("end");
         return true;
       },
+      onBreak: (pageId) => {
+        breakPage(pageId, "page");
+        return true;
+      },
+      onJoin: (pageId) => {
+        if (joinPage(pageId, false)) return true;
+        const pages = latest.current.pages;
+        const index = pages.findIndex((page) => page.id === pageId);
+        if (pageStart(pages, index) === "section-break") onJoinRefused?.();
+        return false;
+      },
     };
-  }, [editors, onActiveEditor, onChange]);
+  });
 
   useEffect(() => {
     const element = desk.current;
@@ -651,35 +818,57 @@ export function WritingPages({
       <p id="writing-page-keys" className="sr-only">
         Tab writes a tab. To leave the page, press Escape, then Tab.
       </p>
-      {document.pages.map((page, index) =>
-        page.kind === "canvas" ? (
-          <CanvasSheet
-            key={page.id}
-            document={document}
-            page={page}
-            index={index}
-            scale={scale}
-            spellcheck={spellcheck}
-            readOnly={readOnly}
-            editors={editors}
-            callbacks={canvasCallbacks}
-          />
-        ) : (
-          <PageSheet
-            key={page.id}
-            document={document}
-            page={page}
-            index={index}
-            view={view}
-            scale={scale}
-            spellcheck={spellcheck}
-            readOnly={readOnly}
-            callbacks={callbacks}
-            editors={editors}
-            markers={markers}
-          />
-        ),
-      )}
+      {document.pages.map((page, index) => {
+        const start = pageStart(document.pages, index);
+        const label =
+          start === "page-break"
+            ? "Page break"
+            : start === "section-break"
+              ? "Section break"
+              : null;
+        const sheet =
+          page.kind === "canvas" ? (
+            <CanvasSheet
+              key={page.id}
+              document={document}
+              page={page}
+              index={index}
+              scale={scale}
+              spellcheck={spellcheck}
+              readOnly={readOnly}
+              editors={editors}
+              callbacks={canvasCallbacks}
+            />
+          ) : (
+            <PageSheet
+              key={page.id}
+              document={document}
+              page={page}
+              index={index}
+              view={view}
+              scale={scale}
+              spellcheck={spellcheck}
+              readOnly={readOnly}
+              callbacks={callbacks}
+              editors={editors}
+              markers={markers}
+            />
+          );
+        // One wrapper per page, so a label coming or going never remakes the page.
+        return (
+          <Fragment key={page.id}>
+            {label ? (
+              <p
+                data-slot="writing-break"
+                className="-my-5 text-xs text-muted-foreground print:hidden"
+              >
+                {label}
+              </p>
+            ) : null}
+            {sheet}
+          </Fragment>
+        );
+      })}
     </div>
   );
 }
