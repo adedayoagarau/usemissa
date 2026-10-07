@@ -1,0 +1,405 @@
+/* Visitor add-on sections: Editions, Shows and performances, Services,
+   Teaching and Support. They sit inside the profile, so colour and rules come
+   from the variables .world sets in public-profile.module.css, and the
+   container query below is the profile's own `profile` container. */
+
+.intro {
+  max-width: 44ch;
+  margin: 0;
+  color: var(--profile-muted);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.note {
+  max-width: 56ch;
+  margin: 0;
+  color: var(--profile-muted);
+  font-size: 15px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.meta {
+  margin: 0;
+  color: var(--profile-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* A ruled list: the rules carry the rhythm, as in Track record. */
+.rows {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--profile-line-strong);
+  list-style: none;
+}
+.rows > li {
+  border-bottom: 1px solid var(--profile-line);
+}
+.rowTitle {
+  margin: 0;
+  font-size: clamp(24px, 2.4vw, 32px);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+.stack {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+}
+.aside {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+.asideText {
+  color: var(--profile-muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Editions */
+.edition {
+  display: grid;
+  grid-template-columns: minmax(0, 280px) minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 20px clamp(24px, 4vw, 56px);
+  padding: 32px 0;
+}
+.plate {
+  display: flex;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(12px, 1.6vw, 20px);
+  border-radius: var(--radius-md);
+  background: var(--profile-subtle);
+  aspect-ratio: 4 / 3;
+}
+.plate img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.soldOut .plate img {
+  opacity: 0.6;
+}
+/* An edition with no picture still gets a finished plate: type only. */
+.typePlate {
+  min-width: 0;
+  padding: 0;
+  border: 1px solid var(--profile-line);
+  background: var(--profile-tint);
+  color: var(--profile-ink);
+}
+.typeInner {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px;
+  overflow: hidden;
+}
+.typeLabel {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+.typeTitle {
+  font-size: clamp(22px, 2.2vw, 28px);
+  font-style: italic;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+/* Shows and performances */
+.years {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--profile-line-strong);
+  list-style: none;
+}
+.year {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 0 24px;
+  border-bottom: 1px solid var(--profile-line);
+}
+.yearLabel {
+  margin: 0;
+  padding: 24px 0;
+  color: var(--profile-muted);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+.shows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.show {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 16px;
+  padding: 20px 0;
+}
+.show + .show {
+  border-top: 1px solid var(--profile-line);
+}
+.showTitle {
+  font-size: 22px;
+  font-style: italic;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.showVenue {
+  color: var(--profile-muted);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+/* The whole row is the target, so the link is easy to hit on a phone. */
+.showLink {
+  color: inherit;
+  text-decoration: none;
+}
+.showLink::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+.showLink:hover .showLinkText {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 5px;
+}
+.showLink svg {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  color: var(--profile-muted);
+  vertical-align: -2px;
+}
+
+/* Services */
+.service {
+  display: grid;
+  grid-template-areas: "main facts action";
+  grid-template-columns: minmax(0, 5fr) minmax(0, 3fr) auto;
+  align-items: start;
+  gap: 16px clamp(24px, 4vw, 48px);
+  padding: 28px 0;
+}
+.serviceMain {
+  grid-area: main;
+}
+.serviceTitle {
+  font-size: clamp(22px, 2.1vw, 28px);
+}
+.facts {
+  display: flex;
+  grid-area: facts;
+  flex-wrap: wrap;
+  gap: 12px 32px;
+  margin: 0;
+}
+.fact {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+.fact dt {
+  color: var(--profile-muted);
+  font-size: 12px;
+}
+.fact dd {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.action {
+  grid-area: action;
+  justify-self: end;
+}
+
+/* Teaching */
+.session {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 16px clamp(24px, 4vw, 48px);
+  padding: 28px 0;
+}
+.date {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+.dateMonth {
+  color: var(--ochre-deep);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+.dateDay {
+  font-size: 52px;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.dateWeekday {
+  color: var(--profile-muted);
+  font-size: 12px;
+}
+.dateUnknown {
+  color: var(--profile-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.place {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--profile-muted);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.place svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  margin-top: 4px;
+}
+.placesFew {
+  color: var(--ochre-deep);
+}
+
+/* Support */
+.support {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 20px 40px;
+  padding: clamp(24px, 3vw, 36px);
+  border: 1px solid var(--profile-line);
+  border-radius: var(--radius-xl);
+  background: var(--profile-subtle);
+}
+.supportLabel {
+  max-width: 28ch;
+  margin: 0;
+  font-size: clamp(26px, 2.8vw, 36px);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+.leaves {
+  max-width: 56ch;
+  margin: 0;
+  color: var(--profile-muted);
+  font-size: 14px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.supportLink {
+  max-width: min(100%, 22rem);
+  overflow-wrap: anywhere;
+}
+
+/* Night canvas: amber text needs its light tint. */
+[data-creator-theme="night"] .dateMonth,
+[data-creator-theme="night"] .placesFew {
+  color: var(--ochre-tint);
+}
+
+@container profile (max-width: 900px) {
+  .edition {
+    grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+  }
+  .edition > .aside {
+    grid-column: 2;
+    flex-flow: row wrap;
+    align-items: center;
+  }
+  .service {
+    grid-template-areas:
+      "main action"
+      "facts action";
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .session {
+    grid-template-columns: 88px minmax(0, 1fr);
+  }
+  .session > .aside {
+    grid-column: 2;
+    flex-flow: row wrap;
+    align-items: center;
+  }
+}
+@container profile (max-width: 640px) {
+  .edition {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    padding: 24px 0;
+  }
+  .edition > .aside {
+    grid-column: 1;
+  }
+  .typePlate {
+    aspect-ratio: 16 / 9;
+  }
+  .year {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .yearLabel {
+    padding: 20px 0 0;
+  }
+  .show {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+    gap: 8px;
+    padding: 14px 0 20px;
+  }
+  .showTitle {
+    font-size: 20px;
+  }
+  .service {
+    grid-template-areas:
+      "main"
+      "facts"
+      "action";
+    grid-template-columns: minmax(0, 1fr);
+    padding: 24px 0;
+  }
+  .action {
+    justify-self: start;
+  }
+  .session {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 12px 20px;
+    padding: 24px 0;
+  }
+  .dateDay {
+    font-size: 44px;
+  }
+  .support {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
