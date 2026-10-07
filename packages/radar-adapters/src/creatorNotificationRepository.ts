@@ -11,6 +11,8 @@ export type CreatorNotificationPreferences = Readonly<{
   smsOptedOut?: boolean;
   /** Whether the account's plan includes text reminders; filled in by the web layer. */
   smsPlanEligible?: boolean;
+  /** Whether the account's plan includes reminder email; Free keeps reminders in the Inbox. Filled in by the web layer. */
+  emailPlanEligible?: boolean;
   /** IANA timezone for reminder timing; null means each reminder's own timezone. */
   timezone?: string | null;
   /** "HH:MM" local start and end of quiet hours; both null when quiet hours are off. */

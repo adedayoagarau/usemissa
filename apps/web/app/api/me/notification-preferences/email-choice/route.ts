@@ -3,11 +3,12 @@ import { creatorCommandEnvelope, CreatorConflictError, CreatorIdempotencyConflic
 import { getSessionAccount } from "@/lib/auth";
 import { getCreatorNotificationRepository } from "@/lib/creatorRepositories";
 import { deliverEmailChoiceConfirmation } from "@/lib/account-letters";
+import { emailPlanEligible } from "@/lib/sms-preferences";
 
 const headers = { "Cache-Control": "private, no-store" };
 const json = (value: unknown, status = 200) => NextResponse.json(value, { status, headers });
 
-/** Answer the one-time "turn on reminder emails and the weekly digest?" question. */
+/** Answer the one-time "turn on email and the weekly digest?" question. */
 export async function POST(request: Request) {
   const session = await getSessionAccount(request.headers.get("cookie"));
   if (!session) return json({ error: "Not authenticated" }, 401);
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
       body.accept,
     );
     if (body.accept && session.account.email) {
-      await deliverEmailChoiceConfirmation({ accountId: session.account.id, email: session.account.email }).catch(() => undefined);
+      await deliverEmailChoiceConfirmation({ accountId: session.account.id, email: session.account.email, remindersByEmail: await emailPlanEligible(session.account.id) }).catch(() => undefined);
     }
     return json({ ...await repository.preferences(session.account.id), receipt });
   } catch (error) {

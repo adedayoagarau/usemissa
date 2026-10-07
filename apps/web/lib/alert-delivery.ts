@@ -1,10 +1,13 @@
 import { createHash } from 'node:crypto';
 import {
+  creatorPlan,
   creatorPoolFor,
   creatorRelationalAuthorityEnabled,
+  planIncludesEmailReminders,
   PostgresCreatorInboxRepository,
   PostgresCreatorNotificationRepository,
   type CreatorNotificationPreferences,
+  type CreatorPlan,
 } from '@missa/radar-adapters';
 import type { Alert, RadarEngine } from '@missa/radar-engine';
 import { sendMail } from './mail-service';
@@ -29,17 +32,19 @@ export function creatorReminderPathAuthoritative(env: Record<string, string | un
   return creatorRelationalAuthorityEnabled(env);
 }
 
-/** Deadline reminders need email on, reminders on, and a working provider.
- * Matches the filter in pendingCreatorReminderEmails. */
-export function deadlineReminderEmailAllowed(preference: CreatorNotificationPreferences): boolean {
-  return preference.emailEnabled && preference.reminderEnabled && preference.providerState === 'available';
+/** Deadline reminders need email on, reminders on, a working provider and a
+ * plan with reminder email (Free keeps them in the Inbox). Matches the filter
+ * in pendingCreatorReminderEmails. */
+export function deadlineReminderEmailAllowed(preference: CreatorNotificationPreferences, plan: CreatorPlan): boolean {
+  return preference.emailEnabled && preference.reminderEnabled && preference.providerState === 'available' && planIncludesEmailReminders(plan);
 }
 
-function eligibleByPreference(alert: Alert, preference: CreatorNotificationPreferences): boolean {
+function eligibleByPreference(alert: Alert, preference: CreatorNotificationPreferences, plan: CreatorPlan): boolean {
   if (!preference.emailEnabled || preference.digestCadence === 'off' || preference.providerState !== 'available') return false;
   if (alert.kind === 'new-match') return preference.savedSearchEnabled;
   if (alert.kind === 'followed-org-new-call') return preference.followEnabled;
-  if (['deadline-reminder', 'response-overdue', 'withdrawal-suggested'].includes(alert.kind)) return preference.reminderEnabled;
+  if (['deadline-reminder', 'response-overdue', 'withdrawal-suggested'].includes(alert.kind))
+    return preference.reminderEnabled && planIncludesEmailReminders(plan);
   return true;
 }
 
@@ -120,7 +125,8 @@ export async function deliverPendingAlertEmails(engine: RadarEngine, now = new D
     let eligibleAlerts = alerts;
     try {
       const preference = await preferenceRepository.syncProviderState(account.id, 'available');
-      eligibleAlerts = alerts.filter((alert) => eligibleByPreference(alert, preference));
+      const plan = await creatorPlan(creatorPoolFor(connectionString), account.id);
+      eligibleAlerts = alerts.filter((alert) => eligibleByPreference(alert, preference, plan));
       const eligibleIds = new Set(eligibleAlerts.map((alert) => alert.id));
       await inboxRepository?.setEmailEligibility(account.id, alerts.filter((alert) => !eligibleIds.has(alert.id)).map((alert) => alert.id), false);
       await inboxRepository?.setEmailEligibility(account.id, eligibleAlerts.map((alert) => alert.id), true);
@@ -257,7 +263,8 @@ export async function deliverPendingDeadlineEmails(engine: RadarEngine, now = ne
 
     try {
       const preference = await preferenceRepository.syncProviderState(account.id, 'available');
-      if (!deadlineReminderEmailAllowed(preference)) continue;
+      const plan = await creatorPlan(creatorPoolFor(connectionString), account.id);
+      if (!deadlineReminderEmailAllowed(preference, plan)) continue;
     } catch {
       failed += alerts.length;
       continue;

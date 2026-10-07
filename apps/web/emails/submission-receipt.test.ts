@@ -43,6 +43,15 @@ test('a receipt with several works and no fee says so plainly', () => {
   assert.ok(rendered.html.includes('Thank you. Your application'));
 });
 
+test('the email-on confirmation for Free names only The Sunday List', () => {
+  const rendered = renderEmailChoiceConfirmationEmail({ remindersByEmail: false });
+  assert.equal(rendered.subject, 'The Sunday List is on');
+  assert.ok(!rendered.html.includes('Deadline reminders you set'));
+  assert.ok(rendered.html.includes('The Sunday List'));
+  assert.ok(rendered.html.includes('Your reminders stay in your Inbox'));
+  assert.ok(rendered.html.includes('/inbox'));
+});
+
 test('the email-on confirmation names both emails and where to change them', () => {
   const rendered = renderEmailChoiceConfirmationEmail();
   assert.equal(rendered.subject, 'Reminder emails are on');

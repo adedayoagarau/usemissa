@@ -127,13 +127,13 @@ The model is freemium. The free tier stays genuinely useful because it brings pe
 
 - Discovery, Opportunity pages, official-source links, and verification detail. Trust and facts are never paywalled.
 - Saving and tracking up to 10 calls in progress at once (not yet submitted, deadline still ahead). Submitted, decided and closed calls never count, so the limit never penalises applying. Enforced by `creatorEntitlements.ts`; plans live in `creator_plans` (migration 0080).
-- A basic calendar and email reminders. A free user never misses a deadline because they did not pay; at least one email reminder is always sent.
+- A basic calendar and Inbox reminders. A free user never misses a deadline because they did not pay: every reminder is in the Inbox, the calendar feed carries the alarms, and The Sunday List lists what closes this week. Reminder email and text come with Plus because each one costs per message. (Decided 2026-10-07; this replaced "email reminders stay free".)
 
 ### What creators pay for
 
 | Tier | For | Includes (direction, not shipped) |
 | --- | --- | --- |
-| Plus | Creators who submit regularly | Unlimited tracking; SMS and WhatsApp reminders within a monthly allowance; reply-to-act messages; start-by dates; opening, deadline-change, and deadline-day alerts; pre-submit checks including blind-review name checks; the simultaneous-submission guard; the rights ledger; the money ledger with export; the automatic creative CV |
+| Plus | Creators who submit regularly | Unlimited tracking; reminders by email; SMS and WhatsApp reminders within a monthly allowance; reply-to-act messages; start-by dates; opening, deadline-change, and deadline-day alerts; pre-submit checks including blind-review name checks; the simultaneous-submission guard; the rights ledger; the money ledger with export; the automatic creative CV |
 | Pro | Heavy submitters and grant applicants | Everything in Plus, booked preparation time, capacity planning, an annual plan, withdrawal and follow-up templates the creator edits and sends, referee reminders, and multiple pen names or portfolios |
 | Add-ons | Anyone | Extra message packs and paid application reviews by past winners, jurors, or editors, with Missa taking a share |
 

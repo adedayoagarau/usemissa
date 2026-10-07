@@ -805,7 +805,7 @@
       "semantic": "EmailChoicePrompt",
       "implementation": "apps/web/components/missa/email-choice-prompt.tsx",
       "composition": ["Button", "Link"],
-      "boundary": "One-time email question in the creator workspace for accounts created before reminder emails and the weekly digest were on by default. Shown only while notification_preferences.email_choice_at is null; accepting turns on email, reminders and the weekly digest, declining changes nothing, and either answer stops the question."
+      "boundary": "One-time email question in the creator workspace for accounts created before reminder emails and the weekly digest were on by default. Shown only while notification_preferences.email_choice_at is null; accepting turns on email, reminders and the weekly digest, declining changes nothing, and either answer stops the question. On Free, which keeps reminders in the Inbox, the question and its confirmation are only about the weekly digest."
     },
     "composition.homepage-workspace": {
       "semantic": "HomepageWorkspace",
@@ -1250,7 +1250,14 @@
       "implementation": "components/missa/text-reminders-settings.tsx",
       "motion": "never",
       "composition": ["Field", "PhoneInput", "InputOTP", "Switch", "Button"],
-      "boundary": "Plus-only text (SMS) reminder settings inside notification preferences: Free creators see what Plus adds and a link to /plan; Plus creators add a number with PhoneInput, confirm it with a six-digit InputOTP code, then use one Switch to turn texts on or off, change or remove the number. Every change saves immediately through /api/me/sms; the plan is plain text, not a Badge. Always states 'Reply STOP to end. Msg & data rates may apply.' Status uses role=status; only failures use role=alert."
+      "boundary": "Plus-only text (SMS) reminder settings, in notification preferences and inline in ReminderChannels: Free creators see what Plus adds and a link to /plan; Plus creators add a number with PhoneInput (opened on the country of the browser language, checked with isValidPhoneNumber before a code is sent), confirm it with a six-digit InputOTP code, then use one Switch to turn texts on or off, change or remove the number. Every change saves immediately through /api/me/sms; the plan is plain text, not a Badge. Always states 'Reply STOP to end. Msg & data rates may apply.' Status uses role=status; only failures use role=alert."
+    },
+    "ReminderChannels": {
+      "base": "Button",
+      "implementation": "components/missa/reminder-channels.tsx",
+      "motion": "never",
+      "composition": ["Button", "UpgradeHint", "TextRemindersSettings"],
+      "boundary": "Where this creator's reminders go, shown where a reminder is set (Tracker item Reminders) and on the last onboarding screen. Free sees the Inbox and an UpgradeHint for email and text, and is never asked for a phone number, so no verification text is sent for a plan that cannot receive one. Plus and Pro see every channel that is on and a Button that opens TextRemindersSettings in place (aria-expanded, aria-controls). Until /api/me/notification-preferences answers, it says only what is true for every plan. Composition over Button because the installed Collapsible adds a second trigger pattern for a single inline form."
     },
     "CookieConsent": {
       "base": "Button",

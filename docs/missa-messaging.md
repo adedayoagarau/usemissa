@@ -231,10 +231,11 @@ generated file lives in `apps/web/media-provenance`.
 
 Use these only once Plus is live.
 
-- **Free:** for anyone looking for their next call. Finding calls, saving them
-  and email reminders are free, and they stay free.
-- **Plus:** for people who send a lot of work out. Priced for where you live.
-- **Why we charge:** texts cost money, and so does checking thousands of
+- **Free:** for anyone looking for their next call. Finding calls, saving them,
+  reminders in your Inbox and The Sunday List are free, and they stay free.
+- **Plus:** for people who send a lot of work out. Reminders by email and text,
+  start-by dates and no limit on calls in progress. Priced for where you live.
+- **Why we charge:** emails and texts cost money, and so does checking thousands of
   organizers' pages. We'll never charge you to see a deadline or the official page.
 
 ## Fix these first

@@ -6,6 +6,7 @@ import { CreatorShell } from '@/components/creator-shell';
 import { creatorShellOrganizations } from '@/lib/creatorShellOrganizations';
 import { getCreatorNotificationRepository } from '@/lib/creatorRepositories';
 import { EmailChoicePrompt } from '@/components/missa/email-choice-prompt';
+import { emailPlanEligible } from '@/lib/sms-preferences';
 
 /** Private creator surface: never index, and name it for browser chrome. */
 export const metadata = {
@@ -29,10 +30,12 @@ export default async function PassportLayout({ children }: { children: React.Rea
   // Accounts from before email was on by default are asked once; the prompt
   // must never keep the workspace from rendering.
   const preferences = await getCreatorNotificationRepository()?.preferences(session.account.id).catch(() => undefined);
+  // Free keeps reminders in the Inbox, so the question is only about The Sunday List.
+  const remindersByEmail = preferences?.emailChoiceNeeded ? await emailPlanEligible(session.account.id) : true;
 
   return <CreatorShell email={session.account.email} organizations={organizations} isAdmin={session.account.isAdmin}>
     <main className="mx-auto max-w-[1600px] px-6 py-6 sm:py-8">
-      {preferences?.emailChoiceNeeded ? <EmailChoicePrompt revision={preferences.revision} /> : null}
+      {preferences?.emailChoiceNeeded ? <EmailChoicePrompt revision={preferences.revision} remindersByEmail={remindersByEmail} /> : null}
       {children}
     </main>
   </CreatorShell>;

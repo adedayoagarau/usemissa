@@ -39,7 +39,7 @@ Code that reads these tables checks that they exist first, so a deploy that reac
 - **Season (`/season`):**
   - This week's three, a capacity check, a fee budget, and calls that are coming back.
   - Crunch weeks: your tracked deadlines per week, with "Open calls that match you" as a second, striped series and a table view. These are published, open calls with an exact deadline that match your preferences (the same matching as the weekly digest), not counting ones you already track or have hidden. Creators without preferences see a link to set them.
-- **Inbox, email and text:** the new notice kinds are `deadline-day`, `tier-ending`, `milestone-due`, `gone-quiet`, `time-to-query`, `opens-soon`, `forecast-changed`, `obligations-suggested`, `obligations-moved` and `cycle-carry-suggested`. They respect quiet hours and the daily cap; the deadline-day alarm is exempt from the cap. Change notices state the old and new date.
+- **Inbox, email and text:** Free gets every notice in the Inbox, the calendar feed and The Sunday List. Email and text come with Plus (`emailReminders`, `smsReminders`); a lapsed plan stops them on the next tick and the notices stay in the Inbox. The new notice kinds are `deadline-day`, `tier-ending`, `milestone-due`, `gone-quiet`, `time-to-query`, `opens-soon`, `forecast-changed`, `obligations-suggested`, `obligations-moved` and `cycle-carry-suggested`. They respect quiet hours and the daily cap; the deadline-day alarm is exempt from the cap. Change notices state the old and new date.
 - **Settings:** a Deadlines section in notification preferences.
 
 ## Plans
@@ -57,6 +57,8 @@ Product code asks `planIncludes(plan, feature)`; it never compares plan names. A
 
 | Feature key | Plus | Pro |
 | --- | --- | --- |
+| `emailReminders` (Tracker notices by email) | yes | yes |
+| `smsReminders` (Tracker notices by text) | yes | yes |
 | `startByPlanning` (start-by dates, steps that follow the deadline) | yes | yes |
 | `deadlineDayAlarm` | yes | yes |
 | `feeTierAlerts` | yes | yes |
