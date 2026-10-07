@@ -119,11 +119,13 @@ All in More, kept on the device as preferences:
   the controls fade while the writer writes, with or without the timer. They
   come back on pointing at them or on reaching them by keyboard, and whenever
   a dialog or sheet is open.
-- **Focus**: Every line clear, This paragraph, or This sentence. Everything but
+- **Focus**: Every line clear, This paragraph, This sentence, or Dialogue. Everything but
   the paragraph or sentence in hand takes the muted text color (5.55:1 on
   paper, 7.34:1 in the dark room, so still WCAG AA). Sentences are found by
   the browser's Unicode rules (`Intl.Segmenter`); nothing reads what the words
-  mean. Dimming never prints (`lib/writing-focus.ts`).
+  mean. Dialogue keeps what is inside quotation marks (“ ”, " ", ‘ ’, « »)
+  clear on every page and dims the rest; it goes by the marks alone. Dimming
+  never prints (`lib/writing-focus.ts`).
 - **Typewriter scrolling** keeps the line being written in the middle of the
   window. It moves only as the writer types, never on a click, and jumps
   rather than glides; half a window of room below the last page lets the last
@@ -197,6 +199,29 @@ visual poetry. It prints exactly as set.
   to a flowing first page.
 - Positions are kept to a tenth of a millimetre and checked on the server
   (up to 200 boxes a page).
+
+## The planner (Plus)
+
+Part of Plus and Pro (`writingPlanner` in
+`packages/radar-adapters/src/creatorEntitlements.ts`). On Free, a project's
+Outline keeps its synopsis and status for each piece and says once, with the
+shared `UpgradeHint`, what Plus adds.
+
+- **Index cards.** Every piece in a project has a card: synopsis and status,
+  then point of view, characters, place, when it happens in the story, the
+  plotlines it carries, tags, goal, conflict, outcome and a word target. Every
+  field is optional. Cards are the writer's notes about a piece, never its
+  text (`lib/writing-cards.ts`, `card` on the piece, migration 0100).
+- **Plotlines.** A project's threads (the main story, a romance, one
+  character's arc), named by the writer and marked with a categorical
+  `HueTile` (`plan` on the project, migration 0100).
+- **Corkboard.** The cards in binder order, or gathered by plotline, status or
+  point of view. A card that carries two plotlines sits in both.
+- **Outline.** A table of the pieces with point of view, plotlines, status and
+  words against each target, with the totals for the project.
+- The server checks the plan before saving a card or plotlines (403 with
+  `locked: "writingPlanner"` otherwise); synopsis and status stay free.
+  A writer who leaves Plus keeps every card; they show again on return.
 
 ## Projects
 
@@ -373,9 +398,10 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/migrations/0096_creator_w
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/migrations/0097_creator_writing_projects.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/migrations/0098_creator_writing_snapshots.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/migrations/0099_creator_writing_calls.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/migrations/0100_creator_writing_cards.sql
 ```
 
-0096 to 0099 add tables and nullable or defaulted columns only, so each can
+0096 to 0100 add tables and nullable or defaulted columns only, so each can
 run before its code ships. 0097 uses `ON DELETE SET NULL (project_id)`, which
 needs Postgres 15 or later. Without it, saves fail and text stays on the device with a retry notice.
 Without `DATABASE_URL`, the room keeps text in the browser only and says so.

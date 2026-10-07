@@ -17,14 +17,15 @@ what comes next, in the order agreed with the owner.
 | Writing for a call | A piece tied to a call in the tracker: the call and checklist beside the draft, a live count against its word limit, page and blind-reading checks run on the piece in the browser | 0099 |
 | Editor essentials | Page and section breaks as in Google Docs and Word, superscript and subscript, clear formatting, the Docs keys for strikethrough and word count, a word count with the selection and reading time, smart quotes and dashes as a choice, Tab nesting lists | none |
 | Quiet writing | Quiet mode apart from the timer, focus on the paragraph or sentence in hand, typewriter scrolling, hiding the count, Escape kept in full screen | none |
+| Planner: cards (Plus) | An index card on every piece (point of view, characters, place, when, plotlines, tags, goal, conflict, outcome, word target), a project's plotlines, a corkboard by order, plotline, status or point of view, an outline with totals. Dialogue focus | 0100 |
 
 ## Next, in order
 
 From the research in `docs/writing-research.md`, which has the findings,
 sources and what each stage contains:
 
-1. **G. Cards and corkboard.** Fields on every piece, a corkboard, an outliner
-   with totals, saved views, editing several pieces as one text.
+1. **G, the rest.** The writer's own card fields, saved views and filters,
+   and editing several pieces as one text.
 2. **H. Story bible.** Characters, places and items with "Appears in".
 3. **I. Plot grid and structures.** Plotlines across the book, structure
    templates, pacing against beats, plotline gaps.

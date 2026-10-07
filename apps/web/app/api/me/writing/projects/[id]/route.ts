@@ -1,16 +1,47 @@
 import { isWritingProjectId, parseProjectTitle } from "@/lib/writing-projects";
-import { json, smallJson, writingSession } from "../../_shared";
+import { parseProjectPlan } from "@/lib/writing-cards";
+import {
+  json,
+  PLANNER_LOCKED,
+  plannerIncluded,
+  smallJson,
+  writingSession,
+} from "../../_shared";
 
 type Context = { params: Promise<{ id: string }> };
 
-/** Renames a project. */
+/** Renames a project, or replaces its plan (its plotlines, part of Plus). */
 export async function PATCH(request: Request, context: Context) {
   const prepared = await writingSession(request);
   if ("response" in prepared) return prepared.response;
   const id = (await context.params).id;
   if (!isWritingProjectId(id))
     return json({ error: "Project not found." }, 404);
-  const parsed = parseProjectTitle(await smallJson(request));
+  const body = await smallJson(request);
+  const planned =
+    body && typeof body === "object" ? Reflect.get(body, "plan") : undefined;
+  if (planned !== undefined) {
+    const plan = parseProjectPlan(planned);
+    if ("error" in plan) return json({ error: plan.error }, 400);
+    if (!(await plannerIncluded(prepared.accountId)))
+      return json(PLANNER_LOCKED, 403);
+    try {
+      const project = await prepared.repository.setProjectPlan(
+        prepared.accountId,
+        id,
+        plan,
+      );
+      return project
+        ? json({ project })
+        : json({ error: "Project not found." }, 404);
+    } catch {
+      return json(
+        { error: "We could not save the plotlines. Try again." },
+        500,
+      );
+    }
+  }
+  const parsed = parseProjectTitle(body);
   if ("error" in parsed) return json({ error: parsed.error }, 400);
   try {
     const project = await prepared.repository.renameProject(

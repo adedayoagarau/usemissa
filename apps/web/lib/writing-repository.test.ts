@@ -6,6 +6,7 @@ import { newWritingEntryId } from "./writing.ts";
 import { WritingRepository } from "./writing-repository.ts";
 import { newWritingProjectId } from "./writing-projects.ts";
 import { newWritingSnapshotId } from "./writing-snapshots.ts";
+import { newPlotlineId } from "./writing-cards.ts";
 
 /**
  * Real-Postgres coverage for the writing room's storage. Skipped without
@@ -413,6 +414,46 @@ dbTest(
     });
     assert.ok(unlinked && unlinked !== "no-project");
     assert.equal(unlinked.callId, null);
+
+    const plot = newPlotlineId();
+    const planned = await repository().setProjectPlan(owner, project, {
+      plotlines: [{ id: plot, name: "The search" }],
+    });
+    assert.deepEqual(planned?.plan, {
+      plotlines: [{ id: plot, name: "The search" }],
+    });
+    const carded2 = await repository().changePiece(owner, first, {
+      card: { pov: "Kemi", plotlines: [plot], target: 2000 },
+    });
+    assert.ok(carded2 && carded2 !== "no-project");
+    assert.deepEqual(carded2.card, {
+      pov: "Kemi",
+      plotlines: [plot],
+      target: 2000,
+    });
+    assert.equal(
+      carded2.synopsis,
+      "About the light",
+      "the card leaves the rest",
+    );
+    assert.equal(
+      (await repository().list(owner)).find((entry) => entry.id === first)?.card
+        .pov,
+      "Kemi",
+    );
+    assert.deepEqual(
+      (await repository().listProjects(owner)).find(
+        (item) => item.id === project,
+      )?.plan.plotlines,
+      [{ id: plot, name: "The search" }],
+    );
+    assert.equal(
+      await repository().setProjectPlan(await account(), project, {
+        plotlines: [],
+      }),
+      null,
+      "another account can't change the plan",
+    );
 
     const loose = await repository().changePiece(owner, second, {
       projectId: null,

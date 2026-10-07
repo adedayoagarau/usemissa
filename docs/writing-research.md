@@ -266,12 +266,16 @@ F is small and makes the room feel finished. G to K are the planner, in the
 order their data depends on each other. L is the largest and benefits from the
 section model E introduces.
 
-## Decisions for the owner
+## Decisions
 
-- Whether stages G to K need a pricing tier or stay in the base product.
-- Story-structure templates: ship beat names and positions only, or license
-  descriptive text for Save the Cat and Romancing the Beat.
-- Whether a quotation-mark dialogue highlight is acceptable under the room's
-  promise (proposed: yes; parts-of-speech highlighting: no).
-- Smart quotes on or off by default (proposed: off, so poets' straight quotes
-  stay as typed until they choose).
+Made by the owner in October 2026:
+
+- Stages G to K, the planner, are part of Plus (and Pro). Everything before
+  them stays in every plan. Free accounts see what Plus adds, once, calmly.
+- Dialogue highlighting by quotation marks is within the room's promise and
+  is built (Focus, Dialogue). Parts-of-speech highlighting is not.
+- Smart quotes and dashes are off by default.
+- Story-structure templates (stage I) ship the beat names and positions,
+  which are facts, with short descriptions in Missa's own words, crediting
+  each framework by name ("after Blake Snyder"). No author's text is copied,
+  so no license is needed.

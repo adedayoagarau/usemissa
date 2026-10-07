@@ -46,6 +46,7 @@ test("only the writing module names the writing tables", () => {
     "packages/db/migrations/0097_creator_writing_projects.sql",
     "packages/db/migrations/0098_creator_writing_snapshots.sql",
     "packages/db/migrations/0099_creator_writing_calls.sql",
+    "packages/db/migrations/0100_creator_writing_cards.sql",
     "apps/web/lib/writing-repository.ts",
     "apps/web/lib/writing-repository.test.ts",
     "apps/web/lib/writing-boundary.test.ts",

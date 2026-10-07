@@ -76,6 +76,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { WRITING_TITLE_MAX } from "@/lib/writing";
 import { PAGE_SIZES, type PageSizeId } from "@/lib/writing-document";
+import type { PieceCard } from "@/lib/writing-cards";
+import { UpgradeHint } from "@/components/missa/upgrade-hint";
 import {
   PIECE_STATUSES,
   PIECE_SYNOPSIS_MAX,
@@ -102,6 +104,8 @@ export type LibraryPiece = {
   position: number;
   synopsis: string;
   status: string;
+  /** The planner's index card. */
+  card: PieceCard;
   /** Kept on this device, not yet in the account. */
   local: boolean;
   open: boolean;
@@ -134,7 +138,7 @@ export function wordLabel(words: number) {
   return `${words.toLocaleString()} ${words === 1 ? "word" : "words"}`;
 }
 
-function pieceLabel(count: number) {
+export function pieceLabel(count: number) {
   return `${count.toLocaleString()} ${count === 1 ? "piece" : "pieces"}`;
 }
 
@@ -782,6 +786,7 @@ export function WritingOutline({
   pieces,
   onCard,
   onOpenPiece,
+  planHint = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -792,6 +797,8 @@ export function WritingOutline({
     change: { synopsis?: string; status?: PieceStatus },
   ) => void;
   onOpenPiece: (id: string) => void;
+  /** Say, once, what the planner adds with Plus. */
+  planHint?: boolean;
 }) {
   const inside = pieces
     .filter((piece) => piece.projectId === project?.id && !piece.local)
@@ -809,6 +816,12 @@ export function WritingOutline({
             status for each piece, in order. Only you see them.
           </DialogDescription>
         </DialogHeader>
+        {planHint ? (
+          <UpgradeHint
+            plan="Plus"
+            benefit="Index cards with point of view, plotlines and word targets, a corkboard, and an outline with totals."
+          />
+        ) : null}
         <ol className="flex flex-col gap-4">
           {inside.map((piece, index) => (
             <OutlineCard

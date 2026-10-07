@@ -898,6 +898,17 @@ test("quiet writing: quiet mode, focus on a paragraph or sentence, typewriter sc
     text.locator("p").first().locator("span.text-muted-foreground"),
   ).toHaveText("The rain came early. ");
 
+  // Dialogue keeps only what is inside quotation marks clear.
+  await page.keyboard.press("End");
+  await page.keyboard.type(' "Let it," she said.');
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitemradio", { name: "Dialogue" }).click();
+  const first = text.locator("p").first();
+  await expect(first.locator("span.text-muted-foreground")).toHaveText([
+    "The rain came early. It stayed. ",
+    " she said.",
+  ]);
+
   // Every line clear again.
   await page.getByRole("button", { name: "More" }).click();
   await page.getByRole("menuitemradio", { name: "Every line clear" }).click();
@@ -938,5 +949,131 @@ test("quiet writing: quiet mode, focus on a paragraph or sentence, typewriter sc
   await page.reload();
   await expect(
     page.getByRole("button", { name: "Word count", exact: true }),
+  ).toBeVisible();
+});
+
+test("the planner: cards, plotlines, a corkboard and an outline with totals, with Plus", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const email = await signIn(page);
+  await page.goto("/doc");
+  await expect(pageText(page)).toBeFocused();
+
+  // A project from the short story template: Draft and Notes.
+  await page.getByRole("button", { name: "Library" }).click();
+  await page.getByRole("button", { name: "New project" }).click();
+  const create = page.getByRole("dialog", { name: "New project" });
+  await create.getByLabel("Title").fill("Harmattan");
+  await create.getByRole("radio", { name: /Short story/ }).click();
+  await create.getByRole("button", { name: "Create project" }).click();
+  await expect(
+    page.getByRole("list", { name: "Pieces in Harmattan" }).getByRole("link"),
+  ).toHaveText([/^Draft/, /^Notes/]);
+
+  // On Free, the outline says what Plus adds, and cards can't be saved.
+  await page.getByRole("button", { name: "Outline" }).click();
+  const outline = page.getByRole("dialog", { name: /Outline/ });
+  await expect(outline).toContainText("Included with Plus.");
+  await page.keyboard.press("Escape");
+  const listed = (await (await page.request.get("/api/me/writing")).json()) as {
+    entries: { id: string; title: string }[];
+  };
+  const draft = listed.entries.find((entry) => entry.title === "Draft")!;
+  const refused = await page.request.patch(`/api/me/writing/${draft.id}`, {
+    data: { card: { pov: "Kemi" } },
+  });
+  expect(refused.status()).toBe(403);
+
+  // With Plus, the planner opens instead.
+  const client = new pg.Client({
+    connectionString: process.env.DATABASE_URL,
+  });
+  await client.connect();
+  try {
+    await client.query(
+      `insert into creator_plans(account_id,plan) select id,'plus' from radar_accounts where lower(email)=lower($1)`,
+      [email],
+    );
+  } finally {
+    await client.end();
+  }
+  await page.reload();
+  await page.getByRole("button", { name: "Library" }).click();
+  await page
+    .getByRole("button", { name: /Harmattan/ })
+    .first()
+    .click();
+  await page.getByRole("button", { name: "Outline" }).click();
+  const planner = page.getByRole("dialog", { name: "Plan: Harmattan" });
+  await expect(planner).toContainText("2 pieces");
+
+  // Plotlines for the project.
+  await planner.getByRole("button", { name: "Plotlines" }).click();
+  const plotlines = page.getByRole("dialog", { name: "Plotlines" });
+  await plotlines.getByLabel("New plotline").fill("The search");
+  await plotlines.getByRole("button", { name: "Add" }).click();
+  await plotlines.getByLabel("New plotline").fill("The house");
+  await plotlines.getByRole("button", { name: "Add" }).click();
+  await expect(
+    (await new AxeBuilder({ page }).include('[role="dialog"]').analyze())
+      .violations,
+  ).toEqual([]);
+  await plotlines.getByRole("button", { name: "Save plotlines" }).click();
+  await expect(
+    planner.getByRole("button", { name: "Plotlines (2)" }),
+  ).toBeVisible();
+
+  // A card for the draft.
+  await planner
+    .getByRole("button", { name: "Edit the card for Draft" })
+    .click();
+  const card = page.getByRole("dialog", { name: "Card: Draft" });
+  await card.getByLabel("Synopsis").fill("She finds the letter.");
+  await card.getByLabel("Point of view").fill("Kemi");
+  await card.getByLabel("Characters").fill("Kemi, Tunde");
+  await card.getByLabel("When").fill("Day 3, evening");
+  await card.getByRole("checkbox", { name: "The search" }).click();
+  await card.getByLabel("Word target").fill("2000");
+  await card.getByLabel("Goal").fill("Find her sister");
+  await expect(
+    (await new AxeBuilder({ page }).include('[role="dialog"]').analyze())
+      .violations,
+  ).toEqual([]);
+  await card.getByRole("button", { name: "Save card" }).click();
+  await expect(planner).toContainText("She finds the letter.");
+  await expect(planner).toContainText("Kemi · Day 3, evening");
+  await expect(planner).toContainText("0 of 2,000 words");
+
+  // Arranged by plotline, the draft sits under its plotline.
+  await planner.getByLabel("Arrange by").selectOption("plotline");
+  await expect(
+    planner.getByRole("region", { name: "The search" }),
+  ).toContainText("Draft");
+  await expect(
+    planner.getByRole("region", { name: "No plotline" }),
+  ).toContainText("Notes");
+
+  // The outline adds up words against targets.
+  await planner.getByRole("tab", { name: "Outline" }).click();
+  await expect(planner.getByRole("table")).toContainText("All pieces");
+  await expect(planner.getByRole("table")).toContainText("0 of 2,000 words");
+  await expect(
+    (await new AxeBuilder({ page }).include('[role="dialog"]').analyze())
+      .violations,
+  ).toEqual([]);
+
+  // Kept in the account.
+  await page.keyboard.press("Escape");
+  await page.reload();
+  await page.getByRole("button", { name: "Library" }).click();
+  await page
+    .getByRole("button", { name: /Harmattan/ })
+    .first()
+    .click();
+  await page.getByRole("button", { name: "Outline" }).click();
+  await expect(planner).toContainText("She finds the letter.");
+  await expect(
+    planner.getByRole("button", { name: "Plotlines (2)" }),
   ).toBeVisible();
 });

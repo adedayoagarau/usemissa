@@ -1,4 +1,5 @@
 import { parseWritingDocument } from "./writing-document.ts";
+import type { PieceCard } from "./writing-cards.ts";
 
 /**
  * Shared rules for the writing room (/write). Pure functions only, so the
@@ -160,6 +161,8 @@ export type WritingEntrySummary = {
   status: string;
   /** The call (an opportunity the writer tracks) this piece is written for. */
   callId: string | null;
+  /** The planner's index card: point of view, plotlines, target and the rest. */
+  card: PieceCard;
   preview: string;
   wordCount: number;
   revision: number;
