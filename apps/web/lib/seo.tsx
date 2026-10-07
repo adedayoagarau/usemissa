@@ -345,3 +345,20 @@ export function opportunityJsonLd(item: {
     mainEntity,
   };
 }
+
+const ROUNDUP_TITLE = /^\s*\d{1,3}\s+(open calls|calls|opportunities|grants|residencies|fellowships|contests|competitions|writing contests|art contests|literary magazines|magazines|places)\b|frequently asked|\bfaqs?\b|tips for applying|applicant faq/iu;
+
+/**
+ * A roundup post or FAQ page that was ingested as a call. It stays viewable
+ * but out of the index and the sitemap. Mirrors ROUNDUP_TITLE_SQL_PATTERN in
+ * lib/sitemapData.ts.
+ */
+export function isRoundupTitle(title: string): boolean {
+  return ROUNDUP_TITLE.test(title);
+}
+
+/** An exact deadline that is already behind us, whatever the status says. */
+export function hasPassedExactDeadline(deadline: { kind: string; date?: string }, now = new Date()): boolean {
+  if (deadline.kind !== 'exact' || !deadline.date || !/^\d{4}-\d{2}-\d{2}$/u.test(deadline.date)) return false;
+  return deadline.date < now.toISOString().slice(0, 10);
+}

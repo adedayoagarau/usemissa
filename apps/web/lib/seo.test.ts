@@ -3,6 +3,8 @@ import { test } from "node:test";
 
 import {
   brandedTitle,
+  hasPassedExactDeadline,
+  isRoundupTitle,
   hasListingFilters,
   opportunityJsonLd,
   opportunityPageTitle,
@@ -103,4 +105,20 @@ test("grants are marked up as MonetaryGrant, other calls never as events", () =>
 test("homepage entity names the brand and its search", () => {
   const graph = siteEntityJsonLd()["@graph"] as Array<Record<string, unknown>>;
   assert.deepEqual(graph.map((node) => node["@type"]), ["Organization", "WebSite"]);
+});
+
+test("roundup posts and FAQ pages are recognised", () => {
+  assert.equal(isRoundupTitle("12 Open Calls to Apply for in Spring 2026"), true);
+  assert.equal(isRoundupTitle("Applicant FAQ's and Tips"), true);
+  assert.equal(isRoundupTitle("Spring Fellowship 2027"), false);
+  assert.equal(isRoundupTitle("2027 Poetry Prize"), false);
+  assert.equal(isRoundupTitle("2026 Open Calls Festival"), false);
+});
+
+test("only an exact deadline in the past counts as passed", () => {
+  const now = new Date("2026-10-07T12:00:00Z");
+  assert.equal(hasPassedExactDeadline({ kind: "exact", date: "2026-10-06" }, now), true);
+  assert.equal(hasPassedExactDeadline({ kind: "exact", date: "2026-10-07" }, now), false);
+  assert.equal(hasPassedExactDeadline({ kind: "inferred", date: "2024-01-01" }, now), false);
+  assert.equal(hasPassedExactDeadline({ kind: "rolling" }, now), false);
 });

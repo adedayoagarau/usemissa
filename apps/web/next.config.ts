@@ -55,6 +55,22 @@ const nextConfig: NextConfig = {
       { source: "/thank-you", destination: "/signup", permanent: true },
     ];
   },
+  async rewrites() {
+    return {
+      // The public call page is served from the CDN and reads no cookies. A
+      // signed-in visitor (session cookie present) is routed to its dynamic
+      // twin, which shows their saved state and private calls; the URL stays
+      // the same. A routing rule, not the proxy, so anonymous requests run no
+      // function at all.
+      beforeFiles: [
+        {
+          source: "/opportunities/:id((?!for-you$)[^/]+)",
+          has: [{ type: "cookie", key: "missa_session" }],
+          destination: "/opportunities/:id/member",
+        },
+      ],
+    };
+  },
   async headers() {
     return [
       {
