@@ -80,3 +80,21 @@ export function MissaArt({
     </svg>
   );
 }
+
+/**
+ * A drawing for an empty state: "scene" for a whole empty page, "spot" for
+ * a small empty list. Decorative; the empty state's own words carry it.
+ */
+export function EmptyStateArt({
+  id,
+  size = "scene",
+}: {
+  id: Extract<IllustrationId, `scene-${string}` | `spot-${string}`>;
+  size?: "scene" | "spot";
+}) {
+  return (
+    <span className={styles.emptyArt} data-size={size}>
+      <MissaArt id={id} />
+    </span>
+  );
+}

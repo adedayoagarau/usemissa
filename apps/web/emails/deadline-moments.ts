@@ -113,7 +113,7 @@ function reminder(props: DeadlineMomentEmailProps, now: Date): DeadlineMomentPro
         ['Closes', closes],
       ]),
     },
-    action: { label: 'View Opportunity', url: url(`/opportunities/${encodeURIComponent(n.opportunityId)}`) },
+    action: { label: 'View opportunity', url: url(`/opportunities/${encodeURIComponent(n.opportunityId)}`) },
     secondary: { label: 'Update your Tracker', url: url(`/tracker?view=saved&application=${encodeURIComponent(n.opportunityId)}`) },
     note: 'Check the guidelines on the official page before you send. Word limits, formats and fees can change after a call opens.',
     footer: {
@@ -148,7 +148,7 @@ function deadlineChanged(props: DeadlineMomentEmailProps, now: Date): DeadlineMo
         ['In your Tracker', capitalise(trackerStatusLabel(n.trackedStatus) ?? '') || null],
       ]),
     },
-    action: { label: 'View Opportunity', url: url(`/opportunities/${encodeURIComponent(n.opportunityId)}`) },
+    action: { label: 'View opportunity', url: url(`/opportunities/${encodeURIComponent(n.opportunityId)}`) },
     secondary: { label: 'Open your Tracker', url: url(`/tracker?view=saved&application=${encodeURIComponent(n.opportunityId)}`) },
     note: 'Missa checks the official page for changes and tells you when a date moves. Nothing else about your Tracker has changed.',
     footer: {
@@ -182,7 +182,7 @@ function callClosed(props: DeadlineMomentEmailProps, now: Date): DeadlineMomentP
       ]),
     },
     action: { label: 'Open your Tracker', url: url(`/tracker?view=saved&application=${encodeURIComponent(n.opportunityId)}`) },
-    secondary: { label: 'View Opportunity', url: url(`/opportunities/${encodeURIComponent(n.opportunityId)}`) },
+    secondary: { label: 'View opportunity', url: url(`/opportunities/${encodeURIComponent(n.opportunityId)}`) },
     note: `You can keep this call in your Tracker for next year or remove it. Following ${n.organizationName} tells you when its next call opens.`,
     footer: {
       reason: `You get this because ${n.title} is in your Tracker.`,
@@ -220,7 +220,7 @@ function responseOverdue(props: DeadlineMomentEmailProps, now: Date): DeadlineMo
       ]),
     },
     action: { label: 'Log a response', url: url(`/tracker?view=awaiting&application=${encodeURIComponent(n.opportunityId)}`) },
-    secondary: { label: 'View Opportunity', url: url(`/opportunities/${encodeURIComponent(n.opportunityId)}`) },
+    secondary: { label: 'View opportunity', url: url(`/opportunities/${encodeURIComponent(n.opportunityId)}`) },
     note: sp('A short, polite follow-up after the stated reply time is normal. You write and send it yourself; Missa never contacts an organization for you.', props.spelling),
     footer: {
       reason: 'You get this because you set a response check-in for this call.',
@@ -286,7 +286,7 @@ function deadlineDay(props: DeadlineMomentEmailProps, now: Date): DeadlineMoment
       ]),
     },
     action: { label: 'Open your Tracker', url: noticeLink(n, trackerLink(n)) },
-    secondary: { label: 'View Opportunity', url: opportunityLink(n) },
+    secondary: { label: 'View opportunity', url: opportunityLink(n) },
     note: 'If you have already sent it, mark it submitted in your Tracker and Missa stops reminding you.',
     footer: reminderFooter('You get this because the deadline-day reminder is on for calls in your Tracker.'),
   };
@@ -308,7 +308,7 @@ function tierEnding(props: DeadlineMomentEmailProps, now: Date): DeadlineMomentP
       facts: facts([['Final deadline', closesFact(n, now)]]),
     },
     action: { label: 'Open your Tracker', url: noticeLink(n, trackerLink(n)) },
-    secondary: { label: 'View Opportunity', url: opportunityLink(n) },
+    secondary: { label: 'View opportunity', url: opportunityLink(n) },
     note: sp('Fees come from the official page. Check it before you pay; organizations sometimes change them.', props.spelling),
     footer: reminderFooter(trackedReason(n)),
   };
@@ -329,7 +329,7 @@ function milestoneDue(props: DeadlineMomentEmailProps, now: Date): DeadlineMomen
       facts: facts([['Application deadline', closesFact(n, now)]]),
     },
     action: { label: 'Open your plan', url: noticeLink(n, trackerLink(n)) },
-    secondary: { label: 'View Opportunity', url: opportunityLink(n) },
+    secondary: { label: 'View opportunity', url: opportunityLink(n) },
     note: 'You can mark a step done, move it or skip it in your Tracker. The dates are yours to change.',
     footer: reminderFooter(trackedReason(n)),
   };
@@ -351,7 +351,7 @@ function goneQuiet(props: DeadlineMomentEmailProps, now: Date): DeadlineMomentPr
       facts: facts([['Application deadline', closesFact(n, now)]]),
     },
     action: { label: 'Open your Tracker', url: noticeLink(n, trackerLink(n)) },
-    secondary: { label: 'View Opportunity', url: opportunityLink(n) },
+    secondary: { label: 'View opportunity', url: opportunityLink(n) },
     note: 'If your plans changed, you can move it to later or remove it. Either way, Missa stops asking.',
     footer: reminderFooter('You get this because a call in your Tracker has been quiet for the period you chose.'),
   };
@@ -382,7 +382,7 @@ function timeToQuery(props: DeadlineMomentEmailProps, now: Date): DeadlineMoment
       ]),
     },
     action: { label: 'Log a response', url: noticeLink(n, trackerLink(n, 'awaiting')) },
-    secondary: { label: 'View Opportunity', url: opportunityLink(n) },
+    secondary: { label: 'View opportunity', url: opportunityLink(n) },
     note: sp('You write and send any follow-up yourself; Missa never contacts an organization for you.', props.spelling),
     footer: reminderFooter('You get this because this submission is still waiting for a response.'),
   };
@@ -405,7 +405,7 @@ function opensSoon(props: DeadlineMomentEmailProps, now: Date): DeadlineMomentPr
         ['Award', prizeLabel(n.prize)],
       ]),
     },
-    action: { label: 'View Opportunity', url: noticeLink(n, opportunityLink(n)) },
+    action: { label: 'View opportunity', url: noticeLink(n, opportunityLink(n)) },
     note: sp('Predicted dates come from past cycles. Missa tells you again when the organization confirms them.', props.spelling),
     footer: openingFooter(props.spelling),
   };
@@ -426,7 +426,7 @@ function forecastChanged(props: DeadlineMomentEmailProps, now: Date): DeadlineMo
       change: noticeChange(n.noticeBody, now) ?? undefined,
       facts: facts([['Deadline', calendarDate(n.deadline) ? closesFact(n, now) : null]]),
     },
-    action: { label: 'View Opportunity', url: noticeLink(n, opportunityLink(n)) },
+    action: { label: 'View opportunity', url: noticeLink(n, opportunityLink(n)) },
     note: 'Your Tracker and Calendar use the confirmed dates from now on.',
     footer: openingFooter(props.spelling),
   };
@@ -469,7 +469,7 @@ function obligationsMoved(props: DeadlineMomentEmailProps, now: Date): DeadlineM
       facts: facts([['Application deadline', closesFact(n, now)]]),
     },
     action: { label: 'Review your plan', url: noticeLink(n, trackerLink(n)) },
-    secondary: { label: 'View Opportunity', url: opportunityLink(n) },
+    secondary: { label: 'View opportunity', url: opportunityLink(n) },
     note: 'Steps you fixed to a date stayed where they were. You can move any step yourself.',
     footer: reminderFooter(trackedReason(n)),
   };
@@ -493,7 +493,7 @@ function cycleCarrySuggested(props: DeadlineMomentEmailProps, now: Date): Deadli
       ]),
     },
     action: { label: 'Open your Tracker', url: noticeLink(n, trackerLink(n)) },
-    secondary: { label: 'View Opportunity', url: opportunityLink(n) },
+    secondary: { label: 'View opportunity', url: opportunityLink(n) },
     note: 'Carrying forward copies your notes and checklist to a new record. The original stays as it was.',
     footer: reminderFooter(trackedReason(n)),
   };

@@ -54,6 +54,7 @@ import {
   type TrackerStage,
   type TrackerView,
 } from "@/lib/trackerViews";
+import { EmptyStateArt } from "@/components/illustrations/missa-illustrations";
 import styles from "./tracker-product.module.css";
 
 export type TrackerProductItem = {
@@ -234,7 +235,7 @@ function EmptyTracker({
 }) {
   return (
     <section className={styles.empty} aria-labelledby="empty-tracker-title">
-      <FolderKanban aria-hidden="true" />
+      <EmptyStateArt id="scene-reading" />
       <h2 id="empty-tracker-title">Your Tracker is ready</h2>
       <p>
         Save an Opportunity to keep its deadline, preparation, and private
@@ -1523,7 +1524,7 @@ export function TrackerProduct({
           <div className={styles.itemList}>{savedItems.map(renderItem)}</div>
           {savedItems.length ? null : (
             <section className={styles.empty}>
-              <FolderKanban aria-hidden="true" />
+              <EmptyStateArt id="spot-library" size="spot" />
               <h2>Nothing saved right now</h2>
               <p>
                 Your open tabs can finally rest. Calls you save stay here until

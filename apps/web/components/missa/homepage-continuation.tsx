@@ -526,7 +526,6 @@ export function HomepageFooter() {
           </div>
           <div className={styles.footerBottom}>
             <span>© {new Date().getFullYear()} Missa</span>
-            <span>The illustrations on this page are made with AI.</span>
             <Link href="/privacy">Privacy</Link>
             <Link href="/terms">Terms</Link>
           </div>
@@ -534,7 +533,7 @@ export function HomepageFooter() {
         <div className={styles.footerPainting}>
           <Image
             src="/media/home/generated/missa-coastal-village.webp"
-            alt="Illustration of a coastal village with artists’ studios, green hills, blue water and small boats, made with AI"
+            alt="Illustration of a coastal village with artists’ studios, green hills, blue water and small boats"
             fill
             sizes="100vw"
           />

@@ -7,8 +7,7 @@ import { Sp } from "@/components/missa/spelling";
 /**
  * Shared frame for log in, sign up, and password recovery: a white form
  * column with the wordmark and legal links, and an inset illustration with an
- * editorial caption on wide screens. Small screens show the form only. The
- * illustrations are made with AI, and the caption says so.
+ * editorial caption on wide screens. Small screens show the form only.
  */
 
 export type AuthVisual = "signup" | "login" | "recovery";
@@ -89,9 +88,6 @@ export function AuthShell({
               </p>
               <p className="mt-4 max-w-sm text-sm leading-relaxed text-background/85">
                 <Sp>{art.body}</Sp>
-              </p>
-              <p className="mt-6 text-xs text-background/70">
-                Illustration made with AI.
               </p>
             </div>
           </div>
