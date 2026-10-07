@@ -1,0 +1,19 @@
+/* Missa's dark palette primitives: warm near-black paper, ink-light text and
+   a lighter Forest. The `.dark` semantic tokens in app/globals.css point here.
+   Every text pair keeps WCAG AA contrast on --dark-paper. */
+:root {
+  --dark-paper: #161417;
+  --dark-paper-raised: #1e1b1f;
+  --dark-paper-muted: #241f26;
+  --dark-paper-secondary: #262229;
+  --dark-ink: #efeaee;
+  --dark-ink-muted: #aaa1ad;
+  --dark-line: #3a333d;
+  --dark-forest: #8cbca9;
+  --dark-forest-ink: #10241e;
+  --dark-forest-tint: #23302c;
+  --dark-lichen: #9fb27e;
+  --dark-ochre: #d6aa63;
+  --dark-mineral-blue: #7fb0c0;
+  --dark-clay: #e38b8f;
+}

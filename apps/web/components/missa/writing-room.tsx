@@ -61,6 +61,8 @@ import {
   WritingFormatBar,
   WritingFormatSheet,
 } from "@/components/missa/writing-format";
+import { WritingSnapshots } from "@/components/missa/writing-snapshots";
+import { WritingFind } from "@/components/missa/writing-find";
 import {
   CompileDialog,
   NewProjectDialog,
@@ -146,6 +148,8 @@ type Prefs = {
   spellcheck: boolean;
   minutes: number;
   view: PagesView | null;
+  /** The room's colors: light, dark, or whatever the device uses. */
+  appearance: "light" | "dark" | "device";
 };
 
 const PREFS_KEY = "missa.write.prefs.v1";
@@ -154,6 +158,7 @@ const DEFAULT_PREFS: Prefs = {
   spellcheck: false,
   minutes: 15,
   view: null,
+  appearance: "light",
 };
 const TIMER_LENGTHS = [5, 10, 15, 20, 25, 30, 45, 60];
 
@@ -199,7 +204,10 @@ function readPrefs(): Prefs {
       raw && typeof raw === "object" ? Reflect.get(raw, name) : undefined;
     const minutes = field("minutes");
     const view = field("view");
+    const appearance = field("appearance");
     return {
+      appearance:
+        appearance === "dark" || appearance === "device" ? appearance : "light",
       typeface: storedWritingTypeface(field("typeface")),
       view: view === "page" || view === "draft" ? view : null,
       spellcheck: field("spellcheck") === true,
@@ -349,6 +357,8 @@ export function WritingRoom({
     error: string;
   }>({ open: false, busy: false, error: "" });
   const [outlineProject, setOutlineProject] = useState<string | null>(null);
+  const [snapshotsOpen, setSnapshotsOpen] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
   const [compileState, setCompileState] = useState<{
     projectId: string | null;
     busy: boolean;
@@ -562,6 +572,38 @@ export function WritingRoom({
     }, 250);
     return () => clearInterval(interval);
   }, [timer.endsAt]);
+
+  // The room's own appearance. Only /doc turns dark, and printing is always on white.
+  useEffect(() => {
+    const root = document.documentElement;
+    const query = window.matchMedia("(prefers-color-scheme: dark)");
+    let printing = false;
+    const apply = () => {
+      const dark =
+        !printing &&
+        (prefs.appearance === "dark" ||
+          (prefs.appearance === "device" && query.matches));
+      root.classList.toggle("dark", dark);
+    };
+    const beforePrint = () => {
+      printing = true;
+      apply();
+    };
+    const afterPrint = () => {
+      printing = false;
+      apply();
+    };
+    apply();
+    query.addEventListener("change", apply);
+    window.addEventListener("beforeprint", beforePrint);
+    window.addEventListener("afterprint", afterPrint);
+    return () => {
+      query.removeEventListener("change", apply);
+      window.removeEventListener("beforeprint", beforePrint);
+      window.removeEventListener("afterprint", afterPrint);
+      root.classList.remove("dark");
+    };
+  }, [prefs.appearance]);
 
   function updatePrefs(change: Partial<Prefs>) {
     setPrefs((value) => {
@@ -1087,7 +1129,12 @@ export function WritingRoom({
             ? "This entry was deleted on another device. What you wrote here is saved as a new entry."
             : "";
   const hideChrome =
-    running && !sheetOpen && !deleteOpen && !formatOpen && !pageDeleteOpen;
+    running &&
+    !sheetOpen &&
+    !deleteOpen &&
+    !formatOpen &&
+    !pageDeleteOpen &&
+    !snapshotsOpen;
   const timerLabel = running
     ? "Pause timer"
     : remaining === 0
@@ -1247,9 +1294,31 @@ export function WritingRoom({
             event.preventDefault();
             sync.flush();
           }
+          // Find and replace reaches every page and text box, which the browser's own find can't change.
+          if (
+            (event.metaKey || event.ctrlKey) &&
+            !event.altKey &&
+            ["f", "h"].includes(event.key.toLowerCase())
+          ) {
+            event.preventDefault();
+            setFindOpen(true);
+          }
         }}
       >
         <h1 className="sr-only">Write</h1>
+        {findOpen && !compiled ? (
+          <WritingFind
+            // A fresh bar each time it opens, with the field in focus.
+            key={current.mount}
+            document={current.doc}
+            editors={editors}
+            readOnly={current.state !== "ready"}
+            onClose={() => {
+              setFindOpen(false);
+              setFocusTick((tick) => tick + 1);
+            }}
+          />
+        ) : null}
         <WritingNotices
           notice={notice}
           rejection={rejection}
@@ -1611,6 +1680,40 @@ export function WritingRoom({
                 </DropdownMenuRadioGroup>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Appearance</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={prefs.appearance}
+                  onValueChange={(value) =>
+                    updatePrefs({
+                      appearance:
+                        value === "dark" || value === "device"
+                          ? value
+                          : "light",
+                    })
+                  }
+                >
+                  <DropdownMenuRadioItem value="light" closeOnClick>
+                    Light
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="dark" closeOnClick>
+                    Dark
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="device" closeOnClick>
+                    Match this device
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setFindOpen(true)}>
+                Find and replace
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={deviceOnly || current.state !== "ready"}
+                onClick={() => setSnapshotsOpen(true)}
+              >
+                Snapshots…
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={printPages}>
                 Print or save as PDF
               </DropdownMenuItem>
@@ -1673,6 +1776,22 @@ export function WritingRoom({
         onOutline={setOutlineProject}
         onDownloadAll={() => void downloadAll()}
         exportError={exportError}
+      />
+
+      <WritingSnapshots
+        open={snapshotsOpen}
+        onOpenChange={setSnapshotsOpen}
+        onClosed={() => setFocusTick((tick) => tick + 1)}
+        entryId={current.id}
+        content={contentOf(current)}
+        onRestore={(content) => {
+          setActive(null);
+          setCurrent((value) =>
+            opened(value.id, content, prefs.typeface, "ready", value.projectId),
+          );
+          sync.edit(current.id, content, current.projectId);
+          setFocusTick((tick) => tick + 1);
+        }}
       />
 
       <NewProjectDialog

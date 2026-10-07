@@ -44,6 +44,7 @@ test("only the writing module names the writing tables", () => {
     "packages/db/migrations/0095_creator_writing.sql",
     "packages/db/migrations/0096_creator_writing_pages.sql",
     "packages/db/migrations/0097_creator_writing_projects.sql",
+    "packages/db/migrations/0098_creator_writing_snapshots.sql",
     "apps/web/lib/writing-repository.ts",
     "apps/web/lib/writing-repository.test.ts",
     "apps/web/lib/writing-boundary.test.ts",
@@ -52,7 +53,7 @@ test("only the writing module names the writing tables", () => {
     .filter(
       ({ path, text }) =>
         !allowed.has(path) &&
-        /creator_writing_(?:entries|projects)(?!\.sql)/.test(text),
+        /creator_writing_(?:entries|projects|snapshots)(?!\.sql)/.test(text),
     )
     .map(({ path }) => path);
   assert.deepEqual(

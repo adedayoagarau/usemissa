@@ -16,10 +16,17 @@ import {
   type ProjectTemplateId,
   type WritingProject,
 } from "./writing-projects.ts";
+import {
+  SNAPSHOTS_PER_PIECE,
+  type SnapshotRequest,
+  type WritingSnapshot,
+  type WritingSnapshotSummary,
+} from "./writing-snapshots.ts";
 
 /**
- * The only code that reads or writes creator_writing_entries and
- * creator_writing_projects (migrations 0095, 0096, 0097).
+ * The only code that reads or writes creator_writing_entries,
+ * creator_writing_projects and creator_writing_snapshots (migrations 0095 to
+ * 0098).
  * Every query is scoped to one account. writing-boundary.test.ts fails when
  * another file names the table, so nothing else can read a creator's writing.
  */
@@ -57,6 +64,28 @@ type ProjectRow = {
   created_at: Date;
   updated_at: Date;
 };
+
+type SnapshotRow = {
+  id: string;
+  name: string;
+  title: string;
+  word_count: number;
+  created_at: Date;
+  body?: string;
+  document?: string | null;
+};
+
+const SNAPSHOT_SUMMARY = "id,name,title,word_count,created_at";
+
+function snapshotSummary(row: SnapshotRow): WritingSnapshotSummary {
+  return {
+    id: row.id,
+    name: row.name,
+    title: row.title,
+    wordCount: row.word_count,
+    createdAt: new Date(row.created_at).toISOString(),
+  };
+}
 
 function project(row: ProjectRow): WritingProject {
   return {
@@ -396,6 +425,96 @@ export class WritingRepository extends CreatorRepositoryBase {
       [accountId, projectId],
     );
     return { project: project(found.rows[0]), entries: result.rows.map(entry) };
+  }
+
+  async listSnapshots(
+    accountId: string,
+    entryId: string,
+  ): Promise<WritingSnapshotSummary[]> {
+    const result = await this.query<SnapshotRow>(
+      `select ${SNAPSHOT_SUMMARY} from creator_writing_snapshots
+       where account_id=$1 and entry_id=$2 order by created_at desc limit $3`,
+      [accountId, entryId, SNAPSHOTS_PER_PIECE],
+    );
+    return result.rows.map(snapshotSummary);
+  }
+
+  /**
+   * Keeps a copy of a piece as it stands now. The piece must be in the
+   * account. A retried request returns the snapshot already kept. The oldest
+   * snapshots past the limit for one piece are let go.
+   */
+  async createSnapshot(
+    accountId: string,
+    entryId: string,
+    request: SnapshotRequest,
+  ): Promise<WritingSnapshotSummary | null> {
+    const result = await this.query<SnapshotRow>(
+      `with owned as (
+         select id from creator_writing_entries where account_id=$1 and id=$2
+       ), kept as (
+         insert into creator_writing_snapshots (id,account_id,entry_id,name,title,body,document,word_count)
+         select $3,$1,o.id,$4,$5,$6,$7,$8 from owned o
+         on conflict (id) do nothing
+         returning ${SNAPSHOT_SUMMARY}
+       )
+       select * from kept
+       union all
+       select ${SNAPSHOT_SUMMARY} from creator_writing_snapshots
+       where id=$3 and account_id=$1 and entry_id=$2 and not exists (select 1 from kept)`,
+      [
+        accountId,
+        entryId,
+        request.id,
+        request.name,
+        request.title,
+        request.body,
+        request.document,
+        countWords(request.body),
+      ],
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    await this.query(
+      `delete from creator_writing_snapshots where account_id=$1 and entry_id=$2 and id in (
+         select id from creator_writing_snapshots where account_id=$1 and entry_id=$2
+         order by created_at desc offset $3
+       )`,
+      [accountId, entryId, SNAPSHOTS_PER_PIECE],
+    );
+    return snapshotSummary(row);
+  }
+
+  async getSnapshot(
+    accountId: string,
+    entryId: string,
+    id: string,
+  ): Promise<WritingSnapshot | null> {
+    const result = await this.query<SnapshotRow>(
+      `select ${SNAPSHOT_SUMMARY},body,document from creator_writing_snapshots
+       where account_id=$1 and entry_id=$2 and id=$3`,
+      [accountId, entryId, id],
+    );
+    const row = result.rows[0];
+    return row
+      ? {
+          ...snapshotSummary(row),
+          body: row.body ?? "",
+          document: row.document ?? null,
+        }
+      : null;
+  }
+
+  async deleteSnapshot(
+    accountId: string,
+    entryId: string,
+    id: string,
+  ): Promise<boolean> {
+    const result = await this.query(
+      `delete from creator_writing_snapshots where account_id=$1 and entry_id=$2 and id=$3`,
+      [accountId, entryId, id],
+    );
+    return result.rowCount === 1;
   }
 
   /** Every entry with its full text, for the creator's own account export. */
