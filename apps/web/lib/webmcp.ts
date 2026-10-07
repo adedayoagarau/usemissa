@@ -53,6 +53,7 @@ const BLOCKED_PATHS = [
   /^\/(?:my-submissions|tracker\/submissions)\/[^/]+(?:\/|$)/u,
   /^\/organization\/[^/]+\/(?:settings|submissions\/[^/]+)(?:\/|$)/u,
   /^\/workspace\/settings(?:\/|$)/u,
+  /^\/write(?:\/|$)/u,
 ];
 
 const CREATOR_PATHS = new Set([
