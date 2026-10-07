@@ -49,6 +49,14 @@
     "adaptation": "Compact semantic count for unread or selected totals. It supplies an explicit accessible label and does not communicate state through color alone.",
     "evidence": "Creator Inbox information-architecture redesign, 2026-09-14"
   },
+  "collaborationBadge": {
+    "status": "approved",
+    "implementation": "apps/web/components/missa/collaboration-badge.tsx",
+    "composition": ["Badge", "Popover"],
+    "variants": ["confirmed", "awaiting"],
+    "adaptation": "The credit between two creators on a public profile. Confirmed means the other creator's published profile credits this one back, read by the server on every request; Awaiting is owner-only, drawn as a dashed outline with a clock icon and the words 'Awaiting confirmation'. The Popover explains the rule in plain language. Same badge styles as ProvenanceBadge, with a 44px tap area around the 28px chip.",
+    "evidence": "Public profile add-ons build (Collaborators), 2026-10-07"
+  },
   "liquidGlassWelcome": {
     "status": "experimental",
     "implementation": "apps/web/components/missa/liquid-glass-welcome.tsx",

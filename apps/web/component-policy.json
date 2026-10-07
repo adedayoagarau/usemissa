@@ -192,10 +192,14 @@
         "Combobox",
         "PortfolioLinkPreview",
         "PortfolioHandleField",
-        "ProvenanceBadge"
+        "ProvenanceBadge",
+        "CollaborationBadge",
+        "InputGroup",
+        "Alert"
       ],
       "appearance": "section-rail-focused-editor-and-device-scaled-live-preview",
       "mediaSelection": "labelled-button-trigger-with-replace-remove-and-preview",
+      "documentSelection": "same-trigger-for-pdf-or-zip-with-type-and-size-read-by-the-server-and-an-owner-note-that-files-become-public-on-publish",
       "reorder": "explicit-move-up-down-buttons"
     },
     "composition.creator-portfolio": {
@@ -205,6 +209,7 @@
         "Button",
         "Dialog",
         "ProvenanceBadge",
+        "CollaborationBadge",
         "AvailabilityChip",
         "ProfileConnect"
       ],
@@ -1264,6 +1269,15 @@
       "implementation": "components/missa/provenance-badge.tsx",
       "states": ["confirmed", "linked", "added"],
       "rule": "Confirmed only when the server matched a Missa acceptance; the popover always explains the source in plain language.",
+      "motion": "popover-transition-only"
+    },
+    "CollaborationBadge": {
+      "base": "Badge",
+      "disclosure": "Popover",
+      "implementation": "components/missa/collaboration-badge.tsx",
+      "states": ["confirmed", "awaiting"],
+      "rule": "Confirmed only when the other creator's published profile credits this creator back, which the server reads on every request. Awaiting is shown to the owner in the studio and never to a visitor. Both states are written out; the dashed outline never carries the meaning alone.",
+      "boundary": "Not a ProvenanceBadge state: that mark means an organization recorded an outcome on Missa and has three states for the source of a record entry. A credit between two creators has a different rule and an owner-only state, so it is its own semantic component on the same Popover pattern and badge styles.",
       "motion": "popover-transition-only"
     },
     "AvailabilityChip": {
