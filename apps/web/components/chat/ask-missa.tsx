@@ -20,6 +20,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
 import { Textarea } from '@/components/ui/textarea';
+import { taxonomyFacetLabel } from '@/lib/taxonomy-labels';
 
 import styles from './ask-missa.module.css';
 
@@ -46,21 +47,6 @@ const suggestions = [
   'Find grants for documentary filmmakers',
 ];
 
-const facetLabels: Record<string, string> = {
-  'practice-family': 'Field',
-  discipline: 'Discipline',
-  form: 'Form',
-  genre: 'Genre',
-  subgenre: 'Subgenre',
-  medium: 'Medium',
-  technique: 'Technique or process',
-  mode: 'Mode or approach',
-  role: 'Role',
-  theme: 'Theme or subject',
-  audience: 'Audience',
-  language: 'Language',
-};
-
 function assistantPayload(message: ChatMessage): ChatAssistantPayload | undefined {
   if (message.role !== 'assistant') return undefined;
   const parsed = chatAssistantPayloadSchema.safeParse(message.metadata);
@@ -80,7 +66,7 @@ function ParsedSearch({ payload }: { payload: ChatAssistantPayload }) {
   const filters = [
     ...payload.search.types.map((type) => ({ category: 'Type', label: type.replaceAll('-', ' ') })),
     ...(payload.search.feeStatus ? [{ category: 'Fee', label: payload.search.feeStatus === 'no-fee' ? 'No fee' : payload.search.feeStatus.replaceAll('-', ' ') }] : []),
-    ...payload.search.taxonomy.map((term) => ({ category: facetLabels[term.facet] ?? term.facet, label: term.label })),
+    ...payload.search.taxonomy.map((term) => ({ category: taxonomyFacetLabel(term.facet), label: term.label })),
   ];
   if (!filters.length && !payload.search.query) return null;
   return (
@@ -299,7 +285,7 @@ export function AskMissa() {
             <section className={styles.empty}>
               <Search aria-hidden="true" />
               <h3>What published Opportunity are you looking for?</h3>
-              <p>Use an Opportunity type, any of the 12 field facets, a fee preference, geography, or deadline. Missa searches its published collection only.</p>
+              <p>Use an Opportunity type, what you make or your role, a fee preference, geography, or deadline. Missa searches its published collection only.</p>
               <div>{suggestions.map((suggestion) => <button key={suggestion} type="button" onClick={() => { setInput(suggestion); inputRef.current?.focus(); }}>{suggestion}</button>)}</div>
             </section>
           ) : null}

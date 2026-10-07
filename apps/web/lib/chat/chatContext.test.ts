@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { TAXONOMY_FACET_KEYS } from "@missa/taxonomy";
-import { buildOpportunitySearchPlan } from "./chatContext";
+import { buildOpportunityAssistantPayload, buildOpportunitySearchPlan } from "./chatContext";
 
 test("baseline context planning is bounded and transparent", () => {
   const plan = buildOpportunitySearchPlan("Find free fellowships for writers");
@@ -60,4 +60,11 @@ test("the customer-safe parser recognises all twelve independent field facets", 
     "audience",
     "language",
   ]);
+});
+
+test("an ambiguous search asks the clarifying question in plain words", () => {
+  const plan = buildOpportunitySearchPlan("Find photography residencies");
+  const payload = buildOpportunityAssistantPayload(plan, { items: [], nextCursor: null, total: 0 });
+  assert.equal(payload.answer, "“photography” can mean more than one thing in Missa. Do you mean Photography (what you make) or Photography (discipline)?");
+  assert.deepEqual(payload.results, []);
 });
