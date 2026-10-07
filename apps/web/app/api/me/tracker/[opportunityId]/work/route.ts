@@ -28,7 +28,7 @@ export async function PUT(
   const repository = getCreatorLibraryRepository();
   if (repository) {
     const envelope = libraryEnvelope(request, session.account.id, 'tracker.work.link', { opportunityId, workId: body.workId.trim() }, body.expectedRevision);
-    if (!envelope) return creatorLibraryJson({ error: 'Refresh this Tracker item before linking a Work.' }, 400);
+    if (!envelope) return creatorLibraryJson({ error: 'Refresh this Tracker item before linking a piece.' }, 400);
     try { return creatorLibraryJson({ status: 'updated', receipt: await repository.linkTrackerWork(envelope, opportunityId, body.workId.trim()) }); }
     catch (error) { return creatorLibraryError(error); }
   }
@@ -51,7 +51,7 @@ export async function PUT(
     return NextResponse.json({ status: 'updated', tracked }, { headers });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Could not link this Work' },
+      { error: error instanceof Error ? error.message : "Couldn't link this piece. Try again." },
       { status: 404, headers },
     );
   }
@@ -88,7 +88,7 @@ export async function DELETE(
     return NextResponse.json({ status: 'updated', tracked }, { headers });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Could not unlink this Work' },
+      { error: error instanceof Error ? error.message : "Couldn't unlink this piece. Try again." },
       { status: 404, headers },
     );
   }

@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     body && typeof body.opportunityId === "string" ? body.opportunityId : "";
   if (!/^[A-Za-z0-9_-]{1,200}$/u.test(opportunityId)) {
     return NextResponse.json(
-      { error: "Choose an Opportunity to save." },
+      { error: "Choose a call to save." },
       { status: 400, headers: noStore },
     );
   }
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           status: "blocked",
-          error: "This Opportunity is no longer available to save.",
+          error: "This call is no longer available to save.",
         },
         { status: 409, headers: noStore },
       );
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "We could not hold this Save request. The Opportunity is unchanged. Try again.",
+          "We couldn't hold this save request. Nothing changed. Try again.",
       },
       { status: 503, headers: noStore },
     );

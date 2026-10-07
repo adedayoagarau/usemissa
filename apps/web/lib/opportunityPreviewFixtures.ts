@@ -16,7 +16,7 @@ const practice = {
   design: taxonomyTermId("practice-family", "Design"),
   interdisciplinary: taxonomyTermId(
     "practice-family",
-    "Interdisciplinary, hybrid & emerging practice",
+    "Interdisciplinary, hybrid & emerging practice", // missa-language-allow: taxonomy label used to build the term ID
   ),
 };
 
@@ -80,7 +80,7 @@ export const PUBLIC_OPPORTUNITY_PREVIEW_ITEMS: OpportunityBrowseProjection[] = [
     identityAssetAlt: "Modern arts center beneath a blue sky",
     status: "closing-soon",
     type: "fellowship",
-    discipline: "Interdisciplinary practice",
+    discipline: "Interdisciplinary",
     genres: ["Residency", "Fellowship"],
     taxonomy: { schemeVersion: 1, termIds: [practice.interdisciplinary], primaryTermIds: [practice.interdisciplinary] },
     deadline: { kind: "exact", date: "2026-09-08", timezone: "America/New_York" },

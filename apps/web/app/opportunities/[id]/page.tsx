@@ -28,7 +28,7 @@ async function getRelatedProfile(
       ? await getPublicProfileById(opportunity.organizationId)
       : await getPublicProfileForOpportunity(opportunity.id);
   } catch (error) {
-    console.warn('Related Organization profile is unavailable; rendering the Opportunity without it.', error);
+    console.warn('Related organization profile is unavailable; rendering the opportunity without it.', error);
     return null;
   }
 }

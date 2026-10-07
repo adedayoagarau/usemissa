@@ -66,7 +66,7 @@ export async function DELETE(
           { status: error.actualRevision === 0 ? 404 : 409 },
         );
       return NextResponse.json(
-        { error: "We could not unfollow that Organization." },
+        { error: "We couldn't unfollow that organization. Try again." },
         { status: 500 },
       );
     }

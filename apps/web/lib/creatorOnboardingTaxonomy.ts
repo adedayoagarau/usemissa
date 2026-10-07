@@ -91,7 +91,7 @@ export type OnboardingInterestDefinition = {
 export const ONBOARDING_INTERESTS: readonly OnboardingInterestDefinition[] = [
   {
     label: "Grants & funding",
-    description: "You want funding for a project or practice.",
+    description: "You want funding for a project or your ongoing work.",
     opportunityTypes: ["grant"],
   },
   {

@@ -33,6 +33,6 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof LibraryValidationError) return NextResponse.json({ error: error.message }, { status: 400, headers });
     console.error('Library work create failed', error);
-    return NextResponse.json({ error: 'We could not save that Work.' }, { status: 500, headers });
+    return NextResponse.json({ error: "We couldn't save that piece. Try again." }, { status: 500, headers });
   }
 }

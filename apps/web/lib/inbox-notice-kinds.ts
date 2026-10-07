@@ -72,14 +72,14 @@ const PRESENTATION: Record<DeadlineNoticeKind, Presentation> = {
   "opens-soon": {
     category: "Opening soon",
     group: "discovery",
-    actionLabel: "View Opportunity",
+    actionLabel: "View call",
     fallback: "opportunity",
     reason: "You saved this call or follow its Organization.",
   },
   "forecast-changed": {
     category: "Dates confirmed",
     group: "changes",
-    actionLabel: "View Opportunity",
+    actionLabel: "View call",
     fallback: "opportunity",
     reason: "You saved this call or follow its Organization.",
   },
