@@ -7,7 +7,7 @@ import {
   requireOrganizationAccess,
 } from '@/lib/organizationAccess';
 import { privateFileHeaders } from '@/lib/privateFileHeaders';
-import { workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
+import { getRelationalWorkspace, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
 /** Streams a private submission file only after the organization scope and
  * role check: `submissions.read` holders, or the Work's assigned reviewer. */
@@ -23,7 +23,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: ORGANIZATION_ROLE_FORBIDDEN }, { status: 403 });
     }
   }
-  const work = result.access.scope.work(workId);
+  const work = workspaceRelationalAuthorityEnabled()
+    ? (await (await getRelationalWorkspace()).submissionsForOrganization(id)).flatMap((submission) => submission.works).find((candidate) => candidate.id === workId)
+    : result.access.scope.work(workId);
   const requestedIndex = Number(new URL(request.url).searchParams.get('index') ?? '0');
   const fileUrl = Number.isInteger(requestedIndex) && requestedIndex >= 0 ? work?.fileUrls?.[requestedIndex] ?? (requestedIndex === 0 ? work?.fileUrl : undefined) : undefined;
   if (!fileUrl) return NextResponse.json({ error: 'File not found' }, { status: 404 });

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireOrganizationAccess } from '@/lib/organizationAccess';
+import { workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
 const headers = { 'Cache-Control': 'private, no-store' };
 function render(template: string, values: Record<string, string>): string { return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key: string) => values[key] ?? ''); }
@@ -8,6 +9,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
   const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status, headers });
+  if (workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: 'Decision emails are not available in this workspace yet' }, { status: 503, headers });
   const body = await request.json().catch(() => ({}));
   const workIds: string[] = Array.isArray(body.workIds) ? body.workIds.filter((value: unknown): value is string => typeof value === 'string') : [];
   const subject = typeof body.subject === 'string' ? body.subject.trim() : 'Your Missa submission update';
