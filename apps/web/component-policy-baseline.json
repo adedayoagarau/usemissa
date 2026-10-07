@@ -306,11 +306,6 @@
       "<select>": 3,
       "<button>": 1
     },
-    "app/organization/[organizationId]/messages/page.tsx": {
-      "<input>": 1,
-      "<select>": 1,
-      "<button>": 1
-    },
     "app/organization/[organizationId]/opportunities/page.tsx": {
       "<input>": 1,
       "<select>": 2,
@@ -319,15 +314,6 @@
     "app/organization/[organizationId]/people/page.tsx": {
       "<input>": 1,
       "<select>": 1,
-      "<button>": 1
-    },
-    "app/organization/[organizationId]/settings/page.tsx": {
-      "<select>": 1,
-      "<button>": 1
-    },
-    "app/organization/[organizationId]/submissions/page.tsx": {
-      "<input>": 2,
-      "<select>": 5,
       "<button>": 1
     },
     "app/reset-password/page.tsx": {
@@ -372,9 +358,6 @@
     },
     "components/chat/ask-missa.tsx": {
       "<button>": 2
-    },
-    "components/communications-manager.tsx": {
-      "<button>": 1
     },
     "components/content-issue-report-dialog.tsx": {
       "<select>": 1
@@ -519,9 +502,6 @@
       "<select>": 1,
       "<input>": 1,
       "role=dialog": 1
-    },
-    "components/organization-review-settings.tsx": {
-      "<input>": 2
     },
     "components/organization-seats.tsx": {
       "<select>": 1,

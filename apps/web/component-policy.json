@@ -105,6 +105,12 @@
       "composition": ["SettingsRow", "Field", "Input", "RadioGroup", "SegmentedChoice", "Checkbox", "Switch", "DropdownMenu", "Button", "Alert", "Sonner", "OrganizationMark"],
       "boundary": "Accent choices are names for existing palette mappings in components/design-system/organization-palette.css; no raw colour is accepted or stored. Stage labels and transparency change wording and visibility only, never the recorded facts."
     },
+    "composition.submission-receipt": {
+      "semantic": "SubmissionReceipt",
+      "implementation": "apps/web/app/(passport)/tracker/submissions/[submissionId]/page.tsx",
+      "composition": ["Button", "AlertDialog", "DetailFields", "HueTile", "WorkDecisionBadge", "SubmissionStatusTimeline", "SubmitterQuestions", "EditSubmissionDialog"],
+      "boundary": "The submitter's own record of one hosted submission: where it stands, each Work with its own recorded decision, their answers, questions, history and payment. Withdrawal is confirmed in an AlertDialog. No reader, score or note is ever shown."
+    },
     "composition.submission-status-timeline": {
       "semantic": "SubmissionStatusTimeline",
       "implementation": "apps/web/components/submission-status-timeline.tsx",
