@@ -179,6 +179,11 @@ export interface ReviewAssignment {
   submissionId: string;
   reviewerAccountId: string;
   completedAt?: IsoDateTime;
+  /** The date the organization asked for this read by; past it, an open read is overdue. */
+  expiresAt?: IsoDateTime;
+  /** Set when the reader declared a conflict or the organization moved the read elsewhere. */
+  recusedAt?: IsoDateTime;
+  recusalReason?: string;
 }
 
 /** Fixed small rubric per MVP scope (not a rubric builder — see Story 7.3). */
@@ -213,3 +218,149 @@ export interface DeliveryTask {
   dueDate?: IsoDate;
   completedAt?: IsoDateTime;
 }
+
+// --- Rubrics -----------------------------------------------------------------
+
+/** One named thing readers score, on a whole-number scale from 0 to maxScore. */
+export interface RubricCriterion {
+  id: string;
+  label: string;
+  description?: string;
+  /** Relative importance, 1-10. */
+  weight: number;
+  /** Top of the scale, 3-10. */
+  maxScore: number;
+}
+
+/**
+ * An immutable rubric version for one review round. Changing the rubric adds
+ * a new version; reads already scored keep the version they were scored on.
+ * A version with no criteria means the round went back to the single score.
+ */
+export interface RoundRubric {
+  id: string;
+  organizationId: string;
+  reviewRoundId: string;
+  version: number;
+  criteria: RubricCriterion[];
+  createdAt: IsoDateTime;
+  createdByAccountId: string;
+}
+
+/** A reader's per-criterion scores for one assignment, tied to the rubric version used. */
+export interface CriterionScores {
+  reviewAssignmentId: string;
+  organizationId: string;
+  rubricId: string;
+  rubricVersion: number;
+  scores: Record<string, number>;
+  recordedAt: IsoDateTime;
+}
+
+// --- Submission revisions -----------------------------------------------------
+
+export type SubmissionRevisionChange =
+  | { kind: 'work-title'; workId: string; before: string; after: string }
+  | { kind: 'work-files'; workId: string; before: string[]; after: string[] }
+  | { kind: 'answer'; fieldId: string; before?: string | string[]; after?: string | string[] };
+
+/** A change a submitter made to their own submission before reading began. */
+export interface SubmissionRevision {
+  id: string;
+  organizationId: string;
+  submissionId: string;
+  submitterAccountId: string;
+  at: IsoDateTime;
+  changes: SubmissionRevisionChange[];
+}
+
+// --- Submitter questions -------------------------------------------------------
+
+/** A question a submitter asks the organization about their own submission. */
+export interface SubmitterQuestion {
+  id: string;
+  organizationId: string;
+  submissionId: string;
+  submitterAccountId: string;
+  body: string;
+  askedAt: IsoDateTime;
+  status: 'open' | 'answered' | 'closed';
+  answer?: string;
+  answeredAt?: IsoDateTime;
+  answeredByAccountId?: string;
+}
+
+// --- Organization communications ---------------------------------------------
+
+/** A stage a Submission can be told it has reached, between receipt and decision. */
+export type SubmissionStage = 'longlist' | 'shortlist' | 'finalist';
+
+/**
+ * The kinds of letter an organization sends through the Communications
+ * Manager. Each kind resolves to a default template and, where it marks a
+ * stage, to the SubmissionStage the recipient is told about.
+ */
+export type CommunicationKind =
+  | 'rejection-with-dignity'
+  | 'longlist'
+  | 'shortlist'
+  | 'finalists'
+  | 'decision'
+  | 'custom';
+
+/**
+ * Approval-gated batch lifecycle. Only an `approved` batch can be sent, and a
+ * batch that has started sending can no longer be edited or cancelled.
+ */
+export type CommunicationBatchStatus =
+  | 'draft'
+  | 'awaiting-approval'
+  | 'approved'
+  | 'sending'
+  | 'sent'
+  | 'partially-sent'
+  | 'failed'
+  | 'cancelled';
+
+export type CommunicationRecipientStatus = 'pending' | 'sent' | 'failed' | 'suppressed' | 'skipped';
+
+export interface CommunicationRecipient {
+  submissionId: string;
+  submitterAccountId: string;
+  /** Works the letter refers to; empty means the whole Submission. */
+  workIds: string[];
+  status: CommunicationRecipientStatus;
+  /** Durable message effect id when the provider accepted the send. */
+  effectId?: string;
+  reason?: string;
+  sentAt?: IsoDateTime;
+}
+
+export interface CommunicationBatch {
+  id: string;
+  organizationId: string;
+  openCallId: string;
+  kind: CommunicationKind;
+  /** Stage the recipients are told they reached; set for longlist/shortlist/finalists. */
+  stage?: SubmissionStage;
+  subject: string;
+  /** Body with merge fields such as {{submitterName}}, {{workTitles}}, {{opportunityTitle}}. */
+  body: string;
+  status: CommunicationBatchStatus;
+  recipients: CommunicationRecipient[];
+  createdByAccountId: string;
+  createdAt: IsoDateTime;
+  updatedAt: IsoDateTime;
+  approvalRequestedAt?: IsoDateTime;
+  approvedByAccountId?: string;
+  approvedAt?: IsoDateTime;
+  /** When set on an approved batch, the scheduler sends it at or after this time. */
+  scheduledFor?: IsoDateTime;
+  sendStartedAt?: IsoDateTime;
+  sentAt?: IsoDateTime;
+  cancelledAt?: IsoDateTime;
+  cancelledByAccountId?: string;
+  /** Hash of subject + body at approval time; a later edit invalidates approval. */
+  approvedContentHash?: string;
+}
+

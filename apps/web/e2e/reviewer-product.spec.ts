@@ -37,23 +37,23 @@ test('Reviewer queue and Evidence Desk expose only assigned Work titles on mobil
   await expect(page.getByRole('heading', { name: fixture.firstWork })).toBeVisible();
   await expect(page.getByRole('heading', { name: fixture.secondWork })).toBeVisible();
   await expect(page.locator('body')).not.toContainText(fixture.submitterEmail);
-  await expect(page.getByRole('button', { name: /Submit|Save draft|Score|Recommend/u })).toHaveCount(0);
   await page.getByRole('button', { name: 'Review' }).click();
-  await expect(page.getByRole('heading', { name: 'Review controls are not available yet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Record your recommendation' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Record recommendation' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);
   await page.screenshot({ path: 'outputs/reviewer-evidence-desk-mobile.png', fullPage: true });
 });
 
-test('A completed fixed-score review is shown as a read-only legacy record', async ({ page, baseURL }) => {
+test('A completed fixed-score review is shown with the option to update it', async ({ page, baseURL }) => {
   const fixture = await reviewerFixture(page, baseURL);
   const response = await page.request.post(`/api/reviewer/assignments/${fixture.assignmentId}/review`, { data: { score: 7, notes: 'Strong control of form.' } });
   expect(response.status()).toBe(200);
   await page.goto(`/reviews/${fixture.assignmentId}`);
-  await expect(page.getByRole('heading', { name: 'Legacy recommendation submitted' })).toBeVisible();
-  await expect(page.getByText('Strong control of form.')).toBeVisible();
-  await expect(page.getByRole('button', { name: /Edit|Resubmit|Submit/u })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Recommendation recorded' })).toBeVisible();
+  await expect(page.getByText('Strong control of form.').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save changes' })).toBeVisible();
 });
 
 test('A reviewer cannot discover an assignment owned by another account', async ({ page, baseURL }) => {

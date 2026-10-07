@@ -11,7 +11,9 @@ import styles from './organization-product-shell.module.css';
 type OrganizationOption = { id: string; name: string; roleLabel: string };
 type NavigationItem = { id: OrganizationDestination; label: string; href: string };
 
-export function OrganizationProductShell({ children, organization, organizations, roleLabel, navigation }: { children: React.ReactNode; organization: OrganizationOption; organizations: OrganizationOption[]; roleLabel: string; navigation: NavigationItem[] }) {
+type Appearance = { accent: string; density: 'compact' | 'comfortable'; displayName: string; logoUrl?: string };
+
+export function OrganizationProductShell({ children, organization, organizations, roleLabel, navigation, appearance }: { children: React.ReactNode; organization: OrganizationOption; organizations: OrganizationOption[]; roleLabel: string; navigation: NavigationItem[]; appearance?: Appearance }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -20,6 +22,20 @@ export function OrganizationProductShell({ children, organization, organizations
   const commandButtonRef = useRef<HTMLButtonElement>(null);
   const commandRef = useRef<HTMLElement>(null);
   const commands = useMemo(() => navigation.filter((item) => item.label.toLocaleLowerCase('en').includes(query.trim().toLocaleLowerCase('en'))), [navigation, query]);
+  const [records, setRecords] = useState<{ query: string; results: Array<{ kind: string; title: string; detail: string; href: string }> }>({ query: '', results: [] });
+  useEffect(() => {
+    const term = query.trim();
+    if (!commandOpen || term.length < 2) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      void fetch(`/api/orgs/${encodeURIComponent(organization.id)}/search?q=${encodeURIComponent(term)}`, { signal: controller.signal, cache: 'no-store' })
+        .then(async (response) => (response.ok ? (await response.json()).results : []))
+        .then((results) => setRecords({ query: term, results }))
+        .catch(() => undefined);
+    }, 200);
+    return () => { controller.abort(); window.clearTimeout(timer); };
+  }, [commandOpen, query, organization.id]);
+  const recordResults = records.query === query.trim() ? records.results : [];
   const active = (item: NavigationItem) => item.id === 'overview' ? pathname.endsWith('/overview') : pathname.includes(`/${item.id}`);
 
   useEffect(() => {
@@ -39,7 +55,7 @@ export function OrganizationProductShell({ children, organization, organizations
     return () => { document.removeEventListener('keydown', handleKeyDown); commandButton?.focus({ preventScroll: true }); };
   }, [commandOpen]);
 
-  return <div className={styles.product}>
+  return <div className={styles.product} data-org-accent={appearance?.accent && appearance.accent !== 'forest' ? appearance.accent : undefined} data-density={appearance?.density}>
     <a href="#organization-main" className={styles.skip}>Skip to Organization content</a>
     <header className={styles.topbar}>
       <MissaWordmark size="app" className={styles.wordmark} />
@@ -51,12 +67,15 @@ export function OrganizationProductShell({ children, organization, organizations
     <div className={styles.shell}>
       <aside className={styles.rail} data-open={mobileOpen} aria-label="Organization navigation">
         <label className={styles.organizationPicker}><span>Current Organization</span><select value={organization.id} aria-label="Switch Organization" onChange={(event) => router.push(`/organization/${encodeURIComponent(event.target.value)}/overview`)}>{organizations.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.roleLabel}</option>)}</select><ChevronDown aria-hidden="true" /></label>
-        <div className={styles.role}><strong>{organization.name}</strong><span>{roleLabel}</span></div>
+        <div className={styles.role}>{appearance?.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- organization-supplied https logo from an unknown host
+          <img src={appearance.logoUrl} alt="" className={styles.orgLogo} />
+        ) : null}<strong>{appearance?.displayName ?? organization.name}</strong><span>{roleLabel}</span></div>
         <nav aria-label="Organization destinations">{navigation.map((item) => <Link key={item.id} href={item.href} aria-current={active(item) ? 'page' : undefined} onClick={() => setMobileOpen(false)}>{item.label}</Link>)}</nav>
         <Link href="/organization" className={styles.switchLink}>Choose another Organization</Link>
       </aside>
       <div className={styles.content}>{children}</div>
     </div>
-    {commandOpen ? <div className={styles.commandBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setCommandOpen(false); }}><section ref={commandRef} className={styles.command} role="dialog" aria-modal="true" aria-labelledby="organization-command-title"><header><div><p>Organization search</p><h2 id="organization-command-title">Open a destination</h2></div><button type="button" aria-label="Close Organization search" onClick={() => setCommandOpen(false)}><X aria-hidden="true" /></button></header><label><Search aria-hidden="true" /><span className="sr-only">Search Organization destinations</span><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search destinations" /></label><div>{commands.map((item) => <Link key={item.id} href={item.href} onClick={() => setCommandOpen(false)}>{item.label}<span>Open</span></Link>)}{commands.length === 0 ? <p>No destinations match “{query}”.</p> : null}</div></section></div> : null}
+    {commandOpen ? <div className={styles.commandBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setCommandOpen(false); }}><section ref={commandRef} className={styles.command} role="dialog" aria-modal="true" aria-labelledby="organization-command-title"><header><div><p>Organization search</p><h2 id="organization-command-title">Find a page or record</h2></div><button type="button" aria-label="Close Organization search" onClick={() => setCommandOpen(false)}><X aria-hidden="true" /></button></header><label><Search aria-hidden="true" /><span className="sr-only">Search Organization destinations</span><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search pages, submitters, Works" /></label><div>{commands.map((item) => <Link key={item.id} href={item.href} onClick={() => setCommandOpen(false)}>{item.label}<span>Open</span></Link>)}{recordResults.map((item) => <Link key={item.href} href={item.href} onClick={() => setCommandOpen(false)}><span className={styles.recordResult}><strong>{item.title}</strong><small>{item.detail}</small></span><span>{item.kind === 'opportunity' ? 'Opportunity' : 'Submission'}</span></Link>)}{commands.length === 0 && recordResults.length === 0 ? <p>{query.trim().length >= 2 ? `Nothing matches “${query}”.` : `No destinations match “${query}”.`}</p> : null}</div></section></div> : null}
   </div>;
 }

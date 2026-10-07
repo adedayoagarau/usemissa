@@ -285,17 +285,23 @@ test("10. Public opportunity projections: unknown media NEVER appears, cleared/p
     limit: 10,
   });
 
-  // Query must filter rights_status to 'cleared' and 'permitted'
+  // Query must filter rights_status to 'cleared' and 'permitted' (or the
+  // organizer's credited og:image, see mediaRightsRule.test.ts)
   assert.match(browseQuery.text, /a\.rights_status in \('cleared', 'permitted'\)/);
-  // Catalogue cards only surface opportunity artwork/covers — not logos or org banners
-  assert.match(
-    browseQuery.text,
-    /a\.kind in \('opportunity-artwork', 'opportunity-cover'\)/,
+  // Catalogue covers only surface opportunity artwork/covers — not logos or org banners
+  const cover = browseQuery.text.slice(
+    browseQuery.text.indexOf("select asset_candidate.url"),
+    browseQuery.text.indexOf(") asset on true"),
   );
+  assert.ok(cover.length > 0);
+  assert.match(cover, /a\.kind in \('opportunity-artwork', 'opportunity-cover'\)/);
+  assert.doesNotMatch(cover, /editorial-hero/);
+  assert.doesNotMatch(cover, /organization-mark/);
+  assert.doesNotMatch(cover, /'logo'/);
   assert.doesNotMatch(browseQuery.text, /editorial-hero/);
-  assert.doesNotMatch(browseQuery.text, /organization-mark/);
   // Must NOT include 'unknown'
   assert.doesNotMatch(browseQuery.text, /a\.rights_status in \([^)]*'unknown'/);
+  assert.doesNotMatch(browseQuery.text, /rights_status = 'unknown'/);
 });
 
 test("11. Review/promotion contract supports cleared, permitted, rejected, and needs-attribution", async () => {

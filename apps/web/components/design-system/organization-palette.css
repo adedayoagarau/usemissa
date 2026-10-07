@@ -1,0 +1,42 @@
+/*
+ * Organization accents remap Missa's semantic tokens to existing palette
+ * values; no raw colours, typography or layout live here. The shell sets
+ * data-org-accent from the organization's saved customization. Forest is the
+ * default and needs no override. Density follows globals.css data-density.
+ */
+[data-org-accent="ochre"] {
+  --primary: var(--ochre-deep);
+  --ring: var(--ochre-deep);
+  --accent-deep: var(--ochre-deep);
+  --accent-tint: var(--ochre-tint);
+  --sidebar-primary: var(--ochre-deep);
+  --sidebar-ring: var(--ochre-deep);
+  --chart-1: var(--ochre);
+}
+[data-org-accent="mineral"] {
+  --primary: var(--mineral-blue);
+  --ring: var(--mineral-blue);
+  --accent-deep: var(--mineral-blue);
+  --accent-tint: var(--mineral-blue-tint);
+  --sidebar-primary: var(--mineral-blue);
+  --sidebar-ring: var(--mineral-blue);
+  --chart-1: var(--mineral-blue);
+}
+[data-org-accent="moss"] {
+  --primary: var(--green);
+  --ring: var(--green);
+  --accent-deep: var(--green);
+  --accent-tint: var(--lichen-tint);
+  --sidebar-primary: var(--green);
+  --sidebar-ring: var(--green);
+  --chart-1: var(--green);
+}
+[data-org-accent="ink"] {
+  --primary: var(--ink);
+  --ring: var(--ink);
+  --accent-deep: var(--ink);
+  --accent-tint: var(--surface-muted);
+  --sidebar-primary: var(--ink);
+  --sidebar-ring: var(--ink);
+  --chart-1: var(--ink);
+}

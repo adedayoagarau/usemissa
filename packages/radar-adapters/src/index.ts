@@ -705,6 +705,10 @@ export * from "./mediaExtractionContracts.js";
 export * from "./mediaFetcher.js";
 export * from "./mediaExtractor.js";
 export * from "./mediaReviewService.js";
+export * from "./mediaRightsRule.js";
+export * from "./mediaCandidateStore.js";
+export * from "./mediaRightsCleanup.js";
+export * from "./mediaMirror.js";
 export { inferSourceRole } from "./enrichmentWorker.js";
 // The media dry-run CLI is intentionally not exported from this runtime
 // barrel. It imports node:fs and path resolution for offline fixtures; a
@@ -857,7 +861,7 @@ export * from "./cycleForecasts.js";
 export * from "./openingAlerts.js";
 export * from "./carryToNextCycle.js";
 export * from "./opportunityDeadlineFactsWriter.js";
-export { CONFIRMED_DATES_PREDICATE, type OpportunityRepositoryQueryWithDeadlineFacts } from "./opportunityRepository.js";
+export { CONFIRMED_DATES_PREDICATE, SERVABLE_ASSET_RIGHTS, type OpportunityRepositoryQueryWithDeadlineFacts } from "./opportunityRepository.js";
 export * from "./creatorObligationMutations.js";
 export { updateCanonicalTrackerPersonalTarget, CanonicalTrackerValidationError } from "./canonicalTracker.js";
 export type { CreatorReminderTextKind } from "./creatorReminderText.js";

@@ -1,5 +1,5 @@
 import type { RadarEngine } from '@missa/radar-engine';
-import type { WorkspaceEngine } from '@missa/workspace-engine';
+import type { RubricCriterion, WorkspaceEngine } from '@missa/workspace-engine';
 
 export type ReviewerAssignmentState = 'awaiting-review-contract' | 'legacy-submitted';
 
@@ -12,10 +12,18 @@ export interface ReviewerAssignmentView {
   state: ReviewerAssignmentState;
   submittedAt: string;
   completedAt?: string;
+  dueAt?: string;
+  /** The round brief the organization asked readers to read first, if any. */
+  brief?: { text: string; updatedAt: string; acknowledged: boolean };
+  /** The rubric readers score against now, when the round uses one. */
+  rubric?: { version: number; criteria: RubricCriterion[] };
   legacyRecommendation?: {
     score?: number;
     notes?: string;
     recordedAt: string;
+    /** Per-criterion scores and the rubric version they were recorded on. */
+    criterionScores?: Record<string, number>;
+    rubricVersion?: number;
   };
 }
 
@@ -30,6 +38,7 @@ export function reviewerAssignmentsForAccount(
   accountId: string,
 ): ReviewerAssignmentView[] {
   return workspace.reviewAssignmentsForReviewer(accountId)
+    .filter((assignment) => !assignment.recusedAt)
     .map((assignment) => reviewerAssignmentForAccount(workspace, radar, accountId, assignment.id))
     .filter((assignment): assignment is ReviewerAssignmentView => Boolean(assignment))
     .sort((a, b) => {
@@ -45,7 +54,7 @@ export function reviewerAssignmentForAccount(
   assignmentId: string,
 ): ReviewerAssignmentView | undefined {
   const assignment = workspace.store.reviewAssignments.get(assignmentId);
-  if (!assignment || assignment.reviewerAccountId !== accountId) return undefined;
+  if (!assignment || assignment.reviewerAccountId !== accountId || assignment.recusedAt) return undefined;
 
   const round = workspace.store.reviewRounds.get(assignment.reviewRoundId);
   const submission = workspace.store.submissions.get(assignment.submissionId);
@@ -58,6 +67,8 @@ export function reviewerAssignmentForAccount(
   if (round.openCallId !== opportunity.id) return undefined;
 
   const recommendation = workspace.recommendationForAssignment(assignment.id);
+  const rubric = workspace.rubricForRound(round.id);
+  const criterionScores = workspace.criterionScoresForAssignment(assignment.id);
   return {
     id: assignment.id,
     organizationName: organization.name,
@@ -67,14 +78,30 @@ export function reviewerAssignmentForAccount(
     state: assignment.completedAt && recommendation ? 'legacy-submitted' : 'awaiting-review-contract',
     submittedAt: submission.submittedAt,
     completedAt: assignment.completedAt,
+    dueAt: assignment.expiresAt,
+    brief: roundBriefFor(workspace, organization, round.id, accountId),
+    ...(rubric ? { rubric: { version: rubric.version, criteria: rubric.criteria } } : {}),
     legacyRecommendation: recommendation ? {
       score: recommendation.score,
       notes: recommendation.notes,
       recordedAt: recommendation.recordedAt,
+      ...(criterionScores ? { criterionScores: criterionScores.scores, rubricVersion: criterionScores.rubricVersion } : {}),
     } : undefined,
   };
 }
 
 export function reviewerAssignmentStateLabel(state: ReviewerAssignmentState): string {
-  return state === 'legacy-submitted' ? 'Legacy recommendation submitted' : 'Review setup incomplete';
+  return state === 'legacy-submitted' ? 'Recommendation recorded' : 'Awaiting your recommendation';
+}
+
+/** The brief for a round and whether this reader has acknowledged its current version. */
+export function roundBriefFor(
+  workspace: WorkspaceEngine,
+  organization: { customization?: { roundBriefs?: Record<string, { text: string; updatedAt: string }> } } | undefined,
+  reviewRoundId: string,
+  accountId: string,
+): { text: string; updatedAt: string; acknowledged: boolean } | undefined {
+  const brief = organization?.customization?.roundBriefs?.[reviewRoundId];
+  if (!brief?.text.trim()) return undefined;
+  return { ...brief, acknowledged: workspace.hasAcknowledgedRoundBrief(reviewRoundId, accountId, brief.updatedAt) };
 }

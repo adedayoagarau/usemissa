@@ -2,7 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Pool } from 'pg';
 import { createStore } from '../src/store/store.js';
-import { ensurePostgresSchema, readSnapshotVersion, saveStoreToPostgres, loadStoreFromPostgres, SnapshotConflictError } from '../src/db/postgresStore.js';
+import { ensurePostgresSchema, readSnapshotVersion, saveStoreToPostgres, saveStoreDeltaToPostgres, loadStoreFromPostgres, SnapshotConflictError } from '../src/db/postgresStore.js';
+import { cloneStore } from '../src/store/store.js';
+import { WorkspaceEngine } from '../src/engine.js';
 
 /**
  * Real-Postgres round trip, mirroring
@@ -58,6 +60,34 @@ test('ensurePostgresSchema + save/load round-trip against a real Postgres connec
     await ensurePostgresSchema(pool);
     const reloaded = await loadStoreFromPostgres(pool);
     assert.equal(reloaded.entities.size, loaded.entities.size);
+  } finally {
+    await pool.end();
+  }
+});
+
+test('delta save updates an existing submission that has no idempotency key', { skip: !databaseUrl }, async () => {
+  const pool = new Pool({ connectionString: databaseUrl });
+  try {
+    await ensurePostgresSchema(pool);
+    await pool.query(`insert into radar_organizations (id, data) values ('org_delta', '{}') on conflict (id) do nothing`);
+    // The target schema enforces the submitter foreign key and adds an email column.
+    const accountColumns = await pool.query<{ column_name: string }>("select column_name from information_schema.columns where table_schema = 'public' and table_name = 'radar_accounts'");
+    if (accountColumns.rows.some((row) => row.column_name === 'email')) await pool.query(`insert into radar_accounts (id, email, data) values ('acct_delta', 'acct_delta@example.invalid', '{}') on conflict (id) do nothing`);
+    else if (accountColumns.rows.length) await pool.query(`insert into radar_accounts (id, data) values ('acct_delta', '{}') on conflict (id) do nothing`);
+    const engine = new WorkspaceEngine();
+    const team = engine.createEntity('org_delta', 'Delta team');
+    const program = engine.createProgram(team.id, 'Delta program');
+    const call = engine.createOpenCall(program.id, 'Delta call');
+    const path = engine.createSubmissionPath(call.id, [], []);
+    const submission = engine.createSubmission(path.id, 'acct_delta', [{ title: 'First' }]);
+    const version = await saveStoreToPostgres(engine.store, pool);
+    const before = cloneStore(engine.store);
+    engine.store.submissions.get(submission.id)!.answers = { note: 'changed' };
+    engine.store.submissions.get(submission.id)!.status = 'withdrawn';
+    await saveStoreDeltaToPostgres(engine.store, before, pool, version);
+    const loaded = await loadStoreFromPostgres(pool);
+    assert.deepEqual(loaded.submissions.get(submission.id)!.answers, { note: 'changed' });
+    assert.equal(loaded.submissions.get(submission.id)!.status, 'withdrawn');
   } finally {
     await pool.end();
   }

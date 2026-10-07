@@ -7,6 +7,7 @@ import { CalendarDays, MapPin, Tag } from "lucide-react";
 import { calendarDaysUntil } from "@/lib/deadlineLabel";
 import type { OpportunityBrowseProjection } from "@missa/radar-engine";
 import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
+import { OrganizationMark } from "@/components/missa/organization-mark";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardFooter } from "@/components/ui/card";
 import { cleanTitleOrLabel } from "@/lib/textUtils";
@@ -225,7 +226,7 @@ export function OpportunityCatalogueCard({
           aria-hidden={officialMedia ? undefined : true}
           aria-label={officialMedia ? `Open ${cleanTitle}` : undefined}
         >
-          {/* Official plates are rights-cleared. Editorial plates are decorative atmosphere only. */}
+          {/* Official images were cleared or permitted by a reviewer, or are the organizer's own credited share image. Editorial plates are decorative atmosphere only. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             ref={handleMediaRef}
@@ -236,6 +237,9 @@ export function OpportunityCatalogueCard({
               if (officialMedia) setOfficialFailed(true);
             }}
           />
+          {!officialMedia && item.identityLogoUrl ? (
+            <OrganizationMark src={item.identityLogoUrl} className={styles.mediaMark} />
+          ) : null}
         </Link>
 
         <div className={styles.body}>
