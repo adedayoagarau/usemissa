@@ -1,0 +1,10 @@
+/* The optional format groups inside one work's editor row. The field, group
+   and hint styles come from the studio's own stylesheet. */
+.more {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.warning {
+  color: var(--destructive);
+}
