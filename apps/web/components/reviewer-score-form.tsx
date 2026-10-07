@@ -154,7 +154,7 @@ export function DeclareConflictButton({ assignmentId }: { assignmentId: string }
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Declare a conflict of interest</DialogTitle>
-            <DialogDescription>Use this if you know the submitter, have worked on this Work, or cannot read it fairly. The organization sees your reason; the submitter never does.</DialogDescription>
+            <DialogDescription>Use this if you know the submitter, have worked on this piece, or can’t read it fairly. The organization sees your reason; the submitter never does.</DialogDescription>
           </DialogHeader>
           <Field>
             <FieldLabel htmlFor={`conflict-${assignmentId}`}>Why you should not read this</FieldLabel>

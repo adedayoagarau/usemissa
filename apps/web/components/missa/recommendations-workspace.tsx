@@ -33,6 +33,7 @@ import {
   CollapsibleContent,
 } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Sp } from "@/components/missa/spelling";
 
 type Match = RecommendationMatch & { opportunity: OpportunityBrowseProjection };
 type Feed = {
@@ -459,13 +460,13 @@ export function RecommendationsWorkspace({
                 {hidden
                   ? "No hidden suggestions"
                   : mode === "plan"
-                    ? "No programs match this plan yet"
+                    ? <Sp>No programs match this plan yet</Sp>
                     : "No open calls match this plan right now"}
               </h3>
               <p className="text-sm text-muted-foreground">
                 {hidden
                   ? "Suggestions you hide will appear here."
-                  : "Your saved goals stay in place. You can explore other programs or adjust your preferences."}
+                  : <Sp>Your saved goals stay in place. You can explore other programs or adjust your preferences.</Sp>}
               </p>
               <Link
                 href={

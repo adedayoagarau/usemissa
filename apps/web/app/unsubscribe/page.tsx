@@ -47,9 +47,9 @@ export default async function UnsubscribePage({ searchParams }: UnsubscribePageP
 
   if (result === 'updated') {
     return (
-      <Panel title="You are unsubscribed">
+      <Panel title="You’re unsubscribed">
         <p className="text-sm text-muted-foreground mb-6">
-          Missa will stop sending {unsubscribeCategoryLabel(category ?? 'all')}. Account security and submission
+          Missa won’t send any more {unsubscribeCategoryLabel(category ?? 'all')}. Sign-in and submission
           emails still arrive.
         </p>
         <SettingsLink label="Change email settings" />
@@ -59,11 +59,11 @@ export default async function UnsubscribePage({ searchParams }: UnsubscribePageP
 
   if (result === 'unavailable' || result === 'account-not-found') {
     return (
-      <Panel title="We could not unsubscribe you">
+      <Panel title="We couldn’t unsubscribe you">
         <p className="text-sm text-muted-foreground mb-6">
           {result === 'unavailable'
             ? 'Email settings are unavailable right now. Try the link again later, or turn emails off in your settings.'
-            : 'We could not find the account for this link. Sign in to change your email settings.'}
+            : 'We couldn’t find the account for this link. Log in to change your email settings.'}
         </p>
         <SettingsLink />
       </Panel>
@@ -72,7 +72,7 @@ export default async function UnsubscribePage({ searchParams }: UnsubscribePageP
 
   if (!token || result === 'invalid') {
     return (
-      <Panel title="This link does not work">
+      <Panel title="This link doesn’t work">
         <p className="text-sm text-muted-foreground mb-6">
           The unsubscribe link is incomplete or has expired. You can turn emails off in your settings.
         </p>
@@ -84,7 +84,7 @@ export default async function UnsubscribePage({ searchParams }: UnsubscribePageP
   const verification = verifyUnsubscribeToken(token);
   if (!verification.valid) {
     return (
-      <Panel title="This link does not work">
+      <Panel title="This link doesn’t work">
         <p className="text-sm text-muted-foreground mb-6">
           The unsubscribe link is incomplete or has expired. You can turn emails off in your settings.
         </p>

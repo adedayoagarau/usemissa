@@ -9,6 +9,7 @@ import { getSemanticUrlForProfile } from "@missa/radar-adapters";
 import { getPublicProfileBrowse } from "@/lib/publicProfileReads";
 import { getPublicOpportunityPage } from "@/lib/publicOpportunityReads";
 import styles from "./country-hub.module.css";
+import { Sp } from "@/components/missa/spelling";
 
 /**
  * Served from the CDN: each page is generated on its first visit and then
@@ -210,7 +211,7 @@ export default async function CountryHubPage({
                         aria-label={profile.name}
                       >
                         <span className={styles.profileCardKind}>
-                          {KIND_LABEL[profile.kind] ?? profile.kind.replace(/_/g, " ")}
+                          <Sp>{KIND_LABEL[profile.kind] ?? profile.kind.replace(/_/g, " ")}</Sp>
                         </span>
                         <span className={styles.profileCardName}>{profile.name}</span>
                         {profile.city && (

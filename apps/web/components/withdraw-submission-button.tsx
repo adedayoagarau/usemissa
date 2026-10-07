@@ -9,7 +9,7 @@ export function WithdrawSubmissionButton({ submissionId }: { submissionId: strin
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const withdraw = async () => {
-    if (!window.confirm('Withdraw this complete submission? The Organization will no longer review any Work in it.')) return;
+    if (!window.confirm('Withdraw this complete submission? The organization won’t review any piece in it.')) return;
     setBusy(true);
     setError('');
     const response = await fetch(`/api/me/submissions/${submissionId}/withdraw`, { method: 'POST' });

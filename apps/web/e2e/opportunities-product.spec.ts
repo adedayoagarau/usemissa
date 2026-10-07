@@ -114,7 +114,7 @@ test.describe("canonical Opportunity detail", () => {
       // application link when the source publishes one, otherwise the listing.
       page
         .getByRole("link", {
-          name: /Open Official Application|Open Original Listing/,
+          name: /Open the official application|Open Original Listing/,
         })
         .first(),
     ).toBeVisible();

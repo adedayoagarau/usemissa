@@ -41,10 +41,12 @@ test('Selected for you groups saved-search and followed-organisation calls and l
   ]);
   assert.equal(rendered.subject, 'Selected for you: three new calls');
   assert.ok(
-    rendered.html.includes('Two new calls match your saved search for poetry residencies, and Hedgebrook, an organisation you follow, posted a new call.'),
+    rendered.html.includes('Two new calls match your saved search for poetry residencies, and Hedgebrook, an organization you follow, posted a new call.'),
   );
   assert.ok(rendered.html.includes('From your saved search'));
-  assert.ok(rendered.html.includes('From organisations you follow'));
+  assert.ok(rendered.html.includes('From organizations you follow'));
+  const uk = renderAlertDigestEmail({ alerts: [alert('a3', 'followed-org-new-call', 'you follow this organization', 'opp_hedgebrook')], accountId: 'acc_1', email: 'creator@example.com', opportunity, now, spelling: 'uk' });
+  assert.ok(uk.html.includes('From organisations you follow') && uk.html.includes('Hedgebrook, an organisation you follow'), 'UK readers get UK spelling');
   assert.ok(rendered.html.includes('You follow Hedgebrook'));
   assert.ok(rendered.html.includes('Residency · Free to enter'));
   for (const id of ['opp_residency', 'opp_poets', 'opp_hedgebrook']) assert.match(rendered.html, new RegExp(`/opportunities/${id}" style="display:block;`));

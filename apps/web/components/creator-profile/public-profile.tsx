@@ -1040,7 +1040,7 @@ function ShelfSection({
     book: "Book",
     chapbook: "Chapbook",
     record: "Record",
-    catalogue: "Catalogue",
+    catalogue: "Catalog",
     other: "Edition",
   } as const;
   return (

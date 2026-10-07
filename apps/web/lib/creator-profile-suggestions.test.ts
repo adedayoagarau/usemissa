@@ -64,7 +64,7 @@ test("lens order keeps each section's visibility", () => {
   assert.equal(order.find((module) => module.id === "press")?.visible, false);
 });
 
-test("work formats come from content, not declared practices", () => {
+test("work formats come from content, not declared disciplines", () => {
   const [work] = portfolioSchema.parse({
     works: [
       { title: "Link only", url: "https://example.com", formats: ["Sound"] },

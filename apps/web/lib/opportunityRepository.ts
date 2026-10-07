@@ -108,7 +108,7 @@ function project(engine: Awaited<ReturnType<typeof getEngine>>, opp: Opportunity
     (work.taxonomyAssignments ?? []).flatMap((assignment) => {
       const matched = taxonomyDescendantIds(assignment.termId).some((termId) => assignedTermIds.has(termId));
       if (!matched) return [];
-      return [{ code: 'work' as const, label: `Matches your Work: ${taxonomyLabelFor(assignment.termId)}` }];
+      return [{ code: 'work' as const, label: `Matches your work: ${taxonomyLabelFor(assignment.termId)}` }];
     }),
   );
   const matchedReasons = [...opportunityPreferenceReasons, ...preferenceReasons, ...workReasons, ...savedSearchReasons].slice(0, 4);
@@ -361,7 +361,7 @@ export function getOpportunityRepository(): OpportunityRepository {
   const postgresRequested = process.env.MISSA_OPPORTUNITY_REPOSITORY?.trim() === "postgres";
   const catalogueDatabaseUrl = catalogueReadDatabaseUrl();
   if ((relationalCreatorAuthority || postgresRequested) && !catalogueDatabaseUrl) {
-    throw new Error("Canonical Opportunity repository is unavailable");
+    throw new Error("Canonical opportunity repository is unavailable");
   }
   if ((relationalCreatorAuthority || postgresRequested) && catalogueDatabaseUrl) {
     if (!globalThis.__missaOpportunityRepository) {

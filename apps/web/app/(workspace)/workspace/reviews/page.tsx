@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getWorkspacePageAccess } from '@/lib/workspacePage';
+import { Sp } from "@/components/missa/spelling";
 
 export default async function WorkspaceReviewsPage({ searchParams }: { searchParams: Promise<{ organizationId?: string }> }) {
   const access = await getWorkspacePageAccess(searchParams, 'workspace/reviews', 'reviews.read');
@@ -7,7 +8,7 @@ export default async function WorkspaceReviewsPage({ searchParams }: { searchPar
     return (
       <main className="mx-auto max-w-2xl px-6 py-12">
         <h1 className="font-heading text-3xl font-medium text-foreground">Reviews</h1>
-        <p className="mt-2 text-muted-foreground">Join an organization to view review workflow.</p>
+        <p className="mt-2 text-muted-foreground"><Sp>Join an organization to view review workflow.</Sp></p>
       </main>
     );
   const submissions = access.workspace.submissionsForOrganization(access.organizationId).filter((submission) => submission.status === 'in-review');

@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Field, FieldContent, FieldDescription, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { TextRemindersSettings } from "@/components/missa/text-reminders-settings";
 import { UpgradeHint } from "@/components/missa/upgrade-hint";
+import { Sp } from "@/components/missa/spelling";
 
 /** The plan features the Deadlines section needs to know about. */
 export type DeadlinePlanFeatures = { deadlineDayAlarm?: boolean; openingAlerts?: boolean };
@@ -257,7 +258,7 @@ function SettingRow({
         htmlFor={id}
         className="flex min-w-0 cursor-pointer flex-col gap-0.5"
       >
-        <span className="text-sm font-semibold">{label}</span>
+        <span className="text-sm font-semibold"><Sp>{label}</Sp></span>
         <span className="text-sm text-muted-foreground">{hint}</span>
       </label>
       <Switch id={id} checked={checked} onCheckedChange={onChange} />

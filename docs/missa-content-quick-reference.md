@@ -8,6 +8,9 @@ source: ./missa-content-style-guide.md
 
 # Missa content quick reference
 
+> For lead lines, homepage copy, voice, fun and words to avoid, follow
+> [`missa-messaging.md`](./missa-messaging.md). Where the two disagree, it wins.
+
 > Say what people need to know. Then stop.
 
 Missa is **plain, specific, and familiar**.

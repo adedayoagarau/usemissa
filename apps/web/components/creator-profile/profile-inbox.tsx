@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { INQUIRY_TOPIC_OPTIONS } from "./profile-connect";
 import styles from "./profile-inbox.module.css";
+import { Sp } from "@/components/missa/spelling";
 
 export type InboxInquiry = {
   id: string;
@@ -588,7 +589,7 @@ function EmptyState({
           <Icon aria-hidden="true" />
         </EmptyMedia>
         <EmptyTitle>{title}</EmptyTitle>
-        <EmptyDescription>{text}</EmptyDescription>
+        <EmptyDescription><Sp>{text}</Sp></EmptyDescription>
       </EmptyHeader>
     </Empty>
   );

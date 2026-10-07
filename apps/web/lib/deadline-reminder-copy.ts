@@ -199,7 +199,7 @@ export function timeToQueryCopy(input: { applicationTitle: string; organizationN
     };
   return {
     title: "Time to follow up",
-    body: `You sent ${input.applicationTitle} ${waited} ago. Nine in ten Missa creators heard back within ${input.clock.typicalDays} days.`,
-    reason: input.clock.basis ? `${input.clock.basis}.` : "Observed from Missa creators.",
+    body: `You sent ${input.applicationTitle} ${waited} ago. Nine in ten people who tracked this call on Missa heard back within ${input.clock.typicalDays} days.`,
+    reason: input.clock.basis ? `${input.clock.basis}.` : "From people tracking it on Missa.",
   };
 }

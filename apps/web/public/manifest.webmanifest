@@ -1,7 +1,7 @@
 {
-  "name": "Missa — Opportunities for every creator",
+  "name": "Missa",
   "short_name": "Missa",
-  "description": "Find submission opportunities that fit your work, prepare with context, and keep every deadline in view.",
+  "description": "Missa is a free site where artists and writers find open calls, grants, residencies, magazines and prizes, see the fee, who can apply and the official page for each, and get reminded before they close.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

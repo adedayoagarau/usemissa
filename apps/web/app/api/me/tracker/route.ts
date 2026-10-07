@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     !/^[A-Za-z0-9_-]{1,200}$/u.test(body.opportunityId)
   ) {
     return NextResponse.json(
-      { error: "Choose an Opportunity to save." },
+      { error: "Choose a call to save." },
       { status: 400, headers: noStore },
     );
   }
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     );
     if (!opportunity) {
       return NextResponse.json(
-        { error: "Opportunity not found" },
+        { error: "Call not found" },
         { status: 404, headers: noStore },
       );
     }
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "This Opportunity is closed. It was not added to your Tracker.",
+            "This call is closed. It wasn't added to your Tracker.",
         },
         { status: 409, headers: noStore },
       );
@@ -187,7 +187,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "This Opportunity changed while you were saving it. Review the latest details and save again.",
+            "This call changed while you were saving it. Review the latest details and save again.",
           code: "opportunity-revalidation-required",
         },
         { status: 409, headers: noStore },
@@ -197,7 +197,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "We could not confirm this Opportunity's current version. Your Tracker is unchanged. Try again.",
+            "We couldn't confirm the latest version of this call. Your Tracker is unchanged. Try again.",
         },
         { status: 503, headers: noStore },
       );
@@ -205,7 +205,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "We could not save this Opportunity. Your Tracker is unchanged. Try again.",
+          "We couldn't save this call. Your Tracker is unchanged. Try again.",
       },
       { status: 503, headers: noStore },
     );

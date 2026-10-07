@@ -24,6 +24,7 @@ import {
   decodeHtmlEntities,
 } from "@/lib/textUtils";
 import styles from "./institution-profile.module.css";
+import { Sp } from "@/components/missa/spelling";
 
 function safeHref(value?: string | null): string | undefined {
   if (!value) return;
@@ -497,8 +498,10 @@ export function InstitutionProfileView({
                               No opportunities listed yet
                             </h3>
                             <EmptyDescription>
-                              Check the organization’s website for its latest
-                              calls and programs.
+                              <Sp>
+                                Check the organization’s website for its latest
+                                calls and programs.
+                              </Sp>
                             </EmptyDescription>
                           </Empty>
                         )}

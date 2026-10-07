@@ -1,6 +1,5 @@
 import type { EditorialIntelligenceFullProfile } from "@missa/radar-adapters";
 import {
-  Sparkles,
   Clock,
   Coins,
   Scale,
@@ -37,7 +36,7 @@ export function EditorialIntelligenceSection({
 
   return (
     <section
-      aria-label="Editorial Intelligence beta"
+      aria-label="What we know about this magazine"
       className={cn(
         "rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)]/40 p-6 backdrop-blur-sm",
         className,
@@ -46,16 +45,16 @@ export function EditorialIntelligenceSection({
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-4">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <Sparkles className="size-4 text-[var(--text-primary)]" />
+            <BookOpen className="size-4 text-[var(--text-primary)]" />
             <h2 className="font-serif text-lg font-medium text-[var(--text-primary)]">
-              Editorial Intelligence & Market Telemetry
+              What we know about this magazine
             </h2>
             <BetaBadge />
           </div>
           <p className="mt-2 max-w-2xl text-xs leading-relaxed text-[var(--text-muted)]">
-            Experimental, modelled signals from Missa—not publisher-confirmed
-            facts. Check the publisher&apos;s official guidelines before
-            deciding whether or how to submit.
+            Our own estimates from what we&apos;ve recorded, not facts from the
+            magazine. Read their guidelines before you decide whether or how
+            to submit.
           </p>
         </div>
         {prestigeTier && (
@@ -73,7 +72,7 @@ export function EditorialIntelligenceSection({
               <div className="flex items-center gap-2 text-[var(--text-primary)]">
                 <BookOpen className="size-4 text-[var(--text-secondary)]" />
                 <h3 className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                  Aesthetic DNA & Author Comps
+                  Taste and comparable writers
                 </h3>
               </div>
               {aesthetic.editorialMotto && (
@@ -84,7 +83,7 @@ export function EditorialIntelligenceSection({
               {aesthetic.authorComps.length > 0 && (
                 <div className="mt-3">
                   <span className="text-[11px] font-medium text-[var(--text-muted)]">
-                    If you write like:
+                    If you write like
                   </span>
                   <div className="mt-1 flex flex-wrap gap-1.5">
                     {aesthetic.authorComps.map((comp) => (
@@ -102,7 +101,7 @@ export function EditorialIntelligenceSection({
 
             <div className="mt-4 pt-3 border-t border-[var(--border-subtle)]">
               <span className="text-[11px] font-medium text-[var(--text-muted)]">
-                Key Styles & Forms:
+                Styles and forms
               </span>
               <div className="mt-1 flex flex-wrap gap-1.5">
                 {[...aesthetic.writingStyles, ...aesthetic.poetryForms].map(
@@ -128,13 +127,13 @@ export function EditorialIntelligenceSection({
                 <div className="flex items-center gap-2 text-[var(--text-primary)]">
                   <UserCheck className="size-4 text-[var(--text-secondary)]" />
                   <h3 className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                    Debut & Slush-Friendliness
+                    Open to new writers
                   </h3>
                 </div>
                 {aesthetic.isDebutChampion && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-secondary)] px-2.5 py-0.5 font-sans text-xs font-medium text-[var(--text-primary)] border border-[var(--border-subtle)]">
                     <Flame className="size-3 text-[var(--text-primary)]" />
-                    Debut Champion
+                    Publishes debuts
                   </span>
                 )}
               </div>
@@ -145,7 +144,7 @@ export function EditorialIntelligenceSection({
                     {recorded(aesthetic.unsolicitedSlushRatioPercent, "%")}
                   </span>
                   <p className="mt-0.5 text-[10px] uppercase font-medium text-[var(--text-muted)]">
-                    Slush Acceptance Ratio
+                    From open submissions
                   </p>
                 </div>
                 <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)]/50 p-2.5 text-center">
@@ -153,7 +152,7 @@ export function EditorialIntelligenceSection({
                     {recorded(aesthetic.debutAuthorFriendlyScore, "/10")}
                   </span>
                   <p className="mt-0.5 text-[10px] uppercase font-medium text-[var(--text-muted)]">
-                    Debut Friendliness
+                    Debut-friendly
                   </p>
                 </div>
               </div>
@@ -177,13 +176,13 @@ export function EditorialIntelligenceSection({
                 <div className="flex items-center gap-2 text-[var(--text-primary)]">
                   <Clock className="size-4 text-[var(--text-secondary)]" />
                   <h3 className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                    Response Telemetry
+                    Response times
                   </h3>
                 </div>
                 {telemetry.freeCapStatus === "at_risk" && (
                   <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border-strong)] bg-[var(--surface-secondary)] px-2 py-0.5 font-mono text-[10px] text-[var(--text-primary)]">
                     <ShieldAlert className="size-3" />
-                    Free cap closes fast
+                    Free slots go fast
                   </span>
                 )}
               </div>
@@ -205,14 +204,14 @@ export function EditorialIntelligenceSection({
                   <span className="font-mono text-lg font-medium text-[var(--text-primary)]">
                     {recorded(telemetry.acceptanceRatePercent, "%")}
                   </span>
-                  <p className="text-[10px] text-[var(--text-muted)]">Accept Rate</p>
+                  <p className="text-[10px] text-[var(--text-muted)]">Accepted</p>
                 </div>
               </div>
             </div>
 
             {telemetry.submittableFreeCapDepletionDays && (
               <p className="mt-3 text-xs text-[var(--text-secondary)]">
-                Monthly Submittable free cap typically exhausts within{" "}
+                The free monthly Submittable slots usually run out within{" "}
                 <strong className="font-medium text-[var(--text-primary)]">
                   {telemetry.submittableFreeCapDepletionDays} days
                 </strong>{" "}
@@ -222,7 +221,7 @@ export function EditorialIntelligenceSection({
           </div>
         )}
 
-        {/* Compensation & Rights */}
+        {/* Pay and rights */}
         {compensation && (
           <div className="flex flex-col justify-between rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4 shadow-sm">
             <div>
@@ -230,19 +229,19 @@ export function EditorialIntelligenceSection({
                 <div className="flex items-center gap-2 text-[var(--text-primary)]">
                   <Coins className="size-4 text-[var(--text-secondary)]" />
                   <h3 className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                    Compensation & Rights
+                    Pay and rights
                   </h3>
                 </div>
                 {compensation.isProRate && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-secondary)] px-2.5 py-0.5 font-sans text-xs font-medium text-[var(--text-primary)] border border-[var(--border-subtle)]">
-                    Estimated pro rate
+                    Pro rate (our estimate)
                   </span>
                 )}
               </div>
 
               <div className="mt-4 space-y-2 text-xs">
                 <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
-                  <span className="text-[var(--text-muted)]">Contributor Pay:</span>
+                  <span className="text-[var(--text-muted)]">Pay</span>
                   <span className="font-medium text-[var(--text-primary)]">
                     {compensation.payRateKind === "per_word" &&
                     compensation.rateCentsPerWord
@@ -253,16 +252,16 @@ export function EditorialIntelligenceSection({
                   </span>
                 </div>
                 <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
-                  <span className="text-[var(--text-muted)]">Rights Acquired:</span>
+                  <span className="text-[var(--text-muted)]">Rights they take</span>
                   <span className="font-mono text-[var(--text-primary)] uppercase">
                     {compensation.rightsAcquired ?? "Not recorded"}
                     {compensation.rightsReversionMonths
-                      ? ` (${compensation.rightsReversionMonths}mo reversion)`
+                      ? `, back to you after ${compensation.rightsReversionMonths} months`
                       : ""}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[var(--text-muted)]">Fee Waivers:</span>
+                  <span className="text-[var(--text-muted)]">Fee waivers</span>
                   <span className="font-medium text-[var(--text-primary)]">
                     {compensation.hasFeeWaivers
                       ? "Available on request"
@@ -287,7 +286,7 @@ export function EditorialIntelligenceSection({
           <div className="flex items-center gap-2">
             <Scale className="size-4 text-[var(--text-primary)]" />
             <h3 className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-              Contest Judge Dossier & Prize Lineage
+              Contest judges and past winners
             </h3>
           </div>
 
@@ -308,7 +307,7 @@ export function EditorialIntelligenceSection({
                   </div>
                   {judge.judgePraisedAuthors.length > 0 && (
                     <div className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
-                      <span className="text-[var(--text-muted)]">Influences:</span>
+                      <span className="text-[var(--text-muted)]">Influences</span>
                       {judge.judgePraisedAuthors.map((author) => (
                         <span
                           key={author}
@@ -324,7 +323,7 @@ export function EditorialIntelligenceSection({
                 {judge.judgeAestheticNotes && (
                   <p className="mt-3 text-xs text-[var(--text-secondary)]">
                     <strong className="font-medium text-[var(--text-primary)]">
-                      Judging Philosophy:
+                      What they look for:
                     </strong>{" "}
                     {judge.judgeAestheticNotes}
                   </p>
@@ -333,7 +332,7 @@ export function EditorialIntelligenceSection({
                 {judge.pastWinnersLineage && judge.pastWinnersLineage.length > 0 && (
                   <div className="mt-4 border-t border-[var(--border-subtle)] pt-3">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                      Historical Winner Outcomes:
+                      Past winners:
                     </span>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                       {judge.pastWinnersLineage.map((winner, idx) => (

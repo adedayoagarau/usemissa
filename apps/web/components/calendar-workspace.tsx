@@ -52,6 +52,7 @@ import {
   AutocompleteList,
 } from "@/components/ui/autocomplete";
 import styles from "./calendar-workspace.module.css";
+import { Sp, useSp } from "@/components/missa/spelling";
 type EventItem = PlanningEvent;
 type OpportunityOption = {
   id: string;
@@ -156,6 +157,7 @@ export function CalendarWorkspace({
   userId: string;
   initialView?: CalendarView;
 }) {
+  const sp = useSp();
   const editorRef = useRef<HTMLElement>(null);
   const editorTriggerRef = useRef<HTMLElement | null>(null);
   const pendingMutation = useRef<{ signature: string; key: string } | null>(
@@ -1628,13 +1630,13 @@ export function CalendarWorkspace({
                 <h2 className="font-heading">{selected.title}</h2>
                 {KIND_INTROS[selected.kind] ? (
                   <p className={styles.sheetIntro}>
-                    {KIND_INTROS[selected.kind]}
+                    {sp(KIND_INTROS[selected.kind] ?? "")}
                   </p>
                 ) : null}
                 {selected.confidence ? (
                   <div className={styles.provenance}>
                     <DateConfidenceBadge state={selected.confidence} />
-                    <small>{dateConfidenceDescription(selected.confidence)}</small>
+                    <small><Sp>{dateConfidenceDescription(selected.confidence)}</Sp></small>
                   </div>
                 ) : null}
                 <dl>
@@ -2082,7 +2084,7 @@ export function CalendarWorkspace({
                 sizes="600px"
               />
               <div className={styles.opportunityPickerHeading}>
-                <span>Missa catalogue</span>
+                <span><Sp>Missa catalog</Sp></span>
                 <h2 id="opportunity-picker-title" className="font-heading">
                   Add an opportunity
                 </h2>
@@ -2111,7 +2113,7 @@ export function CalendarWorkspace({
                 <AutocompleteInput
                   id="calendar-opportunity-search"
                   autoFocus
-                  placeholder="Title, organization, or discipline"
+                  placeholder={sp("Title, organization, or discipline")}
                 />
                 <AutocompleteContent className={styles.opportunityPopup}>
                   {opportunityLoading ? (
@@ -2155,7 +2157,7 @@ export function CalendarWorkspace({
                                 <strong>{item.title}</strong>
                                 <small>
                                   {item.organizationName ??
-                                    "Organization not listed"}
+                                    sp("Organization not listed")}
                                 </small>
                                 <span>
                                   <i>

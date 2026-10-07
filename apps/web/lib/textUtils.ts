@@ -118,7 +118,7 @@ export function inferSubmissionChecklist(options: {
     });
     items.push({
       label: "Work Samples & Portfolio",
-      detail: "Recent documentation of your artistic practice and creative work.",
+      detail: "Recent documentation of your work.",
     });
   } else if (isExhibition) {
     items.push({

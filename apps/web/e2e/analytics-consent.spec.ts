@@ -29,34 +29,19 @@ test("no analytics runs before a choice, and accepting starts it", async ({
 }) => {
   const analytics = recordAnalyticsEvents(page);
   await analytics.install();
-  await page.route("**/api/waitlist", async (route) => {
-    await route.fulfill({
-      status: 202,
-      contentType: "application/json",
-      body: JSON.stringify({ accepted: true }),
-    });
-  });
 
-  await page.goto("/waitlist");
+  await page.goto("/opportunities");
   await expect(
     page.getByRole("region", { name: "Analytics consent" }),
   ).toBeVisible();
-
-  await page.getByLabel("Email address").fill("test@example.com");
+  await expect(page.locator("main")).toBeVisible();
   expect(analytics.eventNames).toEqual([]);
 
   await page.getByRole("button", { name: "Accept analytics" }).click();
-  await page
-    .getByRole("button", { name: "Join the waitlist", exact: true })
-    .click();
+  await page.reload();
   await expect
     .poll(() => analytics.eventNames)
-    .toEqual(
-      expect.arrayContaining([
-        "public.waitlist_cta_clicked",
-        "public.waitlist_submit_attempted",
-      ]),
-    );
+    .toEqual(expect.arrayContaining(["public.discovery_view"]));
 });
 
 test("declining still lets the product work and writes nothing", async ({
@@ -64,28 +49,20 @@ test("declining still lets the product work and writes nothing", async ({
 }) => {
   const analytics = recordAnalyticsEvents(page);
   await analytics.install();
-  await page.route("**/api/waitlist", async (route) => {
-    await route.fulfill({
-      status: 202,
-      contentType: "application/json",
-      body: JSON.stringify({ accepted: true }),
-    });
-  });
 
-  await page.goto("/waitlist");
+  await page.goto("/opportunities");
   await page.getByRole("button", { name: "Decline" }).click();
-  await page.getByLabel("Email address").fill("test@example.com");
-  await page
-    .getByRole("button", { name: "Join the waitlist", exact: true })
-    .click();
-  await expect(page.getByRole("status")).toContainText("You’re on the list");
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Find your next opportunity." }),
+  ).toBeVisible();
   expect(analytics.eventNames).toEqual([]);
 });
 
 test("the decision is remembered and can be reversed from the privacy notice", async ({
   page,
 }) => {
-  await page.goto("/waitlist");
+  await page.goto("/opportunities");
   await page.getByRole("button", { name: "Decline" }).click();
   await expect(
     page.getByRole("region", { name: "Analytics consent" }),

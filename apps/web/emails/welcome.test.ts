@@ -15,7 +15,7 @@ test("renderWelcomeEmail is personal, concise, and uses complete sentences", () 
   for (const step of ["Choose what you make", "Save a call to your Tracker", "Keep reminder emails on"]) {
     assert.ok(rendered.html.includes(step), step);
   }
-  assert.ok(rendered.html.includes("Browse Opportunities"));
+  assert.ok(rendered.html.includes("Browse open calls"));
   assert.doesNotMatch(rendered.html, /\.jpg|Unsubscribe|Getting started|endless/iu, "no stock imagery and no unsubscribe on an account letter");
   assert.ok(rendered.text.includes("Welcome to Missa, Adedayo."));
   assert.ok(rendered.text.includes("/opportunities"));

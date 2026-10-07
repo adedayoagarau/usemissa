@@ -16,7 +16,7 @@ test('Access dossier exposes current truth and guarded access actions', async ({
   await expect(page.getByText(fixture.email).first()).toBeVisible();
   await expect(page.getByText('Owner safeguards apply to every change')).toBeVisible();
   await expect(page.getByText('Compatibility membership seat')).toBeVisible();
-  await expect(page.getByText('Not a capability registry')).toBeVisible();
+  await expect(page.getByText('Not a full permission list')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add person' })).toBeVisible();
   await expect(page.getByRole('button', { name: /transfer/iu })).toHaveCount(0);
   await expect(page.locator('select[aria-label^="Role for"]')).toHaveCount(0);

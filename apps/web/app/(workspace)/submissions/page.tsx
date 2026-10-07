@@ -7,6 +7,7 @@ import { getWorkspaceEngine } from '@/lib/workspaceEngine';
 import { SubmissionCard } from '@/components/submission-card';
 import Link from 'next/link';
 import { loginRedirectForCurrentRequest } from '@/lib/serverAuthRedirect';
+import { Sp } from "@/components/missa/spelling";
 
 const STATUS_LABEL: Record<string, string> = {
   submitted: 'Submitted',
@@ -40,7 +41,7 @@ export default async function SubmissionsPage({
     return (
       <main className="mx-auto max-w-2xl px-6 py-12">
         <h1 className="font-heading text-3xl font-medium text-foreground">Submissions</h1>
-        <p className="mt-2 text-muted-foreground">You are not a member of any organization yet.</p>
+        <p className="mt-2 text-muted-foreground"><Sp>You are not a member of any organization yet.</Sp></p>
       </main>
     );
   }

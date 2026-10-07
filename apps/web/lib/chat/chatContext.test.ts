@@ -20,7 +20,7 @@ test("baseline context planning keeps explicit recommendation intent", () => {
   assert.equal(plan.query, "poets");
 });
 
-test("a unique practice phrase becomes a typed taxonomy filter, not loose search text", () => {
+test("a unique taxonomy phrase becomes a typed filter, not loose search text", () => {
   const plan = buildOpportunitySearchPlan("Find free fellowships for screenwriter");
   assert.deepEqual(plan.types, ["fellowship"]);
   assert.equal(plan.feeStatus, "no-fee");
@@ -35,7 +35,7 @@ test("a unique practice phrase becomes a typed taxonomy filter, not loose search
   assert.equal(plan.repositoryQuery.taxonomyIncludeDescendants, true);
 });
 
-test("an ambiguous practice phrase asks the customer instead of silently collapsing facets", () => {
+test("an ambiguous taxonomy phrase asks the customer instead of silently collapsing facets", () => {
   const plan = buildOpportunitySearchPlan("Find film grants");
   assert.deepEqual(plan.types, ["grant"]);
   assert.equal(plan.taxonomy.length, 0);

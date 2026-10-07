@@ -112,10 +112,10 @@ function HomepageOpeningsUnavailable() {
           <h2 id="openings-title" className={`font-heading ${styles.sectionTitle}`}>
             Live openings are temporarily unavailable.
           </h2>
-          <p>Open the catalogue to try again or continue browsing.</p>
+          <p>Try again, or open the full list of calls.</p>
         </div>
         <Link className={styles.textLink} href="/opportunities">
-          Open the catalogue <ArrowUpRight aria-hidden="true" />
+          Browse open calls <ArrowUpRight aria-hidden="true" />
         </Link>
       </div>
     </section>
@@ -131,10 +131,10 @@ function HomepageOpeningsEmpty() {
           <h2 id="openings-title" className={`font-heading ${styles.sectionTitle}`}>
             No current openings to show.
           </h2>
-          <p>Browse the catalogue for opportunities with different timelines.</p>
+          <p>Browse calls with other dates.</p>
         </div>
         <Link className={styles.textLink} href="/opportunities">
-          Browse the catalogue <ArrowUpRight aria-hidden="true" />
+          Browse open calls <ArrowUpRight aria-hidden="true" />
         </Link>
       </div>
     </section>
@@ -151,7 +151,7 @@ export async function HomepageOpenings() {
     <section className={styles.openings} aria-labelledby="openings-title">
       <div className={styles.sectionHeading}>
         <div>
-          <p className={styles.eyebrow}>In the catalogue</p>
+          <p className={styles.eyebrow}>Open now</p>
           <h2
             id="openings-title"
             className={`font-heading ${styles.sectionTitle}`}

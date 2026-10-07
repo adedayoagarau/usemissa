@@ -14,7 +14,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id, workId } = await params;
   const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status, headers });
-  if (workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: 'Record the decision through the Work decision route while relational authority is enabled.' }, { status: 503, headers });
+  if (workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: 'Record the decision on the piece itself while relational authority is enabled.' }, { status: 503, headers });
   const { workspace } = result.access;
   const work = result.access.scope.work(workId);
   if (!work) return NextResponse.json({ error: 'Unknown Work for this organization' }, { status: 404, headers });
