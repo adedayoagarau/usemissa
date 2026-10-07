@@ -251,7 +251,7 @@ export function createWelcomeRenderer(
         ctx.font = `10px ${ui}`;
         ctx.textAlign = "center";
         ctx.fillText(
-          ["Somewhere new", "Make something", "Your practice", "Room to grow"][
+          ["Residency", "Open call", "Grant", "Magazine"][
             kind
           ],
           0,
@@ -271,10 +271,10 @@ export function createWelcomeRenderer(
         ctx.fillStyle = palette.paper;
         ctx.font = `italic 24px ${editorial}`;
         ctx.textAlign = "center";
-        ctx.fillText("The next", 0, -14);
-        ctx.fillText("chapter", 0, 13);
+        ctx.fillText("Closes", 0, -14);
+        ctx.fillText("Friday", 0, 13);
         ctx.font = `9px ${ui}`;
-        ctx.fillText("YOURS TO WRITE", 0, 45);
+        ctx.fillText("REMINDER SET", 0, 45);
       } else if (kind === 5) {
         ctx.fillStyle = palette.paper;
         ctx.beginPath();

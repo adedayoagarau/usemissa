@@ -390,7 +390,7 @@ export function firstSaveNextAction(
   }
   return {
     kind: "review-opportunity",
-    label: "Review Opportunity",
+    label: "Review the call",
     description:
       "Check the current requirements and official source before preparing work.",
     href,

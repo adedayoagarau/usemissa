@@ -85,7 +85,7 @@ export function BulkTriageBar({ organizationId }: { organizationId: string }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{action === 'decline' ? 'Decline' : action === 'waitlist' ? 'Waitlist' : 'Accept'} undecided Works in {confirm?.ids.length} {confirm?.ids.length === 1 ? 'submission' : 'submissions'}?</DialogTitle>
-            <DialogDescription>Works that already have a decision keep it. Submitters are not told until you send a letter. Each decision can still be changed per Work.</DialogDescription>
+            <DialogDescription>Pieces that already have a decision keep it. Submitters aren’t told until you send a letter. You can still change the decision on each piece.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>

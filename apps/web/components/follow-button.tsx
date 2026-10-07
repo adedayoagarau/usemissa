@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useSp } from "@/components/missa/spelling";
 
 export function FollowButton({
   userId,
@@ -19,6 +20,7 @@ export function FollowButton({
   const [isPending, setIsPending] = useState(false);
   const [followed, setFollowed] = useState(false);
   const requestKey = useRef<string | null>(null);
+  const sp = useSp();
 
   if (followed)
     return (
@@ -37,7 +39,7 @@ export function FollowButton({
         nativeButton={false}
         render={<Link href={authPath} />}
         variant="link"
-        aria-label={`Sign up to follow ${organizationName ?? "this organization"}`}
+        aria-label={`Sign up to follow ${organizationName ?? sp("this organization")}`}
       >
         Sign up to follow
       </Button>
@@ -64,7 +66,7 @@ export function FollowButton({
           if (res.ok) {
             setFollowed(true);
             toast.success(
-              `Following ${organizationName ?? "this organization"}`,
+              `Following ${organizationName ?? sp("this organization")}`,
             );
           } else {
             toast.error("Following could not be saved. Try again.");
@@ -76,7 +78,7 @@ export function FollowButton({
         }
       }}
     >
-      {isPending ? "Saving…" : "Follow organization"}
+      {isPending ? "Saving…" : sp("Follow organization")}
     </Button>
   );
 }

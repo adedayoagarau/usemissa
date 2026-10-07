@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { captureProductEvent } from '@/components/analytics-provider';
 import styles from './opportunity-search.module.css';
+import { useSp } from "@/components/missa/spelling";
 
 export function OpportunitySearch({ category, initialQuery }: { category: string; initialQuery?: string }) {
   const router = useRouter();
@@ -13,6 +14,7 @@ export function OpportunitySearch({ category, initialQuery }: { category: string
   const searchParams = useSearchParams();
   const [value, setValue] = useState(initialQuery ?? '');
   const [pending, startTransition] = useTransition();
+  const sp = useSp();
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,8 +36,8 @@ export function OpportunitySearch({ category, initialQuery }: { category: string
         value={value}
         onChange={(event) => setValue(event.target.value)}
         name="q"
-        placeholder="Search by opportunity, organization, or discipline"
-        aria-label="Search opportunities or organizations"
+        placeholder={sp("Search by opportunity, organization, or discipline")}
+        aria-label={sp("Search opportunities or organizations")}
         className={styles.input}
       />
       {value ? (

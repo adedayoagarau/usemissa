@@ -49,7 +49,7 @@ test('Working Archive keeps URL state and opens a canonical private Work detail'
 
   await page.getByRole('button', { name: 'Details', exact: true }).click();
   await expect(page).toHaveURL(/section=practice/);
-  await expect(page.getByRole('heading', { name: 'Describe the Work, not its eligibility' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Describe the piece, not its eligibility' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Edit details' }).click();
   await page.getByLabel('Work title').fill('Night River — revised');

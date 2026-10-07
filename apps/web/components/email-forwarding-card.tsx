@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Copy, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Sp } from "@/components/missa/spelling";
 
 type ForwardingView = {
   configured: boolean;
@@ -187,7 +188,7 @@ export function EmailForwardingCard() {
               <li>
                 Attachments are not imported, opened, or sent to an AI system.
               </li>
-              <li>Organizations never see your forwarded email history.</li>
+              <li><Sp>Organizations never see your forwarded email history.</Sp></li>
             </ul>
           </>
         )}

@@ -5,7 +5,7 @@ import { Search, Building2, BookOpen, Sparkles, Trophy, Palette, ArrowRight } fr
 import { MagazineScheduleBadge } from "./ui/magazine-schedule-badge";
 
 export const KIND_METADATA: Record<string, { label: string; plural: string; path: string; icon: typeof Building2; countLabel: string }> = {
-  gallery: { label: "Art Gallery", plural: "Galleries & Arts Organizations", path: "/organizations", icon: Palette, countLabel: "galleries" },
+  gallery: { label: "Art Gallery", plural: "Galleries & arts organizations", path: "/organizations", icon: Palette, countLabel: "galleries" },
   organization: { label: "Organization", plural: "Organizations", path: "/organizations", icon: Building2, countLabel: "organizations" },
   all: { label: "All Institutions", plural: "All Directory", path: "/directory", icon: Building2, countLabel: "9,120+ institutions" },
   residency_center: { label: "Artist Residency", plural: "Residencies", path: "/residencies", icon: Sparkles, countLabel: "985 centers" },

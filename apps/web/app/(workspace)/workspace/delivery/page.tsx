@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getWorkspacePageAccess } from '@/lib/workspacePage';
+import { Sp } from "@/components/missa/spelling";
 
 export default async function WorkspaceDeliveryPage({ searchParams }: { searchParams: Promise<{ organizationId?: string }> }) {
   const access = await getWorkspacePageAccess(searchParams, 'workspace/delivery', 'delivery.read');
@@ -7,7 +8,7 @@ export default async function WorkspaceDeliveryPage({ searchParams }: { searchPa
     return (
       <main className="mx-auto max-w-2xl px-6 py-12">
         <h1 className="font-heading text-3xl font-medium text-foreground">Delivery</h1>
-        <p className="mt-2 text-muted-foreground">Join an organization to view delivery work.</p>
+        <p className="mt-2 text-muted-foreground"><Sp>Join an organization to view delivery work.</Sp></p>
       </main>
     );
   const tasks = access.workspace.deliveryTasksForOrganization(access.organizationId).sort((a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999'));
@@ -39,7 +40,7 @@ export default async function WorkspaceDeliveryPage({ searchParams }: { searchPa
       </section>
       <section className="mt-8 overflow-x-auto rounded-xl border border-border bg-card">
         <table className="w-full min-w-[760px] text-left text-sm">
-          <caption className="sr-only">Organization delivery tasks</caption>
+          <caption className="sr-only"><Sp>Organization delivery tasks</Sp></caption>
           <thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground">
             <tr>
               <th scope="col" className="px-4 py-3 font-medium">

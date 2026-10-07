@@ -17,9 +17,9 @@ import { planningCandidate } from "@/lib/magazineFacts";
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: "Smart Submission Shortlist & Strategy · Missa Index",
+  title: "Your magazine shortlist | Missa",
   description:
-    "Generate an optimal literary magazine submission portfolio combining reach, target, and anchor journals matched to your genre, budget, and timing.",
+    "Build a shortlist of literary magazines for your next submission: a few reaches, a few good fits and a few safer bets, sorted by genre, fees, pay and response time.",
 };
 
 export default async function SubmissionPlanPage() {
@@ -52,27 +52,27 @@ export default async function SubmissionPlanPage() {
             className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
           >
             <ArrowLeft className="size-4" />
-            Back to Magazine Rankings
+            Back to magazine rankings
           </Link>
 
           <Link
             href="/rankings/compare"
             className="text-xs text-primary hover:underline"
           >
-            Side-by-Side Comparison →
+            Compare side by side →
           </Link>
         </div>
 
         {/* Page Header */}
         <header className="mb-10 max-w-3xl">
           <p className="text-sm font-semibold tracking-[0.2em] text-primary uppercase">
-            Missa Submissions Strategy
+            Submission plan
           </p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-            Smart Submissions Shortlist
+            Your shortlist
           </h1>
           <p className="mt-3 text-base leading-7 text-muted-foreground">
-            Build a shortlist of reach, target, and anchor magazines from the Missa magazine index, filtered by genre, fees, pay, and response time.
+            A few reaches, a few good fits and a few safer bets from the Missa magazine index, sorted by genre, fees, pay and response time.
           </p>
         </header>
 
@@ -85,10 +85,10 @@ export default async function SubmissionPlanPage() {
         ) : (
           <Empty variant="bordered" size="spacious" role="status">
             <EmptyHeader>
-              <EmptyTitle>Submission plans are not available yet</EmptyTitle>
+              <EmptyTitle>Shortlists aren’t available right now</EmptyTitle>
               <EmptyDescription>
-                Plans are built from the published magazine index, which is not
-                available right now. Browse magazines in the directory instead.
+                Shortlists come from the magazine index, which isn’t loading at
+                the moment. You can still browse magazines in the directory.
               </EmptyDescription>
             </EmptyHeader>
             <Link

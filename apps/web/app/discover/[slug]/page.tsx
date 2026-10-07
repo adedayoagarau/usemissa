@@ -134,7 +134,7 @@ export default async function DiscoveryCollectionPage({
         />
         <header className={styles.hero}>
           <Link href="/opportunities" className={styles.back}>
-            ← All Opportunities
+            ← All open calls
           </Link>
           <div className={styles.coverLayout}>
             <div className={styles.coverCopy}>

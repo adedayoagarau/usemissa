@@ -41,6 +41,7 @@ import {
   type MagazineFilterId,
   type MagazineSort,
 } from "@/lib/magazineFacts";
+import { useSp } from "@/components/missa/spelling";
 
 const genres = ["overall", "poetry", "fiction", "nonfiction"] as const;
 
@@ -57,6 +58,7 @@ export function MagazineRankingsInteractive({
   signedIn: boolean;
   preview?: boolean;
 }) {
+  const sp = useSp();
   const router = useRouter();
   const items = initialItems;
   const [search, setSearch] = useState("");
@@ -196,7 +198,7 @@ export function MagazineRankingsInteractive({
               >
             ).map(([value, label]) => (
               <option key={value} value={value}>
-                {label}
+                {sp(label)}
               </option>
             ))}
           </NativeSelect>
@@ -274,7 +276,7 @@ export function MagazineRankingsInteractive({
         <Table>
           <caption className="sr-only">
             {items[0]?.rankingYear} {currentGenre} magazine rankings, ordered by{" "}
-            {MAGAZINE_SORT_LABELS[sort].toLowerCase()}. Scores are out of 100; a
+            {sp(MAGAZINE_SORT_LABELS[sort].toLowerCase())}. Scores are out of 100; a
             dash means no source records the fact.
           </caption>
           <TableHeader>
@@ -289,7 +291,7 @@ export function MagazineRankingsInteractive({
                 scope="col"
                 className="hidden w-44 text-start xl:table-cell"
               >
-                Honours
+                {sp("Honors")}
               </TableHead>
               <TableHead
                 scope="col"
@@ -423,7 +425,7 @@ export function MagazineRankingsInteractive({
                       </div>
                       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 md:grid-cols-3 lg:grid-cols-1 xl:hidden">
                         <FactItem
-                          label="Honours"
+                          label={sp("Honors")}
                           value={
                             honours.length ? (
                               honours.map((line) => (

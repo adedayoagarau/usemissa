@@ -17,7 +17,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     const id = (await context.params).id;
     const input = body as { title?: unknown; description?: unknown; fileId?: unknown | null; taxonomyTermIds?: unknown; expectedRevision?: unknown };
     const envelope = libraryEnvelope(request, session.account.id, 'library-work.update', { id, ...input }, input.expectedRevision);
-    if (!envelope) return creatorLibraryJson({ error: 'Refresh this Work before saving again.' }, 400);
+    if (!envelope) return creatorLibraryJson({ error: 'Refresh the page before saving this piece again.' }, 400);
     try {
       const receipt = await repository.updateWork(envelope, id, input);
       const work = (await repository.library(session.account.id, session.account.userId)).works.find((item) => item.id === id)!;
@@ -30,7 +30,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json(work, { headers });
   } catch (error) {
     if (error instanceof LibraryValidationError) return NextResponse.json({ error: error.message }, { status: error.message === 'Work not found.' ? 404 : 400, headers });
-    return NextResponse.json({ error: 'We could not update that Work.' }, { status: 500, headers });
+    return NextResponse.json({ error: "We couldn't update that piece. Try again." }, { status: 500, headers });
   }
 }
 
@@ -42,7 +42,7 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
     const id = (await context.params).id;
     const body = await request.json().catch(() => ({})) as { expectedRevision?: unknown };
     const envelope = libraryEnvelope(request, session.account.id, 'library-work.delete', { id }, body.expectedRevision);
-    if (!envelope) return creatorLibraryJson({ error: 'Refresh this Work before deleting it.' }, 400);
+    if (!envelope) return creatorLibraryJson({ error: 'Refresh the page before deleting this piece.' }, 400);
     try { return creatorLibraryJson({ deleted: true, receipt: await repository.deleteWork(envelope, id) }); }
     catch (error) { return creatorLibraryError(error); }
   }
@@ -54,6 +54,6 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
     // server failure when the Error constructor came from another chunk.
     if (error instanceof LibraryConflictError || error instanceof Error && error.name === 'LibraryConflictError') return NextResponse.json({ error: error.message }, { status: 409, headers });
     if (error instanceof LibraryValidationError || error instanceof Error && error.name === 'LibraryValidationError') return NextResponse.json({ error: error.message }, { status: 404, headers });
-    return NextResponse.json({ error: 'We could not delete that Work.' }, { status: 500, headers });
+    return NextResponse.json({ error: "We couldn't delete that piece. Try again." }, { status: 500, headers });
   }
 }

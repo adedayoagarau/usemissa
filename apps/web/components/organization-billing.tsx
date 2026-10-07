@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Sp } from "@/components/missa/spelling";
 
 type Billing = {
   plan: string;
@@ -64,7 +65,7 @@ export function OrganizationBilling({ organizationId, canManage }: { organizatio
           <h2 id="organization-billing-heading" className="font-heading text-xl font-medium text-foreground">
             Plan and seats
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">Your current Organization plan and billing state.</p>
+          <p className="mt-1 text-sm text-muted-foreground"><Sp>Your current Organization plan and billing state.</Sp></p>
         </div>
         <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground capitalize">
           {billing.plan} · {billing.status}
@@ -73,7 +74,7 @@ export function OrganizationBilling({ organizationId, canManage }: { organizatio
       {!paidPlansAvailable && (
         <Alert role="status" className="mt-4">
           <AlertTitle>Paid plans are not available yet</AlertTitle>
-          <AlertDescription>Organization upgrades and payout setup are coming later. Your Organization stays on its current plan, and nothing will be charged.</AlertDescription>
+          <AlertDescription><Sp>Organization upgrades and payout setup are coming later. Your Organization stays on its current plan, and nothing will be charged.</Sp></AlertDescription>
         </Alert>
       )}
       {error && (

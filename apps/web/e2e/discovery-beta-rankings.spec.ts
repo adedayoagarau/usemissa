@@ -63,7 +63,7 @@ for (const width of [1440, 390]) {
     await page.goto("/");
     await expect(
       page
-        .getByRole("link", { name: "Browse opportunities", exact: true })
+        .getByRole("link", { name: "Browse open calls", exact: true })
         .first(),
     ).toBeVisible();
     expect(

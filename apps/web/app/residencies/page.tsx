@@ -86,7 +86,7 @@ export default async function Page({
     <DirectoryCategoryPage
       kind="residency_center"
       basePath="/residencies"
-      title="Find space for your practice."
+      title="Find space to make your work."
       description="Explore artist residency centers, studios and retreat programs worldwide."
       searchParams={searchParams}
     />

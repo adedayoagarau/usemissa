@@ -817,7 +817,7 @@ export function LibraryProduct({
                       idPrefix="create-library-work"
                       selectedTermIds={workTermIds}
                       onSelectedTermIdsChange={setWorkTermIds}
-                      description="Describe the Work across independent facets. These terms stay private and do not determine eligibility or quality."
+                      description="Describe the piece by form, genre, theme and more. These terms stay private and never decide eligibility or quality."
                     />
                   </fieldset>
                 </>

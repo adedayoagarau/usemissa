@@ -139,7 +139,7 @@ export function InstitutionMediaGallery({
       {shelf && (
         <p className={styles.issueIntro}>
           {books
-            ? "Explore titles from the press’s catalogue."
+            ? "Explore titles from the press’s catalog."
             : "Explore the publication through its past issues and volumes."}
         </p>
       )}
@@ -173,7 +173,7 @@ export function InstitutionMediaGallery({
           </h3>
           <p>
             {books
-              ? "Visit the press’s website to explore its catalogue."
+              ? "Visit the press’s website to explore its catalog."
               : "Visit the publication’s website to explore its archive."}
           </p>
           {website && (

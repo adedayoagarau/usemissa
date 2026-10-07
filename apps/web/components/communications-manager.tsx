@@ -44,7 +44,7 @@ interface Preview { submissionId: string; submitterLabel: string; to?: string; s
 
 const MERGE_FIELDS: Array<{ token: string; meaning: string }> = [
   { token: '{{submitterName}}', meaning: 'first name when known' },
-  { token: '{{workTitles}}', meaning: 'the Works this letter is about' },
+  { token: '{{workTitles}}', meaning: 'the pieces this letter is about' },
   { token: '{{opportunityTitle}}', meaning: 'the opportunity' },
   { token: '{{organizationName}}', meaning: 'your display name' },
   { token: '{{stageLabel}}', meaning: 'your word for the stage' },

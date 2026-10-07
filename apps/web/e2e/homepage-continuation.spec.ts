@@ -63,7 +63,7 @@ test("homepage reuses catalogue cards with real backend records", async ({
   await catalogue.close();
   const workspace = page.locator("#homepage-workspace");
   await workspace
-    .getByRole("tab", { name: "Applications", exact: true })
+    .getByRole("tab", { name: "Tracker", exact: true })
     .click();
   await expect(workspace.locator("tbody tr")).toHaveCount(3);
   for (const row of await workspace.locator("tbody tr").all()) {
@@ -81,10 +81,10 @@ test("homepage reuses catalogue cards with real backend records", async ({
     workspace.getByRole("link", { name: "Open your Tracker" }),
   ).toHaveAttribute("href", "/tracker");
   await workspace
-    .getByRole("tab", { name: "Notifications", exact: true })
+    .getByRole("tab", { name: "Reminders", exact: true })
     .click();
   await expect(
-    workspace.getByRole("link", { name: "Open your Inbox" }),
+    workspace.getByRole("link", { name: "Set your reminders" }),
   ).toHaveAttribute("href", "/inbox");
   await workspace.getByRole("tab", { name: "Goals", exact: true }).click();
   await expect(
@@ -115,9 +115,9 @@ test("failed and empty catalogue responses remain navigable; retry recovers", as
   );
   await page.goto("/#how-missa-works");
   const how = page.locator("#how-missa-works");
-  await page.getByRole("tab", { name: "Applications", exact: true }).click();
+  await page.getByRole("tab", { name: "Tracker", exact: true }).click();
   await expect(
-    how.getByText("We couldn’t load the opportunities."),
+    how.getByText("We couldn’t load the calls."),
   ).toBeVisible();
   await expect(
     page
@@ -125,19 +125,19 @@ test("failed and empty catalogue responses remain navigable; retry recovers", as
       .getByText("We couldn’t load these deadlines."),
   ).toBeVisible();
   await expect(
-    how.getByRole("link", { name: "Browse opportunities" }),
+    how.getByRole("link", { name: "Browse open calls" }),
   ).toHaveAttribute("href", "/opportunities");
   await page.unroute("**/api/opportunities?openNow=true&limit=12");
   await page.route("**/api/opportunities?openNow=true&limit=12", (route) =>
     route.fulfill({ json: { ...response, items: [], total: 0 } }),
   );
   await how.getByRole("button", { name: "Try again" }).click();
-  await expect(how.getByText("No open opportunities to show.")).toBeVisible();
+  await expect(how.getByText("No open calls to show right now.")).toBeVisible();
   await expect(
     page.getByText("No dated calls in this selection."),
   ).toBeVisible();
   await expect(
-    how.getByRole("button", { name: "Browse opportunities" }),
+    how.getByRole("button", { name: "Browse open calls" }),
   ).toHaveAttribute("href", "/opportunities");
   await page.unroute("**/api/opportunities?openNow=true&limit=12");
   await page.route("**/api/opportunities?openNow=true&limit=12", (route) =>
@@ -181,7 +181,7 @@ test("mobile, long titles, 200 percent zoom, keyboard FAQ and accessibility", as
   await page.keyboard.press("Enter");
   await expect(question).toHaveAttribute("aria-expanded", "true");
   await expect(
-    page.getByText(/Browse opportunities and read the details without an account/),
+    page.getByText(/Not to browse\. You need one to save calls/),
   ).toBeVisible();
   await page
     .locator('[aria-labelledby="invitation-heading"]')
@@ -297,11 +297,11 @@ test("feature explorer: portfolio, notifications and goals respond without accou
     await section.getByRole("tab", { name: "Portfolio", exact: true }).focus();
     await page.keyboard.press("ArrowRight");
     await expect(
-      section.getByRole("tab", { name: "Applications", exact: true }),
+      section.getByRole("tab", { name: "Tracker", exact: true }),
     ).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(
-      section.getByRole("tab", { name: "Applications", exact: true }),
+      section.getByRole("tab", { name: "Tracker", exact: true }),
     ).toHaveAttribute("aria-selected", "true");
     if (
       await section.getByText("We couldn’t load these deadlines.").isVisible()
@@ -315,7 +315,7 @@ test("feature explorer: portfolio, notifications and goals respond without accou
     });
     await capture(`.impeccable/review/features-applications-${width}.png`);
     await section
-      .getByRole("tab", { name: "Notifications", exact: true })
+      .getByRole("tab", { name: "Reminders", exact: true })
       .click();
     for (const name of [
       "Preview deadline reminders",

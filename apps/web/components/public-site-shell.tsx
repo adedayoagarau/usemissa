@@ -55,7 +55,8 @@ export function PublicSiteShell({
         <div>
           <MissaWordmark size="compact" className={styles.wordmark} />
           <p>
-            Missa is in beta. Discover opportunities for your creative practice.
+            Missa is new. If a call is wrong or missing,{" "}
+            <a href={contactMailto("A call on Missa")}>tell us</a>.
           </p>
         </div>
         <nav aria-label="Footer navigation">

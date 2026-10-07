@@ -81,7 +81,7 @@ export const ANALYTICS_EVENTS = {
   opportunity_search_submitted: clientCreator("A discovery search was submitted.", ["hasQuery", "category"]),
   opportunity_filter_changed: clientCreator("A discovery filter changed.", ["filter", "enabled"]),
   opportunity_filters_cleared: clientCreator("All discovery filters were cleared.", []),
-  opportunity_taxonomy_selected: clientCreator("A taxonomy facet selection changed.", ["facet", "selected"], ["termId"]),
+  opportunity_taxonomy_selected: clientCreator("A taxonomy facet selection changed.", ["facet", "selected"], ["termId"]), // missa-language-allow: internal event description; "facet" names the event property
   opportunity_search_saved: clientCreator("A creator saved a reusable search.", ["taxonomyTermCount"]),
   work_taxonomy_saved: clientCreator("A creator saved taxonomy for a private Work.", ["taxonomyTermCount"]),
 

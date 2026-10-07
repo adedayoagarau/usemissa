@@ -18,11 +18,11 @@ import { ORGANIZATION_ROLE_LABELS } from '@/lib/organizationPeople';
 import { organizationCapabilityProjection, organizationNavigation } from '@/lib/organizationProduct';
 
 function roleReach(role: OrgRole, organizationId: string): string {
-  if (role === 'owner') return 'Every area, including billing and granting Owner access. Can change Organization records.';
-  if (role === 'admin') return 'Every area. Can change Organization records, except Owner access.';
-  if (role === 'reviewer') return 'Only the Submissions assigned to them, in their own review queue. Cannot change Organization records.';
+  if (role === 'owner') return 'Every area, including billing and granting Owner access. Can change organization records.';
+  if (role === 'admin') return 'Every area. Can change organization records, except Owner access.';
+  if (role === 'reviewer') return 'Only the submissions assigned to them, in their own review queue. Can’t change organization records.';
   const destinations = organizationNavigation(organizationCapabilityProjection(role), organizationId).map((item) => item.label);
-  return `Can open ${destinations.join(', ')}, but Organization-wide Submissions, reviews, decisions, and people stay hidden until Team and Program access exists. Cannot change Organization records.`;
+  return `Can open ${destinations.join(', ')}, but organization-wide submissions, reviews, decisions and people stay hidden until team and program access exists. Can’t change organization records.`;
 }
 
 function RoleSelect({ id, organizationId, actorRole, currentRole, value, onChange }: { id: string; organizationId: string; actorRole: OrgRole; currentRole?: OrgRole; value: OrgRole; onChange: (role: OrgRole) => void }) {
@@ -115,7 +115,7 @@ export function ChangeRoleDialog({ organizationId, actorRole, person, isSelf }: 
             <DialogDescription>The new role applies the next time a page loads. Existing review assignments and recorded decisions stay attributed to this person.</DialogDescription>
           </DialogHeader>
           <RoleSelect id="change-role" organizationId={organizationId} actorRole={actorRole} currentRole={person.role} value={role} onChange={setRole} />
-          {losesManagement ? <p className="text-sm text-muted-foreground">You will no longer be able to change Organization records, including your own role.</p> : null}
+          {losesManagement ? <p className="text-sm text-muted-foreground">You won’t be able to change organization records anymore, including your own role.</p> : null}
           <OrganizationActionError message={error} />
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
@@ -139,7 +139,7 @@ export function RemoveAccessDialog({ organizationId, actorRole, person, isSelf, 
         <AlertDialogHeader>
           <AlertDialogTitle>{isSelf ? 'Remove your own access?' : `Remove ${person.name}’s access?`}</AlertDialogTitle>
           <AlertDialogDescription>
-            {isSelf ? 'You leave this Organization immediately and need another Owner or Admin to add you back.' : `${person.name} can no longer open this Organization. Their Missa account is not deleted.`}
+            {isSelf ? 'You leave this organization right away, and another Owner or Admin has to add you back.' : `${person.name} can no longer open this organization. Their Missa account isn’t deleted.`}
             {incompleteReviews ? ` ${incompleteReviews} open review ${incompleteReviews === 1 ? 'assignment stays' : 'assignments stay'} on record but can no longer be completed.` : ''}
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -154,7 +154,7 @@ export function RemoveAccessDialog({ organizationId, actorRole, person, isSelf, 
               const result = await organizationMutation(`/api/orgs/${encodeURIComponent(organizationId)}/members/${encodeURIComponent(person.accountId)}`, { method: 'DELETE', fallbackError: 'Access could not be removed. Nothing changed.' });
               if (!result.ok) return result.error;
               setOpen(false);
-              toast.success(isSelf ? 'You left the Organization.' : `${person.name} no longer has access.`);
+              toast.success(isSelf ? 'You left the organization.' : `${person.name} no longer has access.`);
               if (isSelf) router.push('/organization');
               else router.push(`/organization/${encodeURIComponent(organizationId)}/people`);
               router.refresh();

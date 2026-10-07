@@ -4,7 +4,8 @@ import { siteUrl } from '@/lib/siteUrl';
 import { cleanCrawledNarrative, cleanTitleOrLabel } from '@/lib/textUtils';
 
 export const SITE_NAME = 'Missa';
-export const DEFAULT_DESCRIPTION = 'Find submission opportunities that fit your work, prepare with context, and keep every deadline in view.';
+export const DEFAULT_DESCRIPTION =
+  'Missa is a free site where artists and writers find open calls, grants, residencies, magazines and prizes, see the fee, who can apply and the official page for each, and get reminded before they close.';
 
 export function absoluteUrl(path = '/'): string {
   return new URL(path, `${siteUrl()}/`).toString();
@@ -19,7 +20,7 @@ export function pageMetadata(input: { title: string; description: string; path: 
     width: 1200,
     height: 630,
     type: 'image/png',
-    alt: 'Missa, creative opportunities with their source and limits kept visible.',
+    alt: 'Missa. Find the call. Make the deadline.',
   };
   return {
     // Callers pass a complete, human title (often already naming Missa), so

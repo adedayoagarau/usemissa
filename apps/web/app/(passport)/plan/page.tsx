@@ -6,6 +6,7 @@ import { creatorBillingAccount, creatorEntitlements, creatorPoolFor } from '@mis
 import { PlanProduct } from '@/components/missa/plan-product';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { plusOffers, pricingRegion, requestCountry } from '@/lib/creatorBilling';
+import { smsConfig } from '@/lib/sms';
 
 export const metadata: Metadata = { title: 'Your plan', robots: { index: false } };
 
@@ -36,6 +37,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
         offers={offers.map(({ interval, label }) => ({ interval, label }))}
         regional={region !== 'standard'}
         checkout={checkout === 'success' || checkout === 'cancelled' ? checkout : null}
+        textReminders={smsConfig() !== null}
       />
     );
   } finally {

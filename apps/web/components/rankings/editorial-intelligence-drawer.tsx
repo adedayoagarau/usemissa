@@ -30,6 +30,7 @@ import {
 } from "@/lib/magazineFacts";
 // Values come from the ranking module itself: the package root also exports Node-only code.
 import { PILLAR_MAX } from "@missa/radar-engine/dist/src/ranking/magazineRankingEngine.js";
+import { Sp } from "@/components/missa/spelling";
 
 const GENRE_LABELS: Record<string, string> = {
   fiction: "Fiction",
@@ -51,7 +52,7 @@ function pillars(row: MagazineRankingRow): Pillar[] {
   return [
     {
       key: "accolades",
-      label: "Honours",
+      label: "Honors",
       score: row.accoladesScore,
       fact: "Pushcart standing and anthology selections",
       source: null,
@@ -107,7 +108,7 @@ function Section({
 }) {
   return (
     <section className="space-y-3">
-      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      <h3 className="text-sm font-semibold text-foreground"><Sp>{title}</Sp></h3>
       {children}
     </section>
   );
@@ -141,7 +142,7 @@ function ScoreBreakdown({ row }: { row: MagazineRankingRow }) {
               className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 py-3"
             >
               <span className="text-sm font-medium text-foreground">
-                {pillar.label}
+                <Sp>{pillar.label}</Sp>
               </span>
               <span className="text-end text-sm text-foreground">
                 <span className="font-mono tabular-nums">
@@ -180,7 +181,7 @@ function ScoreBreakdown({ row }: { row: MagazineRankingRow }) {
 function Honours({ data }: { data: EditorialIntelligenceFullProfile }) {
   if (data.pushcart.length === 0 && data.awards.length === 0) {
     return (
-      <Section title="Honours">
+      <Section title="Honors">
         <p className="text-sm text-muted-foreground">
           No Pushcart standing or anthology selection on record.
         </p>
@@ -188,7 +189,7 @@ function Honours({ data }: { data: EditorialIntelligenceFullProfile }) {
     );
   }
   return (
-    <Section title="Honours">
+    <Section title="Honors">
       {data.pushcart.length > 0 && (
         <ul className="divide-y divide-border border-y border-border">
           {data.pushcart.map((entry) => (
@@ -352,7 +353,7 @@ export function EditorialIntelligenceDrawer({
         <div className="flex-1 space-y-8 p-6">
           {row && <ScoreBreakdown row={row} />}
           {loading && !loaded && (
-            <div className="space-y-3" aria-label="Loading honours">
+            <div className="space-y-3" aria-label="Loading honors">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
@@ -361,7 +362,7 @@ export function EditorialIntelligenceDrawer({
           {error && (
             <div className="space-y-3" role="alert">
               <p className="text-sm text-destructive">
-                The honours record could not load.
+                <Sp>The honors record could not load.</Sp>
               </p>
               <Button variant="outline" size="sm" onClick={() => void load()}>
                 Try again
@@ -371,7 +372,7 @@ export function EditorialIntelligenceDrawer({
           {loaded && data && <Honours data={data} />}
           {loaded && !data && !row && (
             <p className="text-sm text-muted-foreground">
-              Missa has no ranking or honours on record for this magazine yet.
+              <Sp>Missa has no ranking or honors on record for this magazine yet.</Sp>
             </p>
           )}
           {row && <WriterReports row={row} />}

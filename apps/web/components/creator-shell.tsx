@@ -153,7 +153,7 @@ export function CreatorShell({
           <Shield aria-hidden="true" />
           <span>
             <b>Platform Admin</b>
-            <small>Operate Missa</small>
+            <small>Run Missa</small>
           </span>
         </Link>
       ) : null}
@@ -227,7 +227,7 @@ export function CreatorShell({
             </button>
           </div>
           {logoutError ? (
-            <p role="alert">Could not log out. Try again.</p>
+            <p role="alert">Couldn’t log out. Try again.</p>
           ) : null}
         </div>
       </aside>
