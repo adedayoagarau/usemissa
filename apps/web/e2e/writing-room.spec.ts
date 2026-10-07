@@ -1,7 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-// Relational only: entries are saved to the account in Postgres (migration 0095).
+// Relational only: entries are saved to the account in Postgres (migrations 0095, 0096).
+
+const pageText = (page: Page, index = 0) =>
+  page.locator('[data-slot="writing-page-text"]').nth(index);
 
 async function signIn(page: Page) {
   const signup = await page.request.post("/api/auth/signup", {
@@ -40,7 +43,7 @@ test("the writing room saves as you type, reopens entries and deletes them", asy
   // No browser agent tools where a creator writes.
   expect(response?.headers()["permissions-policy"]).toContain("tools=()");
 
-  const writing = page.getByRole("textbox", { name: "Writing" });
+  const writing = pageText(page);
   await expect(writing).toBeFocused();
   await writing.pressSequentially("The river does not wait for anyone.");
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
@@ -49,11 +52,12 @@ test("the writing room saves as you type, reopens entries and deletes them", asy
 
   // A reload reopens the saved entry from the account.
   await page.reload();
-  await expect(writing).toHaveValue("The river does not wait for anyone.");
+  await expect(writing).toHaveText("The river does not wait for anyone.");
 
   // Offline, text stays on the device and is saved once the connection returns.
   await page.context().setOffline(true);
-  await writing.press("End");
+  await writing.click();
+  await page.keyboard.press("Control+End");
   await writing.pressSequentially(" Neither do I.");
   await expect(page.getByText("Offline · kept on this device")).toBeVisible();
   await page.context().setOffline(false);
@@ -68,7 +72,7 @@ test("the writing room saves as you type, reopens entries and deletes them", asy
 
   // A new entry starts blank; the earlier one opens from Entries.
   await page.getByRole("button", { name: "New entry" }).click();
-  await expect(writing).toHaveValue("");
+  await expect(writing).toHaveText("");
   await expect(writing).toBeFocused();
   await writing.pressSequentially("Second page.");
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
@@ -87,10 +91,10 @@ test("the writing room saves as you type, reopens entries and deletes them", asy
   await expect(writing).toBeFocused();
   await writing.pressSequentially(" More.");
   await expect(sheet).toBeHidden();
-  await expect(writing).toHaveValue("Second page. More.");
+  await expect(writing).toHaveText("Second page. More.");
   await page.getByRole("button", { name: "Entries" }).click();
   await sheet.getByRole("link", { name: /The river does not wait/ }).click();
-  await expect(writing).toHaveValue(
+  await expect(writing).toHaveText(
     "The river does not wait for anyone. Neither do I.",
   );
   await expect(writing).toBeFocused();
@@ -112,7 +116,7 @@ test("the writing room saves as you type, reopens entries and deletes them", asy
   await expect(page.getByText("Entry deleted")).toBeVisible();
   // Let the toast finish entering so contrast is measured at full opacity.
   await expect(page.locator("[data-sonner-toast]")).toHaveCSS("opacity", "1");
-  await expect(writing).toHaveValue("");
+  await expect(writing).toHaveText("");
   expect((await page.request.get(`/api/me/writing/${entryId}`)).status()).toBe(
     404,
   );
@@ -127,7 +131,7 @@ test("the timer counts down and hides the controls until it is paused", async ({
 }) => {
   await signIn(page);
   await page.goto("/write");
-  const writing = page.getByRole("textbox", { name: "Writing" });
+  const writing = pageText(page);
   await page.getByRole("button", { name: "Start 15-minute timer" }).click();
   const pause = page.getByRole("button", { name: "Pause timer" });
   await expect(pause).toBeVisible();
@@ -155,7 +159,7 @@ test("the writer chooses a typeface and the choice is kept", async ({
 }) => {
   await signIn(page);
   await page.goto("/write");
-  const writing = page.getByRole("textbox", { name: "Writing" });
+  const writing = pageText(page);
   const before = await writing.evaluate(
     (element) => getComputedStyle(element).fontFamily,
   );
@@ -193,4 +197,64 @@ test("the writer chooses a typeface and the choice is kept", async ({
       writing.evaluate((element) => getComputedStyle(element).fontFamily),
     )
     .toBe(after);
+});
+
+test("pages keep their own format and every space and tab", async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.goto("/write");
+  await page.getByRole("textbox", { name: "Title" }).fill("Harmattan");
+  const first = pageText(page);
+  await first.click();
+  await first.pressSequentially("the light went");
+  await page.keyboard.press("Tab");
+  await page.keyboard.type("thin     and gold");
+
+  // A second page, with its own format.
+  await page.getByRole("button", { name: "More" }).click();
+  await page
+    .getByRole("menuitem", { name: "Add a page after this one" })
+    .click();
+  const second = pageText(page, 1);
+  await expect(second).toBeFocused();
+  await second.pressSequentially("waiting");
+  await page.getByRole("button", { name: "Page format" }).click();
+  const format = page.getByRole("dialog", { name: "Format" });
+  await expect(format).toContainText("Page 2 of 2");
+  await format.getByLabel("Line spacing").selectOption("3");
+  await format.getByLabel("Letter spacing").selectOption("0.5");
+  await format.getByRole("radio", { name: "Centre" }).click();
+  await expect(
+    (
+      await new AxeBuilder({ page })
+        .include('[data-slot="sheet-content"]')
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await page.keyboard.press("Escape");
+
+  const style = (index: number) =>
+    pageText(page, index).evaluate((element) => {
+      const computed = getComputedStyle(element.parentElement!.parentElement!);
+      return [computed.textAlign, computed.letterSpacing];
+    });
+  expect(await style(1)).not.toEqual(await style(0));
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+  // Reloaded, the pages, their format and the exact spacing come back.
+  await page.reload();
+  await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue(
+    "Harmattan",
+  );
+  await expect(pageText(page)).toHaveText("the light went\tthin     and gold");
+  await expect(pageText(page, 1)).toHaveText("waiting");
+  expect((await style(1))[0]).toBe("center");
+
+  // In page view each page is a sheet of the chosen paper.
+  const sheet = page.locator('[data-slot="writing-page"]').first();
+  const width = await sheet.evaluate(
+    (element) => getComputedStyle(element).width,
+  );
+  expect(parseFloat(width)).toBeCloseTo(210 * (96 / 25.4), 0);
 });

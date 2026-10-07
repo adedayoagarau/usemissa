@@ -277,7 +277,7 @@ Typography follows the role of the content, not the route on which it appears.
 6. Headings should be short and direct. Do not compensate for vague copy with oversized type.
 7. Product code uses `--font-editorial`, `--font-interface`, or `--font-data`; do not declare a font family directly in a feature stylesheet.
 8. Public portfolios may use Newsreader more extensively for authored work, but their controls and navigation remain Instrument Sans.
-9. **Writer typefaces.** In the writing room a writer may set their own text in one of the open-licence faces registered in `components/missa/writing-typefaces.ts` (files, licences and provenance in `apps/web/fonts/writing`). They style only `WritingSurface`, the writer's own words; the room's controls and the rest of Missa keep the three families above. A face is added only with its SIL OFL licence and a provenance row, and never used elsewhere.
+9. **Writer typefaces.** In the writing room a writer may set their own text in one of the open-licence faces registered in `components/missa/writing-typefaces.ts` (files, licences and provenance in `apps/web/fonts/writing`). They style only `WritingPages`, the writer's own words; the room's controls and the rest of Missa keep the three families above. A face is added only with its SIL OFL licence and a provenance row, and never used elsewhere.
 
 ## 5. Spacing and Layout
 
@@ -553,7 +553,7 @@ An AI-generated component that duplicates an approved item fails review.
 | Recover after a decline        | `SimilarOpportunities`        | Explained matches with plain reasons, Save to Tracker, Not for me; never labelled AI           |
 | Check before submitting        | `PreSubmitCheck`              | Passed / Needs attention / Check manually, written out; unverifiable checks are never Passed   |
 | Edit a Work                    | `WorkEditor`                  | `Field`, form controls, `Sortable`, media blocks, `Dialog`/`Sheet`, process feedback           |
-| Write in the writing room      | `WritingRoom`                 | `WritingSurface`, ghost `Button`s that fade while the timer runs, `DropdownMenu`, `Popover`, `Sheet` of `Item`s, `AlertDialog`; no AI, suggestions or analysis |
+| Write in the writing room      | `WritingRoom`                 | `WritingPages` (printed pages, per-page format), `WritingFormatBar`, `WritingFormatSheet`, ghost `Button`s that fade while the timer runs, `DropdownMenu`, `Popover`, `Sheet` of `Item`s, `AlertDialog`; no AI, suggestions or analysis |
 | Manage calendar                | `OpportunityCalendar`         | `Calendar`, labelled events, `Popover` or side panel, provider sync status                     |
 | Configure Profile              | `ProfileSettingsForm`         | Grouped section navigation; visibility `RadioGroup` beside each public field with a live preview; `Collapsible` groups; one sticky save bar per section |
 | Present an artist              | `PortfolioIdentityHeader`     | editorial typography, `Avatar`/media, restrained actions; no dashboard chrome                  |
@@ -595,7 +595,7 @@ replacement_for:
 | Trigger an action                      | `Button`                                      | Badge, clickable `div`, or text with click handler |
 | Enter short free text                  | `Field` + `Input`                             | Placeholder-only input                             |
 | Enter long text                        | `Field` + `Textarea`                          | Contenteditable without editor requirements        |
-| Write a document in the writing room   | `WritingSurface`                              | A restyled `Textarea` or a form field              |
+| Write a document in the writing room   | `WritingPages`                                | A restyled `Textarea` or a form field              |
 | Choose one short option list           | `RadioGroup`                                  | Multiple checkboxes                                |
 | Choose one compact menu option         | `Select` or `NativeSelect`                    | Popover with handmade listbox                      |
 | Search a long option list              | `Combobox` or `Autocomplete`                  | Select with hundreds of items                      |

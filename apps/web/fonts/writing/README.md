@@ -1,7 +1,7 @@
 # Writing room typefaces
 
 Faces a writer can choose for their own text in the writing room (`/write`).
-They are used only by `components/missa/writing-surface.tsx`, never for
+They are used only by `components/missa/writing-pages.tsx`, never for
 Missa's interface. Each is licensed under the SIL Open Font License 1.1; its
 licence sits beside it as `<name>-OFL.txt`.
 

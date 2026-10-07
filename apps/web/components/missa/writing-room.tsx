@@ -72,11 +72,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import type { Editor } from "@tiptap/react";
 import {
-  WRITING_TEXT_SIZES,
-  WritingSurface,
-  type WritingTextSize,
-} from "@/components/missa/writing-surface";
+  WritingPages,
+  type PageEditors,
+  type PagesView,
+} from "@/components/missa/writing-pages";
+import {
+  WritingFormatBar,
+  WritingFormatSheet,
+} from "@/components/missa/writing-format";
 import {
   DEFAULT_WRITING_TYPEFACE,
   storedWritingTypeface,
@@ -88,11 +93,23 @@ import {
 import {
   countWords,
   newWritingEntryId,
-  WRITING_BODY_MAX,
+  WRITING_TITLE_MAX,
   writingPreview,
+  type WritingContent,
   type WritingEntry,
   type WritingEntrySummary,
 } from "@/lib/writing";
+import {
+  documentText,
+  emptyPage,
+  newDocument,
+  PAGE_SIZES,
+  parseWritingDocument,
+  plainTextToDocument,
+  serializeDocument,
+  TEXT_SIZES,
+  type WritingDocument,
+} from "@/lib/writing-document";
 import {
   browserWritingDeviceStore,
   httpWritingTransport,
@@ -111,7 +128,10 @@ export type WritingRoomProps = {
 
 type Current = {
   id: string;
-  body: string;
+  title: string;
+  doc: WritingDocument;
+  /** Changes when a different entry is opened, so its pages are rebuilt. */
+  mount: number;
   state: "ready" | "opening" | "failed";
 };
 type Notice =
@@ -119,21 +139,46 @@ type Notice =
   | { kind: "open-failed"; id: string }
   | { kind: "missing" };
 type Prefs = {
+  /** The typeface new pieces start in. */
   typeface: WritingTypefaceId;
-  size: WritingTextSize;
   spellcheck: boolean;
   minutes: number;
+  view: PagesView | null;
 };
 
 const PREFS_KEY = "missa.write.prefs.v1";
 const DEFAULT_PREFS: Prefs = {
   typeface: DEFAULT_WRITING_TYPEFACE,
-  size: 20,
   spellcheck: false,
   minutes: 15,
+  view: null,
 };
 const TIMER_LENGTHS = [5, 10, 15, 20, 25, 30, 45, 60];
-const PLACEHOLDERS = ["Begin writing", "Pick a thought and go", "Start typing"];
+
+let mounts = 0;
+
+function opened(
+  id: string,
+  content: WritingContent | null,
+  typeface: string,
+  state: Current["state"] = "ready",
+): Current {
+  const doc =
+    (content?.document ? parseWritingDocument(content.document) : null) ??
+    (content?.body
+      ? plainTextToDocument(content.body, typeface)
+      : newDocument(typeface));
+  mounts += 1;
+  return { id, title: content?.title ?? "", doc, mount: mounts, state };
+}
+
+function contentOf(current: Current): WritingContent {
+  return {
+    title: current.title,
+    body: documentText(current.doc),
+    document: serializeDocument(current.doc),
+  };
+}
 
 function readPrefs(): Prefs {
   try {
@@ -142,13 +187,11 @@ function readPrefs(): Prefs {
     );
     const field = (name: string) =>
       raw && typeof raw === "object" ? Reflect.get(raw, name) : undefined;
-    const size = field("size");
     const minutes = field("minutes");
+    const view = field("view");
     return {
       typeface: storedWritingTypeface(field("typeface")),
-      size: (WRITING_TEXT_SIZES as readonly unknown[]).includes(size)
-        ? (size as WritingTextSize)
-        : DEFAULT_PREFS.size,
+      view: view === "page" || view === "draft" ? view : null,
       spellcheck: field("spellcheck") === true,
       minutes: TIMER_LENGTHS.includes(minutes as number)
         ? (minutes as number)
@@ -207,6 +250,7 @@ function downloadText(filename: string, text: string) {
 function summaryOf(entry: WritingEntry): WritingEntrySummary {
   return {
     id: entry.id,
+    title: entry.title,
     preview: entry.preview,
     wordCount: entry.wordCount,
     revision: entry.revision,
@@ -239,25 +283,31 @@ export function WritingRoom({
         device: browserWritingDeviceStore(`missa.write.drafts.v1:${deviceKey}`),
       }),
   );
+  const [prefs, setPrefs] = useState(readPrefs);
   const [current, setCurrent] = useState<Current>(() => {
     const drafts = sync.load();
     if (initialEntryId) {
       const draft = drafts.find((item) => item.id === initialEntryId);
       return draft
-        ? { id: draft.id, body: draft.body, state: "ready" }
-        : { id: initialEntryId, body: "", state: "opening" };
+        ? opened(draft.id, draft.content, prefs.typeface)
+        : opened(initialEntryId, null, prefs.typeface, "opening");
     }
     const latest = drafts[0];
     return latest
-      ? { id: latest.id, body: latest.body, state: "ready" }
-      : { id: newWritingEntryId(), body: "", state: "ready" };
+      ? opened(latest.id, latest.content, prefs.typeface)
+      : opened(newWritingEntryId(), null, prefs.typeface);
   });
   const [entries, setEntries] = useState(initialEntries);
   const [notice, setNotice] = useState<Notice | null>(null);
-  const [prefs, setPrefs] = useState(readPrefs);
-  const [placeholder] = useState(
-    () => PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)],
+  const [view, setView] = useState<PagesView>(
+    () => prefs.view ?? (window.innerWidth < 768 ? "draft" : "page"),
   );
+  const [editors] = useState<PageEditors>(() => new Map());
+  const [active, setActive] = useState<{
+    pageId: string;
+    editor: Editor;
+  } | null>(null);
+  const [formatOpen, setFormatOpen] = useState(false);
   const [timer, setTimer] = useState<{
     endsAt: number | null;
     remaining: number;
@@ -269,11 +319,11 @@ export function WritingRoom({
   const [timeUp, setTimeUp] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [pageDeleteOpen, setPageDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [exportError, setExportError] = useState("");
   const [focusTick, setFocusTick] = useState(0);
-  const surface = useRef<HTMLTextAreaElement>(null);
   const initialOpen = useRef(current.state === "opening" ? current.id : null);
 
   const syncState = useSyncExternalStore(
@@ -288,9 +338,14 @@ export function WritingRoom({
   );
   const canFullscreen =
     typeof document !== "undefined" && document.fullscreenEnabled;
-  const face = writingTypeface(prefs.typeface);
-  const deferredBody = useDeferredValue(current.body);
-  const words = useMemo(() => countWords(deferredBody), [deferredBody]);
+  const face = writingTypeface(current.doc.typeface);
+  const deferredDoc = useDeferredValue(current.doc);
+  const body = useMemo(() => documentText(deferredDoc), [deferredDoc]);
+  const words = useMemo(() => countWords(body), [body]);
+  const activeIndex = Math.max(
+    0,
+    current.doc.pages.findIndex((page) => page.id === active?.pageId),
+  );
   const inAccount = sync.saved(current.id);
   const pending = syncState.pending.includes(current.id);
   const running = timer.endsAt !== null;
@@ -309,7 +364,7 @@ export function WritingRoom({
         if (response.status === 404) {
           setCurrent((value) =>
             value.id === id
-              ? { id: newWritingEntryId(), body: "", state: "ready" }
+              ? opened(newWritingEntryId(), null, value.doc.typeface)
               : value,
           );
           setNotice({ kind: "missing" });
@@ -322,9 +377,9 @@ export function WritingRoom({
             : undefined;
         if (!response.ok || !entry) throw new Error("Entry did not load");
         sync.adopt(entry);
-        const body = sync.draft(id)?.body ?? entry.body;
+        const content = sync.draft(id)?.content ?? entry;
         setCurrent((value) =>
-          value.id === id ? { id, body, state: "ready" } : value,
+          value.id === id ? opened(id, content, value.doc.typeface) : value,
         );
         setFocusTick((tick) => tick + 1);
       } catch {
@@ -410,11 +465,22 @@ export function WritingRoom({
   }, [current.id, current.state, inAccount]);
 
   useEffect(() => {
-    const element = surface.current;
-    if (!element) return;
-    element.focus({ preventScroll: true });
-    element.setSelectionRange(element.value.length, element.value.length);
-  }, [focusTick]);
+    // Pages mount a frame or two after the room; wait for the page to exist.
+    let frame = 0;
+    let tries = 0;
+    const attempt = () => {
+      const first = current.doc.pages[0]?.id;
+      const editor =
+        (active && editors.get(active.pageId)) ??
+        (first ? editors.get(first) : undefined);
+      if (editor) editor.commands.focus("end");
+      else if (tries++ < 30) frame = requestAnimationFrame(attempt);
+    };
+    attempt();
+    return () => cancelAnimationFrame(frame);
+    // Focus moves only when asked, never on each change of the page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusTick, current.mount]);
 
   useEffect(() => {
     if (timer.endsAt === null) return;
@@ -439,10 +505,59 @@ export function WritingRoom({
     });
   }
 
-  function edit(body: string) {
+  function change(next: Partial<Pick<Current, "title" | "doc">>) {
     if (current.state !== "ready") return;
-    setCurrent((value) => ({ ...value, body }));
-    sync.edit(current.id, body);
+    const updated = { ...current, ...next };
+    setCurrent((value) =>
+      value.id === current.id ? { ...value, ...next } : value,
+    );
+    sync.edit(current.id, contentOf(updated));
+  }
+
+  const changeDocument = useCallback(
+    (doc: WritingDocument) => change({ doc }),
+    // change reads the current entry, which this callback must follow.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [current],
+  );
+
+  const onActiveEditor = useCallback(
+    (pageId: string, editor: Editor) => setActive({ pageId, editor }),
+    [],
+  );
+
+  function addPage() {
+    const pages = [...current.doc.pages];
+    const at = active ? activeIndex + 1 : pages.length;
+    const format = pages[Math.min(activeIndex, pages.length - 1)]!.format;
+    const page = emptyPage(format);
+    pages.splice(at, 0, page);
+    change({ doc: { ...current.doc, pages } });
+    // The new page takes focus once it is on screen.
+    requestAnimationFrame(() => editors.get(page.id)?.commands.focus("start"));
+  }
+
+  function movePage(step: -1 | 1) {
+    const pages = [...current.doc.pages];
+    const to = activeIndex + step;
+    if (to < 0 || to >= pages.length) return;
+    const [page] = pages.splice(activeIndex, 1);
+    pages.splice(to, 0, page!);
+    change({ doc: { ...current.doc, pages } });
+  }
+
+  function deletePage() {
+    if (current.doc.pages.length < 2) return;
+    const pages = current.doc.pages.filter((_, index) => index !== activeIndex);
+    setActive(null);
+    change({ doc: { ...current.doc, pages } });
+    setPageDeleteOpen(false);
+  }
+
+  function printPages() {
+    setView("page");
+    // Print after page view has drawn the paper.
+    setTimeout(() => window.print(), 50);
   }
 
   function openEntry(id: string) {
@@ -452,30 +567,37 @@ export function WritingRoom({
       return;
     }
     setNotice(null);
+    setActive(null);
     const draft = sync.draft(id);
     if (draft) {
-      setCurrent({ id, body: draft.body, state: "ready" });
+      setCurrent(opened(id, draft.content, prefs.typeface));
       setFocusTick((tick) => tick + 1);
       return;
     }
-    setCurrent({ id, body: "", state: "opening" });
+    setCurrent(opened(id, null, prefs.typeface, "opening"));
     void loadEntry(id);
   }
 
   function newEntry() {
     setSheetOpen(false);
-    if (current.state === "ready" && !current.body.trim() && !inAccount) {
+    if (
+      current.state === "ready" &&
+      !body.trim() &&
+      !current.title.trim() &&
+      !inAccount
+    ) {
       setFocusTick((tick) => tick + 1);
       return;
     }
     setNotice(null);
-    setCurrent({ id: newWritingEntryId(), body: "", state: "ready" });
+    setActive(null);
+    setCurrent(opened(newWritingEntryId(), null, prefs.typeface));
     setFocusTick((tick) => tick + 1);
   }
 
   async function confirmDelete() {
     const id = current.id;
-    const body = current.body;
+    const content = contentOf(current);
     setDeleting(true);
     setDeleteError("");
     const { existsOnServer } = await sync.discard(id);
@@ -488,7 +610,7 @@ export function WritingRoom({
       ).catch(() => undefined);
       if (!response || (!response.ok && response.status !== 404)) {
         sync.restore(id);
-        sync.edit(id, body);
+        sync.edit(id, content);
         setDeleting(false);
         setDeleteError(
           "We could not delete this entry. It is unchanged. Try again.",
@@ -498,7 +620,8 @@ export function WritingRoom({
       sync.forget(id);
     }
     setEntries((list) => list.filter((item) => item.id !== id));
-    setCurrent({ id: newWritingEntryId(), body: "", state: "ready" });
+    setActive(null);
+    setCurrent(opened(newWritingEntryId(), null, prefs.typeface));
     setDeleting(false);
     setDeleteOpen(false);
     setFocusTick((tick) => tick + 1);
@@ -509,7 +632,7 @@ export function WritingRoom({
     const created = entries.find((item) => item.id === current.id)?.createdAt;
     downloadText(
       `writing-${localDay(created ? new Date(created) : new Date())}.txt`,
-      current.body,
+      current.title ? `${current.title}\n\n${body}` : body,
     );
   }
 
@@ -531,12 +654,10 @@ export function WritingRoom({
 
   async function copyText() {
     try {
-      await navigator.clipboard.writeText(current.body);
+      await navigator.clipboard.writeText(documentText(current.doc));
       toast.success("Text copied");
     } catch {
-      const element = surface.current;
-      element?.focus();
-      element?.select();
+      active?.editor.chain().focus().selectAll().run();
       toast.message("Text selected. Copy it with your keyboard.");
     }
   }
@@ -563,9 +684,10 @@ export function WritingRoom({
   }
 
   function cycleSize() {
-    const index = WRITING_TEXT_SIZES.indexOf(prefs.size);
-    updatePrefs({
-      size: WRITING_TEXT_SIZES[(index + 1) % WRITING_TEXT_SIZES.length],
+    const sizes: readonly number[] = TEXT_SIZES;
+    const index = sizes.indexOf(current.doc.textSize);
+    change({
+      doc: { ...current.doc, textSize: sizes[(index + 1) % sizes.length]! },
     });
   }
 
@@ -606,7 +728,8 @@ export function WritingRoom({
           : notice?.kind === "not-found"
             ? "This entry was deleted on another device. What you wrote here is saved as a new entry."
             : "";
-  const hideChrome = running && !sheetOpen && !deleteOpen;
+  const hideChrome =
+    running && !sheetOpen && !deleteOpen && !formatOpen && !pageDeleteOpen;
   const timerLabel = running
     ? "Pause timer"
     : remaining === 0
@@ -625,8 +748,9 @@ export function WritingRoom({
           ? [
               {
                 id,
-                preview: writingPreview(draft.body),
-                wordCount: countWords(draft.body),
+                title: draft.content.title,
+                preview: writingPreview(draft.content.body),
+                wordCount: countWords(draft.content.body),
                 revision: 0,
                 createdAt: draft.updatedAt,
                 updatedAt: draft.updatedAt,
@@ -646,42 +770,65 @@ export function WritingRoom({
     <div className="flex h-dvh flex-col bg-background text-foreground">
       <header
         data-hidden={hideChrome}
-        className={`flex items-center justify-between gap-2 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-4 ${chrome}`}
+        className={`flex flex-col border-b border-border px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1 sm:px-4 print:hidden ${chrome}`}
       >
-        <Link href="/home" className={buttonVariants({ variant: "ghost" })}>
-          <ArrowLeft aria-hidden="true" />
-          Home
-        </Link>
-        <Popover>
-          <PopoverTrigger render={<Button variant="ghost" />}>
-            <Lock aria-hidden="true" />
-            Private
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-80">
-            <PopoverHeader>
-              <PopoverTitle>Your writing stays yours</PopoverTitle>
-            </PopoverHeader>
-            <ul className="flex list-disc flex-col gap-2 ps-5 text-muted-foreground">
-              <li>
-                Missa adds no AI here. Nothing suggests, rewrites or finishes
-                your words.
-              </li>
-              <li>
-                Your writing is never sent to an AI service or used to train
-                one.
-              </li>
-              <li>Missa’s automated systems don’t read it.</li>
-              <li>Deleting an entry removes it from your account.</li>
-              <li>
-                Extensions you add to your browser can still read pages you
-                open.
-              </li>
-            </ul>
-          </PopoverContent>
-        </Popover>
+        <div className="flex items-center justify-between gap-2">
+          <Link href="/home" className={buttonVariants({ variant: "ghost" })}>
+            <ArrowLeft aria-hidden="true" />
+            Home
+          </Link>
+          <Popover>
+            <PopoverTrigger render={<Button variant="ghost" />}>
+              <Lock aria-hidden="true" />
+              Private
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80">
+              <PopoverHeader>
+                <PopoverTitle>Your writing stays yours</PopoverTitle>
+              </PopoverHeader>
+              <ul className="flex list-disc flex-col gap-2 ps-5 text-muted-foreground">
+                <li>
+                  Missa adds no AI here. Nothing suggests, rewrites or finishes
+                  your words.
+                </li>
+                <li>
+                  Your writing is never sent to an AI service or used to train
+                  one.
+                </li>
+                <li>Missa’s automated systems don’t read it.</li>
+                <li>Deleting an entry removes it from your account.</li>
+                <li>
+                  Extensions you add to your browser can still read pages you
+                  open.
+                </li>
+              </ul>
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div className="flex justify-center">
+          <WritingFormatBar
+            editor={
+              active && editors.get(active.pageId) === active.editor
+                ? active.editor
+                : null
+            }
+            onOpenFormat={() => setFormatOpen(true)}
+          />
+        </div>
       </header>
 
-      <main className="flex min-h-0 flex-1 flex-col">
+      <main
+        className="flex min-h-0 flex-1 flex-col print:block"
+        onKeyDown={(event) => {
+          if (
+            (event.metaKey || event.ctrlKey) &&
+            event.key.toLowerCase() === "s"
+          ) {
+            event.preventDefault();
+            sync.flush();
+          }
+        }}
+      >
         <h1 className="sr-only">Write</h1>
         <WritingNotices
           notice={notice}
@@ -694,33 +841,43 @@ export function WritingRoom({
           onOpen={(id) => openEntry(id)}
           onRetry={(id) => {
             setNotice(null);
-            setCurrent({ id, body: "", state: "opening" });
+            setCurrent(opened(id, null, prefs.typeface, "opening"));
             void loadEntry(id);
           }}
           onCopy={copyText}
         />
-        <div className="min-h-0 flex-1">
-          <WritingSurface
-            ref={surface}
-            aria-label="Writing"
-            aria-busy={current.state === "opening" || undefined}
-            typeface={prefs.typeface}
-            size={prefs.size}
-            value={current.body}
+        <div
+          className="min-h-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto print:overflow-visible"
+          aria-busy={current.state === "opening" || undefined}
+        >
+          <WritingPages
+            key={current.mount}
+            document={current.doc}
+            onChange={changeDocument}
+            view={view}
+            spellcheck={prefs.spellcheck}
             readOnly={current.state !== "ready"}
-            placeholder={current.state === "opening" ? "Opening…" : placeholder}
-            spellCheck={prefs.spellcheck}
-            maxLength={WRITING_BODY_MAX}
-            onChange={(event) => edit(event.target.value)}
-            onKeyDown={(event) => {
-              if (
-                (event.metaKey || event.ctrlKey) &&
-                event.key.toLowerCase() === "s"
-              ) {
-                event.preventDefault();
-                sync.flush();
-              }
-            }}
+            editors={editors}
+            onActiveEditor={onActiveEditor}
+            before={
+              <input
+                aria-label="Title"
+                placeholder={
+                  current.state === "opening" ? "Opening…" : "Untitled"
+                }
+                value={current.title}
+                maxLength={WRITING_TITLE_MAX}
+                readOnly={current.state !== "ready"}
+                onChange={(event) => change({ title: event.target.value })}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === "ArrowDown") {
+                    event.preventDefault();
+                    setFocusTick((tick) => tick + 1);
+                  }
+                }}
+                className={`w-full max-w-2xl bg-transparent text-center text-3xl text-foreground outline-none placeholder:text-muted-foreground focus-visible:underline focus-visible:decoration-primary focus-visible:underline-offset-8 print:hidden ${face.className}`}
+              />
+            }
           />
         </div>
         <p role="status" className="sr-only">
@@ -730,7 +887,7 @@ export function WritingRoom({
 
       <footer
         data-hidden={hideChrome}
-        className={`flex flex-wrap items-center justify-between gap-x-6 gap-y-1 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 ${chrome}`}
+        className={`flex flex-wrap items-center justify-between gap-x-6 gap-y-1 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 print:hidden ${chrome}`}
       >
         <div className="flex items-center gap-1">
           <DropdownMenu>
@@ -752,10 +909,12 @@ export function WritingRoom({
                   <DropdownMenuGroup>
                     <DropdownMenuLabel>{group.label}</DropdownMenuLabel>
                     <DropdownMenuRadioGroup
-                      value={prefs.typeface}
-                      onValueChange={(value) =>
-                        updatePrefs({ typeface: storedWritingTypeface(value) })
-                      }
+                      value={current.doc.typeface}
+                      onValueChange={(value) => {
+                        const typeface = storedWritingTypeface(value);
+                        updatePrefs({ typeface });
+                        change({ doc: { ...current.doc, typeface } });
+                      }}
                     >
                       {WRITING_TYPEFACES.filter(
                         (option) => option.group === group.id,
@@ -791,10 +950,12 @@ export function WritingRoom({
           </DropdownMenu>
           <Button
             variant="ghost"
-            aria-label={`Text size ${prefs.size}px. Change size`}
+            aria-label={`Text size ${current.doc.textSize} pt. Change size`}
             onClick={cycleSize}
           >
-            <span className="font-mono tabular-nums">{prefs.size}px</span>
+            <span className="font-mono tabular-nums">
+              {current.doc.textSize} pt
+            </span>
           </Button>
         </div>
 
@@ -889,11 +1050,66 @@ export function WritingRoom({
               <Ellipsis aria-hidden="true" />
             </DropdownMenuTrigger>
             <DropdownMenuContent side="top" align="end" className="w-56">
-              <DropdownMenuItem
-                disabled={!current.body}
-                onClick={downloadEntry}
-              >
-                Download this entry
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>
+                  Page {activeIndex + 1} of {current.doc.pages.length}
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                  disabled={current.state !== "ready"}
+                  onClick={addPage}
+                >
+                  Add a page after this one
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={current.state !== "ready" || activeIndex === 0}
+                  onClick={() => movePage(-1)}
+                >
+                  Move page earlier
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={
+                    current.state !== "ready" ||
+                    activeIndex >= current.doc.pages.length - 1
+                  }
+                  onClick={() => movePage(1)}
+                >
+                  Move page later
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={
+                    current.state !== "ready" || current.doc.pages.length < 2
+                  }
+                  onClick={() => setPageDeleteOpen(true)}
+                >
+                  Delete this page…
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>View</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={view}
+                  onValueChange={(value) => {
+                    const next = value === "draft" ? "draft" : "page";
+                    setView(next);
+                    updatePrefs({ view: next });
+                  }}
+                >
+                  <DropdownMenuRadioItem value="page">
+                    Printed pages
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="draft">
+                    Draft, no paper
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={printPages}>
+                Print or save as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled={!body} onClick={downloadEntry}>
+                Download as plain text
               </DropdownMenuItem>
               {canFullscreen ? (
                 <DropdownMenuItem
@@ -914,9 +1130,7 @@ export function WritingRoom({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 variant="destructive"
-                disabled={
-                  current.state !== "ready" || (!current.body && !inAccount)
-                }
+                disabled={current.state !== "ready" || (!body && !inAccount)}
                 onClick={() => {
                   setDeleteError("");
                   setDeleteOpen(true);
@@ -933,7 +1147,10 @@ export function WritingRoom({
         <SheetContent
           side="right"
           // Closing the list returns to the page, so writing can go on at once.
-          finalFocus={surface}
+          finalFocus={() => {
+            setFocusTick((tick) => tick + 1);
+            return false;
+          }}
         >
           <SheetHeader variant="section">
             <SheetTitle>Your writing</SheetTitle>
@@ -948,9 +1165,8 @@ export function WritingRoom({
               <ItemGroup>
                 {rows.map((row) => {
                   const open = row.id === current.id;
-                  const preview = open
-                    ? writingPreview(current.body)
-                    : row.preview;
+                  const preview = open ? writingPreview(body) : row.preview;
+                  const title = open ? current.title : row.title;
                   const count = open ? words : row.wordCount;
                   const local =
                     syncState.pending.includes(row.id) && !sync.saved(row.id);
@@ -976,7 +1192,9 @@ export function WritingRoom({
                         }
                       >
                         <ItemContent>
-                          <ItemTitle>{preview || "Empty entry"}</ItemTitle>
+                          <ItemTitle>
+                            {title || preview || "Untitled"}
+                          </ItemTitle>
                           <ItemDescription>
                             {entryDate(row.updatedAt)} · {wordLabel(count)}
                             {open ? " · Open now" : ""}
@@ -1022,12 +1240,17 @@ export function WritingRoom({
           if (!deleting) setDeleteOpen(open);
         }}
       >
-        <AlertDialogContent finalFocus={surface}>
+        <AlertDialogContent
+          finalFocus={() => {
+            setFocusTick((tick) => tick + 1);
+            return false;
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this entry?</AlertDialogTitle>
             <AlertDialogDescription>
-              {current.body.trim()
-                ? `“${writingPreview(current.body, 60)}” will be deleted from your account. You can’t undo this.`
+              {current.title.trim() || body.trim()
+                ? `“${current.title.trim() || writingPreview(body, 60)}” will be deleted from your account. You can’t undo this.`
                 : "This entry will be deleted from your account. You can’t undo this."}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1049,6 +1272,36 @@ export function WritingRoom({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={pageDeleteOpen} onOpenChange={setPageDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete page {activeIndex + 1}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Everything on this page is deleted with it. Undo can’t bring a
+              page back.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button variant="destructive" onClick={deletePage}>
+              Delete page
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <WritingFormatSheet
+        open={formatOpen}
+        onOpenChange={setFormatOpen}
+        document={current.doc}
+        pageIndex={activeIndex}
+        onDocumentChange={(doc) => change({ doc })}
+      />
+
+      {/* Printing draws each page on its own sheet of the chosen paper. */}
+      <style>{`@page { size: ${PAGE_SIZES[current.doc.pageSize].width}mm ${PAGE_SIZES[current.doc.pageSize].height}mm; margin: 0; }
+@media print { [data-slot="writing-page"] { zoom: 1 !important; break-after: page; } }`}</style>
     </div>
   );
 }

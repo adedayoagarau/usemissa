@@ -201,13 +201,13 @@
     "composition.writing-room": {
       "semantic": "WritingRoom",
       "implementation": "components/missa/writing-room.tsx",
-      "composition": ["WritingSurface", "Button", "ButtonGroup", "DropdownMenu", "Popover", "Sheet", "Item", "Empty", "Alert", "AlertDialog", "Sonner"],
+      "composition": ["WritingPages", "WritingFormatBar", "WritingFormatSheet", "Button", "ButtonGroup", "DropdownMenu", "Popover", "Sheet", "Item", "Empty", "Alert", "AlertDialog", "Sonner"],
       "appearance": "full-page-plain-text-with-controls-that-fade-while-the-timer-runs",
       "boundary": "Plain text the creator writes. Kept on the device until the account confirms it, and never overwritten by another device: refused text becomes a separate entry. No AI, suggestions, rewriting or analysis; only apps/web/lib/writing-repository.ts reads the text (enforced by lib/writing-boundary.test.ts). No WebMCP tools on /write."
     },
     "input.writing-page": {
-      "semantic": "WritingSurface",
-      "boundary": "The page a creator writes on in the writing room. Long text inside a form stays input.long-text (Field + Textarea)."
+      "semantic": "WritingPages",
+      "boundary": "The printed pages a creator writes on in the writing room: rich text with every space and tab kept, each page with its own format. Long text inside a form stays input.long-text (Field + Textarea)."
     },
     "composition.auth-shell": {
       "semantic": "AuthShell",
@@ -1156,11 +1156,11 @@
       "motion": "never",
       "boundary": "One calm line naming what a plan adds and a link to /plan. Says what the creator gets, never what they lose; no alarm colour, no modal."
     },
-    "WritingSurface": {
-      "base": "textarea",
-      "implementation": "components/missa/writing-surface.tsx",
+    "WritingPages": {
+      "base": "tiptap",
+      "implementation": "components/missa/writing-pages.tsx",
       "motion": "never",
-      "boundary": "Borderless, full-height plain-text page with a 42rem measure, in the writer's choice of the open-licence faces in components/missa/writing-typefaces.ts (DESIGN.md typography rule 9) at 16-28px (set in rem). The caret marks focus. Gap recorded: the installed Textarea and the 20 local Studio textarea variants are bordered, labelled form fields; none is a document surface."
+      "boundary": "Printed pages (A4, US Letter, A5, chapbook) drawn at paper size, or a paperless draft view on small screens. Each page is a Tiptap (ProseMirror, MIT core only; no Tiptap AI or cloud packages) editor with its own alignment, line and letter spacing, margins, typeface and size; spaces, tabs and line breaks are kept as typed. Tab writes a tab; Escape then Tab leaves the page. The caret marks focus. Gap recorded: Textarea and the 20 local Studio textarea variants are plain-text form fields; none offers rich text, pages or per-page format, so this is the documented editor exception to 'Contenteditable without editor requirements'."
     }
   },
   "productCompositions": {
@@ -1233,7 +1233,7 @@
     "CreatorCv": ["EditorialTypography", "PrintStyles", "ProvenanceMark"],
     "ProfileConnect": ["Button", "Dialog", "Field", "Input", "NativeSelect", "Textarea"],
     "ProfileInbox": ["Tabs", "Button", "Empty", "Link"],
-    "WritingRoom": ["WritingSurface", "Button", "DropdownMenu", "Popover", "Sheet", "Item", "AlertDialog", "Alert"]
+    "WritingRoom": ["WritingPages", "WritingFormatBar", "WritingFormatSheet", "Button", "DropdownMenu", "Popover", "Sheet", "Item", "AlertDialog", "Alert"]
   },
   "motion": {
     "requiresChangingState": true,
