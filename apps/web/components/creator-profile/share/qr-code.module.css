@@ -1,0 +1,19 @@
+/* A QR code stays near-black on white in every theme so a phone can read it. */
+.code {
+  display: block;
+  aspect-ratio: 1;
+  color: var(--ink);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+/* Fills its container unless the caller sizes it. */
+:where(.code) {
+  width: 100%;
+  height: auto;
+}
+.paper {
+  fill: var(--surface);
+}
+.modules {
+  fill: currentColor;
+}
