@@ -59,24 +59,24 @@ export function BulkTriageBar({ organizationId }: { organizationId: string }) {
       <ListChecks aria-hidden="true" className="mb-2 size-4 text-muted-foreground" />
       <Field className="w-56">
         <FieldLabel htmlFor="bulk-action">With the ticked submissions</FieldLabel>
-        <NativeSelect className="w-full"><select id="bulk-action" value={action} onChange={(event) => setAction(event.target.value as Action)}>
+        <NativeSelect className="w-full" id="bulk-action" value={action} onChange={(event) => setAction(event.target.value as Action)}>
           <NativeSelectOption value="letter">Draft a letter</NativeSelectOption>
           <NativeSelectOption value="decline">Decline undecided Works</NativeSelectOption>
           <NativeSelectOption value="waitlist">Waitlist undecided Works</NativeSelectOption>
           <NativeSelectOption value="accept">Accept undecided Works</NativeSelectOption>
-        </select></NativeSelect>
+        </NativeSelect>
       </Field>
       {action === 'letter' ? (
         <Field className="w-56">
           <FieldLabel htmlFor="bulk-letter-kind">Letter</FieldLabel>
-          <NativeSelect className="w-full"><select id="bulk-letter-kind" value={kind} onChange={(event) => setKind(event.target.value)}>
+          <NativeSelect className="w-full" id="bulk-letter-kind" value={kind} onChange={(event) => setKind(event.target.value)}>
             <NativeSelectOption value="rejection-with-dignity">Rejection with dignity</NativeSelectOption>
             <NativeSelectOption value="longlist">Longlist</NativeSelectOption>
             <NativeSelectOption value="shortlist">Shortlist</NativeSelectOption>
             <NativeSelectOption value="finalists">Finalists</NativeSelectOption>
             <NativeSelectOption value="decision">Decision letter</NativeSelectOption>
             <NativeSelectOption value="custom">Custom update</NativeSelectOption>
-          </select></NativeSelect>
+          </NativeSelect>
         </Field>
       ) : null}
       <Button type="submit" variant="outline" disabled={pending}>{pending ? 'Working…' : 'Apply to ticked'}</Button>

@@ -242,11 +242,9 @@ export function ReaderOperations({ organizationId, initial, canManage, stageLabe
                           {row.works.map((work) => (
                             <label key={work.id} className="flex items-center gap-2 text-xs text-muted-foreground">
                               <span className="min-w-0 flex-1 truncate">{work.title}</span>
-                              <NativeSelect size="sm">
-                                <select aria-label={`Decision for ${work.title}`} value={work.outcome ?? ''} disabled={pending || row.status === 'withdrawn'} onChange={(event) => recordDecision(work.id, event.target.value)}>
-                                  <NativeSelectOption value="">No decision</NativeSelectOption>
-                                  {OUTCOMES.map((outcome) => <NativeSelectOption key={outcome} value={outcome}>{outcome[0]!.toUpperCase()}{outcome.slice(1)}</NativeSelectOption>)}
-                                </select>
+                              <NativeSelect size="sm" aria-label={`Decision for ${work.title}`} value={work.outcome ?? ''} disabled={pending || row.status === 'withdrawn'} onChange={(event) => recordDecision(work.id, event.target.value)}>
+                                <NativeSelectOption value="">No decision</NativeSelectOption>
+                                {OUTCOMES.map((outcome) => <NativeSelectOption key={outcome} value={outcome}>{outcome[0]!.toUpperCase()}{outcome.slice(1)}</NativeSelectOption>)}
                               </NativeSelect>
                               {work.outcome === 'waitlisted' && row.status !== 'withdrawn' ? <Button type="button" variant="ghost" size="xs" onClick={() => acceptFromWaitlist(work.id)} disabled={pending}>Accept from waitlist</Button> : null}
                             </label>

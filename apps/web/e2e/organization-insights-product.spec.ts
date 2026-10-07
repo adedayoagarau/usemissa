@@ -28,7 +28,7 @@ test('Program lens keeps grains, formulas, and unavailable analysis explicit on 
   await expect(page.getByText('Decided Works coverage', { exact: true })).toBeVisible();
   await expect(page.getByText('2 of 2 current Works')).toBeVisible();
   await expect(page.getByText('Accepted among decided', { exact: true })).toBeVisible();
-  await expect(page.getByText('50%')).toBeVisible();
+  await expect(page.locator('dl > div').filter({ has: page.getByText('Accepted among decided', { exact: true }) }).locator('dd')).toContainText('50%');
   await expect(page.getByText('Date-range comparison and monthly trend stay unavailable until the Organization has a timezone.')).toBeVisible();
   await expect(page.getByRole('heading', { name: fixture.opportunityTitle })).toBeVisible();
   await expect(page.locator('body')).not.toContainText(/conversion|freshness|confidence|worker|provider/iu);
