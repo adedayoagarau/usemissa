@@ -1,5 +1,10 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import prettier from "prettier";
+import {
+  mergeCatalogue,
+  readExistingCatalogue,
+} from "./lib/merge-catalogue.mjs";
 
 const repositoryRoot = process.cwd();
 const webRoot = path.join(repositoryRoot, "apps/web");
@@ -136,7 +141,21 @@ const catalogue = {
 };
 
 if (writeCatalogue) {
-  await fs.writeFile(cataloguePath, `${JSON.stringify(catalogue, null, 2)}\n`);
+  // Only the generated inventory is replaced; hand-written sections stay. The
+  // output goes through the repository's Prettier config so regenerating an
+  // unchanged inventory leaves the file exactly as it was.
+  const merged = mergeCatalogue(
+    await readExistingCatalogue(fs, cataloguePath),
+    catalogue,
+  );
+  const options = (await prettier.resolveConfig(cataloguePath)) ?? {};
+  await fs.writeFile(
+    cataloguePath,
+    await prettier.format(JSON.stringify(merged), {
+      ...options,
+      filepath: cataloguePath,
+    }),
+  );
 }
 
 const sourceFiles = (await walk(webRoot)).filter((file) =>
@@ -197,7 +216,13 @@ for (const file of sourceFiles) {
       `@/components/ui/${primitive}(?:["'])`,
       "g",
     );
-    if (!isExcluded && !Object.values(policy.semanticComponents).some(entry => entry.implementation === relative) && importPattern.test(source))
+    if (
+      !isExcluded &&
+      !Object.values(policy.semanticComponents).some(
+        (entry) => entry.implementation === relative,
+      ) &&
+      importPattern.test(source)
+    )
       record(file, "direct-domain-primitive-import", primitive);
   }
 
