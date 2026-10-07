@@ -231,7 +231,7 @@
     "composition.writing-room": {
       "semantic": "WritingRoom",
       "implementation": "components/missa/writing-room.tsx",
-      "composition": ["WritingPages", "WritingFormatBar", "WritingFormatSheet", "WritingLibrary", "WritingSnapshots", "WritingFind", "WritingCall", "Button", "ButtonGroup", "DropdownMenu", "Popover", "Dialog", "Alert", "AlertDialog", "Sonner"],
+      "composition": ["WritingPages", "WritingFormatBar", "WritingFormatSheet", "WritingLibrary", "WritingSnapshots", "WritingFind", "WritingCall", "WritingWordCount", "Button", "ButtonGroup", "DropdownMenu", "Popover", "Dialog", "Alert", "AlertDialog", "Sonner"],
       "appearance": "full-page-printed-pages-with-controls-that-fade-while-the-timer-runs",
       "boundary": "Rich text on printed pages the creator writes. Kept on the device until the account confirms it, and never overwritten by another device: refused text becomes a separate entry. No AI, suggestions, rewriting or analysis; only apps/web/lib/writing-repository.ts reads the text (enforced by lib/writing-boundary.test.ts). No WebMCP tools on /doc (or the old /write address, which redirects there)."
     },
@@ -1328,6 +1328,12 @@
       "implementation": "components/missa/writing-call.tsx",
       "motion": "never",
       "boundary": "Ties the open piece to a call in the creator's tracker (call_id on creator_writing_entries, migration 0099, kept only through apps/web/lib/writing-repository.ts). Shows the call, its links and the creator's checklist, and runs the word, page, materials and anonymous-review checks of lib/writing-call.ts in the browser on the piece's own text; the text is never sent for them. Reuses PreSubmitCheckList for the checks. The footer shows words against the call's limit."
+    },
+    "WritingWordCount": {
+      "base": "Dialog",
+      "implementation": "components/missa/writing-word-count.tsx",
+      "motion": "never",
+      "boundary": "Counts for the open piece in a Dialog of DetailFields: pages, words, characters with and without spaces, reading time. With a selection, each count reads 'n of total'. Opens from the footer count, More, or Ctrl/Cmd+Shift+C. Counting is arithmetic on the text in the browser; nothing reads its meaning."
     },
     "WritingFind": {
       "base": "Input",

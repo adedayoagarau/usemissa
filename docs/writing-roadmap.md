@@ -15,26 +15,25 @@ what comes next, in the order agreed with the owner.
 | Free canvas | Any page can become a canvas of text boxes placed, sized and turned by hand, printed exactly | none |
 | Snapshots, find, dark | Snapshots to compare and restore, find and replace across every page and box, a dark writing room | 0098 |
 | Writing for a call | A piece tied to a call in the tracker: the call and checklist beside the draft, a live count against its word limit, page and blind-reading checks run on the piece in the browser | 0099 |
+| Editor essentials | Page and section breaks as in Google Docs and Word, superscript and subscript, clear formatting, the Docs keys for strikethrough and word count, a word count with the selection and reading time, smart quotes and dashes as a choice, Tab nesting lists | none |
 
 ## Next, in order
 
 From the research in `docs/writing-research.md`, which has the findings,
 sources and what each stage contains:
 
-1. **E. Editor essentials.** Page and section breaks as in Google Docs and
-   Word, the shortcuts writers expect, a word count for the selection.
-2. **F. Quiet writing.** Quiet mode, focus dimming, typewriter scrolling.
-3. **G. Cards and corkboard.** Fields on every piece, a corkboard, an outliner
+1. **F. Quiet writing.** Quiet mode, focus dimming, typewriter scrolling.
+2. **G. Cards and corkboard.** Fields on every piece, a corkboard, an outliner
    with totals, saved views, editing several pieces as one text.
-4. **H. Story bible.** Characters, places and items with "Appears in".
-5. **I. Plot grid and structures.** Plotlines across the book, structure
+3. **H. Story bible.** Characters, places and items with "Appears in".
+4. **I. Plot grid and structures.** Plotlines across the book, structure
    templates, pacing against beats, plotline gaps.
-6. **J. Goals and history.** Deadline targets that skip days off.
-7. **K. Timeline.** Story order and telling order, ages, continuity checks,
+5. **J. Goals and history.** Deadline targets that skip days off.
+6. **K. Timeline.** Story order and telling order, ages, continuity checks,
    then alternate branches.
-8. **L. Book design and export.** Book interiors, standard manuscript format
+7. **L. Book design and export.** Book interiors, standard manuscript format
    as DOCX, EPUB 3.
-9. **M. Notes and research.** Margin notes, footnotes, research beside the
+8. **M. Notes and research.** Margin notes, footnotes, research beside the
    draft.
 
 ## Later

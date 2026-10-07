@@ -50,8 +50,22 @@ A piece is a set of printed pages on one paper size: A4, US Letter, A5 or
 chapbook (5.5 × 8.5 in).
 
 - **Rich text.** Body text, heading, subheading and quotation; bold, italic,
-  underline and strikethrough; line alignment; scene breaks (a rule between
-  scenes); undo and redo. No links, code or embeds.
+  underline, strikethrough, superscript and subscript; line alignment; scene
+  breaks (a rule between scenes); undo and redo. No links, code or embeds.
+- **Keys from Google Docs.** Ctrl or ⌘ + . and , for superscript and
+  subscript; Ctrl or ⌘ + \ clears formatting; Alt + Shift + 5 or ⌘ + Shift + X
+  strike through (as well as Ctrl or ⌘ + Shift + S); Ctrl or ⌘ + Shift + C
+  opens the word count. Keys match on the character typed, never the key's
+  position, so letters made with AltGr (Polish ś, ć; German { [ ]) are never
+  taken. Every key also has a menu or button.
+- **Smart quotes and dashes** (More, a checkbox, off by default): curly quotes,
+  an em dash for two hyphens, an ellipsis for three dots. Off by default so a
+  poem's straight quotes stay as typed; Backspace straight after a change
+  undoes it (`lib/writing-typing.ts`).
+- **Word count** (the footer count, More, or the keys): pages, words,
+  characters with and without spaces, and reading time at 238 words a
+  minute. With text selected, the footer reads "4 of 1,240 words" and the
+  dialog shows the selection's share of each count.
 - **Every space is kept.** Tab writes a tab, runs of spaces stay as typed, and
   both survive saving, reloading and printing. In a list, Tab nests the item.
   Typing "- ", "+ " or "* " starts a list only at the start of a line, so a

@@ -12,6 +12,8 @@ import {
   Minus,
   Redo2,
   Strikethrough,
+  Subscript,
+  Superscript,
   Underline,
   Undo2,
 } from "lucide-react";
@@ -119,6 +121,8 @@ export function WritingFormatBar({
             italic: current.isActive("italic"),
             underline: current.isActive("underline"),
             strike: current.isActive("strike"),
+            superscript: current.isActive("superscript"),
+            subscript: current.isActive("subscript"),
             block: (current.isActive("heading", { level: 1 })
               ? "heading1"
               : current.isActive("heading", { level: 2 })
@@ -197,6 +201,22 @@ export function WritingFormatBar({
         onClick={() => chain().toggleStrike().run()}
       >
         <Strikethrough aria-hidden="true" />
+      </ToolButton>
+      <ToolButton
+        label="Superscript"
+        pressed={state?.superscript}
+        disabled={off}
+        onClick={() => chain().toggleSuperscript().run()}
+      >
+        <Superscript aria-hidden="true" />
+      </ToolButton>
+      <ToolButton
+        label="Subscript"
+        pressed={state?.subscript}
+        disabled={off}
+        onClick={() => chain().toggleSubscript().run()}
+      >
+        <Subscript aria-hidden="true" />
       </ToolButton>
       {(
         [

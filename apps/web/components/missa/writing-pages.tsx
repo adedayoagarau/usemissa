@@ -24,6 +24,12 @@ import { writingTypeface } from "@/components/missa/writing-typefaces";
 import { cn } from "@/lib/utils";
 import { SearchHighlight } from "@/lib/writing-search";
 import {
+  SmartPunctuation,
+  Subscript,
+  Superscript,
+  WriterKeys,
+} from "@/lib/writing-typing";
+import {
   CanvasSheet,
   type CanvasCallbacks,
 } from "@/components/missa/writing-canvas";
@@ -185,6 +191,10 @@ export function writingExtensions() {
       alignments: ["left", "center", "right", "justify"],
     }),
     SearchHighlight,
+    Superscript,
+    Subscript,
+    WriterKeys,
+    SmartPunctuation,
   ];
 }
 

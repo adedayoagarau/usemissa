@@ -770,3 +770,90 @@ test("Ctrl+Enter breaks the page as in Google Docs; Backspace joins it again", a
   );
   expect(await align(0)).toBe("center");
 });
+
+test("the shortcuts writers know from Google Docs, smart punctuation and the word count", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await signIn(page);
+  await page.goto("/doc");
+  const text = pageText(page, 0);
+  await expect(text).toBeFocused();
+
+  // Superscript and subscript, and clearing them.
+  await page.keyboard.type("E = mc");
+  await page.keyboard.press("Control+.");
+  await page.keyboard.type("2");
+  await page.keyboard.press("Control+.");
+  await page.keyboard.type(" and H");
+  await page.keyboard.press("Control+,");
+  await page.keyboard.type("2");
+  await page.keyboard.press("Control+,");
+  await page.keyboard.type("O");
+  await expect(text.locator("sup")).toHaveText("2");
+  await expect(text.locator("sub")).toHaveText("2");
+  await page.keyboard.press("Control+a");
+  await page.keyboard.press("Alt+Shift+5");
+  await expect(text.locator("s")).toHaveCount(1);
+  await page.keyboard.press("Control+\\");
+  await expect(text.locator("s, sup, sub")).toHaveCount(0);
+
+  // A dash after a tab stays as typed; at the start of a line it starts a list.
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Tab");
+  await page.keyboard.type("- not a list");
+  await expect(text.locator("ul")).toHaveCount(0);
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("- one");
+  await expect(text.locator("ul")).toHaveCount(1);
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Tab");
+  await page.keyboard.type("nested");
+  await expect(text.locator("ul ul")).toHaveText("nested");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+
+  // Straight quotes stay straight until smart punctuation is turned on.
+  await page.keyboard.type('"rain"');
+  await expect(text).toContainText('"rain"');
+  await page.getByRole("button", { name: "More" }).click();
+  await page
+    .getByRole("menuitemcheckbox", { name: "Smart quotes and dashes" })
+    .click();
+  await page.keyboard.press("Escape");
+  await text.click();
+  await page.keyboard.press("Control+End");
+  await page.waitForTimeout(150);
+  await page.keyboard.press("Enter");
+  await page.keyboard.type('"it\'s late" -- she said...');
+  await expect(text).toContainText("“it’s late” — she said…");
+
+  // The word count opens from the footer or the keyboard, and counts a selection.
+  await page.keyboard.press("Control+Shift+c");
+  const dialog = page.getByRole("dialog", { name: "Word count" });
+  await expect(dialog).toContainText("Reading time");
+  await expect(
+    (
+      await new AxeBuilder({ page })
+        .include('[data-slot="dialog-content"]')
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await page.keyboard.press("Escape");
+  // The last line: “it’s late” — she said…, four words.
+  await text.click();
+  await page.waitForTimeout(150);
+  await page.keyboard.press("Control+End");
+  await page.keyboard.press("Shift+Home");
+  await page.waitForTimeout(150);
+  await expect(
+    page.getByRole("button", { name: /^4 of \d+ words selected/u }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /selected\. Word count$/u }).click();
+  await expect(dialog).toContainText(
+    "The selected text, then the whole piece.",
+  );
+  await expect(dialog).toContainText(/4 of \d+/u);
+});
