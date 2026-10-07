@@ -43,6 +43,10 @@ export const ILLUSTRATIONS = {
     "sprite": "covers.svg",
     "viewBox": "-55.3 -36.6 693.7 520.3"
   },
+  "scene-hero": {
+    "sprite": "homepage.svg",
+    "viewBox": "-49 -48.5 743.9 495.9"
+  },
   "scene-after-find": {
     "sprite": "homepage.svg",
     "viewBox": "-84.6 -65.9 788.3 506.8"

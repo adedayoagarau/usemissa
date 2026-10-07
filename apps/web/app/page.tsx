@@ -12,6 +12,7 @@ import {
 } from "@/components/missa/homepage-standard";
 import { ShortlistBar } from "@/components/missa/homepage-shortlist";
 import { pickShowcase } from "@/lib/homepageShowcase";
+import { onePerOrganization } from "@/lib/onePerOrganization";
 import type { ActiveFiltersState } from "@/components/missa/opportunities-browse";
 import { getHomepageStats, type HomepageStats } from "@/lib/homepageStats";
 import { parseOpportunityBrowseQuery } from "@/lib/opportunityQuery";
@@ -27,6 +28,11 @@ type SearchParams = Record<string, string | string[] | undefined>;
 
 /** Nine cards: three rows of the catalogue grid, enough to filter against. */
 const HOMEPAGE_RESULT_LIMIT = 9;
+/**
+ * Read three pages' worth so the list can still fill nine cards after keeping
+ * one call per organization.
+ */
+const HOMEPAGE_CANDIDATE_LIMIT = HOMEPAGE_RESULT_LIMIT * 3;
 
 function toUrlSearchParams(input: SearchParams): URLSearchParams {
   const params = new URLSearchParams();
@@ -80,7 +86,7 @@ export default async function HomePage({
   const urlParams = toUrlSearchParams(raw);
   const query = {
     ...parseOpportunityBrowseQuery(urlParams),
-    limit: HOMEPAGE_RESULT_LIMIT,
+    limit: HOMEPAGE_CANDIDATE_LIMIT,
   };
   // A second, small pool for the product examples: recently added calls
   // usually have weeks of lead time, unlike the soonest-closing list above.
@@ -109,6 +115,7 @@ export default async function HomePage({
   const loadFailed = browse === null;
   const today = new Date().toISOString().slice(0, 10);
   const [result, facetCounts] = browse ?? EMPTY_BROWSE;
+  const items = onePerOrganization(result.items, HOMEPAGE_RESULT_LIMIT);
   const showcase = pickShowcase(
     [...result.items, ...(recent ? recent[0].items : [])],
     today,
@@ -137,7 +144,7 @@ export default async function HomePage({
       <MissaSiteHeader current="Home" omitLinks={["For organizations"]} />
       <PublicDiscoveryEvent
         eventName="public.discovery_view"
-        properties={{ surface: "home", resultCount: result.items.length }}
+        properties={{ surface: "home", resultCount: items.length }}
       />
       <main id="main-content" aria-labelledby="homepage-heading">
         <HomepageHero
@@ -146,7 +153,7 @@ export default async function HomePage({
           tourCall={showcase.lead ?? showcase.urgent}
         />
         <HomepageBrowse
-          items={result.items}
+          items={items}
           facetCounts={facetCounts}
           totalCount={facetCounts.total}
           loadFailed={loadFailed}

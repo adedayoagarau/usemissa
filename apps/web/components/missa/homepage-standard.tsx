@@ -64,6 +64,11 @@ export function HomepageHero({
           <HomepageMorph call={tourCall} />
         </div>
       ) : null}
+      {/* Stands in for the tour where it is hidden, and wherever no call is
+          available to drive it. */}
+      <span className={styles.heroArt} data-beside-tour={tourCall ? "" : undefined}>
+        <MissaArt id="scene-hero" />
+      </span>
     </header>
   );
 }

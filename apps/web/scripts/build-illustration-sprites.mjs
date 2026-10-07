@@ -30,7 +30,7 @@ const SPRITES = [
   {
     file: "homepage.svg",
     group: ["scenes", "spots"],
-    names: ["after-find", "questions", "close", "tracker", "reminders", "portfolio"],
+    names: ["hero", "after-find", "questions", "close", "tracker", "reminders", "portfolio"],
   },
 ];
 
