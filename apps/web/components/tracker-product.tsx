@@ -56,6 +56,7 @@ import {
 } from "@/lib/trackerViews";
 import { EmptyStateArt } from "@/components/illustrations/missa-illustrations";
 import styles from "./tracker-product.module.css";
+import { useConfirm } from "@/components/missa/confirm-dialog";
 
 export type TrackerProductItem = {
   opportunityId: string;
@@ -628,6 +629,7 @@ export function TrackerProduct({
   /** Email forwarding or Gmail sync is on, so the sheet can show email evidence. */
   emailEvidence?: boolean;
 }) {
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -985,7 +987,7 @@ export function TrackerProduct({
   }
 
   async function removeItem(item: TrackerProductItem) {
-    if (!item.revision || !window.confirm(`Remove ${item.title} from your Tracker? Its private status history and checklist will also be removed.`)) return;
+    if (!item.revision || !(await confirm({ title: `Remove ${item.title} from your Tracker?`, description: 'Its private status history and checklist will also be removed.', confirmLabel: 'Remove', destructive: true }))) return;
     setBusyId(item.opportunityId);
     setErrors((current) => ({ ...current, [item.opportunityId]: "" }));
     try {
@@ -1078,6 +1080,7 @@ export function TrackerProduct({
 
   return (
     <div className={styles.product}>
+      {confirmDialog}
       <header className={styles.pageHeader}>
         <div>
           <p>Private to your Profile</p>

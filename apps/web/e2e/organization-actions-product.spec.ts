@@ -125,10 +125,16 @@ test('A Submission dossier assigns a reviewer once, records a decision, and trac
   await page.goto(`${dossier}?section=delivery`);
   await page.getByRole('button', { name: `Set up delivery for ${fixture.firstWork}` }).click();
   const delivery = page.getByRole('dialog', { name: 'Set up delivery' });
-  await delivery.getByLabel('Due date').fill('2026-12-01');
+  // The due date comes from the calendar: the first day of next month.
+  const now = new Date();
+  const due = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 1));
+  await delivery.getByRole('button', { name: /Due date/u }).click();
+  await page.getByRole('button', { name: /next month/iu }).click();
+  await page.getByRole('button', { name: new RegExp(`${new Intl.DateTimeFormat('en', { month: 'long', timeZone: 'UTC' }).format(due)} 1st, ${due.getUTCFullYear()}`, 'u') }).click();
+  await expect(delivery.getByRole('button', { name: /Due date/u })).toContainText(new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(due));
   await delivery.getByRole('button', { name: 'Set up delivery' }).click();
   await expect(page.getByText(`Delivery set up for “${fixture.firstWork}”.`)).toBeVisible({ timeout: firstCompile });
-  await expect(page.getByText('Due Dec 1, 2026')).toBeVisible({ timeout: firstCompile });
+  await expect(page.getByText(`Due ${new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeZone: 'UTC' }).format(due)}`)).toBeVisible({ timeout: firstCompile });
   await page.getByRole('button', { name: `Mark delivery complete for ${fixture.firstWork}` }).click();
   await expect(page.getByText(`Delivery marked complete for “${fixture.firstWork}”.`)).toBeVisible({ timeout: firstCompile });
   await expect(page.getByRole('button', { name: `Reopen delivery for ${fixture.firstWork}` })).toBeVisible();

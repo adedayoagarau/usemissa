@@ -31,8 +31,7 @@ test('Delivery begins only with accepted Work', async ({ page }) => {
   if (await empty.count()) {
     await expect(empty).toBeVisible();
   } else {
-    await expect(page.getByRole('heading', { name: 'Accepted Works' })).toBeVisible();
-    await expect(page.locator('dd').filter({ hasText: /^Accepted/ }).first()).toBeVisible();
+    await expect(page.getByRole('table', { name: /Accepted Works/u })).toBeVisible();
     await expect(page.getByRole('button', { name: /Set up delivery|Mark delivery complete|Reopen delivery/u }).first()).toBeVisible();
   }
   await expect(page.getByRole('button', { name: /assign/iu })).toHaveCount(0);

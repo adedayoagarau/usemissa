@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Sp } from "@/components/missa/spelling";
+import { useConfirm } from '@/components/missa/confirm-dialog';
 
 type Billing = {
   plan: string;
@@ -15,6 +16,7 @@ type Billing = {
 };
 
 export function OrganizationBilling({ organizationId, canManage }: { organizationId: string; canManage: boolean }) {
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [billing, setBilling] = useState<Billing | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -52,14 +54,14 @@ export function OrganizationBilling({ organizationId, canManage }: { organizatio
     if (typeof result?.url === 'string') window.location.assign(result.url);
   }
   async function cancel() {
-    if (!window.confirm('Cancel this plan at the end of the current billing period?')) return;
+    if (!(await confirm({ title: 'Cancel this plan?', description: 'The plan stays active until the end of the current billing period, then stops.', confirmLabel: 'Cancel plan', cancelLabel: 'Keep plan', destructive: true }))) return;
     const result = await post('/cancel', undefined, 'We could not schedule this cancellation. Try again.');
     if (result) setBilling((current) => (current ? { ...current, ...result } : current));
   }
   if (!billing) return null;
   const paidPlansAvailable = billing.paidPlansAvailable === true;
   return (
-    <section className="rounded-lg border border-border bg-card p-5 shadow-sm" aria-labelledby="organization-billing-heading">
+    <section className="rounded-lg border border-border bg-card p-5 shadow-sm" aria-labelledby="organization-billing-heading">{confirmDialog}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 id="organization-billing-heading" className="font-heading text-xl font-medium text-foreground">

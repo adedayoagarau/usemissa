@@ -69,6 +69,18 @@
       "composition": ["InputGroup", "Select", "Table", "Checkbox", "Sheet", "DropdownMenu", "Dialog", "Button", "Empty", "Sonner", "ListGroup", "DetailFields", "PersonAvatar", "DecisionSummaryBadge", "IntakeFlagBadge", "WorkDecisionBadge"],
       "boundary": "The organization's submission list. Filters live in the address and are applied on the server. Sections order rows by the next step; bulk decisions only fill undecided Works after a confirmation, and bulk letters are drafts that still pass approval. Receipt, review and decision stay separate facts."
     },
+    "composition.decisions-workspace": {
+      "semantic": "DecisionsWorkspace",
+      "implementation": "apps/web/components/decisions-workspace.tsx",
+      "composition": ["InputGroup", "Select", "Table", "Sheet", "Dialog", "RadioGroup", "Button", "Empty", "Sonner", "ListGroup", "DetailFields", "PersonAvatar", "WorkDecisionBadge"],
+      "boundary": "One row per Work in sections by recorded outcome (Not decided, Accepted, Waitlisted, Declined). Filters live in the address and are applied on the server; search matches the whole submission so a piece is never shown apart from its siblings. Each Work is decided in its own dialog with the consequence stated; recording a decision never sends a letter."
+    },
+    "composition.delivery-workspace": {
+      "semantic": "DeliveryWorkspace",
+      "implementation": "apps/web/components/delivery-workspace.tsx",
+      "composition": ["InputGroup", "Select", "Table", "Sheet", "Dialog", "Button", "Empty", "Sonner", "ListGroup", "DetailFields", "PersonAvatar", "DeliveryPlanBadge", "DatePickerField"],
+      "boundary": "Accepted Works only, in sections by what their delivery task needs: Overdue, Needs setup, Active, Complete. One task per accepted Work with an optional due date; completing it in Missa proves no payment, signature, publication or external handoff."
+    },
     "composition.organization-settings": {
       "semantic": "OrganizationSettingsPage",
       "implementation": "apps/web/app/organization/[organizationId]/settings/page.tsx",
@@ -1036,9 +1048,10 @@
     "SegmentedChoice": {
       "base": "RadioGroup",
       "variant": "segmented",
+      "variants": ["segmented", "scale"],
       "motion": "never",
       "implementation": "components/missa/segmented-choice.tsx",
-      "boundary": "One visible choice from a short ordered set: a rubric score from 0 to the criterion's scale, a rubric's scale, or a Work decision. It is a radio group, so arrow keys move between options and each option has an accessible name; it never commits a destructive action on its own."
+      "boundary": "One visible choice from a short ordered set: a rubric score from 0 to the criterion's scale, a rubric's scale, or a Work decision. More than six options switch to the scale variant, which wraps to two rows of 44px targets below the small breakpoint and joins into one row above it. It is a radio group, so arrow keys move between options and each option has an accessible name; it never commits a destructive action on its own."
     },
     "WorkDecisionBadge": {
       "base": "Badge",
@@ -1057,6 +1070,18 @@
       "motion": "never",
       "implementation": "components/missa/detail-fields.tsx",
       "boundary": "Name and value rows at the top of a record's detail Sheet. Values are recorded facts; it holds no actions."
+    },
+    "DeliveryPlanBadge": {
+      "base": "Badge",
+      "motion": "never",
+      "implementation": "components/missa/operations-badges.tsx",
+      "boundary": "Labels where an accepted Work's delivery task stands (Needs setup, Active, Complete, or Overdue for a pending task past its due date). Complete means complete in Missa only."
+    },
+    "ConfirmDialog": {
+      "base": "AlertDialog",
+      "motion": "never",
+      "implementation": "components/missa/confirm-dialog.tsx",
+      "boundary": "useConfirm() asks before removing, cancelling, closing or rotating something, in place of window.confirm. It resolves true only from the confirming button; Escape, Cancel and the backdrop resolve false. Destructive actions use the destructive button variant. The browser's confirm box is not used in product code."
     },
     "DeliveryStateBadge": {
       "base": "Badge",

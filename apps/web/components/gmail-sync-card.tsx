@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useConfirm } from "@/components/missa/confirm-dialog";
 
 type GmailView = {
   connected: boolean;
@@ -51,6 +52,7 @@ function GmailConnectLink() {
   );
 }
 export function GmailSyncCard() {
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [gmail, setGmail] = useState<GmailView>();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string>();
@@ -116,9 +118,13 @@ export function GmailSyncCard() {
   }
   async function disconnect() {
     if (
-      !window.confirm(
-        "Disconnect Gmail? Missa will stop syncing and remove the stored Gmail credential. Confirmed Tracker history stays.",
-      )
+      !(await confirm({
+        title: "Disconnect Gmail?",
+        description:
+          "Missa will stop syncing and remove the stored Gmail credential. Confirmed Tracker history stays.",
+        confirmLabel: "Disconnect",
+        destructive: true,
+      }))
     )
       return;
     setBusy(true);
@@ -165,6 +171,7 @@ export function GmailSyncCard() {
     );
   return (
     <Card id="gmail-sync">
+      {confirmDialog}
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>

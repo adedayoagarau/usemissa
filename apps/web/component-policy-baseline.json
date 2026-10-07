@@ -292,16 +292,6 @@
     "app/journals/error.tsx": {
       "<button>": 1
     },
-    "app/organization/[organizationId]/decisions/page.tsx": {
-      "<input>": 1,
-      "<select>": 1,
-      "<button>": 1
-    },
-    "app/organization/[organizationId]/delivery/page.tsx": {
-      "<input>": 1,
-      "<select>": 1,
-      "<button>": 1
-    },
     "app/organization/[organizationId]/insights/page.tsx": {
       "<select>": 3,
       "<button>": 1

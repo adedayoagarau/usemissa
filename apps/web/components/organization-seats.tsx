@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useConfirm } from '@/components/missa/confirm-dialog';
 
 const roles = ['member', 'admin', 'owner', 'team-admin', 'program-manager', 'reviewer', 'finance', 'legal', 'viewer', 'guest'] as const;
 type Member = { accountId: string; email: string; role: string };
@@ -23,6 +24,7 @@ async function readPeopleAndSeats(organizationId: string): Promise<{
 }
 
 export function OrganizationSeats({ organizationId, canManage }: { organizationId: string; canManage: boolean }) {
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [members, setMembers] = useState<Member[]>([]);
   const [seats, setSeats] = useState<SeatSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +77,7 @@ export function OrganizationSeats({ organizationId, canManage }: { organizationI
   }
 
   async function remove(accountId: string) {
-    if (!window.confirm('Remove this seat from the organization?')) return;
+    if (!(await confirm({ title: 'Remove this seat?', description: 'This person loses access to the organization straight away. You can invite them again later.', confirmLabel: 'Remove seat', destructive: true }))) return;
     setError(null);
     const response = await fetch(`/api/orgs/${organizationId}/members/${accountId}`, { method: 'DELETE' });
     if (!response.ok) {
@@ -87,7 +89,7 @@ export function OrganizationSeats({ organizationId, canManage }: { organizationI
   }
 
   return (
-    <section className="rounded-lg border border-border bg-card p-5 shadow-sm" aria-labelledby="organization-seats-heading">
+    <section className="rounded-lg border border-border bg-card p-5 shadow-sm" aria-labelledby="organization-seats-heading">{confirmDialog}
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 id="organization-seats-heading" className="font-heading text-xl font-medium text-foreground">

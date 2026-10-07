@@ -8,9 +8,14 @@ import { cn } from "@/lib/utils";
 /**
  * "segmented" draws the group as one joined control, each option a labelled
  * segment: for short ordered scales such as a 0 to 5 score. Arrow keys still
- * move between options.
+ * move between options. "scale" is the same control for a long scale such as
+ * 0 to 10: on a phone it breaks into two rows of separate 44px targets, and
+ * from the small breakpoint up it joins into one row.
  */
-type RadioGroupVariant = "default" | "segmented";
+type RadioGroupVariant = "default" | "segmented" | "scale";
+
+const segmentItem =
+  "relative flex min-w-0 items-center justify-center border-input px-2 text-sm font-medium whitespace-nowrap text-foreground tabular-nums outline-none transition-colors not-data-checked:hover:bg-muted focus-visible:z-10 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50 data-checked:bg-primary data-checked:text-primary-foreground motion-reduce:transition-none";
 
 function RadioGroup({ className, variant = "default", ...props }: RadioGroupPrimitive.Props & { variant?: RadioGroupVariant }) {
   return (
@@ -20,7 +25,9 @@ function RadioGroup({ className, variant = "default", ...props }: RadioGroupPrim
       className={cn(
         variant === "segmented"
           ? "flex w-full flex-nowrap overflow-hidden rounded-lg border border-input bg-background aria-invalid:border-destructive"
-          : "grid w-full gap-2",
+          : variant === "scale"
+            ? "group/scale grid w-full grid-cols-6 gap-1.5 sm:flex sm:flex-nowrap sm:gap-0 sm:overflow-hidden sm:rounded-lg sm:border sm:border-input sm:bg-background sm:aria-invalid:border-destructive"
+            : "grid w-full gap-2",
         className,
       )}
       {...props}
@@ -29,13 +36,16 @@ function RadioGroup({ className, variant = "default", ...props }: RadioGroupPrim
 }
 
 function RadioGroupItem({ className, variant = "default", children, ...props }: RadioPrimitive.Root.Props & { variant?: RadioGroupVariant }) {
-  if (variant === "segmented") {
+  if (variant === "segmented" || variant === "scale") {
     return (
       <RadioPrimitive.Root
         data-slot="radio-group-item"
-        data-variant="segmented"
+        data-variant={variant}
         className={cn(
-          "relative flex h-9 min-w-0 flex-1 items-center justify-center border-e border-input px-2 text-sm font-medium whitespace-nowrap text-foreground tabular-nums outline-none transition-colors last:border-e-0 not-data-checked:hover:bg-muted focus-visible:z-10 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50 data-checked:bg-primary data-checked:text-primary-foreground motion-reduce:transition-none",
+          segmentItem,
+          variant === "segmented"
+            ? "h-9 flex-1 border-e last:border-e-0"
+            : "h-11 rounded-md border bg-background group-aria-invalid/scale:border-destructive sm:h-9 sm:flex-1 sm:rounded-none sm:border-0 sm:border-e sm:last:border-e-0",
           className,
         )}
         {...props}
