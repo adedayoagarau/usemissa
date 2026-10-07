@@ -18,16 +18,29 @@ what comes next, in the order agreed with the owner.
 
 ## Next, in order
 
-Every agreed stage is built. The next pick comes from Later, with the owner.
+From the research in `docs/writing-research.md`, which has the findings,
+sources and what each stage contains:
+
+1. **E. Editor essentials.** Page and section breaks as in Google Docs and
+   Word, the shortcuts writers expect, a word count for the selection.
+2. **F. Quiet writing.** Quiet mode, focus dimming, typewriter scrolling.
+3. **G. Cards and corkboard.** Fields on every piece, a corkboard, an outliner
+   with totals, saved views, editing several pieces as one text.
+4. **H. Story bible.** Characters, places and items with "Appears in".
+5. **I. Plot grid and structures.** Plotlines across the book, structure
+   templates, pacing against beats, plotline gaps.
+6. **J. Goals and history.** Deadline targets that skip days off.
+7. **K. Timeline.** Story order and telling order, ages, continuity checks,
+   then alternate branches.
+8. **L. Book design and export.** Book interiors, standard manuscript format
+   as DOCX, EPUB 3.
+9. **M. Notes and research.** Margin notes, footnotes, research beside the
+   draft.
 
 ## Later
 
 - Tie a whole project to a call, and show the call's own required materials
   and prompts, not only the writer's checklist.
-- Export to Word and standard manuscript format.
-- Word targets for a session or a project, shown calmly, with no streaks.
-- Research beside the draft: notes, images and PDFs in a split view.
-- Corkboard view of the outline's index cards.
 - Import from Word, Scrivener (`.scriv`) and Google Docs.
 - "Make this a Work" and "Send to Tracker", so each version is tied to the
   call it went to.
