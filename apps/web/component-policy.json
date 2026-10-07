@@ -267,6 +267,23 @@
       "appearance": "link-card-1200x630-and-story-1080x1920-drawn-through-next-og",
       "boundary": "Generated PNGs. next/og cannot read CSS variables or the page's fonts, so colours come from the shared email constants (the Missa tokens as hex) and Newsreader, Instrument Sans and Fragment Mono are fetched as TTF, with the renderer's default face as the fallback. The story quotes the featured work only in the maker's own line breaks and never writes about the work."
     },
+    "composition.creator-work-page": {
+      "semantic": "CreatorWorkPage",
+      "implementation": "components/creator-profile/work-page/work-page.tsx",
+      "composition": ["Breadcrumb", "Button", "Collapsible", "Item", "Alert", "ProvenanceBadge", "ProfileConnect"],
+      "appearance": "creator-theme-reading-page-with-contents-beside-ordered-parts",
+      "typography": "Newsreader for the title, standfirst and reading text; Fragment Mono for counts, years and part numbers only; Instrument Sans for everything else",
+      "states": ["default", "hover", "focus-visible", "empty", "media-error", "audio-error", "loading-lazy-media"],
+      "boundary": "Only a work the published profile shows has a page, so an unshown work or an unknown address is a 404 and an alias handle redirects. The page never carries decision ids; Confirmed is whatever the server derived for the track-record entry that names the work. A work with parts shows its parts; without parts it shows its own text, picture and audio."
+    },
+    "composition.creator-work-page-fields": {
+      "semantic": "WorkPageFields",
+      "implementation": "components/creator-profile/studio/work-page-fields.tsx",
+      "composition": ["Collapsible", "Button", "Input", "Textarea", "NativeSelect", "ItemList", "MediaField"],
+      "appearance": "one-disclosure-per-work-with-address-context-rights-credits-and-parts",
+      "reorder": "explicit-move-up-down-buttons",
+      "boundary": "The page address is tidied as it is typed and the studio says in a sentence when the address a work gets is not the one asked for (reserved word, or an address another work has)."
+    },
     "composition.writing-room": {
       "semantic": "WritingRoom",
       "implementation": "components/missa/writing-room.tsx",
@@ -1436,6 +1453,8 @@
     "ProfileInbox": ["Tabs", "Button", "Empty", "Link"],
     "ShareKit": ["Button", "Alert", "Empty", "Skeleton", "Input", "Textarea", "EventCard"],
     "EventCard": ["EditorialTypography", "PrintStyles", "QrCodeSvg"],
+    "CreatorWorkPage": ["Breadcrumb", "Button", "Collapsible", "Item", "Alert", "ProvenanceBadge", "ProfileConnect"],
+    "WorkPageFields": ["Collapsible", "Button", "Input", "Textarea", "NativeSelect", "ItemList", "MediaField"],
     "WritingRoom": ["WritingPages", "WritingFormatBar", "WritingFormatSheet", "WritingLibrary", "Button", "DropdownMenu", "Popover", "Dialog", "AlertDialog", "Alert"]
   },
   "motion": {
