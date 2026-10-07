@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getSessionAccount } from "@/lib/auth";
 import { isWritingEntryId, parseWritingSaveRequest } from "@/lib/writing";
 import { getWritingRepository } from "@/lib/writing-repository";
+import { parsePieceChange } from "@/lib/writing-projects";
+import { smallJson } from "../_shared";
 
 const headers = { "Cache-Control": "private, no-store" };
 // The longest entry in UTF-8, plus room for the JSON around it.
@@ -110,5 +112,27 @@ export async function DELETE(request: Request, context: Context) {
       { error: "We could not delete this entry. It is unchanged. Try again." },
       500,
     );
+  }
+}
+
+/** Moves a piece between projects or changes its index card. Its text is untouched. */
+export async function PATCH(request: Request, context: Context) {
+  const prepared = await prepare(request, context);
+  if ("response" in prepared) return prepared.response;
+  const parsed = parsePieceChange(await smallJson(request));
+  if ("error" in parsed) return json({ error: parsed.error }, 400);
+  try {
+    const result = await prepared.repository.changePiece(
+      prepared.accountId,
+      prepared.id,
+      parsed,
+    );
+    if (result === "no-project")
+      return json({ error: "Project not found." }, 404);
+    return result
+      ? json({ entry: result })
+      : json({ error: "Entry not found." }, 404);
+  } catch {
+    return json({ error: "We could not change this piece. Try again." }, 500);
   }
 }

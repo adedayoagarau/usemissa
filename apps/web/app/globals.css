@@ -5,6 +5,7 @@
 @source not "../components/shadcn-studio";
 @source not "./design-system";
 @import "../components/design-system/collection-palette.css";
+@import "../components/design-system/dark-palette.css";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
@@ -233,40 +234,42 @@ body {
 }
 
 .dark {
-  /* Dark mode isn't in scope for this story (no dark-mode requirement in the
-     UX spec) -- kept as shadcn's own generated defaults so the class exists
-     and doesn't crash if toggled, not tuned to the brand palette yet. */
-  --background: #171418;
-  --foreground: #f5f1f7;
-  --card: #211b23;
-  --card-foreground: #f5f1f7;
-  --popover: #211b23;
-  --popover-foreground: #f5f1f7;
-  --primary: #a991b5;
-  --primary-foreground: #171418;
-  --secondary: #33233b;
-  --secondary-foreground: #f5f1f7;
-  --muted: #2a242d;
-  --muted-foreground: #b9afbd;
-  --accent: #33233b;
-  --accent-foreground: #f5f1f7;
-  --destructive: #d88991;
-  --border: #423746;
-  --input: #423746;
-  --ring: #a991b5;
-  --chart-1: #a991b5;
-  --chart-2: #9baa79;
-  --chart-3: #d1a65f;
-  --chart-4: #79a7b6;
-  --chart-5: #d88991;
-  --sidebar: #211b23;
-  --sidebar-foreground: #f5f1f7;
-  --sidebar-primary: #a991b5;
-  --sidebar-primary-foreground: #171418;
-  --sidebar-accent: #33233b;
-  --sidebar-accent-foreground: #f5f1f7;
-  --sidebar-border: #423746;
-  --sidebar-ring: #a991b5;
+  /* Missa in the dark: warm near-black paper, ink-light text and a lighter
+     Forest for actions. Used by the writing room's dark appearance (/doc);
+     the rest of Missa stays light (DESIGN.md, Open Decisions). Text pairs
+     keep WCAG AA contrast on the background. */
+  --background: var(--dark-paper);
+  --foreground: var(--dark-ink);
+  --card: var(--dark-paper-raised);
+  --card-foreground: var(--dark-ink);
+  --popover: var(--dark-paper-raised);
+  --popover-foreground: var(--dark-ink);
+  --primary: var(--dark-forest);
+  --primary-foreground: var(--dark-forest-ink);
+  --secondary: var(--dark-paper-secondary);
+  --secondary-foreground: var(--dark-ink);
+  --muted: var(--dark-paper-muted);
+  --muted-foreground: var(--dark-ink-muted);
+  --accent: var(--dark-forest-tint);
+  --accent-foreground: var(--dark-ink);
+  --destructive: var(--dark-clay);
+  --border: var(--dark-line);
+  --input: var(--dark-line);
+  --ring: var(--dark-forest);
+  --chart-1: var(--dark-forest);
+  --chart-2: var(--dark-lichen);
+  --chart-3: var(--dark-ochre);
+  --chart-4: var(--dark-mineral-blue);
+  --chart-5: var(--dark-clay);
+  --sidebar: var(--dark-paper-raised);
+  --sidebar-foreground: var(--dark-ink);
+  --sidebar-primary: var(--dark-forest);
+  --sidebar-primary-foreground: var(--dark-forest-ink);
+  --sidebar-accent: var(--dark-forest-tint);
+  --sidebar-accent-foreground: var(--dark-ink);
+  --sidebar-border: var(--dark-line);
+  --sidebar-ring: var(--dark-forest);
+  color-scheme: dark;
 }
 
 @layer base {
@@ -290,6 +293,96 @@ body {
   text-decoration: var(--shiki-dark-text-decoration) !important;
 }
 
+
+/*
+ * Categorical colour (DESIGN.md §3, "Categorical colour"). Twelve hues for
+ * identity and labels: people's avatars, rubric criteria, opportunity and
+ * label chips, chart series. Each hue has a solid (fills that carry ink
+ * text), a subtle (pill backgrounds) and an ink (text on its subtle, AA).
+ * Never used for status meaning; status keeps its semantic roles.
+ */
+:root {
+  --hue-red: #f06a6a;
+  --hue-red-subtle: #fde8e8;
+  --hue-red-ink: #a3282c;
+  --hue-orange: #ec8d71;
+  --hue-orange-subtle: #fdeee6;
+  --hue-orange-ink: #9a3d1b;
+  --hue-amber: #f1bd6c;
+  --hue-amber-subtle: #fdf1dc;
+  --hue-amber-ink: #7f4f0b;
+  --hue-yellow: #f8df72;
+  --hue-yellow-subtle: #fdf8db;
+  --hue-yellow-ink: #6a5505;
+  --hue-lime: #aecf55;
+  --hue-lime-subtle: #f0f6dc;
+  --hue-lime-ink: #4a6214;
+  --hue-green: #5da283;
+  --hue-green-subtle: #e2f2ea;
+  --hue-green-ink: #2b6a4e;
+  --hue-teal: #4ecbc4;
+  --hue-teal-subtle: #dff5f4;
+  --hue-teal-ink: #1d6c68;
+  --hue-blue: #4573d2;
+  --hue-blue-subtle: #e6edfb;
+  --hue-blue-ink: #2a4f9e;
+  --hue-indigo: #8d84e8;
+  --hue-indigo-subtle: #edebfc;
+  --hue-indigo-ink: #4a3eb3;
+  --hue-purple: #b36bd4;
+  --hue-purple-subtle: #f4e8fa;
+  --hue-purple-ink: #73309a;
+  --hue-magenta: #f9aaef;
+  --hue-magenta-subtle: #fdeafb;
+  --hue-magenta-ink: #8f2580;
+  --hue-pink: #f26fb2;
+  --hue-pink-subtle: #fde7f2;
+  --hue-pink-ink: #9f225e;
+
+  /* Overlay depth: a hairline plus a soft, offset shadow, as menus and
+     dialogs in task tools are drawn. */
+  --elevation-menu: 0 1px 2px rgb(23 20 24 / 0.06), 0 8px 24px -6px rgb(23 20 24 / 0.16);
+  --elevation-dialog: 0 2px 6px rgb(23 20 24 / 0.06), 0 24px 56px -12px rgb(23 20 24 / 0.28);
+  --elevation-control: 0 1px 1px rgb(23 20 24 / 0.04);
+  --border-strong: #d4d3d0;
+  --row-hover: #f7f7f6;
+  --row-selected: color-mix(in srgb, var(--brand-accent) 7%, var(--surface));
+}
+.dark {
+  --hue-red-subtle: color-mix(in srgb, var(--hue-red) 22%, var(--background));
+  --hue-red-ink: color-mix(in srgb, var(--hue-red) 70%, white);
+  --hue-orange-subtle: color-mix(in srgb, var(--hue-orange) 22%, var(--background));
+  --hue-orange-ink: color-mix(in srgb, var(--hue-orange) 70%, white);
+  --hue-amber-subtle: color-mix(in srgb, var(--hue-amber) 22%, var(--background));
+  --hue-amber-ink: color-mix(in srgb, var(--hue-amber) 70%, white);
+  --hue-yellow-subtle: color-mix(in srgb, var(--hue-yellow) 22%, var(--background));
+  --hue-yellow-ink: color-mix(in srgb, var(--hue-yellow) 70%, white);
+  --hue-lime-subtle: color-mix(in srgb, var(--hue-lime) 22%, var(--background));
+  --hue-lime-ink: color-mix(in srgb, var(--hue-lime) 70%, white);
+  --hue-green-subtle: color-mix(in srgb, var(--hue-green) 22%, var(--background));
+  --hue-green-ink: color-mix(in srgb, var(--hue-green) 70%, white);
+  --hue-teal-subtle: color-mix(in srgb, var(--hue-teal) 22%, var(--background));
+  --hue-teal-ink: color-mix(in srgb, var(--hue-teal) 70%, white);
+  --hue-blue-subtle: color-mix(in srgb, var(--hue-blue) 22%, var(--background));
+  --hue-blue-ink: color-mix(in srgb, var(--hue-blue) 70%, white);
+  --hue-indigo-subtle: color-mix(in srgb, var(--hue-indigo) 22%, var(--background));
+  --hue-indigo-ink: color-mix(in srgb, var(--hue-indigo) 70%, white);
+  --hue-purple-subtle: color-mix(in srgb, var(--hue-purple) 22%, var(--background));
+  --hue-purple-ink: color-mix(in srgb, var(--hue-purple) 70%, white);
+  --hue-magenta-subtle: color-mix(in srgb, var(--hue-magenta) 22%, var(--background));
+  --hue-magenta-ink: color-mix(in srgb, var(--hue-magenta) 70%, white);
+  --hue-pink-subtle: color-mix(in srgb, var(--hue-pink) 22%, var(--background));
+  --hue-pink-ink: color-mix(in srgb, var(--hue-pink) 70%, white);
+  --elevation-menu: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -6px rgb(0 0 0 / 0.5);
+  --elevation-dialog: 0 24px 56px -12px rgb(0 0 0 / 0.6);
+  --border-strong: #4a3f4e;
+  --row-hover: #241e27;
+  --row-selected: #2c2430;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--brand-accent) 18%, transparent);
+}
 
 /* Ranking status colors shared by the index and its methodology. */
 :root {

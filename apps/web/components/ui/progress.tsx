@@ -1,5 +1,7 @@
 "use client"
 
+import * as React from "react"
+
 import { Progress as ProgressPrimitive } from "@base-ui/react/progress"
 
 import { cn } from "@/lib/utils"
@@ -18,18 +20,29 @@ function Progress({
       {...props}
     >
       {children}
-      <ProgressTrack>
-        <ProgressIndicator />
-      </ProgressTrack>
+      {/* Callers that compose their own track get exactly one bar. */}
+      {hasOwnTrack(children) ? null : (
+        <ProgressTrack>
+          <ProgressIndicator />
+        </ProgressTrack>
+      )}
     </ProgressPrimitive.Root>
   )
+}
+
+function hasOwnTrack(children: React.ReactNode): boolean {
+  let found = false
+  React.Children.forEach(children, (child) => {
+    if (React.isValidElement(child) && child.type === ProgressTrack) found = true
+  })
+  return found
 }
 
 function ProgressTrack({ className, ...props }: ProgressPrimitive.Track.Props) {
   return (
     <ProgressPrimitive.Track
       className={cn(
-        "relative flex h-1 w-full items-center overflow-x-hidden rounded-full bg-muted",
+        "relative flex h-1.5 w-full items-center overflow-x-hidden rounded-full bg-muted",
         className
       )}
       data-slot="progress-track"
@@ -45,7 +58,7 @@ function ProgressIndicator({
   return (
     <ProgressPrimitive.Indicator
       data-slot="progress-indicator"
-      className={cn("h-full bg-primary transition-all", className)}
+      className={cn("h-full rounded-full bg-primary transition-all", className)}
       {...props}
     />
   )

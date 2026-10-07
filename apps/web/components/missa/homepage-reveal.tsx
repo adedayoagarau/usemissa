@@ -1,0 +1,43 @@
+"use client";
+
+import { motion, useReducedMotion } from "framer-motion";
+import type { ReactNode } from "react";
+
+import { useHydrated } from "./homepage-hero-motion";
+
+/**
+ * One scroll-reveal for the homepage's lower sections: a short rise on the
+ * enter curve, once, when the block is a fifth of the way into view. Reduced
+ * motion renders the block in place.
+ */
+export function Reveal({
+  children,
+  className,
+  delay = 0,
+}: {
+  children: ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  // Match the server render during hydration, then honour the preference.
+  const prefersReduced = useReducedMotion();
+  const hydrated = useHydrated();
+  const reduced = hydrated && Boolean(prefersReduced);
+  return (
+    <motion.div
+      className={className}
+      initial={reduced ? false : { opacity: 0, y: 18 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      // Anything already above the viewport counts as seen, so a jump past a
+      // block (an anchor, scroll restoration) never leaves it hidden.
+      viewport={{ once: true, amount: 0.2, margin: "10000px 0px 0px 0px" }}
+      transition={{
+        duration: reduced ? 0 : 0.55,
+        delay: reduced ? 0 : delay,
+        ease: [0.16, 1, 0.3, 1],
+      }}
+    >
+      {children}
+    </motion.div>
+  );
+}

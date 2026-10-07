@@ -22,6 +22,20 @@ test('renderBaseEmailLayout produces valid HTML with Forest tokens and escaped v
   assert.ok(html.includes('https://usemissa.com/unsubscribe?token=xyz'));
 });
 
+test('the call to action carries padding Outlook can see', () => {
+  const html = renderBaseEmailLayout({
+    subject: 'Subject',
+    title: 'Title',
+    bodyHtml: '<p>Body</p>',
+    callToAction: { label: 'Open your Tracker', url: 'https://usemissa.com/tracker' },
+  });
+
+  // Outlook's Word engine drops padding from the inline-block anchor, so the
+  // button cell states it again in a property only Outlook reads. Without this
+  // the fill shrink-wraps the label and the button looks cramped.
+  assert.match(html, /<td[^>]*mso-padding-alt:13px 22px;[^>]*>\s*<a/);
+});
+
 test('htmlToPlainText extracts clean readable plain text from HTML', () => {
   const html = `
     <h1>Hello World</h1>

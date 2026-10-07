@@ -60,7 +60,7 @@
     "composition.reader-operations": {
       "semantic": "ReaderOperations",
       "implementation": "apps/web/components/reader-operations.tsx",
-      "composition": ["Progress", "Table", "Tabs", "Dialog", "Field", "Input", "NativeSelect", "Checkbox", "Switch", "Button", "Alert", "Empty", "Sonner", "CalibrationBadge"],
+      "composition": ["Progress", "Table", "Tabs", "Sheet", "DropdownMenu", "Popover", "Dialog", "Field", "Input", "Avatar", "Checkbox", "Switch", "Button", "Alert", "Empty", "Sonner", "CountBadge", "CalibrationBadge", "WorkDecisionBadge", "SegmentedChoice"],
       "boundary": "One round at a time. Progress and calibration are derived from recorded assignments and scores; distribution previews a deterministic plan with conflict reasons before writing, and the commit applies only the previewed plan. Decisions remain per Work through the existing decision route."
     },
     "composition.communications-manager": {
@@ -78,7 +78,7 @@
     "composition.round-rubric": {
       "semantic": "RubricDialog",
       "implementation": "apps/web/components/reader-round-actions.tsx",
-      "composition": ["Dialog", "Field", "Input", "Button", "Alert", "Sonner"],
+      "composition": ["Dialog", "Field", "Input", "Textarea", "SegmentedChoice", "Button", "Alert", "Sonner"],
       "boundary": "Each save creates an immutable rubric version; reads already scored keep their version. Readers score whole numbers per criterion in the reviewer score form, and the server computes the weighted 0 to 100 score used for ranking and calibration."
     },
     "composition.submitter-questions": {
@@ -201,13 +201,21 @@
     "composition.writing-room": {
       "semantic": "WritingRoom",
       "implementation": "components/missa/writing-room.tsx",
-      "composition": ["WritingSurface", "Button", "ButtonGroup", "DropdownMenu", "Popover", "Sheet", "Item", "Empty", "Alert", "AlertDialog", "Sonner"],
-      "appearance": "full-page-plain-text-with-controls-that-fade-while-the-timer-runs",
-      "boundary": "Plain text the creator writes. Kept on the device until the account confirms it, and never overwritten by another device: refused text becomes a separate entry. No AI, suggestions, rewriting or analysis; only apps/web/lib/writing-repository.ts reads the text (enforced by lib/writing-boundary.test.ts). No WebMCP tools on /write."
+      "composition": ["WritingPages", "WritingFormatBar", "WritingFormatSheet", "WritingLibrary", "WritingSnapshots", "WritingFind", "Button", "ButtonGroup", "DropdownMenu", "Popover", "Dialog", "Alert", "AlertDialog", "Sonner"],
+      "appearance": "full-page-printed-pages-with-controls-that-fade-while-the-timer-runs",
+      "boundary": "Rich text on printed pages the creator writes. Kept on the device until the account confirms it, and never overwritten by another device: refused text becomes a separate entry. No AI, suggestions, rewriting or analysis; only apps/web/lib/writing-repository.ts reads the text (enforced by lib/writing-boundary.test.ts). No WebMCP tools on /doc (or the old /write address, which redirects there)."
+    },
+    "composition.writing-library": {
+      "semantic": "WritingLibrary",
+      "implementation": "components/missa/writing-library.tsx",
+      "composition": ["Sheet", "Item", "Sortable", "DropdownMenu", "Dialog", "AlertDialog", "Field", "Input", "Textarea", "NativeSelect", "RadioGroup", "Checkbox", "Empty", "Button"],
+      "appearance": "sheet-of-projects-and-loose-pieces-with-a-sortable-binder-outline-and-compile-dialogs",
+      "reorder": "sortable-drag-handle-plus-move-up-down-menu-items",
+      "boundary": "Gathers, orders and opens pieces; never reads or changes their text. Projects, piece order, synopsis and status are kept only through apps/web/lib/writing-repository.ts (creator_writing_projects, migration 0097). Deleting a project keeps its pieces. Compile joins pieces in order for print, PDF or plain text in the browser."
     },
     "input.writing-page": {
-      "semantic": "WritingSurface",
-      "boundary": "The page a creator writes on in the writing room. Long text inside a form stays input.long-text (Field + Textarea)."
+      "semantic": "WritingPages",
+      "boundary": "The printed pages a creator writes on in the writing room: rich text with every space and tab kept, each page with its own format. Long text inside a form stays input.long-text (Field + Textarea)."
     },
     "composition.auth-shell": {
       "semantic": "AuthShell",
@@ -989,6 +997,43 @@
       "implementation": "components/missa/deadline-badges.tsx",
       "boundary": "Background process state (syncing, synced, waiting, not synced). A failed state is always paired with a recovery action."
     },
+    "PersonAvatar": {
+      "base": "Avatar",
+      "motion": "never",
+      "implementation": "components/missa/person-avatar.tsx",
+      "boundary": "A person's initials on one of twelve categorical hues derived from their identity, so a person keeps one colour on every surface. The colour identifies; it never states status."
+    },
+    "LabelPill": {
+      "base": "Badge",
+      "motion": "never",
+      "implementation": "components/missa/label-pill.tsx",
+      "boundary": "A categorical label (criterion, category, opportunity) in one of twelve hues. Never used for status, which keeps its semantic badges."
+    },
+    "DatePickerField": {
+      "base": "Popover",
+      "motion": "never",
+      "implementation": "components/missa/date-picker-field.tsx",
+      "boundary": "Chooses an ISO calendar date from a calendar popover in place of the browser's date input; optional Clear. The trigger is a field-style Button showing the formatted date or a placeholder."
+    },
+    "SegmentedChoice": {
+      "base": "RadioGroup",
+      "variant": "segmented",
+      "motion": "never",
+      "implementation": "components/missa/segmented-choice.tsx",
+      "boundary": "One visible choice from a short ordered set: a rubric score from 0 to the criterion's scale, a rubric's scale, or a Work decision. It is a radio group, so arrow keys move between options and each option has an accessible name; it never commits a destructive action on its own."
+    },
+    "WorkDecisionBadge": {
+      "base": "Badge",
+      "motion": "never",
+      "implementation": "components/missa/operations-badges.tsx",
+      "boundary": "Labels the recorded decision on one Work (Accepted, Waitlisted, Declined). It reflects a recorded decision only and never implies a letter was sent."
+    },
+    "HueTile": {
+      "base": "span",
+      "motion": "never",
+      "implementation": "components/missa/hue-tile.tsx",
+      "boundary": "A small colour tile marking a record (a review round, a rubric criterion) with an icon or number on a categorical hue derived from the record's identity. Decorative and aria-hidden; the record's name always sits beside it."
+    },
     "CalibrationBadge": {
       "base": "Badge",
       "motion": "never",
@@ -1156,11 +1201,29 @@
       "motion": "never",
       "boundary": "One calm line naming what a plan adds and a link to /plan. Says what the creator gets, never what they lose; no alarm colour, no modal."
     },
-    "WritingSurface": {
-      "base": "textarea",
-      "implementation": "components/missa/writing-surface.tsx",
+    "WritingSnapshots": {
+      "base": "Sheet",
+      "implementation": "components/missa/writing-snapshots.tsx",
       "motion": "never",
-      "boundary": "Borderless, full-height plain-text page with a 42rem measure, in the writer's choice of the open-licence faces in components/missa/writing-typefaces.ts (DESIGN.md typography rule 9) at 16-28px (set in rem). The caret marks focus. Gap recorded: the installed Textarea and the 20 local Studio textarea variants are bordered, labelled form fields; none is a document surface."
+      "boundary": "Snapshots of the open piece: take one under an optional name, compare it line by line with the text now (struck-through and marked lines with screen-reader prefixes), restore it after keeping the current text as a snapshot, or delete it. Read and written only through apps/web/lib/writing-repository.ts (creator_writing_snapshots, migration 0098)."
+    },
+    "WritingFind": {
+      "base": "Input",
+      "implementation": "components/missa/writing-find.tsx",
+      "motion": "never",
+      "boundary": "A search landmark under the header that finds and replaces across every page and canvas text box in reading order, marking matches with warning tokens. Ctrl/Cmd+F or H opens it; Enter, Shift+Enter and Escape move and close."
+    },
+    "WritingLibrary": {
+      "base": "Sheet",
+      "implementation": "components/missa/writing-library.tsx",
+      "motion": "never",
+      "boundary": "The writing room's library: projects, a binder of each project's pieces (drag by the handle with the installed Sortable, or Move up and Move down in each piece's menu for keyboard and screen readers), loose pieces, the outline of synopses and statuses, and the compile options. Built from installed primitives only."
+    },
+    "WritingPages": {
+      "base": "tiptap",
+      "implementation": "components/missa/writing-pages.tsx",
+      "motion": "never",
+      "boundary": "Printed pages (A4, US Letter, A5, chapbook) drawn at paper size, or a paperless draft view on small screens. Text flows from page to page as it is written; pages the writer adds stay apart. Any page can be a free canvas (components/missa/writing-canvas.tsx) of text boxes placed in millimetres, moved by a drag handle or by arrow keys on the focused handle, and printed exactly. Each page is a Tiptap (ProseMirror, MIT core only; no Tiptap AI or cloud packages) editor with its own alignment, line and letter spacing, margins, typeface and size; spaces, tabs and line breaks are kept as typed. Tab writes a tab; Escape then Tab leaves the page. The caret marks focus. Gap recorded: Textarea and the 20 local Studio textarea variants are plain-text form fields; none offers rich text, pages or per-page format, so this is the documented editor exception to 'Contenteditable without editor requirements'."
     }
   },
   "productCompositions": {
@@ -1233,7 +1296,7 @@
     "CreatorCv": ["EditorialTypography", "PrintStyles", "ProvenanceMark"],
     "ProfileConnect": ["Button", "Dialog", "Field", "Input", "NativeSelect", "Textarea"],
     "ProfileInbox": ["Tabs", "Button", "Empty", "Link"],
-    "WritingRoom": ["WritingSurface", "Button", "DropdownMenu", "Popover", "Sheet", "Item", "AlertDialog", "Alert"]
+    "WritingRoom": ["WritingPages", "WritingFormatBar", "WritingFormatSheet", "WritingLibrary", "Button", "DropdownMenu", "Popover", "Dialog", "AlertDialog", "Alert"]
   },
   "motion": {
     "requiresChangingState": true,

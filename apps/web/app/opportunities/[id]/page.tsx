@@ -1,55 +1,31 @@
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import type { OpportunityDetailProjection } from '@missa/radar-engine';
-import type { ProfileCard } from '@missa/radar-adapters';
-import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
-import { getOpportunityRepository } from '@/lib/opportunityRepository';
 import { getPublicOpportunityDetail } from '@/lib/publicOpportunityReads';
+import { pageMetadata } from '@/lib/seo';
 import {
-  getPublicProfileById,
-  getPublicProfileForOpportunity,
-} from '@/lib/publicProfileReads';
-import { taxonomyLabelFor } from '@/lib/opportunityTaxonomy';
-import { MissaSiteHeader } from '@/components/missa-site-header';
-import { OpportunityDetailView } from '@/components/opportunity-detail-view';
-import { PublicDiscoveryEvent } from '@/components/public-discovery-event';
-import { JsonLd, absoluteUrl, breadcrumbJsonLd, identityImageJsonLd, opportunityDescription, pageMetadata } from '@/lib/seo';
+  OpportunityDetailPageBody,
+  VIEWABLE_STATUSES,
+  opportunityMetadata,
+} from './opportunity-detail-page';
 
-export const dynamic = 'force-dynamic';
+/**
+ * The public call page reads no cookies, so it is served from the CDN and
+ * regenerated at most every five minutes. Signed-in visitors never reach it:
+ * a cookie rewrite in next.config.ts sends them to ./member, which shows their saved state and the
+ * private calls they can see.
+ */
+export const revalidate = 300;
 
-const PUBLIC_STATUSES = new Set(['opening-soon', 'open', 'closing-soon', 'deadline-extended']);
-
-async function getRelatedProfile(
-  opportunity: OpportunityDetailProjection,
-): Promise<ProfileCard | null> {
-  try {
-    return opportunity.organizationId
-      ? await getPublicProfileById(opportunity.organizationId)
-      : await getPublicProfileForOpportunity(opportunity.id);
-  } catch (error) {
-    console.warn('Related organization profile is unavailable; rendering the opportunity without it.', error);
-    return null;
-  }
+export function generateStaticParams() {
+  return [];
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
+  let opportunity: OpportunityDetailProjection | null;
   try {
-    const opportunity = await getPublicOpportunityDetail(id);
-    if (!opportunity || !PUBLIC_STATUSES.has(opportunity.status)) {
-      return pageMetadata({
-        title: 'Call not found',
-        description: 'This call isn’t listed on Missa anymore.',
-        path: `/opportunities/${id}`,
-        noIndex: true,
-      });
-    }
-    return pageMetadata({
-      title: opportunity.title,
-      description: opportunityDescription(opportunity),
-      path: `/opportunities/${opportunity.slug}`,
-    });
+    opportunity = await getPublicOpportunityDetail(id);
   } catch {
     return pageMetadata({
       title: 'Creative opportunity',
@@ -58,62 +34,17 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       noIndex: true,
     });
   }
+  if (!opportunity || !VIEWABLE_STATUSES.has(opportunity.status)) notFound();
+  return opportunityMetadata(opportunity);
 }
 
 export default async function OpportunityDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const [cookieStore, { id }] = await Promise.all([cookies(), params]);
-  const session = await getSessionAccountFromToken(cookieStore.get(SESSION_COOKIE)?.value);
-  const opportunity = session?.account.id
-    ? await getOpportunityRepository().getById(id, { accountId: session.account.id })
-    : await getPublicOpportunityDetail(id);
-  if (!opportunity || (!session && !PUBLIC_STATUSES.has(opportunity.status))) notFound();
-
-  const path = `/opportunities/${opportunity.slug}`;
-  const summary = opportunity.content?.summary ?? opportunityDescription(opportunity);
-  const taxonomyLabels = (opportunity.taxonomy?.termIds ?? []).map(taxonomyLabelFor);
-  const profileMatch = await getRelatedProfile(opportunity);
-  const practiceLabels = Array.from(
-    [...taxonomyLabels, ...opportunity.genres].reduce((labels, label) => {
-      const normalized = label.trim().toLocaleLowerCase('en');
-      if (normalized && !labels.has(normalized)) labels.set(normalized, label);
-      return labels;
-    }, new Map<string, string>()).values(),
-  ).slice(0, 8);
-  const headerSession = session
-    ? { email: session.account.email, hasOrganization: session.memberships.length > 0 }
-    : null;
-
-  return (
-    <div className="min-h-screen bg-card">
-      <MissaSiteHeader session={headerSession} />
-      <PublicDiscoveryEvent eventName="public.opportunity_view" properties={{ opportunityId: opportunity.id, slug: opportunity.slug }} />
-      <JsonLd
-        data={{
-          '@context': 'https://schema.org',
-          '@type': 'WebPage',
-          name: opportunity.title,
-          headline: opportunity.title,
-          description: summary,
-          url: absoluteUrl(path),
-          isPartOf: { '@type': 'WebSite', name: 'Missa', url: absoluteUrl('/') },
-          about: {
-            '@type': 'Thing',
-            name: opportunity.organizationName
-              ? `${opportunity.title} from ${opportunity.organizationName}`
-              : opportunity.title,
-          },
-          ...(opportunity.identityAssetUrl ? { primaryImageOfPage: identityImageJsonLd(opportunity) } : {}),
-        }}
-      />
-      <JsonLd data={breadcrumbJsonLd([{ name: 'Missa', path: '/' }, { name: 'Opportunities', path: '/opportunities' }, { name: opportunity.title }])} />
-      <OpportunityDetailView
-        opportunity={opportunity}
-        signedIn={Boolean(session)}
-        userId={session?.account.userId}
-        summary={summary}
-        practiceLabels={practiceLabels}
-        relatedProfile={profileMatch ?? undefined}
-      />
-    </div>
-  );
+  const { id } = await params;
+  const opportunity = await getPublicOpportunityDetail(id);
+  if (!opportunity || !VIEWABLE_STATUSES.has(opportunity.status)) notFound();
+  // One URL per call: an id, an old slug or a different case lands on the slug.
+  if (opportunity.slug && id !== opportunity.slug) {
+    permanentRedirect(`/opportunities/${encodeURIComponent(opportunity.slug)}`);
+  }
+  return <OpportunityDetailPageBody opportunity={opportunity} signedIn={false} />;
 }

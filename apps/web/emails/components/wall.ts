@@ -72,7 +72,7 @@ export function placard(item: WallItem, own: boolean, now: Date): string {
                 <div class="m-placard" style="margin:6px 0 10px;font-family:${f.editorial};font-size:34px;line-height:38px;font-weight:500;letter-spacing:-0.015em;color:${c.ink};">${escapeHtml(item.title)}</div>
                 ${facts ? `<div style="font-family:${f.interface};font-size:15px;line-height:23px;color:${c.inkSecondary};">${escapeHtml(facts)}</div>` : ''}
                 <div style="margin-top:18px;border-top:1px solid ${own ? c.ochreRule : c.rule};padding-top:12px;font-family:${f.interface};font-size:14px;line-height:20px;">
-                  <span style="float:right;margin-left:16px;font-weight:600;color:${c.ink};text-decoration:underline;text-underline-offset:3px;">View Opportunity</span>
+                  <span style="float:right;margin-left:16px;font-weight:600;color:${c.ink};text-decoration:underline;text-underline-offset:3px;">View opportunity</span>
                   <span style="font-weight:600;color:${own ? c.ochreDeep : c.inkSecondary};">${escapeHtml(when)}</span>
                 </div>
               </a>

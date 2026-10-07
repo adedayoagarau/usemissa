@@ -31,6 +31,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { EmptyStateArt } from "@/components/illustrations/missa-illustrations";
 import styles from "./opportunities-browse-v2-preview.module.css";
 import dropdownStyles from "@/components/opportunity-dropdown.module.css";
 
@@ -119,6 +120,16 @@ export interface ActiveFiltersState {
 
 export function OpportunitiesBrowseV2Preview({
   embedded = false,
+  landmark = "main",
+  landmarkLabel,
+  intro,
+  showCollections = true,
+  showPagination = true,
+  beforeResults,
+  resultsFooter,
+  renderSaveAction,
+  showCalendarAction = true,
+  searchLabelVisible = true,
   filterControls,
   activeFilterContent,
   toolbarActions,
@@ -137,6 +148,20 @@ export function OpportunitiesBrowseV2Preview({
   },
 }: {
   embedded?: boolean;
+  /** "section" when the host page owns the main landmark (the homepage). */
+  landmark?: "main" | "section";
+  landmarkLabel?: string;
+  /** `null` removes the catalogue's own heading; the host supplies one. */
+  intro?: ReactNode | null;
+  showCollections?: boolean;
+  showPagination?: boolean;
+  beforeResults?: ReactNode;
+  resultsFooter?: ReactNode;
+  /** Surface-specific save control per card (the homepage shortlist). */
+  renderSaveAction?: (item: OpportunityBrowseProjection) => ReactNode;
+  showCalendarAction?: boolean;
+  /** Off where the host page already names the catalogue; the label stays for assistive technology. */
+  searchLabelVisible?: boolean;
   filterControls?: ReactNode;
   activeFilterContent?: ReactNode;
   toolbarActions?: ReactNode;
@@ -148,6 +173,7 @@ export function OpportunitiesBrowseV2Preview({
   initialQuery?: string;
   activeFilters?: ActiveFiltersState;
 }) {
+  const Landmark = landmark === "section" ? "section" : "main";
   const router = useRouter();
   const basePath = usePathname();
   const searchParams = useSearchParams();
@@ -276,30 +302,38 @@ export function OpportunitiesBrowseV2Preview({
       </header>
 
       </> : null}
-      <main className={styles.main} id={embedded ? "main-content" : "results"}>
-        <header className={styles.pageIntro}>
-          <p className={styles.eyebrow}>Opportunities</p>
-          <div className={styles.introRow}>
-            <div className={styles.introCopy}>
-              <h1 id="prototype-title">
-                Find your next opportunity.
-              </h1>
-              <p className={styles.lede}>
-                Open calls, residencies and funding for your creative practice.
-              </p>
+      <Landmark
+        className={styles.main}
+        id={embedded && landmark === "main" ? "main-content" : "results"}
+        aria-label={landmark === "section" ? landmarkLabel : undefined}
+      >
+        {intro === undefined ? (
+          <header className={styles.pageIntro}>
+            <p className={styles.eyebrow}>Opportunities</p>
+            <div className={styles.introRow}>
+              <div className={styles.introCopy}>
+                <h1 id="prototype-title">
+                  Find your next opportunity.
+                </h1>
+                <p className={styles.lede}>
+                  Open calls, residencies and funding for your creative practice.
+                </p>
+              </div>
             </div>
+          </header>
+        ) : intro}
+
+        {signedIn && showCollections ? <nav aria-label="Opportunity views" className="mb-6 flex min-h-12 items-center gap-6 border-b border-border text-sm"><Link href="/opportunities" aria-current="page" className="border-b-2 border-primary py-3 font-semibold text-primary">Explore all</Link><Link href="/opportunities/for-you" className="py-3 text-muted-foreground hover:text-primary">For you</Link></nav> : null}
+
+        {showCollections ? (
+          <div className={styles.collectionsBand}>
+            <OpportunityCollectionsStrip items={collections.map(item => ({ ...item, href: item.href.replace("/opportunities?", `${basePath}?`) }))} />
           </div>
-        </header>
-
-        {signedIn ? <nav aria-label="Opportunity views" className="mb-6 flex min-h-12 items-center gap-6 border-b border-border text-sm"><Link href="/opportunities" aria-current="page" className="border-b-2 border-primary py-3 font-semibold text-primary">Explore all</Link><Link href="/opportunities/for-you" className="py-3 text-muted-foreground hover:text-primary">For you</Link></nav> : null}
-
-        <div className={styles.collectionsBand}>
-          <OpportunityCollectionsStrip items={collections.map(item => ({ ...item, href: item.href.replace("/opportunities?", `${basePath}?`) }))} />
-        </div>
+        ) : null}
 
         <div className={styles.browse}>
           <div className={styles.searchGroup}>
-            <label className={styles.searchLabel} htmlFor="opportunity-search">
+            <label className={searchLabelVisible ? styles.searchLabel : "sr-only"} htmlFor="opportunity-search">
               Search opportunities
             </label>
             <form
@@ -639,6 +673,7 @@ export function OpportunitiesBrowseV2Preview({
           </div>
         </div>
 
+        {beforeResults}
         <div id="browse-results" className={styles.resultsAnchor} tabIndex={-1} />
         {loadFailed ? (
           <div className={styles.emptyState} role="alert">
@@ -647,6 +682,7 @@ export function OpportunitiesBrowseV2Preview({
           </div>
         ) : displayedItems.length === 0 ? (
           <div className={styles.emptyState} role="status">
+            <EmptyStateArt id="scene-searching" />
             <p className={styles.emptyTitle}>No matches for your current search or filters.</p>
             <button type="button" className={styles.emptyAction} onClick={clearAllFilters}>
               Clear all filters
@@ -669,13 +705,20 @@ export function OpportunitiesBrowseV2Preview({
             aria-live="polite"
           >
             {displayedItems.map((item) => (
-              <OpportunityBrowseProjectCard key={item.id} item={item} signedIn={signedIn} />
+              <OpportunityBrowseProjectCard
+                key={item.id}
+                item={item}
+                signedIn={signedIn}
+                saveAction={renderSaveAction ? renderSaveAction(item) : undefined}
+                showCalendarAction={showCalendarAction}
+              />
             ))}
           </div>
         )}
 
-        {!loadFailed ? <OpportunityBrowsePagination nextCursor={nextCursor} className={styles.pagination} /> : null}
-      </main>
+        {resultsFooter}
+        {!loadFailed && showPagination ? <OpportunityBrowsePagination nextCursor={nextCursor} className={styles.pagination} /> : null}
+      </Landmark>
     </div>
   );
 }

@@ -1,0 +1,16 @@
+{
+  "asset": "public/illustrations/library-v2/scenes/questions.svg",
+  "library": "Missa illustration library v2, 6 October 2026",
+  "export": "detailed editing master",
+  "method": "Built-in image generation; approved hero used as style reference in every call; contours traced with Potrace and optimised with SVGO.",
+  "styleReference": "sources/hero.png",
+  "prompt": "Use case: illustration-story. Create ONE original standalone editorial illustration for Missa's creative opportunity platform. The attached image is the APPROVED STYLE REFERENCE: match its confident black-ink cartoon drawing, supple organic contours, generous solid black shapes and warm observed character. Draw the new subject described below, not the reference scene. Premium professional illustration craft, not thin technical diagrams or generic corporate vector art. Crisp flat shapes on pure white background. Very clear black/white silhouettes. No grey, gradients, shading, texture, hatching, stippling, borders, typography, lettering, logos or watermark. Keep all objects distinct and anatomically convincing; no ambiguous intersections. At most ONE simple flat muted green accent as specified, deliberately separated from black ink so it can become an editable vector layer. The finished deliverable will be converted to themeable SVG so use solid colours and elegantly simplified closed contours. No extra objects beyond the brief.\nSubject: Two original expressive creators at a little round cafe table, leaning naturally toward one another. One has long black hair and glasses, the other short textured black hair. One gently points to a printed opportunity notice on the table while the other listens with a thoughtful gesture. Two little cups. Strong black clothing shapes, charming simple faces, elegant natural hands. One flat muted green notice accent.\nComposition: landscape 3:2, 1536x1024. Expressive original character scene with clear hands and body language; same character proportions and line quality as approved reference. Entire artwork fits in central 75% with generous clean white margins.",
+  "sourceRaster": "sources/questions.png",
+  "viewBox": "24.3 -55.2 851.4 709.5",
+  "bytes": 38537,
+  "layers": {
+    "paper": 59,
+    "accent": 1,
+    "ink": 12
+  }
+}

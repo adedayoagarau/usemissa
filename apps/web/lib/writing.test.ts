@@ -41,12 +41,54 @@ test("the preview is the first words on one line", () => {
 test("a save names its text and the revision it was written on", () => {
   assert.deepEqual(
     parseWritingSaveRequest({ body: "Hello", baseRevision: 0 }),
-    { body: "Hello", baseRevision: 0 },
+    {
+      title: "",
+      body: "Hello",
+      document: null,
+      baseRevision: 0,
+      projectId: null,
+    },
+  );
+  const projectId = "project_0f8fad5b-d9cb-469f-a165-70867728950e";
+  assert.equal(
+    (
+      parseWritingSaveRequest({ body: "x", baseRevision: 0, projectId }) as {
+        projectId: string;
+      }
+    ).projectId,
+    projectId,
+  );
+  assert.ok(
+    "error" in
+      parseWritingSaveRequest({ body: "x", baseRevision: 0, projectId: "x" }),
   );
   assert.deepEqual(parseWritingSaveRequest({ body: "", baseRevision: 3 }), {
+    title: "",
     body: "",
+    document: null,
     baseRevision: 3,
+    projectId: null,
   });
+  assert.ok(
+    "error" in
+      parseWritingSaveRequest({ body: "x", baseRevision: 0, title: 5 }),
+  );
+  assert.ok(
+    "error" in
+      parseWritingSaveRequest({
+        body: "x",
+        baseRevision: 0,
+        title: "t".repeat(201),
+      }),
+  );
+  assert.ok(
+    "error" in
+      parseWritingSaveRequest({
+        body: "x",
+        baseRevision: 0,
+        document: "{not json",
+      }),
+  );
   assert.ok("error" in parseWritingSaveRequest(null));
   assert.ok("error" in parseWritingSaveRequest([]));
   assert.ok("error" in parseWritingSaveRequest({ body: 5, baseRevision: 0 }));

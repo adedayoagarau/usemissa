@@ -39,9 +39,12 @@ const sources = files(root).map((path) => ({
   text: readFileSync(join(root, path), "utf8"),
 }));
 
-test("only the writing module names the writing table", () => {
+test("only the writing module names the writing tables", () => {
   const allowed = new Set([
     "packages/db/migrations/0095_creator_writing.sql",
+    "packages/db/migrations/0096_creator_writing_pages.sql",
+    "packages/db/migrations/0097_creator_writing_projects.sql",
+    "packages/db/migrations/0098_creator_writing_snapshots.sql",
     "apps/web/lib/writing-repository.ts",
     "apps/web/lib/writing-repository.test.ts",
     "apps/web/lib/writing-boundary.test.ts",
@@ -49,7 +52,8 @@ test("only the writing module names the writing table", () => {
   const offenders = sources
     .filter(
       ({ path, text }) =>
-        !allowed.has(path) && text.includes("creator_writing_entries"),
+        !allowed.has(path) &&
+        /creator_writing_(?:entries|projects|snapshots)(?!\.sql)/.test(text),
     )
     .map(({ path }) => path);
   assert.deepEqual(
@@ -61,7 +65,7 @@ test("only the writing module names the writing table", () => {
 
 test("only the writing room and its routes use the writing repository", () => {
   const allowed = (path: string) =>
-    path === "apps/web/app/write/page.tsx" ||
+    path === "apps/web/app/doc/page.tsx" ||
     path.startsWith("apps/web/app/api/me/writing/") ||
     path === "apps/web/lib/writing-repository.test.ts" ||
     path === "apps/web/lib/writing-boundary.test.ts";
@@ -80,7 +84,7 @@ test("only the writing room and its routes use the writing repository", () => {
 test("the writing module imports no AI or model SDK", () => {
   const moduleFiles = sources.filter(
     ({ path }) =>
-      /^apps\/web\/(?:lib\/writing[^/]*|components\/missa\/writing-[^/]*|app\/write\/[^/]*)$/.test(
+      /^apps\/web\/(?:lib\/writing[^/]*|components\/missa\/writing-[^/]*|app\/(?:doc|write)\/[^/]*)$/.test(
         path,
       ) || path.startsWith("apps/web/app/api/me/writing/"),
   );

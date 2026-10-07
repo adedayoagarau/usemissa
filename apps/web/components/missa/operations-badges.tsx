@@ -68,3 +68,19 @@ export function QuestionStateBadge({ status }: { status: SubmitterQuestion["stat
     </Badge>
   );
 }
+
+const workDecisionCopy: Record<string, { label: string; variant: BadgeVariant }> = {
+  accepted: { label: "Accepted", variant: "success" },
+  waitlisted: { label: "Waitlisted", variant: "information" },
+  declined: { label: "Declined", variant: "secondary" },
+};
+
+/** The recorded decision on one Work, in the words the review desk uses. */
+export function WorkDecisionBadge({ outcome }: { outcome: string }) {
+  const copy = workDecisionCopy[outcome] ?? { label: outcome, variant: "outline" as const };
+  return (
+    <Badge variant={copy.variant} size="compact">
+      {copy.label}
+    </Badge>
+  );
+}

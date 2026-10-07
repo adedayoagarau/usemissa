@@ -2,11 +2,13 @@ import { NextResponse } from 'next/server';
 import { importGuidelines, recordGuidelineClauses, WORKSPACE_DECISION_SCOPES } from '@missa/workspace-engine';
 import { recordDecisionsAfterResponse, workspaceDecisionContext } from '@/lib/jevDecisions';
 import { persistOrganizationMutation, requireOrganizationAccess } from '@/lib/organizationAccess';
+import { workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string; openCallId: string }> }) {
   const { id, openCallId } = await params;
   const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+  if (workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: 'Guideline import is not available in this workspace yet' }, { status: 503 });
   const openCall = result.access.scope.openCall(openCallId);
   if (!openCall) return NextResponse.json({ error: 'Unknown opportunity for this organization' }, { status: 404 });
   const body = await request.json().catch(() => ({}));

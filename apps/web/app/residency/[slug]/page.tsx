@@ -5,8 +5,7 @@ import { ResidencyIntelligenceDrawer } from "@/components/rankings/residency-int
 import { notFound, permanentRedirect } from "next/navigation";
 import { canonicalProfileRedirect } from "@/lib/profileRouteKind";
 import type { Metadata } from "next";
-import { getSemanticUrlForProfile } from "@missa/radar-adapters";
-import { pageMetadata } from "@/lib/seo";
+import { missingProfileMetadata, ProfileJsonLd, profileMetadata } from "@/lib/profileSeo";
 
 /**
  * Served from the CDN: each page is generated on its first visit and then
@@ -22,12 +21,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const repo = getProfileRepository();
   const profile = repo ? await repo.getById(slug) : null;
-  if (!profile) return { title: "Residency Not Found", robots: { index: false, follow: true } };
-  return pageMetadata({
-    title: `${profile.name} — Artist Residency Program`,
-    description: profile.summary || `Explore residency opportunities, open calls, and facilities at ${profile.name}.`,
-    path: getSemanticUrlForProfile(profile.kind, profile.slug),
-  });
+  if (!profile) return missingProfileMetadata();
+  return profileMetadata(profile);
 }
 
 export default async function ResidencyDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -40,6 +35,7 @@ export default async function ResidencyDetailPage({ params }: { params: Promise<
 
   return (
     <PublicSiteShell current="Directory">
+      <ProfileJsonLd profile={profile} />
       <InstitutionProfileView
         profile={profile}
         rankingSummary={

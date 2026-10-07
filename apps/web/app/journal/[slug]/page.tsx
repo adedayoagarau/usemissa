@@ -14,6 +14,8 @@ import { headerSessionFor } from "@/lib/headerSession";
 import { InstitutionProfileView } from "@/components/institution-profile-view";
 import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
+import { missingProfileMetadata, ProfileJsonLd, profileMetadata } from "@/lib/profileSeo";
+import { getPublicOpportunityDetail } from "@/lib/publicOpportunityReads";
 
 import {
   type MagazineRankingRow,
@@ -39,12 +41,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const repo = getProfileRepository();
   const profile = repo ? await repo.getById(slug) : null;
-  if (!profile) return { title: "Journal Not Found" };
-  return {
-    alternates: { canonical: `/journal/${encodeURIComponent(profile.slug)}` },
-    title: `${profile.name} — Literary Journal Profile`,
-    description: profile.summary || `Submission guidelines, reading windows, and acceptance details for ${profile.name}.`,
-  };
+  if (!profile) return missingProfileMetadata();
+  return profileMetadata(profile);
 }
 
 export default async function JournalDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -70,12 +68,17 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
   const opportunityActions: Record<string, ReactNode> = {};
   const opportunities = getOpportunityRepository();
   await Promise.all(displayProfile.opportunities.map(async item => {
-    const detail = await opportunities.getById(item.id, session ? {accountId:session.account.id} : undefined).catch(() => null);
+    // Anonymous visitors share the cached public read instead of one query per call.
+    const detail = await (session
+      ? opportunities.getById(item.id, { accountId: session.account.id })
+      : getPublicOpportunityDetail(item.id)
+    ).catch(() => null);
     if (!detail) return;
     opportunityActions[item.id] = <SaveToTrackerButton opportunityId={item.id} tracked={Boolean(detail.personal?.tracked)} signedIn={Boolean(session)} returnTo={`/journal/${encodeURIComponent(profile.slug)}#profile-opportunities`} opportunityTitle={item.title} />;
   }));
   return (
     <PublicSiteShell current="Directory" session={headerSessionFor(session)}>
+      <ProfileJsonLd profile={displayProfile} />
       <InstitutionProfileView profile={displayProfile} opportunityActions={opportunityActions}
         rankingSummary={primary ? <div className="flex flex-wrap items-center gap-3 py-3 text-sm">
           <Link href="#profile-rankings">#{primary.rankPosition} {primary.genre === "overall" ? "Overall" : primary.genre} · {primary.totalScore} pts</Link>

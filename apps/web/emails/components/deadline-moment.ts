@@ -144,7 +144,7 @@ export function renderDeadlineMoment(props: DeadlineMomentProps): string {
       <td class="m-pad" bgcolor="${c.paper}" style="background-color:${c.paper};padding:32px 40px 0;">
         <table role="presentation" border="0" cellpadding="0" cellspacing="0">
           <tr>
-            <td valign="middle" bgcolor="${c.forestDeep}" style="background-color:${c.forestDeep};border-radius:999px;">
+            <td valign="middle" bgcolor="${c.forestDeep}" style="background-color:${c.forestDeep};border-radius:999px;mso-padding-alt:15px 26px;">
               <a href="${escapeHtml(props.action.url)}" style="display:inline-block;padding:15px 26px;font-family:${f.interface};font-size:15px;line-height:20px;font-weight:600;color:${c.onForest};text-decoration:none;">${escapeHtml(props.action.label)}</a>
             </td>
             ${secondary}

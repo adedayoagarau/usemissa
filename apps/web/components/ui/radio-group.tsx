@@ -5,17 +5,45 @@ import { RadioGroup as RadioGroupPrimitive } from "@base-ui/react/radio-group";
 
 import { cn } from "@/lib/utils";
 
-function RadioGroup({ className, ...props }: RadioGroupPrimitive.Props) {
+/**
+ * "segmented" draws the group as one joined control, each option a labelled
+ * segment: for short ordered scales such as a 0 to 5 score. Arrow keys still
+ * move between options.
+ */
+type RadioGroupVariant = "default" | "segmented";
+
+function RadioGroup({ className, variant = "default", ...props }: RadioGroupPrimitive.Props & { variant?: RadioGroupVariant }) {
   return (
     <RadioGroupPrimitive
       data-slot="radio-group"
-      className={cn("grid w-full gap-2", className)}
+      data-variant={variant}
+      className={cn(
+        variant === "segmented"
+          ? "flex w-full flex-nowrap overflow-hidden rounded-lg border border-input bg-background aria-invalid:border-destructive"
+          : "grid w-full gap-2",
+        className,
+      )}
       {...props}
     />
   );
 }
 
-function RadioGroupItem({ className, ...props }: RadioPrimitive.Root.Props) {
+function RadioGroupItem({ className, variant = "default", children, ...props }: RadioPrimitive.Root.Props & { variant?: RadioGroupVariant }) {
+  if (variant === "segmented") {
+    return (
+      <RadioPrimitive.Root
+        data-slot="radio-group-item"
+        data-variant="segmented"
+        className={cn(
+          "relative flex h-9 min-w-0 flex-1 items-center justify-center border-e border-input px-2 text-sm font-medium whitespace-nowrap text-foreground tabular-nums outline-none transition-colors last:border-e-0 not-data-checked:hover:bg-muted focus-visible:z-10 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50 data-checked:bg-primary data-checked:text-primary-foreground motion-reduce:transition-none",
+          className,
+        )}
+        {...props}
+      >
+        {children}
+      </RadioPrimitive.Root>
+    );
+  }
   return (
     <RadioPrimitive.Root
       data-slot="radio-group-item"

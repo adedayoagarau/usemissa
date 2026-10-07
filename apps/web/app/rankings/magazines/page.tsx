@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { publicIndexLayoutStyles as catalogueStyles } from "@/components/missa/public-index-layout";
 import type { Metadata } from "next";
-import { listingMetadata } from "@/lib/seo";
+import { currentYear, listingMetadata } from "@/lib/seo";
 import { cookies } from "next/headers";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { headerSessionFor } from "@/lib/headerSession";
@@ -26,7 +26,7 @@ export function generateMetadata({
 }): Promise<Metadata> {
   return listingMetadata(
     {
-      title: "Missa Literary Magazine Index",
+      title: `Literary magazine rankings ${currentYear()}: the Missa index`,
       description:
         "The independent literary magazine rankings evaluated across anthology accolades, contributor compensation, turnaround speed, and submission access.",
       path: "/rankings/magazines",

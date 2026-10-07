@@ -9,9 +9,9 @@ export function generateMetadata({
 }): Promise<Metadata> {
   return listingMetadata(
     {
-      title: "Independent presses | Missa",
+      title: "Small and independent presses: what they publish and how to submit",
       description:
-        "Explore independent presses and the writing they publish.",
+        "Small and independent presses, what they publish, whether they read unsolicited manuscripts, and a link to each press's guidelines.",
       path: "/presses",
     },
     searchParams,

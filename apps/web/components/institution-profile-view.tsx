@@ -23,6 +23,7 @@ import {
   cleanTitleOrLabel,
   decodeHtmlEntities,
 } from "@/lib/textUtils";
+import { publicContactEmail } from "@/lib/profileContactEmail";
 import styles from "./institution-profile.module.css";
 import { Sp } from "@/components/missa/spelling";
 
@@ -57,6 +58,7 @@ export function InstitutionProfileView({
   const journal = profile.kind === "literary_magazine";
   const website = safeHref(profile.websiteUrl);
   const guidelines = safeHref(profile.submissionGuidelinesUrl);
+  const contactEmail = publicContactEmail(profile.contactEmail, website);
   const about = cleanCrawledNarrative(
     profile.editorialProfile?.overview ||
       profile.editorialFocus ||
@@ -429,11 +431,9 @@ export function InstitutionProfileView({
                         {profile.opportunities.length ? (
                           <div className={styles.opportunities}>
                             {profile.opportunities.map((opp, index) => {
-                              const detail = opportunityActions ? (opp.id in opportunityActions ? `/opportunities/${encodeURIComponent(opp.id)}` : undefined) :
-                                opp.detailUrl?.startsWith("/") &&
-                                !opp.detailUrl.startsWith("//")
-                                  ? opp.detailUrl
-                                  : safeHref(opp.detailUrl);
+                              const localDetail = opp.detailUrl?.startsWith("/") && !opp.detailUrl.startsWith("//") ? opp.detailUrl : undefined;
+                              const detail = opportunityActions ? (opp.id in opportunityActions ? localDetail ?? `/opportunities/${encodeURIComponent(opp.id)}` : undefined) :
+                                localDetail ?? safeHref(opp.detailUrl);
                               const official = safeHref(opp.officialWebsite);
                               return (
                                 <Card
@@ -638,15 +638,12 @@ export function InstitutionProfileView({
               </dl>
             </div>
           )}
-          {profile.contactEmail &&
-            /^[^\s@/]+@[^\s@/]+\.[^\s@/]+$/.test(profile.contactEmail) && (
-              <div className={styles.contact}>
-                <h2 className="font-sans">Get in touch</h2>
-                <a href={`mailto:${profile.contactEmail}`}>
-                  {profile.contactEmail}
-                </a>
-              </div>
-            )}
+          {contactEmail && (
+            <div className={styles.contact}>
+              <h2 className="font-sans">Get in touch</h2>
+              <a href={`mailto:${contactEmail}`}>{contactEmail}</a>
+            </div>
+          )}
         </aside>
       </div>
       {!layout.order.includes("gallery") && (

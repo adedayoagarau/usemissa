@@ -210,7 +210,23 @@ export async function tickCreatorReminders(accountId?: string) {
         from opportunities o where o.id=r.opportunity_id and ($1::text is null or r.account_id=$1) and r.state='scheduled' and r.kind in ('tier','milestone')
         and ${subjectClose} <= now()`, [accountId ?? null]);
     const deferred = await deferRemindersInQuietHours(client, accountId);
-    const due = await client.query(`select r.*,o.title as application_title,t.status as application_status,o.deadline_date < (now() at time zone r.timezone)::date as deadline_passed,
+    // "Deadline reminders off" on a Tracker item holds Missa's own deadline
+    // notices for that call (default offsets, the deadline-day alarm, fee-tier
+    // endings) without cancelling them, so switching it back on resumes them.
+    // The creator's own reminders are never held by it.
+    // (subject_id is null on the creator's own rows, so it is coalesced before
+    // the pattern match: a null predicate would drop those rows from the pass.)
+    const isDefaultOffset = `(r.kind='deadline' and coalesce(r.subject_id,'') like 'offset:%')`;
+    const heldByToggle = schema.subjects
+      ? `(not t.notify and (${isDefaultOffset} or r.kind in ('deadline-day','tier')))`
+      : 'false';
+    // A default offset ("Closes in a week") whose day has gone by, for example
+    // while the call's reminders were off, expires instead of firing late.
+    const offsetPassed = schema.subjects
+      ? `(${isDefaultOffset} and o.deadline_date-coalesce(r.deadline_offset_days,0) < (now() at time zone r.timezone)::date)`
+      : 'false';
+    const due = await client.query(`select r.*,o.title as application_title,t.status as application_status,
+      (o.deadline_date < (now() at time zone r.timezone)::date or ${offsetPassed}) as deadline_passed,
       coalesce(r.snoozed_until,r.due_at) as effective_due,coalesce(p.in_app_enabled and p.reminder_enabled,false) as allowed,
       z.account_timezone,(((now() at time zone z.account_timezone)::date+1)+time '09:00') at time zone z.account_timezone as next_morning,
       ${subjectClose} as subject_closes_at,r.source_deadline::text as subject_date,(now() at time zone r.timezone)::date::text as local_today,
@@ -220,6 +236,7 @@ export async function tickCreatorReminders(accountId?: string) {
       left join notification_preferences p on p.account_id=r.account_id
       cross join lateral (select case when exists(select 1 from pg_timezone_names tz where tz.name=to_jsonb(p)->>'timezone') then to_jsonb(p)->>'timezone' else r.timezone end as account_timezone) z
       where ($1::text is null or r.account_id=$1) and r.state='scheduled' and coalesce(r.snoozed_until,r.due_at)<=now()
+        and not ${heldByToggle}
       order by coalesce(r.snoozed_until,r.due_at) for update of r skip locked limit 100`, [accountId ?? null]);
     let delivered = 0, capped = 0;
     const budgets = new Map<string, number>();

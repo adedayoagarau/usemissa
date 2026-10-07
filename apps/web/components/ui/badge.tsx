@@ -27,10 +27,24 @@ const badgeVariants = cva(
         success: "bg-lichen-tint text-green",
         // Quiet Forest for open, start-by, and ready states.
         accent: "bg-accent-tint text-accent-deep",
+        // Categorical labels (DESIGN.md §3); reached only through Missa wrappers.
+        "hue-red": "bg-hue-red-subtle text-hue-red-ink",
+        "hue-orange": "bg-hue-orange-subtle text-hue-orange-ink",
+        "hue-amber": "bg-hue-amber-subtle text-hue-amber-ink",
+        "hue-yellow": "bg-hue-yellow-subtle text-hue-yellow-ink",
+        "hue-lime": "bg-hue-lime-subtle text-hue-lime-ink",
+        "hue-green": "bg-hue-green-subtle text-hue-green-ink",
+        "hue-teal": "bg-hue-teal-subtle text-hue-teal-ink",
+        "hue-blue": "bg-hue-blue-subtle text-hue-blue-ink",
+        "hue-indigo": "bg-hue-indigo-subtle text-hue-indigo-ink",
+        "hue-purple": "bg-hue-purple-subtle text-hue-purple-ink",
+        "hue-magenta": "bg-hue-magenta-subtle text-hue-magenta-ink",
+        "hue-pink": "bg-hue-pink-subtle text-hue-pink-ink",
+
       },
       size: {
         default: "h-5 px-2 py-0.5 text-xs",
-        compact: "h-5 px-1.5 py-0.5 text-[10px]",
+        compact: "h-5 px-2 py-0.5 text-[11px]",
       },
     },
     defaultVariants: {

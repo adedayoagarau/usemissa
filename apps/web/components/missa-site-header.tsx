@@ -41,16 +41,21 @@ const publicLinks = [
 export function MissaSiteHeader({
   session: serverSession,
   current = "Opportunities",
+  omitLinks = [],
 }: {
   session?: HeaderSession;
   current?: string;
+  /** Labels of links a surface leaves out, such as the organization route on the homepage. */
+  omitLinks?: readonly string[];
 }) {
   // Pages served from the CDN pass no session; it loads in the browser.
   const session = useBrowserSession(serverSession);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [logoutError, setLogoutError] = useState(false);
   const router = useRouter();
-  const links = session ? signedInLinks : publicLinks;
+  const links = (session ? signedInLinks : publicLinks).filter(
+    (link) => !omitLinks.includes(link.label),
+  );
   const visibleLinks = session?.hasOrganization
     ? [...links, { href: "/workspace", label: "Organization" }]
     : links;

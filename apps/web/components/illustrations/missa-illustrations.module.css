@@ -1,0 +1,63 @@
+/*
+ * Colourways for the illustration library. The SVGs carry no colour of their
+ * own: ink, accent and the cover's paper tint all come from here.
+ */
+
+.cover,
+.art {
+  display: block;
+  color: var(--ink);
+  --art-ink: currentColor;
+  --art-accent: var(--primary);
+  --art-paper: none;
+  --art-background: none;
+}
+
+/* The drawing sits whole and centred; its tint fills the rest of the box. */
+.cover {
+  width: 100%;
+  height: 100%;
+  background: var(--art-background);
+}
+
+.cover[data-tone="ochre"] {
+  --art-background: var(--ochre-tint);
+}
+
+.cover[data-tone="lichen"] {
+  --art-background: var(--lichen-tint);
+}
+
+.cover[data-tone="accent"] {
+  --art-background: var(--accent-tint);
+}
+
+.cover[data-tone="mineral"] {
+  --art-background: var(--mineral-blue-tint);
+}
+
+.art {
+  width: 100%;
+  height: auto;
+}
+
+/* White ink on Forest, with a pale accent so the accent still reads. */
+.art[data-reverse] {
+  color: var(--primary-foreground);
+  --art-accent: var(--accent-tint);
+}
+
+/* Empty states: the drawing in the text colour, so it reads in both themes. */
+.emptyArt {
+  display: block;
+  width: min(240px, 70%);
+  margin: 0 auto 12px;
+}
+
+.emptyArt[data-size="spot"] {
+  width: min(128px, 45%);
+}
+
+.emptyArt .art {
+  color: var(--foreground);
+}

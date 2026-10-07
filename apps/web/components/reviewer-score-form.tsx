@@ -8,10 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import type { RubricCriterion } from '@missa/workspace-engine';
 import { previewRubricScore } from '@/lib/rubricClient';
+import { SegmentedChoice } from '@/components/missa/segmented-choice';
+import { HueTile } from '@/components/missa/hue-tile';
 
 /**
  * The reader's recommendation: one whole-number score from 0 to 100 and
@@ -51,32 +53,53 @@ function RubricScoreForm({ assignmentId, existing, locked, rubric }: { assignmen
       router.refresh();
     });
   };
+  const scored = rubric.criteria.filter((criterion) => scores[criterion.id] !== undefined).length;
+  const missing = error ? new Set(rubric.criteria.filter((criterion) => scores[criterion.id] === undefined).map((criterion) => criterion.id)) : new Set<string>();
   return (
-    <form onSubmit={submit} className="grid gap-4" aria-labelledby="reviewer-score-form-title">
-      <h3 id="reviewer-score-form-title" className="font-heading text-lg font-medium text-foreground">{existing ? 'Update your recommendation' : 'Record your recommendation'}</h3>
-      <p className="text-sm text-muted-foreground">This round uses a rubric (version {rubric.version}). Score each criterion; Missa weights them into a 0 to 100 score. Your notes stay with the review team and are never shown to the submitter.</p>
-      {existing && existing.rubricVersion !== undefined && !sameVersion ? <Alert><AlertTitle>The rubric changed</AlertTitle><AlertDescription>You scored this on version {existing.rubricVersion}. That score still counts. Re-score to use version {rubric.version}.</AlertDescription></Alert> : null}
-      <div className="grid gap-3 sm:grid-cols-2">
-        {rubric.criteria.map((criterion) => (
-          <Field key={criterion.id}>
-            <FieldLabel htmlFor={`criterion-${assignmentId}-${criterion.id}`}>{criterion.label}{criterion.weight > 1 ? <span className="font-normal text-muted-foreground"> · weight {criterion.weight}</span> : null}</FieldLabel>
-            <NativeSelect className="w-full" id={`criterion-${assignmentId}-${criterion.id}`} value={scores[criterion.id] === undefined ? '' : String(scores[criterion.id])} onChange={(event) => setScores((current) => ({ ...current, [criterion.id]: event.target.value === '' ? undefined : Number(event.target.value) }))}>
-              <NativeSelectOption value="">Not scored</NativeSelectOption>
-              {Array.from({ length: criterion.maxScore + 1 }, (_, value) => <NativeSelectOption key={value} value={String(value)}>{value} of {criterion.maxScore}</NativeSelectOption>)}
-            </NativeSelect>
-            {criterion.description ? <FieldDescription>{criterion.description}</FieldDescription> : null}
-          </Field>
-        ))}
+    <form onSubmit={submit} className="grid gap-5" aria-labelledby="reviewer-score-form-title">
+      <div className="grid gap-1">
+        <h3 id="reviewer-score-form-title" className="text-base font-semibold text-foreground">{existing ? 'Update your recommendation' : 'Record your recommendation'}</h3>
+        <p className="text-sm text-muted-foreground">Score each criterion. Your notes go to the review team only, never to the submitter.</p>
       </div>
-      <p className="text-sm text-foreground" aria-live="polite">{total === undefined ? 'Weighted score appears once every criterion is scored.' : `Weighted score: ${total} of 100`}</p>
+      {existing && existing.rubricVersion !== undefined && !sameVersion ? <Alert><AlertTitle>The rubric changed</AlertTitle><AlertDescription>You scored this on version {existing.rubricVersion}. That score still counts. Re-score to use version {rubric.version}.</AlertDescription></Alert> : null}
+      <ol aria-label={`Rubric version ${rubric.version}`} className="divide-y divide-border border-y border-border">
+        {rubric.criteria.map((criterion) => {
+          const labelId = `criterion-${assignmentId}-${criterion.id}`;
+          const value = scores[criterion.id];
+          return (
+            <li key={criterion.id} className="grid gap-3 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2.5"><HueTile identity={criterion.id} size="sm">{rubric.criteria.indexOf(criterion) + 1}</HueTile><span id={labelId} className="text-sm font-medium text-foreground">{criterion.label}</span></span>
+                <span className="text-xs text-muted-foreground tabular-nums">{value === undefined ? `– of ${criterion.maxScore}` : `${value} of ${criterion.maxScore}`}{criterion.weight > 1 ? ` · weight ${criterion.weight}` : ''}</span>
+              </div>
+              {criterion.description ? <p className="-mt-2 ps-8.5 text-sm text-muted-foreground">{criterion.description}</p> : null}
+              <SegmentedChoice
+                aria-labelledby={labelId}
+                value={value === undefined ? undefined : String(value)}
+                invalid={missing.has(criterion.id)}
+                disabled={locked}
+                onValueChange={(next) => setScores((current) => ({ ...current, [criterion.id]: Number(next) }))}
+                options={Array.from({ length: criterion.maxScore + 1 }, (_, score) => ({ value: String(score), label: String(score), accessibleLabel: `${score} of ${criterion.maxScore}` }))}
+              />
+            </li>
+          );
+        })}
+      </ol>
+      <div className="grid gap-2" aria-live="polite">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="text-sm font-medium text-foreground">Weighted score</span>
+          <span className="text-sm text-foreground tabular-nums">{total === undefined ? `${scored} of ${rubric.criteria.length} scored` : `${total} of 100`}</span>
+        </div>
+        <Progress value={total ?? 0} aria-label={total === undefined ? 'Weighted score appears once every criterion is scored' : `Weighted score ${total} of 100`} />
+      </div>
       <Field>
         <FieldLabel htmlFor={`notes-${assignmentId}`}>Notes for the review team</FieldLabel>
-        <Textarea id={`notes-${assignmentId}`} value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={5000} rows={6} placeholder="What stood out, what held it back, and anything the chair should know." />
+        <Textarea id={`notes-${assignmentId}`} value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={5000} rows={5} placeholder="What stood out, what held it back, and anything the chair should know." />
       </Field>
       {error ? <Alert variant="destructive"><AlertTitle>Not saved</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={pending || locked}>{pending ? 'Saving…' : existing ? 'Save changes' : 'Record recommendation'}</Button>
-        {locked ? <span className="text-xs text-muted-foreground">Acknowledge the round brief above to record a score.</span> : null}
+        {locked ? <span className="text-sm text-muted-foreground">Acknowledge the round brief to record a score.</span> : null}
       </div>
     </form>
   );
@@ -106,7 +129,7 @@ function SingleScoreForm({ assignmentId, existing, locked }: { assignmentId: str
 
   return (
     <form onSubmit={submit} className="grid gap-4" aria-labelledby="reviewer-score-form-title">
-      <h3 id="reviewer-score-form-title" className="font-heading text-lg font-medium text-foreground">{existing ? 'Update your recommendation' : 'Record your recommendation'}</h3>
+      <h3 id="reviewer-score-form-title" className="text-base font-semibold text-foreground">{existing ? 'Update your recommendation' : 'Record your recommendation'}</h3>
       <p className="text-sm text-muted-foreground">This round uses a single 0 to 100 score with notes. Your notes are private to the organization’s review team and are never shown to the submitter.</p>
       <Field>
         <FieldLabel htmlFor={`score-${assignmentId}`}>Score (0 to 100)</FieldLabel>
@@ -184,7 +207,7 @@ export function RoundBriefPanel({ assignmentId, brief }: { assignmentId: string;
   });
   return (
     <section aria-labelledby={`brief-title-${assignmentId}`} className="rounded-lg border border-border p-4">
-      <h3 id={`brief-title-${assignmentId}`} className="font-heading text-lg font-medium text-foreground">Brief for this round</h3>
+      <h3 id={`brief-title-${assignmentId}`} className="text-base font-semibold text-foreground">Brief for this round</h3>
       <p className="mt-2 text-sm leading-6 whitespace-pre-line text-foreground">{brief.text}</p>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         {brief.acknowledged ? <span className="text-xs text-muted-foreground">You acknowledged this brief.</span> : <Button type="button" onClick={acknowledge} disabled={pending}>{pending ? 'Saving…' : 'I have read this brief'}</Button>}

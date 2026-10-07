@@ -33,6 +33,10 @@ Calm, precise, and human. Missa should feel editorial without becoming nostalgic
 4. Make authority visible through the Organization and its official destination while keeping internal discovery provenance out of the public interface.
 5. Design failure, sparse data, long content, responsive reflow, permissions, and recovery as primary states rather than late exceptions.
 
+## Brand Commitments
+
+- Homepage (decided 6 October 2026): the category standard, product-led. The live opportunity browse is the hero and the page sells Missa by running it, not by describing it. Craft bar: Linear and Notion. Wordmark and Forest action colour are fixed. Signed-out saves hold a local shortlist that converts on sign-up.
+
 ## Accessibility & Inclusion
 
 WCAG 2.1 AA is the baseline. Public and creator experiences must support touch, keyboard, assistive technology, responsive zoom and mobile completion. Controls should ordinarily provide at least 44px targets; compact 36px organization controls are reserved for frequent desktop users. Meaning cannot depend on color alone. Reduced-motion alternatives are required, focus must remain visible, and labels cannot disappear when navigation collapses.

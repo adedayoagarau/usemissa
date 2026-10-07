@@ -14,12 +14,12 @@ export default function DirectoryLoading() {
         <p className="font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground">
           Directory
         </p>
-        <h1
+        <p
           id="directory-loading-heading"
           className="mt-3 font-heading text-4xl font-medium tracking-tight sm:text-5xl"
         >
           Loading the directory…
-        </h1>
+        </p>
         <p className="mt-4 text-sm text-muted-foreground" role="status" aria-live="polite">
           Finding organizations and publications.
         </p>

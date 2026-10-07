@@ -1,0 +1,33 @@
+/*
+ * Every word sits in one grid cell; the invisible sizers make the cell as
+ * wide as the longest word, so the swap never moves the headline.
+ */
+
+.slot {
+  display: inline-block;
+}
+
+.box {
+  display: inline-grid;
+  justify-items: start;
+  vertical-align: baseline;
+}
+
+.sizer,
+.word {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+}
+
+.sizer {
+  visibility: hidden;
+}
+
+.word {
+  color: var(--primary);
+}
+
+/* The full stop belongs to the sentence, not the rotating word. */
+.stop {
+  color: var(--ink);
+}

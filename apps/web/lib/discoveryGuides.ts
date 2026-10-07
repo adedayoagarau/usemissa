@@ -27,6 +27,8 @@ export interface DiscoveryCollection {
   checklist: string[];
   relatedGuideSlug: string;
   query: OpportunityRepositoryQuery;
+  /** Listed in the site-wide "Keep exploring" footer. Hubs still link each other. */
+  footer?: boolean;
 }
 
 const baseQuery = { openNow: true, sort: 'soonest-deadline' as const, limit: 6 };
@@ -34,7 +36,7 @@ const baseQuery = { openNow: true, sort: 'soonest-deadline' as const, limit: 6 }
 export const discoveryGuides: DiscoveryGuide[] = [
   {
     slug: 'find-submission-opportunities',
-    title: 'How to find submission opportunities',
+    title: 'How to find open calls for your work',
     description: 'A practical starting point for finding open calls, grants, magazines, residencies, and fellowships without losing the source details.',
     answer: 'Start with opportunities that are open now, then compare the deadline, fee, eligibility, required materials, and official source. Missa keeps those facts together so you can decide whether a call deserves your time before you prepare a submission.',
     faqs: [
@@ -45,7 +47,7 @@ export const discoveryGuides: DiscoveryGuide[] = [
   },
   {
     slug: 'no-fee-submission-opportunities',
-    title: 'No-fee submission opportunities',
+    title: 'Open calls with no submission fee: what no-fee means',
     description: 'Browse currently open opportunities where the source record says no submission fee is disclosed.',
     answer: 'A no-fee label means the published call says the submission fee is zero. Always open the official source before you apply, because fees and eligibility can change.',
     faqs: [
@@ -56,18 +58,18 @@ export const discoveryGuides: DiscoveryGuide[] = [
   },
   {
     slug: 'grants-for-creators',
-    title: 'Grants for creators',
+    title: 'Grants for artists and writers: what to check',
     description: 'See open grant opportunities and the evidence you should check before preparing an application.',
     answer: 'A grant opportunity usually asks you to explain the work, need, audience, or project plan rather than submit to a publication. Check the funder’s eligibility, geography, budget rules, and reporting expectations on the official source.',
     faqs: [
-      { question: 'What should creators check in a grant opportunity?', answer: 'Check geography, career stage, eligible costs, project fit, budget rules, reporting expectations, deadline, and the funder’s official application instructions.' },
+      { question: 'What should I check in a grant call?', answer: 'Check geography, career stage, eligible costs, project fit, budget rules, reporting expectations, deadline, and the funder’s official application instructions.' },
       { question: 'Is a grant the same as a submission call?', answer: 'Not always. Grants often fund a project, creative work, or professional development plan, while a submission call may ask for work to publish, exhibit, or judge.' },
     ],
     query: { ...baseQuery, types: ['grant'] },
   },
   {
     slug: 'residencies-and-fellowships',
-    title: 'Residencies and fellowships',
+    title: 'Residencies and fellowships: how to compare them',
     description: 'Browse open residencies and fellowships with deadline, location, fee, and source context in view.',
     answer: 'Residencies and fellowships can differ widely in what they provide: time, space, money, mentorship, or a community. Compare the location, duration, eligibility, required materials, and any costs before deciding whether the opportunity fits your field.',
     faqs: [
@@ -78,7 +80,7 @@ export const discoveryGuides: DiscoveryGuide[] = [
   },
   {
     slug: 'magazine-submissions',
-    title: 'Magazine submission opportunities',
+    title: 'Submitting to literary magazines: what to check',
     description: 'Find open magazine calls and check the publication’s guidelines, reading period, fee, and accepted formats.',
     answer: 'For a magazine submission, the most important checks are the current reading period, accepted formats, simultaneous-submission rules, fee, rights, and response expectations. Missa’s listing is a starting point; the publication’s own guidelines are the authority.',
     faqs: [
@@ -89,7 +91,7 @@ export const discoveryGuides: DiscoveryGuide[] = [
   },
   {
     slug: 'verify-an-opportunity-before-applying',
-    title: 'How to verify an opportunity before applying',
+    title: 'How to check a call before you apply',
     description: 'Use a source-first checklist to avoid relying on an expired, copied, or incomplete opportunity listing.',
     answer: 'Verify the opportunity on the organization’s own source, confirm that the deadline and submission path are current, check the fee and eligibility, and make sure the destination uses a safe HTTPS link. Treat anything Missa marks as unconfirmed as a prompt to investigate, not as a guarantee.',
     faqs: [
@@ -100,8 +102,8 @@ export const discoveryGuides: DiscoveryGuide[] = [
   },
   {
     slug: 'jobs-for-creators',
-    title: 'Creative & arts job opportunities',
-    description: 'Find paid editorial roles, curatorial positions, publishing internships, and academic faculty openings for creators.',
+    title: 'Jobs in publishing and the arts: what to check',
+    description: 'Paid editorial roles, curatorial posts, publishing internships and teaching jobs for writers and artists, and what to check before you apply.',
     answer: 'Creative and cultural jobs provide steady income, institutional backing, and professional growth for practitioners. Always confirm the salary transparency, benefits, eligibility criteria, and application procedure directly on the hiring institution’s official careers page.',
     faqs: [
       { question: 'What kinds of jobs are listed on Missa?', answer: 'Missa indexes creative-sector positions including literary magazine editors, publishing interns, museum and gallery curators, arts administration coordinators, and higher education faculty in creative writing and studio arts.' },
@@ -210,7 +212,12 @@ export const discoveryCollections: DiscoveryCollection[] = [
     audience: 'Disabled, d/Deaf, chronically ill, and neurodivergent artists and writers seeking accessible, supportive opportunities.',
     checklist: ['Accessibility provisions and accommodations', 'Remote vs in-person participation options', 'Application format flexibility', 'Deadline, eligibility, and grant or stipend terms'],
     relatedGuideSlug: 'verify-an-opportunity-before-applying',
-    query: { ...baseQuery, query: 'disability' },
+    // 'disability' alone misses "artists with disabilities" and calls that say
+    // only disabled, d/Deaf, chronically ill or neurodivergent.
+    query: {
+      ...baseQuery,
+      mentionsAny: ['disability', 'disabilities', 'disabled', 'deaf', 'chronically ill', 'chronic illness', 'neurodivergent', 'neurodiverse', 'neurodiversity'],
+    },
   },
   {
     slug: 'emerging-writers-artists',
@@ -220,7 +227,9 @@ export const discoveryCollections: DiscoveryCollection[] = [
     audience: 'Debut authors, early-career visual artists, emerging performers, and recent graduates.',
     checklist: ['Definition of "emerging" or career-stage requirements', 'Accepted genres and portfolio limits', 'Mentorship, exhibition, or publication deliverables', 'Official guidelines and deadline date'],
     relatedGuideSlug: 'find-submission-opportunities',
-    query: { ...baseQuery, query: 'emerging' },
+    // A free-text query for 'emerging' also matches the taxonomy label for
+    // interdisciplinary and hybrid work, which says nothing about career stage.
+    query: { ...baseQuery, mentionsAny: ['emerging'] },
   },
   {
     slug: 'jobs-for-creators',
@@ -231,6 +240,205 @@ export const discoveryCollections: DiscoveryCollection[] = [
     checklist: ['Role responsibilities, schedule, and location (remote/onsite)', 'Compensation, salary bands, or stipend rates', 'Eligibility, required portfolio, and submission materials', 'Application closing date and official careers portal'],
     relatedGuideSlug: 'jobs-for-creators',
     query: { ...baseQuery, types: ['job'] },
+  },
+  {
+    slug: 'no-fee-calls',
+    title: 'Open calls with no entry fee',
+    description: 'Open calls, contests, magazines, grants and residencies listed with no entry fee, each with the deadline and a link to the organizer’s page.',
+    answer: 'A call listed here has no entry or reading fee on the organizer’s page. Fees can change between cycles, so check the official guidelines before you send work.',
+    audience: 'Artists and writers who want to send work without paying to be read.',
+    checklist: ['No entry or reading fee on the organizer’s page', 'Deadline and time zone', 'Who can apply', 'Rights the organizer asks for'],
+    relatedGuideSlug: 'no-fee-submission-opportunities',
+    query: { ...baseQuery, feeStatus: 'no-fee' },
+  },
+  {
+    slug: 'free-contests',
+    title: 'Free contests and prizes with no entry fee',
+    description: 'Writing, art and photography contests and prizes listed with no entry fee, with the deadline and prize for each.',
+    answer: 'These contests and prizes list no entry fee. Read the prize terms and the rights you grant before entering; a free contest can still ask for publication rights.',
+    audience: 'Writers and artists entering contests without paying an entry fee.',
+    checklist: ['No entry fee on the organizer’s page', 'Prize and how it is paid', 'Rights you grant if you win', 'Deadline and accepted formats'],
+    relatedGuideSlug: 'no-fee-submission-opportunities',
+    query: { ...baseQuery, types: ['contest', 'award'], feeStatus: 'no-fee' },
+  },
+  {
+    slug: 'closing-this-week',
+    title: 'Open calls closing this week',
+    description: 'Open calls, grants, residencies and contests with a deadline in the next seven days, soonest first.',
+    answer: 'These calls close within seven days. Deadlines are shown in the organizer’s time zone where the page gives one; leave time for the form itself.',
+    audience: 'Anyone with work ready to send this week.',
+    checklist: ['Closing date and time zone', 'Fee and who can apply', 'What to send', 'The organizer’s submission page'],
+    relatedGuideSlug: 'verify-an-opportunity-before-applying',
+    query: { ...baseQuery, deadlineWithinDays: 7 },
+  },
+  {
+    slug: 'closing-this-month',
+    title: 'Open calls closing in the next 30 days',
+    description: 'Open calls, grants, residencies, magazines and contests with a deadline in the next 30 days, soonest first.',
+    answer: 'These calls close within 30 days, which is usually enough time to prepare a sample, a statement and a budget if one is asked for.',
+    audience: 'Artists and writers planning the month’s applications.',
+    checklist: ['Closing date and time zone', 'Materials and length limits', 'Fee and who can apply', 'The organizer’s submission page'],
+    relatedGuideSlug: 'verify-an-opportunity-before-applying',
+    query: { ...baseQuery, deadlineWithinDays: 30 },
+    footer: false,
+  },
+  {
+    slug: 'rolling-submissions',
+    title: 'Calls open all year (rolling submissions)',
+    description: 'Magazines, presses and programs that read submissions on a rolling basis, with no fixed deadline.',
+    answer: 'A rolling call has no single deadline: the organizer reads work as it arrives and may close without notice when it fills. Check the page is still open before you send.',
+    audience: 'Writers and artists who want somewhere to send work now.',
+    checklist: ['That the call is still open today', 'Response time', 'Simultaneous-submission rules', 'Fee and accepted formats'],
+    relatedGuideSlug: 'magazine-submissions',
+    query: { ...baseQuery, deadlineKind: 'rolling' },
+  },
+  {
+    slug: 'residencies-no-fee',
+    title: 'Residencies with no application fee',
+    description: 'Artist and writer residencies listed with no application fee, with the location, deadline and a link to the program’s page.',
+    answer: 'These residencies list no application fee. That says nothing about the cost of attending: check whether housing, travel and a stipend are covered on the program’s page.',
+    audience: 'Artists and writers looking for residencies they can apply to for free.',
+    checklist: ['No application fee', 'What is covered: housing, travel, stipend', 'Dates and length of stay', 'Who can apply'],
+    relatedGuideSlug: 'residencies-and-fellowships',
+    query: { ...baseQuery, types: ['residency'], feeStatus: 'no-fee' },
+  },
+  {
+    slug: 'fiction',
+    title: 'Fiction open calls and short story submissions',
+    description: 'Magazines, contests, grants and residencies open to fiction writers, with the deadline, fee and word limits for each.',
+    answer: 'Fiction calls range from magazine reading periods to story prizes and novel residencies. Check the word limit, simultaneous-submission rules and rights before you send.',
+    audience: 'Short story writers and novelists.',
+    checklist: ['Word limit and number of pieces', 'Fee and reading period', 'Simultaneous-submission rules', 'Rights and payment'],
+    relatedGuideSlug: 'magazine-submissions',
+    query: { ...baseQuery, taxonomyTermIds: ['taxterm_disc-fiction'], taxonomyIncludeDescendants: true },
+  },
+  {
+    slug: 'flash-fiction',
+    title: 'Flash fiction submissions and contests',
+    description: 'Magazines and contests open to flash fiction, with the word limit, deadline and fee for each.',
+    answer: 'Flash fiction limits vary from 50 to around 1,500 words. Check the exact limit and how many pieces you may send in one submission.',
+    audience: 'Writers of very short fiction.',
+    checklist: ['Word limit', 'Number of pieces per submission', 'Fee and deadline', 'Rights and payment'],
+    relatedGuideSlug: 'magazine-submissions',
+    query: { ...baseQuery, taxonomyTermIds: ['taxterm_form-flash-fiction'], taxonomyIncludeDescendants: true },
+    footer: false,
+  },
+  {
+    slug: 'creative-nonfiction',
+    title: 'Creative nonfiction and essay submissions',
+    description: 'Magazines, prizes and grants open to essays and creative nonfiction, with the deadline and fee for each.',
+    answer: 'Creative nonfiction calls include personal essays, lyric essays and reported work. Check the length limit and whether the organizer wants unpublished work only.',
+    audience: 'Essayists and nonfiction writers.',
+    checklist: ['Length limit', 'Unpublished-work rules', 'Fee and deadline', 'Rights and payment'],
+    relatedGuideSlug: 'magazine-submissions',
+    query: { ...baseQuery, taxonomyTermIds: ['taxterm_disc-creative-nonfiction'], taxonomyIncludeDescendants: true },
+    footer: false,
+  },
+  {
+    slug: 'chapbook-contests',
+    title: 'Chapbook contests and manuscript calls',
+    description: 'Chapbook contests and open reading periods for short poetry and prose collections, with the page count, fee and deadline for each.',
+    answer: 'Chapbook calls usually ask for 15 to 40 pages. Check the page range, the reading fee, and whether the press reads simultaneous submissions.',
+    audience: 'Poets and writers with a short collection ready.',
+    checklist: ['Page range', 'Reading fee and prize', 'Simultaneous-submission rules', 'Deadline and judge'],
+    relatedGuideSlug: 'find-submission-opportunities',
+    query: { ...baseQuery, query: 'chapbook' },
+  },
+  {
+    slug: 'visual-arts',
+    title: 'Open calls for visual artists',
+    description: 'Exhibitions, residencies, grants and commissions open to visual artists, with the deadline, fee and a link to the organizer’s page.',
+    answer: 'Visual art calls range from juried shows to public commissions. Check image specs, the entry fee, sales commission and who pays for shipping.',
+    audience: 'Painters, sculptors, printmakers and other visual artists.',
+    checklist: ['Image count and file specs', 'Entry fee and sales commission', 'Shipping and installation costs', 'Deadline and who can apply'],
+    relatedGuideSlug: 'find-submission-opportunities',
+    query: { ...baseQuery, taxonomyTermIds: ['taxterm_pf-visual-arts'], taxonomyIncludeDescendants: true },
+  },
+  {
+    slug: 'painting',
+    title: 'Open calls for painters',
+    description: 'Exhibitions, prizes, residencies and grants open to painters, with the deadline and fee for each.',
+    answer: 'Check the size limits, how many works you can enter, the entry fee and the gallery’s commission on sales.',
+    audience: 'Painters looking for shows, prizes and residencies.',
+    checklist: ['Size and number of works', 'Entry fee and commission', 'Shipping and delivery', 'Deadline'],
+    relatedGuideSlug: 'find-submission-opportunities',
+    query: { ...baseQuery, taxonomyTermIds: ['taxterm_disc-painting'], taxonomyIncludeDescendants: true },
+    footer: false,
+  },
+  {
+    slug: 'sculpture',
+    title: 'Open calls for sculptors',
+    description: 'Exhibitions, commissions, residencies and grants open to sculptors, with the deadline and fee for each.',
+    answer: 'Sculpture calls often involve installation and transport. Check who pays for shipping, insurance and installation before you apply.',
+    audience: 'Sculptors and installation artists.',
+    checklist: ['Dimensions and weight limits', 'Shipping, insurance and installation', 'Entry fee and commission', 'Deadline'],
+    relatedGuideSlug: 'find-submission-opportunities',
+    query: { ...baseQuery, taxonomyTermIds: ['taxterm_disc-sculpture'], taxonomyIncludeDescendants: true },
+    footer: false,
+  },
+  {
+    slug: 'photography',
+    title: 'Photography open calls and competitions',
+    description: 'Photography competitions, exhibitions, grants and residencies, with the entry fee, deadline and a link to the organizer’s page.',
+    answer: 'Check the image specs, how many photographs you can enter, the entry fee, and the usage rights you grant the organizer.',
+    audience: 'Photographers and lens-based artists.',
+    checklist: ['Number of images and file specs', 'Entry fee', 'Usage rights you grant', 'Deadline'],
+    relatedGuideSlug: 'find-submission-opportunities',
+    query: { ...baseQuery, query: 'photography' },
+  },
+  {
+    slug: 'film',
+    title: 'Open calls for filmmakers',
+    description: 'Festivals, grants, residencies and commissions open to filmmakers and moving-image artists, with the deadline and fee for each.',
+    answer: 'Film calls vary by length, format and premiere status. Check running time limits, premiere rules, screener format and the submission fee.',
+    audience: 'Filmmakers, video artists and moving-image makers.',
+    checklist: ['Running time and format', 'Premiere status rules', 'Submission fee', 'Deadline and screener requirements'],
+    relatedGuideSlug: 'find-submission-opportunities',
+    query: { ...baseQuery, taxonomyTermIds: ['taxterm_pf-film-and-moving-image'], taxonomyIncludeDescendants: true },
+  },
+  {
+    slug: 'music',
+    title: 'Open calls for musicians and composers',
+    description: 'Commissions, residencies, grants and competitions open to musicians, composers and sound artists, with the deadline and fee for each.',
+    answer: 'Check the instrumentation or format asked for, recording requirements, the fee and who keeps the rights to the work.',
+    audience: 'Musicians, composers and sound artists.',
+    checklist: ['Instrumentation or format', 'Recording and score requirements', 'Fee and rights', 'Deadline'],
+    relatedGuideSlug: 'find-submission-opportunities',
+    query: { ...baseQuery, taxonomyTermIds: ['taxterm_pf-music-and-sound'], taxonomyIncludeDescendants: true },
+    footer: false,
+  },
+  {
+    slug: 'dance',
+    title: 'Open calls for dancers and choreographers',
+    description: 'Residencies, commissions, festivals and grants open to dancers and choreographers, with the deadline and fee for each.',
+    answer: 'Check rehearsal space, the length of the residency or run, what is paid and the video documentation asked for.',
+    audience: 'Dancers and choreographers.',
+    checklist: ['Studio time and dates', 'Fee or stipend', 'Video documentation', 'Deadline'],
+    relatedGuideSlug: 'residencies-and-fellowships',
+    query: { ...baseQuery, taxonomyTermIds: ['taxterm_pf-dance-and-choreography'], taxonomyIncludeDescendants: true },
+    footer: false,
+  },
+  {
+    slug: 'theater',
+    title: 'Open calls for playwrights and theater makers',
+    description: 'Play submissions, residencies, festivals and grants for playwrights and theater makers, with the deadline and fee for each.',
+    answer: 'Check whether the call wants a full script or a sample, any running-time limit, the reading fee, and whether earlier productions disqualify the play.',
+    audience: 'Playwrights, devisers and theater companies.',
+    checklist: ['Script or sample length', 'Production history rules', 'Fee and deadline', 'What the program provides'],
+    relatedGuideSlug: 'find-submission-opportunities',
+    query: { ...baseQuery, taxonomyTermIds: ['taxterm_pf-theatre-and-dramatic-arts'], taxonomyIncludeDescendants: true },
+    footer: false,
+  },
+  {
+    slug: 'exhibitions-and-festivals',
+    title: 'Exhibition and festival open calls',
+    description: 'Juried exhibitions and festivals taking entries now, with the entry fee, deadline and a link to the organizer’s page.',
+    answer: 'Check the entry fee, any hanging or participation fee if selected, the sales commission and who pays for shipping.',
+    audience: 'Artists and filmmakers looking for shows and festivals.',
+    checklist: ['Entry fee and fees if selected', 'Sales commission', 'Shipping and delivery', 'Dates of the show or festival'],
+    relatedGuideSlug: 'verify-an-opportunity-before-applying',
+    query: { ...baseQuery, types: ['exhibition', 'festival'] },
+    footer: false,
   },
 ];
 

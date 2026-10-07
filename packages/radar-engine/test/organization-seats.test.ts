@@ -43,3 +43,35 @@ test('SCIM-style provisioning creates an opaque account and can reactivate it', 
   assert.equal(second.account.id, first.account.id);
   assert.equal(second.membership?.role, 'viewer');
 });
+
+test('SCIM-style provisioning changes account-wide state only for accounts the organization created', () => {
+  const radar = engine();
+  const organization = radar.addOrganization({ name: 'Provisioning Org', domains: [], verified: true });
+  const other = radar.addOrganization({ name: 'Other Org', domains: [], verified: true });
+  const shared = radar.signUp('shared@example.com', 'password123', 'Shared').account;
+  shared.displayName = 'Shared Person';
+  radar.grantOrgMembership(shared.id, other.id, 'admin');
+
+  const linked = radar.provisionOrgAccount(organization.id, { email: 'shared@example.com', externalId: 'idp-shared', displayName: 'Renamed', role: 'viewer' });
+  assert.deepEqual([linked.created, linked.managed, linked.membership?.role], [false, false, 'viewer']);
+  assert.deepEqual([shared.active, shared.externalId, shared.displayName, shared.provisionedByOrganizationId], [undefined, undefined, 'Shared Person', undefined]);
+  radar.provisionOrgAccount(organization.id, { email: 'shared@example.com', active: false });
+  assert.notEqual(shared.active, false);
+
+  const created = radar.provisionOrgAccount(organization.id, { email: 'created@example.com', externalId: 'idp-created' });
+  assert.deepEqual([created.created, created.managed, created.account.provisionedByOrganizationId], [true, true, organization.id]);
+  assert.equal(radar.organizationManagesAccount(organization.id, created.account.id), true);
+  radar.grantOrgMembership(created.account.id, other.id, 'viewer');
+  assert.equal(radar.organizationManagesAccount(organization.id, created.account.id), false, 'joining another organization ends exclusive management');
+  radar.provisionOrgAccount(organization.id, { email: 'created@example.com', active: false });
+  assert.notEqual(created.account.active, false);
+});
+
+test('SCIM-style provisioning at the seat limit creates no account', () => {
+  const radar = engine();
+  const organization = radar.addOrganization({ name: 'Full Org', domains: [], verified: true, seatLimit: 1 });
+  radar.provisionOrgAccount(organization.id, { email: 'first@example.com' });
+  const accounts = radar.store.accounts.size;
+  assert.throws(() => radar.provisionOrgAccount(organization.id, { email: 'second@example.com' }), /1-seat limit/);
+  assert.equal(radar.store.accounts.size, accounts);
+});

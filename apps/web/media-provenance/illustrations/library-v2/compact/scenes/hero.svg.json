@@ -1,0 +1,15 @@
+{
+  "asset": "public/illustrations/library-v2/compact/scenes/hero.svg",
+  "library": "Missa illustration library v2, 6 October 2026",
+  "export": "compact web SVG",
+  "method": "Built-in image generation; approved hero used as style reference in every call; contours traced with Potrace and optimised with SVGO.",
+  "styleReference": "sources/hero.png",
+  "note": "The approved hero drawing; every other drawing in the library uses it as the style reference.",
+  "sourceRaster": "sources/hero.png",
+  "viewBox": "-49.0 -48.5 743.9 495.9",
+  "bytes": 9279,
+  "layers": {
+    "accent": 1,
+    "ink": 19
+  }
+}

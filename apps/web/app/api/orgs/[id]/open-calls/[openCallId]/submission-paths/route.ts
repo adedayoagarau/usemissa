@@ -74,7 +74,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Unknown opportunity for this organization' }, { status: 404 });
   }
 
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== 'object') return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   if (!validForm(body)) {
     return NextResponse.json({ error: 'Provide valid categories, fields, taxonomy assignments, and fee' }, { status: 400 });
   }
@@ -111,7 +112,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
   if (!workspaceRelationalAuthorityEnabled() && !result.access.scope.openCall(openCallId)) return NextResponse.json({ error: 'Unknown opportunity for this organization' }, { status: 404 });
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== 'object') return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   if (typeof body.pathId !== 'string' || !validForm(body)) return NextResponse.json({ error: 'Provide a pathId and valid form fields' }, { status: 400 });
   if (workspaceRelationalAuthorityEnabled()) {
     try {

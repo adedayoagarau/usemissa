@@ -45,38 +45,32 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from "@/components/ui/empty";
-import {
-  Item,
-  ItemContent,
-  ItemDescription,
-  ItemGroup,
-  ItemTitle,
-} from "@/components/ui/item";
-import {
   Popover,
   PopoverContent,
   PopoverHeader,
   PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import type { Editor } from "@tiptap/react";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  WritingPages,
+  type PageEditors,
+  type PagesView,
+} from "@/components/missa/writing-pages";
 import {
-  WRITING_TEXT_SIZES,
-  WritingSurface,
-  type WritingTextSize,
-} from "@/components/missa/writing-surface";
+  WritingFormatBar,
+  WritingFormatSheet,
+} from "@/components/missa/writing-format";
+import { WritingSnapshots } from "@/components/missa/writing-snapshots";
+import { WritingFind } from "@/components/missa/writing-find";
+import {
+  CompileDialog,
+  NewProjectDialog,
+  projectName,
+  WritingLibrary,
+  WritingOutline,
+  type LibraryPiece,
+} from "@/components/missa/writing-library";
 import {
   DEFAULT_WRITING_TYPEFACE,
   storedWritingTypeface,
@@ -88,11 +82,35 @@ import {
 import {
   countWords,
   newWritingEntryId,
-  WRITING_BODY_MAX,
+  WRITING_TITLE_MAX,
   writingPreview,
+  type WritingContent,
   type WritingEntry,
   type WritingEntrySummary,
 } from "@/lib/writing";
+import {
+  documentText,
+  emptyPage,
+  newCanvasBlock,
+  toCanvasPage,
+  toFlowPage,
+  newDocument,
+  PAGE_SIZES,
+  parseWritingDocument,
+  plainTextToDocument,
+  serializeDocument,
+  TEXT_SIZES,
+  type WritingDocument,
+} from "@/lib/writing-document";
+import {
+  compileProject,
+  compileProjectText,
+  newWritingProjectId,
+  type CompileOptions,
+  type PieceStatus,
+  type ProjectTemplateId,
+  type WritingProject,
+} from "@/lib/writing-projects";
 import {
   browserWritingDeviceStore,
   httpWritingTransport,
@@ -104,6 +122,7 @@ export type WritingRoomProps = {
   /** Separates this account's device drafts from anyone else's in the same browser. */
   deviceKey: string;
   initialEntries: WritingEntrySummary[];
+  initialProjects: WritingProject[];
   initialEntryId?: string;
   storage: "account" | "device";
   listFailed: boolean;
@@ -111,7 +130,12 @@ export type WritingRoomProps = {
 
 type Current = {
   id: string;
-  body: string;
+  title: string;
+  /** The project the piece is in; null for a loose piece. */
+  projectId: string | null;
+  doc: WritingDocument;
+  /** Changes when a different entry is opened, so its pages are rebuilt. */
+  mount: number;
   state: "ready" | "opening" | "failed";
 };
 type Notice =
@@ -119,21 +143,57 @@ type Notice =
   | { kind: "open-failed"; id: string }
   | { kind: "missing" };
 type Prefs = {
+  /** The typeface new pieces start in. */
   typeface: WritingTypefaceId;
-  size: WritingTextSize;
   spellcheck: boolean;
   minutes: number;
+  view: PagesView | null;
+  /** The room's colors: light, dark, or whatever the device uses. */
+  appearance: "light" | "dark" | "device";
 };
 
 const PREFS_KEY = "missa.write.prefs.v1";
 const DEFAULT_PREFS: Prefs = {
   typeface: DEFAULT_WRITING_TYPEFACE,
-  size: 20,
   spellcheck: false,
   minutes: 15,
+  view: null,
+  appearance: "light",
 };
 const TIMER_LENGTHS = [5, 10, 15, 20, 25, 30, 45, 60];
-const PLACEHOLDERS = ["Begin writing", "Pick a thought and go", "Start typing"];
+
+let mounts = 0;
+
+function opened(
+  id: string,
+  content: WritingContent | null,
+  typeface: string,
+  state: Current["state"] = "ready",
+  projectId: string | null = null,
+): Current {
+  const doc =
+    (content?.document ? parseWritingDocument(content.document) : null) ??
+    (content?.body
+      ? plainTextToDocument(content.body, typeface)
+      : newDocument(typeface));
+  mounts += 1;
+  return {
+    id,
+    title: content?.title ?? "",
+    projectId,
+    doc,
+    mount: mounts,
+    state,
+  };
+}
+
+function contentOf(current: Current): WritingContent {
+  return {
+    title: current.title,
+    body: documentText(current.doc),
+    document: serializeDocument(current.doc),
+  };
+}
 
 function readPrefs(): Prefs {
   try {
@@ -142,13 +202,14 @@ function readPrefs(): Prefs {
     );
     const field = (name: string) =>
       raw && typeof raw === "object" ? Reflect.get(raw, name) : undefined;
-    const size = field("size");
     const minutes = field("minutes");
+    const view = field("view");
+    const appearance = field("appearance");
     return {
+      appearance:
+        appearance === "dark" || appearance === "device" ? appearance : "light",
       typeface: storedWritingTypeface(field("typeface")),
-      size: (WRITING_TEXT_SIZES as readonly unknown[]).includes(size)
-        ? (size as WritingTextSize)
-        : DEFAULT_PREFS.size,
+      view: view === "page" || view === "draft" ? view : null,
       spellcheck: field("spellcheck") === true,
       minutes: TIMER_LENGTHS.includes(minutes as number)
         ? (minutes as number)
@@ -176,16 +237,6 @@ function wordLabel(words: number) {
   return `${words.toLocaleString()} ${words === 1 ? "word" : "words"}`;
 }
 
-function entryDate(iso: string) {
-  const date = new Date(iso);
-  const sameYear = date.getFullYear() === new Date().getFullYear();
-  return new Intl.DateTimeFormat(undefined, {
-    day: "numeric",
-    month: "short",
-    year: sameYear ? undefined : "numeric",
-  }).format(date);
-}
-
 function localDay(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   return `${date.getFullYear()}-${month}-${String(date.getDate()).padStart(2, "0")}`;
@@ -205,14 +256,36 @@ function downloadText(filename: string, text: string) {
 }
 
 function summaryOf(entry: WritingEntry): WritingEntrySummary {
-  return {
-    id: entry.id,
-    preview: entry.preview,
-    wordCount: entry.wordCount,
-    revision: entry.revision,
-    createdAt: entry.createdAt,
-    updatedAt: entry.updatedAt,
-  };
+  const { body: _body, document: _document, ...summary } = entry;
+  return summary;
+}
+
+async function requestJson(
+  url: string,
+  init: RequestInit,
+): Promise<{ ok: boolean; status: number; data: Record<string, unknown> }> {
+  try {
+    const response = await fetch(url, {
+      cache: "no-store",
+      ...init,
+      headers: { "Content-Type": "application/json", ...init.headers },
+    });
+    const data: unknown = await response.json().catch(() => ({}));
+    return {
+      ok: response.ok,
+      status: response.status,
+      data:
+        data && typeof data === "object"
+          ? (data as Record<string, unknown>)
+          : {},
+    };
+  } catch {
+    return { ok: false, status: 0, data: {} };
+  }
+}
+
+function errorOf(data: Record<string, unknown>, fallback: string) {
+  return typeof data.error === "string" ? data.error : fallback;
 }
 
 function subscribeFullscreen(listener: () => void) {
@@ -228,6 +301,7 @@ function subscribeFullscreen(listener: () => void) {
 export function WritingRoom({
   deviceKey,
   initialEntries,
+  initialProjects,
   initialEntryId,
   storage,
   listFailed,
@@ -239,25 +313,74 @@ export function WritingRoom({
         device: browserWritingDeviceStore(`missa.write.drafts.v1:${deviceKey}`),
       }),
   );
+  const [prefs, setPrefs] = useState(readPrefs);
   const [current, setCurrent] = useState<Current>(() => {
     const drafts = sync.load();
     if (initialEntryId) {
       const draft = drafts.find((item) => item.id === initialEntryId);
+      const known = initialEntries.find((item) => item.id === initialEntryId);
       return draft
-        ? { id: draft.id, body: draft.body, state: "ready" }
-        : { id: initialEntryId, body: "", state: "opening" };
+        ? opened(
+            draft.id,
+            draft.content,
+            prefs.typeface,
+            "ready",
+            draft.projectId ?? known?.projectId ?? null,
+          )
+        : opened(
+            initialEntryId,
+            null,
+            prefs.typeface,
+            "opening",
+            known?.projectId ?? null,
+          );
     }
     const latest = drafts[0];
     return latest
-      ? { id: latest.id, body: latest.body, state: "ready" }
-      : { id: newWritingEntryId(), body: "", state: "ready" };
+      ? opened(
+          latest.id,
+          latest.content,
+          prefs.typeface,
+          "ready",
+          latest.projectId ??
+            initialEntries.find((item) => item.id === latest.id)?.projectId ??
+            null,
+        )
+      : opened(newWritingEntryId(), null, prefs.typeface);
   });
   const [entries, setEntries] = useState(initialEntries);
+  const [projects, setProjects] = useState(initialProjects);
+  const [libraryProject, setLibraryProject] = useState<string | null>(null);
+  const [newProject, setNewProject] = useState<{
+    open: boolean;
+    busy: boolean;
+    error: string;
+  }>({ open: false, busy: false, error: "" });
+  const [outlineProject, setOutlineProject] = useState<string | null>(null);
+  const [snapshotsOpen, setSnapshotsOpen] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
+  const [compileState, setCompileState] = useState<{
+    projectId: string | null;
+    busy: boolean;
+    error: string;
+  }>({ projectId: null, busy: false, error: "" });
+  const [compiled, setCompiled] = useState<{
+    projectId: string;
+    title: string;
+    doc: WritingDocument;
+    text: string;
+  } | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
-  const [prefs, setPrefs] = useState(readPrefs);
-  const [placeholder] = useState(
-    () => PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)],
+  const [view, setView] = useState<PagesView>(
+    () => prefs.view ?? (window.innerWidth < 768 ? "draft" : "page"),
   );
+  const [editors] = useState<PageEditors>(() => new Map());
+  const [compiledEditors] = useState<PageEditors>(() => new Map());
+  const [active, setActive] = useState<{
+    pageId: string;
+    editor: Editor;
+  } | null>(null);
+  const [formatOpen, setFormatOpen] = useState(false);
   const [timer, setTimer] = useState<{
     endsAt: number | null;
     remaining: number;
@@ -269,11 +392,11 @@ export function WritingRoom({
   const [timeUp, setTimeUp] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [pageDeleteOpen, setPageDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [exportError, setExportError] = useState("");
   const [focusTick, setFocusTick] = useState(0);
-  const surface = useRef<HTMLTextAreaElement>(null);
   const initialOpen = useRef(current.state === "opening" ? current.id : null);
 
   const syncState = useSyncExternalStore(
@@ -288,9 +411,15 @@ export function WritingRoom({
   );
   const canFullscreen =
     typeof document !== "undefined" && document.fullscreenEnabled;
-  const face = writingTypeface(prefs.typeface);
-  const deferredBody = useDeferredValue(current.body);
-  const words = useMemo(() => countWords(deferredBody), [deferredBody]);
+  const face = writingTypeface(current.doc.typeface);
+  const deferredDoc = useDeferredValue(current.doc);
+  const body = useMemo(() => documentText(deferredDoc), [deferredDoc]);
+  const words = useMemo(() => countWords(body), [body]);
+  const activeIndex = Math.max(
+    0,
+    current.doc.pages.findIndex((page) => page.id === active?.pageId),
+  );
+  const activePage = current.doc.pages[activeIndex];
   const inAccount = sync.saved(current.id);
   const pending = syncState.pending.includes(current.id);
   const running = timer.endsAt !== null;
@@ -309,7 +438,7 @@ export function WritingRoom({
         if (response.status === 404) {
           setCurrent((value) =>
             value.id === id
-              ? { id: newWritingEntryId(), body: "", state: "ready" }
+              ? opened(newWritingEntryId(), null, value.doc.typeface)
               : value,
           );
           setNotice({ kind: "missing" });
@@ -322,9 +451,11 @@ export function WritingRoom({
             : undefined;
         if (!response.ok || !entry) throw new Error("Entry did not load");
         sync.adopt(entry);
-        const body = sync.draft(id)?.body ?? entry.body;
+        const content = sync.draft(id)?.content ?? entry;
         setCurrent((value) =>
-          value.id === id ? { id, body, state: "ready" } : value,
+          value.id === id
+            ? opened(id, content, value.doc.typeface, "ready", entry.projectId)
+            : value,
         );
         setFocusTick((tick) => tick + 1);
       } catch {
@@ -402,19 +533,30 @@ export function WritingRoom({
   useEffect(() => {
     const target =
       inAccount || current.state !== "ready"
-        ? `/write?entry=${encodeURIComponent(current.id)}`
-        : "/write";
+        ? `/doc?entry=${encodeURIComponent(current.id)}`
+        : "/doc";
     if (`${window.location.pathname}${window.location.search}` !== target) {
       window.history.replaceState(window.history.state, "", target);
     }
   }, [current.id, current.state, inAccount]);
 
   useEffect(() => {
-    const element = surface.current;
-    if (!element) return;
-    element.focus({ preventScroll: true });
-    element.setSelectionRange(element.value.length, element.value.length);
-  }, [focusTick]);
+    // Pages mount a frame or two after the room; wait for the page to exist.
+    let frame = 0;
+    let tries = 0;
+    const attempt = () => {
+      const first = current.doc.pages[0]?.id;
+      const editor =
+        (active && editors.get(active.pageId)) ??
+        (first ? editors.get(first) : undefined);
+      if (editor) editor.commands.focus("end");
+      else if (tries++ < 30) frame = requestAnimationFrame(attempt);
+    };
+    attempt();
+    return () => cancelAnimationFrame(frame);
+    // Focus moves only when asked, never on each change of the page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusTick, current.mount]);
 
   useEffect(() => {
     if (timer.endsAt === null) return;
@@ -431,6 +573,38 @@ export function WritingRoom({
     return () => clearInterval(interval);
   }, [timer.endsAt]);
 
+  // The room's own appearance. Only /doc turns dark, and printing is always on white.
+  useEffect(() => {
+    const root = document.documentElement;
+    const query = window.matchMedia("(prefers-color-scheme: dark)");
+    let printing = false;
+    const apply = () => {
+      const dark =
+        !printing &&
+        (prefs.appearance === "dark" ||
+          (prefs.appearance === "device" && query.matches));
+      root.classList.toggle("dark", dark);
+    };
+    const beforePrint = () => {
+      printing = true;
+      apply();
+    };
+    const afterPrint = () => {
+      printing = false;
+      apply();
+    };
+    apply();
+    query.addEventListener("change", apply);
+    window.addEventListener("beforeprint", beforePrint);
+    window.addEventListener("afterprint", afterPrint);
+    return () => {
+      query.removeEventListener("change", apply);
+      window.removeEventListener("beforeprint", beforePrint);
+      window.removeEventListener("afterprint", afterPrint);
+      root.classList.remove("dark");
+    };
+  }, [prefs.appearance]);
+
   function updatePrefs(change: Partial<Prefs>) {
     setPrefs((value) => {
       const next = { ...value, ...change };
@@ -439,43 +613,391 @@ export function WritingRoom({
     });
   }
 
-  function edit(body: string) {
+  function change(next: Partial<Pick<Current, "title" | "doc">>) {
     if (current.state !== "ready") return;
-    setCurrent((value) => ({ ...value, body }));
-    sync.edit(current.id, body);
+    const updated = { ...current, ...next };
+    setCurrent((value) =>
+      value.id === current.id ? { ...value, ...next } : value,
+    );
+    sync.edit(current.id, contentOf(updated), current.projectId);
+  }
+
+  const changeDocument = useCallback(
+    (doc: WritingDocument) => change({ doc }),
+    // change reads the current entry, which this callback must follow.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [current],
+  );
+
+  const onActiveEditor = useCallback(
+    (pageId: string, editor: Editor) => setActive({ pageId, editor }),
+    [],
+  );
+
+  /** Switches the open page between flowing text and a free canvas. Its words come along. */
+  function setLayout(kind: "flow" | "canvas") {
+    const page = current.doc.pages[activeIndex];
+    if (!page || page.kind === kind) return;
+    const pages = current.doc.pages.map((item, index) => {
+      if (index === activeIndex)
+        return kind === "canvas"
+          ? toCanvasPage(item, current.doc.pageSize)
+          : toFlowPage(item);
+      // Text no longer flows on from a canvas page.
+      if (index === activeIndex + 1 && item.continues)
+        return { ...item, continues: false };
+      return item;
+    });
+    setActive(null);
+    change({ doc: { ...current.doc, pages } });
+    setView("page");
+    toast.success(
+      kind === "canvas"
+        ? "This page is a free canvas. Its text is in one box you can move."
+        : "This page is flowing text again, its boxes in reading order.",
+    );
+  }
+
+  function addTextBox() {
+    const page = current.doc.pages[activeIndex];
+    if (!page || page.kind !== "canvas") return;
+    const { margins } = page.format;
+    const offset = ((page.blocks?.length ?? 0) % 8) * 8;
+    const block = newCanvasBlock(
+      margins.left + offset,
+      margins.top + offset,
+      80,
+    );
+    change({
+      doc: {
+        ...current.doc,
+        pages: current.doc.pages.map((item) =>
+          item.id === page.id
+            ? { ...item, blocks: [...(item.blocks ?? []), block] }
+            : item,
+        ),
+      },
+    });
+    let tries = 0;
+    const focus = () => {
+      const editor = editors.get(`${page.id}/${block.id}`);
+      if (editor) editor.commands.focus("start");
+      else if (tries++ < 30) requestAnimationFrame(focus);
+    };
+    requestAnimationFrame(focus);
+  }
+
+  function addPage() {
+    const pages = [...current.doc.pages];
+    let at = active ? activeIndex + 1 : pages.length;
+    // A new page goes after the text that flows on from this one.
+    while (pages[at]?.continues) at += 1;
+    const format = pages[Math.min(activeIndex, pages.length - 1)]!.format;
+    const page = emptyPage(format);
+    pages.splice(at, 0, page);
+    change({ doc: { ...current.doc, pages } });
+    // The new page takes focus once it is on screen.
+    requestAnimationFrame(() => editors.get(page.id)?.commands.focus("start"));
+  }
+
+  function movePage(step: -1 | 1) {
+    // A page moved by hand stands on its own; the text after it no longer flows from it.
+    const pages = current.doc.pages.map((page, index) =>
+      index === activeIndex || index === activeIndex + 1
+        ? { ...page, continues: false }
+        : page,
+    );
+    const to = activeIndex + step;
+    if (to < 0 || to >= pages.length) return;
+    const [page] = pages.splice(activeIndex, 1);
+    pages.splice(to, 0, page!);
+    if (pages[to + 1]?.continues)
+      pages[to + 1] = { ...pages[to + 1]!, continues: false };
+    change({ doc: { ...current.doc, pages } });
+  }
+
+  function deletePage() {
+    if (current.doc.pages.length < 2) return;
+    const pages = current.doc.pages
+      .filter((_, index) => index !== activeIndex)
+      .map((page, index) =>
+        index === 0 && page.continues ? { ...page, continues: false } : page,
+      );
+    setActive(null);
+    change({ doc: { ...current.doc, pages } });
+    setPageDeleteOpen(false);
+  }
+
+  function printPages() {
+    setView("page");
+    // Print after page view has drawn the paper.
+    setTimeout(() => window.print(), 50);
   }
 
   function openEntry(id: string) {
     setSheetOpen(false);
+    setOutlineProject(null);
+    setCompiled(null);
     if (id === current.id) {
       setFocusTick((tick) => tick + 1);
       return;
     }
     setNotice(null);
+    setActive(null);
     const draft = sync.draft(id);
+    const projectId =
+      draft?.projectId ??
+      entries.find((item) => item.id === id)?.projectId ??
+      null;
     if (draft) {
-      setCurrent({ id, body: draft.body, state: "ready" });
+      setCurrent(opened(id, draft.content, prefs.typeface, "ready", projectId));
       setFocusTick((tick) => tick + 1);
       return;
     }
-    setCurrent({ id, body: "", state: "opening" });
+    setCurrent(opened(id, null, prefs.typeface, "opening", projectId));
     void loadEntry(id);
+  }
+
+  /** Starts a new piece at the end of a project. It is saved once it has words. */
+  function addPiece(projectId: string) {
+    setSheetOpen(false);
+    setCompiled(null);
+    setNotice(null);
+    setActive(null);
+    setCurrent(
+      opened(newWritingEntryId(), null, prefs.typeface, "ready", projectId),
+    );
+    setFocusTick((tick) => tick + 1);
+  }
+
+  async function createProject(title: string, template: ProjectTemplateId) {
+    const id = newWritingProjectId();
+    setNewProject({ open: true, busy: true, error: "" });
+    const result = await requestJson("/api/me/writing/projects", {
+      method: "POST",
+      body: JSON.stringify({ id, title, template }),
+    });
+    const project = result.data.project as WritingProject | undefined;
+    if (!result.ok || !project) {
+      setNewProject({
+        open: true,
+        busy: false,
+        error: errorOf(
+          result.data,
+          "We could not create this project. Check your connection and try again.",
+        ),
+      });
+      return;
+    }
+    const created = (result.data.entries as WritingEntrySummary[]) ?? [];
+    setProjects((list) => [project, ...list.filter((item) => item.id !== id)]);
+    setEntries((list) => [...created, ...list]);
+    setNewProject({ open: false, busy: false, error: "" });
+    setLibraryProject(id);
+    setSheetOpen(true);
+    toast.success(
+      created.length
+        ? `Project created with ${created.length} ${created.length === 1 ? "piece" : "pieces"}`
+        : "Project created",
+    );
+  }
+
+  async function renameProject(id: string, title: string) {
+    const before = projects;
+    setProjects((list) =>
+      list.map((item) => (item.id === id ? { ...item, title } : item)),
+    );
+    const result = await requestJson(
+      `/api/me/writing/projects/${encodeURIComponent(id)}`,
+      { method: "PATCH", body: JSON.stringify({ title }) },
+    );
+    if (!result.ok) {
+      setProjects(before);
+      toast.error(
+        errorOf(result.data, "Couldn’t rename the project. Try again."),
+      );
+    }
+  }
+
+  async function deleteProject(id: string) {
+    const result = await requestJson(
+      `/api/me/writing/projects/${encodeURIComponent(id)}`,
+      { method: "DELETE" },
+    );
+    if (!result.ok && result.status !== 404) {
+      toast.error(
+        errorOf(
+          result.data,
+          "Couldn’t delete the project. It’s unchanged. Try again.",
+        ),
+      );
+      return;
+    }
+    setProjects((list) => list.filter((item) => item.id !== id));
+    setEntries((list) =>
+      list.map((item) =>
+        item.projectId === id ? { ...item, projectId: null } : item,
+      ),
+    );
+    for (const draftId of syncState.pending) {
+      if (sync.draft(draftId)?.projectId === id) sync.place(draftId, null);
+    }
+    if (current.projectId === id) {
+      sync.place(current.id, null);
+      setCurrent((value) =>
+        value.projectId === id ? { ...value, projectId: null } : value,
+      );
+    }
+    setLibraryProject(null);
+    toast.success("Project deleted. Its pieces are loose pieces now.");
+  }
+
+  async function reorderPieces(projectId: string, ids: string[]) {
+    const before = entries;
+    const order = new Map(ids.map((id, index) => [id, index]));
+    setEntries((list) =>
+      list.map((item) =>
+        order.has(item.id)
+          ? { ...item, projectId, position: order.get(item.id)! }
+          : item,
+      ),
+    );
+    const result = await requestJson(
+      `/api/me/writing/projects/${encodeURIComponent(projectId)}/pieces`,
+      { method: "PUT", body: JSON.stringify({ entryIds: ids }) },
+    );
+    if (!result.ok) {
+      setEntries(before);
+      toast.error(
+        errorOf(result.data, "Couldn’t save the new order. Try again."),
+      );
+    }
+  }
+
+  async function movePiece(id: string, projectId: string | null) {
+    sync.place(id, projectId);
+    if (current.id === id) {
+      setCurrent((value) =>
+        value.id === id ? { ...value, projectId } : value,
+      );
+    }
+    if (!entries.some((item) => item.id === id)) return;
+    const result = await requestJson(
+      `/api/me/writing/${encodeURIComponent(id)}`,
+      { method: "PATCH", body: JSON.stringify({ projectId }) },
+    );
+    const entry = result.data.entry as WritingEntrySummary | undefined;
+    if (!result.ok || !entry) {
+      toast.error(errorOf(result.data, "Couldn’t move this piece. Try again."));
+      return;
+    }
+    setEntries((list) =>
+      list.map((item) => (item.id === id ? { ...item, ...entry } : item)),
+    );
+    const project = projects.find((item) => item.id === projectId);
+    toast.success(
+      project ? `Moved to ${projectName(project)}` : "Moved to loose pieces",
+    );
+  }
+
+  async function changeCard(
+    id: string,
+    card: { synopsis?: string; status?: PieceStatus },
+  ) {
+    const before = entries;
+    setEntries((list) =>
+      list.map((item) => (item.id === id ? { ...item, ...card } : item)),
+    );
+    const result = await requestJson(
+      `/api/me/writing/${encodeURIComponent(id)}`,
+      { method: "PATCH", body: JSON.stringify(card) },
+    );
+    if (!result.ok) {
+      setEntries(before);
+      toast.error(
+        errorOf(
+          result.data,
+          "Couldn’t save that. Check your connection and try again.",
+        ),
+      );
+    }
+  }
+
+  async function compile(options: CompileOptions) {
+    const projectId = compileState.projectId;
+    if (!projectId) return;
+    setCompileState({ projectId, busy: true, error: "" });
+    const result = await requestJson(
+      `/api/me/writing/projects/${encodeURIComponent(projectId)}/compile`,
+      { method: "GET" },
+    );
+    const stored = result.data.entries as WritingEntry[] | undefined;
+    const project = result.data.project as WritingProject | undefined;
+    if (!result.ok || !stored || !project) {
+      setCompileState({
+        projectId,
+        busy: false,
+        error: errorOf(
+          result.data,
+          "We could not gather this project. Check your connection and try again.",
+        ),
+      });
+      return;
+    }
+    // Words on this device that the account hasn't confirmed yet are compiled too.
+    const known = new Set(stored.map((entry) => entry.id));
+    const sources = [
+      ...stored.map((entry) => ({
+        id: entry.id,
+        content: sync.draft(entry.id)?.content ?? entry,
+      })),
+      ...syncState.pending
+        .filter(
+          (id) => !known.has(id) && sync.draft(id)?.projectId === projectId,
+        )
+        .map((id) => ({ id, content: sync.draft(id)!.content })),
+    ];
+    const ordered = sources.map(({ id, content }) =>
+      id === current.id
+        ? contentOf(current)
+        : {
+            title: content.title,
+            body: content.body,
+            document: content.document,
+          },
+    );
+    setCompiled({
+      projectId,
+      title: project.title,
+      doc: compileProject(project.title, ordered, options, prefs.typeface),
+      text: compileProjectText(project.title, ordered, options),
+    });
+    setCompileState({ projectId: null, busy: false, error: "" });
+    setSheetOpen(false);
+    setView("page");
   }
 
   function newEntry() {
     setSheetOpen(false);
-    if (current.state === "ready" && !current.body.trim() && !inAccount) {
+    setCompiled(null);
+    if (
+      current.state === "ready" &&
+      !body.trim() &&
+      !current.title.trim() &&
+      !inAccount
+    ) {
       setFocusTick((tick) => tick + 1);
       return;
     }
     setNotice(null);
-    setCurrent({ id: newWritingEntryId(), body: "", state: "ready" });
+    setActive(null);
+    setCurrent(opened(newWritingEntryId(), null, prefs.typeface));
     setFocusTick((tick) => tick + 1);
   }
 
   async function confirmDelete() {
     const id = current.id;
-    const body = current.body;
+    const content = contentOf(current);
     setDeleting(true);
     setDeleteError("");
     const { existsOnServer } = await sync.discard(id);
@@ -488,7 +1010,7 @@ export function WritingRoom({
       ).catch(() => undefined);
       if (!response || (!response.ok && response.status !== 404)) {
         sync.restore(id);
-        sync.edit(id, body);
+        sync.edit(id, content);
         setDeleting(false);
         setDeleteError(
           "We could not delete this entry. It is unchanged. Try again.",
@@ -498,7 +1020,8 @@ export function WritingRoom({
       sync.forget(id);
     }
     setEntries((list) => list.filter((item) => item.id !== id));
-    setCurrent({ id: newWritingEntryId(), body: "", state: "ready" });
+    setActive(null);
+    setCurrent(opened(newWritingEntryId(), null, prefs.typeface));
     setDeleting(false);
     setDeleteOpen(false);
     setFocusTick((tick) => tick + 1);
@@ -509,7 +1032,7 @@ export function WritingRoom({
     const created = entries.find((item) => item.id === current.id)?.createdAt;
     downloadText(
       `writing-${localDay(created ? new Date(created) : new Date())}.txt`,
-      current.body,
+      current.title ? `${current.title}\n\n${body}` : body,
     );
   }
 
@@ -531,12 +1054,10 @@ export function WritingRoom({
 
   async function copyText() {
     try {
-      await navigator.clipboard.writeText(current.body);
+      await navigator.clipboard.writeText(documentText(current.doc));
       toast.success("Text copied");
     } catch {
-      const element = surface.current;
-      element?.focus();
-      element?.select();
+      active?.editor.chain().focus().selectAll().run();
       toast.message("Text selected. Copy it with your keyboard.");
     }
   }
@@ -563,9 +1084,10 @@ export function WritingRoom({
   }
 
   function cycleSize() {
-    const index = WRITING_TEXT_SIZES.indexOf(prefs.size);
-    updatePrefs({
-      size: WRITING_TEXT_SIZES[(index + 1) % WRITING_TEXT_SIZES.length],
+    const sizes: readonly number[] = TEXT_SIZES;
+    const index = sizes.indexOf(current.doc.textSize);
+    change({
+      doc: { ...current.doc, textSize: sizes[(index + 1) % sizes.length]! },
     });
   }
 
@@ -606,7 +1128,13 @@ export function WritingRoom({
           : notice?.kind === "not-found"
             ? "This entry was deleted on another device. What you wrote here is saved as a new entry."
             : "";
-  const hideChrome = running && !sheetOpen && !deleteOpen;
+  const hideChrome =
+    running &&
+    !sheetOpen &&
+    !deleteOpen &&
+    !formatOpen &&
+    !pageDeleteOpen &&
+    !snapshotsOpen;
   const timerLabel = running
     ? "Pause timer"
     : remaining === 0
@@ -615,29 +1143,81 @@ export function WritingRoom({
         ? "Resume timer"
         : `Start ${prefs.minutes}-minute timer`;
 
-  const rows = useMemo(() => {
+  const pieces = useMemo((): LibraryPiece[] => {
     const known = new Set(entries.map((item) => item.id));
     const local = syncState.pending
       .filter((id) => !known.has(id))
-      .flatMap((id) => {
+      .flatMap((id): LibraryPiece[] => {
         const draft = sync.draft(id);
         return draft
           ? [
               {
                 id,
-                preview: writingPreview(draft.body),
-                wordCount: countWords(draft.body),
-                revision: 0,
-                createdAt: draft.updatedAt,
+                title: draft.content.title,
+                preview: writingPreview(draft.content.body),
+                wordCount: countWords(draft.content.body),
                 updatedAt: draft.updatedAt,
+                projectId: draft.projectId ?? null,
+                position: Number.MAX_SAFE_INTEGER,
+                synopsis: "",
+                status: "",
+                local: true,
+                open: false,
               },
             ]
           : [];
       });
-    return [...local, ...entries].sort((a, b) =>
-      b.updatedAt.localeCompare(a.updatedAt),
-    );
-  }, [entries, syncState.pending, sync]);
+    const list: LibraryPiece[] = [
+      ...local,
+      ...entries.map((item) => ({
+        id: item.id,
+        title: item.title,
+        preview: item.preview,
+        wordCount: item.wordCount,
+        updatedAt: item.updatedAt,
+        projectId: item.projectId,
+        position: item.position,
+        synopsis: item.synopsis,
+        status: item.status,
+        local: syncState.pending.includes(item.id) && !sync.saved(item.id),
+        open: false,
+      })),
+    ];
+    // The open piece shows what is on the page now, even before it is saved.
+    const openIndex = list.findIndex((item) => item.id === current.id);
+    const live = {
+      title: current.title,
+      preview: writingPreview(body),
+      wordCount: words,
+      projectId: current.projectId,
+      open: true,
+    };
+    if (openIndex >= 0) list[openIndex] = { ...list[openIndex]!, ...live };
+    else if (current.projectId && current.state === "ready")
+      list.push({
+        id: current.id,
+        ...live,
+        updatedAt: new Date().toISOString(),
+        position: Number.MAX_SAFE_INTEGER,
+        synopsis: "",
+        status: "",
+        local: true,
+      });
+    return list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }, [
+    entries,
+    syncState.pending,
+    sync,
+    current.id,
+    current.title,
+    current.projectId,
+    current.state,
+    body,
+    words,
+  ]);
+  const currentProject = projects.find(
+    (project) => project.id === current.projectId,
+  );
 
   const chrome =
     "transition-opacity duration-180 motion-reduce:transition-none data-[hidden=true]:opacity-0 data-[hidden=true]:hover:opacity-100 data-[hidden=true]:focus-within:opacity-100 data-[hidden=true]:[&:not(:hover):not(:focus-within)_*]:pointer-events-none";
@@ -646,43 +1226,99 @@ export function WritingRoom({
     <div className="flex h-dvh flex-col bg-background text-foreground">
       <header
         data-hidden={hideChrome}
-        className={`flex items-center justify-between gap-2 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-4 ${chrome}`}
+        className={`flex flex-col border-b border-border px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1 sm:px-4 print:hidden ${chrome}`}
       >
-        <Link href="/home" className={buttonVariants({ variant: "ghost" })}>
-          <ArrowLeft aria-hidden="true" />
-          Home
-        </Link>
-        <Popover>
-          <PopoverTrigger render={<Button variant="ghost" />}>
-            <Lock aria-hidden="true" />
-            Private
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-80">
-            <PopoverHeader>
-              <PopoverTitle>Your writing stays yours</PopoverTitle>
-            </PopoverHeader>
-            <ul className="flex list-disc flex-col gap-2 ps-5 text-muted-foreground">
-              <li>
-                Missa adds no AI here. Nothing suggests, rewrites or finishes
-                your words.
-              </li>
-              <li>
-                Your writing is never sent to an AI service or used to train
-                one.
-              </li>
-              <li>Missa’s automated systems don’t read it.</li>
-              <li>Deleting an entry removes it from your account.</li>
-              <li>
-                Extensions you add to your browser can still read pages you
-                open.
-              </li>
-            </ul>
-          </PopoverContent>
-        </Popover>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-1">
+            <Link href="/home" className={buttonVariants({ variant: "ghost" })}>
+              <ArrowLeft aria-hidden="true" />
+              Home
+            </Link>
+            {currentProject ? (
+              <Button
+                variant="ghost"
+                className="min-w-0"
+                aria-label={`Project: ${projectName(currentProject)}. Open its pieces`}
+                onClick={() => {
+                  setLibraryProject(currentProject.id);
+                  setSheetOpen(true);
+                }}
+              >
+                <span className="truncate">{projectName(currentProject)}</span>
+              </Button>
+            ) : null}
+          </div>
+          <Popover>
+            <PopoverTrigger render={<Button variant="ghost" />}>
+              <Lock aria-hidden="true" />
+              Private
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80">
+              <PopoverHeader>
+                <PopoverTitle>Your writing stays yours</PopoverTitle>
+              </PopoverHeader>
+              <ul className="flex list-disc flex-col gap-2 ps-5 text-muted-foreground">
+                <li>
+                  Missa adds no AI here. Nothing suggests, rewrites or finishes
+                  your words.
+                </li>
+                <li>
+                  Your writing is never sent to an AI service or used to train
+                  one.
+                </li>
+                <li>Missa’s automated systems don’t read it.</li>
+                <li>Deleting an entry removes it from your account.</li>
+                <li>
+                  Extensions you add to your browser can still read pages you
+                  open.
+                </li>
+              </ul>
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div className={compiled ? "hidden" : "flex justify-center"}>
+          <WritingFormatBar
+            editor={active && !active.editor.isDestroyed ? active.editor : null}
+            onOpenFormat={() => setFormatOpen(true)}
+          />
+        </div>
       </header>
 
-      <main className="flex min-h-0 flex-1 flex-col">
+      <main
+        className="flex min-h-0 flex-1 flex-col print:block"
+        onKeyDown={(event) => {
+          if (
+            (event.metaKey || event.ctrlKey) &&
+            event.key.toLowerCase() === "s"
+          ) {
+            event.preventDefault();
+            sync.flush();
+          }
+          // Find and replace reaches every page and text box, which the browser's own find can't change.
+          if (
+            (event.metaKey || event.ctrlKey) &&
+            !event.altKey &&
+            ["f", "h"].includes(event.key.toLowerCase())
+          ) {
+            event.preventDefault();
+            setFindOpen(true);
+          }
+        }}
+      >
         <h1 className="sr-only">Write</h1>
+        {findOpen && !compiled ? (
+          <WritingFind
+            // A fresh bar each time it opens, with the field in focus.
+            key={current.mount}
+            document={current.doc}
+            editors={editors}
+            readOnly={current.state !== "ready"}
+            onClose={() => {
+              setFindOpen(false);
+              setFocusTick((tick) => tick + 1);
+            }}
+          />
+        ) : null}
         <WritingNotices
           notice={notice}
           rejection={rejection}
@@ -694,34 +1330,94 @@ export function WritingRoom({
           onOpen={(id) => openEntry(id)}
           onRetry={(id) => {
             setNotice(null);
-            setCurrent({ id, body: "", state: "opening" });
+            setCurrent(opened(id, null, prefs.typeface, "opening"));
             void loadEntry(id);
           }}
           onCopy={copyText}
         />
-        <div className="min-h-0 flex-1">
-          <WritingSurface
-            ref={surface}
-            aria-label="Writing"
-            aria-busy={current.state === "opening" || undefined}
-            typeface={prefs.typeface}
-            size={prefs.size}
-            value={current.body}
-            readOnly={current.state !== "ready"}
-            placeholder={current.state === "opening" ? "Opening…" : placeholder}
-            spellCheck={prefs.spellcheck}
-            maxLength={WRITING_BODY_MAX}
-            onChange={(event) => edit(event.target.value)}
-            onKeyDown={(event) => {
-              if (
-                (event.metaKey || event.ctrlKey) &&
-                event.key.toLowerCase() === "s"
-              ) {
-                event.preventDefault();
-                sync.flush();
+        <div
+          className="min-h-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto print:overflow-visible"
+          aria-busy={current.state === "opening" || undefined}
+        >
+          {compiled ? (
+            <WritingPages
+              key={`compiled-${compiled.projectId}-${compiled.doc.pages.length}`}
+              document={compiled.doc}
+              onChange={() => undefined}
+              view={view}
+              spellcheck={false}
+              readOnly
+              editors={compiledEditors}
+              onActiveEditor={() => undefined}
+              before={
+                <div className="flex w-full max-w-2xl flex-col items-center gap-3 text-center print:hidden">
+                  <h2 className="text-lg font-medium">
+                    {compiled.title.trim() || "Untitled project"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Compiled from every piece, in order:{" "}
+                    {compiled.doc.pages.length.toLocaleString()}{" "}
+                    {compiled.doc.pages.length === 1 ? "page" : "pages"},{" "}
+                    {wordLabel(countWords(compiled.text))}. Changes happen in
+                    the pieces.
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button onClick={printPages}>Print or save as PDF</Button>
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        downloadText(
+                          `${(compiled.title.trim() || "project").replace(/[^\p{L}\p{N}]+/gu, "-").toLowerCase()}-${localDay(new Date())}.txt`,
+                          compiled.text,
+                        )
+                      }
+                    >
+                      Download as plain text
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setCompiled(null);
+                        setFocusTick((tick) => tick + 1);
+                      }}
+                    >
+                      Back to writing
+                    </Button>
+                  </div>
+                </div>
               }
-            }}
-          />
+            />
+          ) : (
+            <WritingPages
+              key={current.mount}
+              document={current.doc}
+              onChange={changeDocument}
+              view={view}
+              spellcheck={prefs.spellcheck}
+              readOnly={current.state !== "ready"}
+              editors={editors}
+              onActiveEditor={onActiveEditor}
+              before={
+                <input
+                  aria-label="Title"
+                  placeholder={
+                    current.state === "opening" ? "Opening…" : "Untitled"
+                  }
+                  value={current.title}
+                  maxLength={WRITING_TITLE_MAX}
+                  readOnly={current.state !== "ready"}
+                  onChange={(event) => change({ title: event.target.value })}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === "ArrowDown") {
+                      event.preventDefault();
+                      setFocusTick((tick) => tick + 1);
+                    }
+                  }}
+                  className={`w-full max-w-2xl bg-transparent text-center text-3xl text-foreground outline-none placeholder:text-muted-foreground focus-visible:underline focus-visible:decoration-primary focus-visible:underline-offset-8 print:hidden ${face.className}`}
+                />
+              }
+            />
+          )}
         </div>
         <p role="status" className="sr-only">
           {announcement}
@@ -730,7 +1426,9 @@ export function WritingRoom({
 
       <footer
         data-hidden={hideChrome}
-        className={`flex flex-wrap items-center justify-between gap-x-6 gap-y-1 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 ${chrome}`}
+        // The compiled manuscript has its own actions; the piece's controls step aside.
+        hidden={compiled !== null}
+        className={`flex flex-wrap items-center justify-between gap-x-6 gap-y-1 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 print:hidden ${chrome}`}
       >
         <div className="flex items-center gap-1">
           <DropdownMenu>
@@ -752,10 +1450,12 @@ export function WritingRoom({
                   <DropdownMenuGroup>
                     <DropdownMenuLabel>{group.label}</DropdownMenuLabel>
                     <DropdownMenuRadioGroup
-                      value={prefs.typeface}
-                      onValueChange={(value) =>
-                        updatePrefs({ typeface: storedWritingTypeface(value) })
-                      }
+                      value={current.doc.typeface}
+                      onValueChange={(value) => {
+                        const typeface = storedWritingTypeface(value);
+                        updatePrefs({ typeface });
+                        change({ doc: { ...current.doc, typeface } });
+                      }}
                     >
                       {WRITING_TYPEFACES.filter(
                         (option) => option.group === group.id,
@@ -791,10 +1491,12 @@ export function WritingRoom({
           </DropdownMenu>
           <Button
             variant="ghost"
-            aria-label={`Text size ${prefs.size}px. Change size`}
+            aria-label={`Text size ${current.doc.textSize} pt. Change size`}
             onClick={cycleSize}
           >
-            <span className="font-mono tabular-nums">{prefs.size}px</span>
+            <span className="font-mono tabular-nums">
+              {current.doc.textSize} pt
+            </span>
           </Button>
         </div>
 
@@ -877,10 +1579,11 @@ export function WritingRoom({
           <Button
             variant="ghost"
             onClick={() => {
+              setLibraryProject(current.projectId);
               setSheetOpen(true);
             }}
           >
-            Entries
+            Library
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -889,11 +1592,133 @@ export function WritingRoom({
               <Ellipsis aria-hidden="true" />
             </DropdownMenuTrigger>
             <DropdownMenuContent side="top" align="end" className="w-56">
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>
+                  Page {activeIndex + 1} of {current.doc.pages.length}
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                  disabled={current.state !== "ready"}
+                  onClick={addPage}
+                >
+                  Add a page after this one
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={current.state !== "ready" || activeIndex === 0}
+                  onClick={() => movePage(-1)}
+                >
+                  Move page earlier
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={
+                    current.state !== "ready" ||
+                    activeIndex >= current.doc.pages.length - 1
+                  }
+                  onClick={() => movePage(1)}
+                >
+                  Move page later
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={
+                    current.state !== "ready" || current.doc.pages.length < 2
+                  }
+                  onClick={() => setPageDeleteOpen(true)}
+                >
+                  Delete this page…
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>This page’s layout</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={activePage?.kind ?? "flow"}
+                  onValueChange={(value) =>
+                    setLayout(value === "canvas" ? "canvas" : "flow")
+                  }
+                >
+                  <DropdownMenuRadioItem
+                    value="flow"
+                    closeOnClick
+                    disabled={current.state !== "ready"}
+                  >
+                    Flowing text
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem
+                    value="canvas"
+                    closeOnClick
+                    disabled={current.state !== "ready"}
+                  >
+                    Free canvas
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+                {activePage?.kind === "canvas" ? (
+                  <DropdownMenuItem
+                    disabled={current.state !== "ready"}
+                    onClick={addTextBox}
+                  >
+                    Add a text box
+                  </DropdownMenuItem>
+                ) : null}
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>View</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={view}
+                  onValueChange={(value) => {
+                    const next = value === "draft" ? "draft" : "page";
+                    setView(next);
+                    updatePrefs({ view: next });
+                  }}
+                >
+                  <DropdownMenuRadioItem value="page">
+                    Printed pages
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="draft">
+                    Draft, no paper
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Appearance</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={prefs.appearance}
+                  onValueChange={(value) =>
+                    updatePrefs({
+                      appearance:
+                        value === "dark" || value === "device"
+                          ? value
+                          : "light",
+                    })
+                  }
+                >
+                  <DropdownMenuRadioItem value="light" closeOnClick>
+                    Light
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="dark" closeOnClick>
+                    Dark
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="device" closeOnClick>
+                    Match this device
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setFindOpen(true)}>
+                Find and replace
+              </DropdownMenuItem>
               <DropdownMenuItem
-                disabled={!current.body}
-                onClick={downloadEntry}
+                disabled={deviceOnly || current.state !== "ready"}
+                onClick={() => setSnapshotsOpen(true)}
               >
-                Download this entry
+                Snapshots…
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={printPages}>
+                Print or save as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled={!body} onClick={downloadEntry}>
+                Download as plain text
               </DropdownMenuItem>
               {canFullscreen ? (
                 <DropdownMenuItem
@@ -914,9 +1739,7 @@ export function WritingRoom({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 variant="destructive"
-                disabled={
-                  current.state !== "ready" || (!current.body && !inAccount)
-                }
+                disabled={current.state !== "ready" || (!body && !inAccount)}
                 onClick={() => {
                   setDeleteError("");
                   setDeleteOpen(true);
@@ -929,92 +1752,84 @@ export function WritingRoom({
         </div>
       </footer>
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent
-          side="right"
-          // Closing the list returns to the page, so writing can go on at once.
-          finalFocus={surface}
-        >
-          <SheetHeader variant="section">
-            <SheetTitle>Your writing</SheetTitle>
-            <SheetDescription>
-              {deviceOnly
-                ? "Entries kept in this browser."
-                : `${rows.length.toLocaleString()} ${rows.length === 1 ? "entry" : "entries"}, newest first.`}
-            </SheetDescription>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4">
-            {rows.length ? (
-              <ItemGroup>
-                {rows.map((row) => {
-                  const open = row.id === current.id;
-                  const preview = open
-                    ? writingPreview(current.body)
-                    : row.preview;
-                  const count = open ? words : row.wordCount;
-                  const local =
-                    syncState.pending.includes(row.id) && !sync.saved(row.id);
-                  return (
-                    <div role="listitem" key={row.id}>
-                      <Item
-                        render={
-                          <a
-                            href={`/write?entry=${encodeURIComponent(row.id)}`}
-                            aria-current={open ? "true" : undefined}
-                            onClick={(event) => {
-                              if (
-                                event.metaKey ||
-                                event.ctrlKey ||
-                                event.shiftKey ||
-                                event.button !== 0
-                              )
-                                return;
-                              event.preventDefault();
-                              openEntry(row.id);
-                            }}
-                          />
-                        }
-                      >
-                        <ItemContent>
-                          <ItemTitle>{preview || "Empty entry"}</ItemTitle>
-                          <ItemDescription>
-                            {entryDate(row.updatedAt)} · {wordLabel(count)}
-                            {open ? " · Open now" : ""}
-                            {local ? " · Not saved to your account yet" : ""}
-                          </ItemDescription>
-                        </ItemContent>
-                      </Item>
-                    </div>
-                  );
-                })}
-              </ItemGroup>
-            ) : (
-              <Empty>
-                <EmptyHeader>
-                  <EmptyTitle>No entries yet</EmptyTitle>
-                  <EmptyDescription>
-                    Start writing and your entry appears here.
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            )}
-          </div>
-          {!deviceOnly && entries.length ? (
-            <SheetFooter>
-              <Button variant="outline" onClick={() => void downloadAll()}>
-                Download all
-              </Button>
-              {exportError ? (
-                <p className="text-sm text-destructive">{exportError}</p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  One plain text file, oldest entry first.
-                </p>
-              )}
-            </SheetFooter>
-          ) : null}
-        </SheetContent>
-      </Sheet>
+      <WritingLibrary
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        onClosed={() => setFocusTick((tick) => tick + 1)}
+        deviceOnly={deviceOnly}
+        projects={projects}
+        pieces={pieces}
+        projectId={libraryProject}
+        onShowProject={setLibraryProject}
+        onOpenPiece={openEntry}
+        onNewProject={() =>
+          setNewProject({ open: true, busy: false, error: "" })
+        }
+        onAddPiece={addPiece}
+        onReorder={(projectId, ids) => void reorderPieces(projectId, ids)}
+        onMovePiece={(id, projectId) => void movePiece(id, projectId)}
+        onRenameProject={(id, title) => void renameProject(id, title)}
+        onDeleteProject={(id) => void deleteProject(id)}
+        onCompile={(id) =>
+          setCompileState({ projectId: id, busy: false, error: "" })
+        }
+        onOutline={setOutlineProject}
+        onDownloadAll={() => void downloadAll()}
+        exportError={exportError}
+      />
+
+      <WritingSnapshots
+        open={snapshotsOpen}
+        onOpenChange={setSnapshotsOpen}
+        onClosed={() => setFocusTick((tick) => tick + 1)}
+        entryId={current.id}
+        content={contentOf(current)}
+        onRestore={(content) => {
+          setActive(null);
+          setCurrent((value) =>
+            opened(value.id, content, prefs.typeface, "ready", value.projectId),
+          );
+          sync.edit(current.id, content, current.projectId);
+          setFocusTick((tick) => tick + 1);
+        }}
+      />
+
+      <NewProjectDialog
+        // A fresh form each time it opens.
+        key={newProject.open ? "new-project-open" : "new-project-closed"}
+        open={newProject.open}
+        onOpenChange={(open) => setNewProject({ open, busy: false, error: "" })}
+        busy={newProject.busy}
+        error={newProject.error}
+        onCreate={(title, template) => void createProject(title, template)}
+      />
+
+      <WritingOutline
+        open={outlineProject !== null}
+        onOpenChange={(open) => {
+          if (!open) setOutlineProject(null);
+        }}
+        project={projects.find((project) => project.id === outlineProject)}
+        pieces={pieces}
+        onCard={(id, card) => void changeCard(id, card)}
+        onOpenPiece={openEntry}
+      />
+
+      <CompileDialog
+        key={compileState.projectId ?? "compile-closed"}
+        open={compileState.projectId !== null}
+        onOpenChange={(open) => {
+          if (!open)
+            setCompileState({ projectId: null, busy: false, error: "" });
+        }}
+        project={projects.find(
+          (project) => project.id === compileState.projectId,
+        )}
+        busy={compileState.busy}
+        error={compileState.error}
+        defaultPageSize={current.doc.pageSize}
+        onCompile={(options) => void compile(options)}
+      />
 
       <AlertDialog
         open={deleteOpen}
@@ -1022,12 +1837,17 @@ export function WritingRoom({
           if (!deleting) setDeleteOpen(open);
         }}
       >
-        <AlertDialogContent finalFocus={surface}>
+        <AlertDialogContent
+          finalFocus={() => {
+            setFocusTick((tick) => tick + 1);
+            return false;
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this entry?</AlertDialogTitle>
             <AlertDialogDescription>
-              {current.body.trim()
-                ? `“${writingPreview(current.body, 60)}” will be deleted from your account. You can’t undo this.`
+              {current.title.trim() || body.trim()
+                ? `“${current.title.trim() || writingPreview(body, 60)}” will be deleted from your account. You can’t undo this.`
                 : "This entry will be deleted from your account. You can’t undo this."}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1049,6 +1869,36 @@ export function WritingRoom({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={pageDeleteOpen} onOpenChange={setPageDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete page {activeIndex + 1}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Everything on this page is deleted with it. Undo can’t bring a
+              page back.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button variant="destructive" onClick={deletePage}>
+              Delete page
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <WritingFormatSheet
+        open={formatOpen}
+        onOpenChange={setFormatOpen}
+        document={current.doc}
+        pageIndex={activeIndex}
+        onDocumentChange={(doc) => change({ doc })}
+      />
+
+      {/* Printing draws each page on its own sheet of the chosen paper. */}
+      <style>{`@page { size: ${PAGE_SIZES[(compiled?.doc ?? current.doc).pageSize].width}mm ${PAGE_SIZES[(compiled?.doc ?? current.doc).pageSize].height}mm; margin: 0; }
+@media print { [data-slot="writing-page"] { zoom: 1 !important; break-after: page; } section:last-of-type > [data-slot="writing-page"] { break-after: auto; } [data-sonner-toaster] { display: none !important; } }`}</style>
     </div>
   );
 }
@@ -1110,7 +1960,7 @@ function WritingNotices({
         </AlertDescription>
         <AlertAction>
           <Link
-            href="/login?next=/write"
+            href="/login?next=/doc"
             className={buttonVariants({ variant: "outline", size: "sm" })}
           >
             Sign in

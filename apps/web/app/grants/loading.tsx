@@ -14,12 +14,12 @@ export default function GrantsLoading() {
         <p className="font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground">
           Grants
         </p>
-        <h1
+        <p
           id="grants-loading-heading"
           className="mt-3 font-heading text-4xl font-medium tracking-tight sm:text-5xl"
         >
           Loading funding organizations…
-        </h1>
+        </p>
         <p className="mt-4 text-sm text-muted-foreground" role="status" aria-live="polite">
           Finding organizations funding creative work.
         </p>

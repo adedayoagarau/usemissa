@@ -1,0 +1,15 @@
+{
+  "asset": "public/illustrations/library-v2/compact/spots/reminders.svg",
+  "library": "Missa illustration library v2, 6 October 2026",
+  "export": "compact web SVG",
+  "method": "Built-in image generation; approved hero used as style reference in every call; contours traced with Potrace and optimised with SVGO.",
+  "styleReference": "sources/hero.png",
+  "prompt": "Use case: illustration-story. Create ONE original standalone editorial illustration for Missa's creative opportunity platform. The attached image is the APPROVED STYLE REFERENCE: match its confident black-ink cartoon drawing, supple organic contours, generous solid black shapes and warm observed character. Draw the new subject described below, not the reference scene. Premium professional illustration craft, not thin technical diagrams or generic corporate vector art. Crisp flat shapes on pure white background. Very clear black/white silhouettes. No grey, gradients, shading, texture, hatching, stippling, borders, typography, lettering, logos or watermark. Keep all objects distinct and anatomically convincing; no ambiguous intersections. At most ONE simple flat muted green accent as specified, deliberately separated from black ink so it can become an editable vector layer. The finished deliverable will be converted to themeable SVG so use solid colours and elegantly simplified closed contours. No extra objects beyond the brief.\nSubject: A small elegant old-fashioned desk bell beside a partly open envelope, with a tiny simple analog clock tucked against it. Bold black bell base and clock hand, concise charming object arrangement. One flat muted green clock face.\nComposition: landscape 5:4, 1280x1024. A single compact editorial object vignette, simplified details to read beautifully at 120px wide. Entire artwork fits comfortably in central 75%, generous white margins, no object touching edge.",
+  "sourceRaster": "sources/reminders.png",
+  "viewBox": "12.6 6.5 573.8 459.0",
+  "bytes": 3552,
+  "layers": {
+    "accent": 1,
+    "ink": 13
+  }
+}

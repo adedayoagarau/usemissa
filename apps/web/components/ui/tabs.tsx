@@ -30,7 +30,7 @@ const tabsListVariants = cva(
     variants: {
       variant: {
         default: "bg-muted",
-        line: "gap-1 bg-transparent",
+        line: "w-full justify-start gap-6 border-b border-border bg-transparent p-0 group-data-horizontal/tabs:h-10",
         section:
           "w-full justify-start gap-3 border-b border-border bg-transparent pb-1",
         // A row of day or period tiles; each trigger is a small card (Creator Home week).
@@ -93,9 +93,9 @@ function TabsTrigger({
         tabsTriggerVariants({ size }),
         "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         "group-data-[variant=tiles]/tabs-list:h-auto group-data-[variant=tiles]/tabs-list:min-h-22 group-data-[variant=tiles]/tabs-list:flex-col group-data-[variant=tiles]/tabs-list:items-stretch group-data-[variant=tiles]/tabs-list:justify-start group-data-[variant=tiles]/tabs-list:gap-2 group-data-[variant=tiles]/tabs-list:rounded-xl group-data-[variant=tiles]/tabs-list:border-2 group-data-[variant=tiles]/tabs-list:bg-muted/60 group-data-[variant=tiles]/tabs-list:p-3 group-data-[variant=tiles]/tabs-list:text-start group-data-[variant=tiles]/tabs-list:whitespace-normal group-data-[variant=tiles]/tabs-list:text-foreground group-data-[variant=tiles]/tabs-list:hover:bg-muted group-data-[variant=tiles]/tabs-list:data-active:border-primary group-data-[variant=tiles]/tabs-list:data-active:bg-background group-data-[variant=tiles]/tabs-list:data-active:shadow-none",
-        "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent",
+        "group-data-[variant=line]/tabs-list:h-full group-data-[variant=line]/tabs-list:flex-none group-data-[variant=line]/tabs-list:rounded-none group-data-[variant=line]/tabs-list:px-0 group-data-[variant=line]/tabs-list:text-muted-foreground group-data-[variant=line]/tabs-list:hover:text-foreground group-data-[variant=line]/tabs-list:data-active:text-foreground group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent",
         "data-active:bg-background data-active:text-foreground dark:data-active:border-input dark:data-active:bg-input/30 dark:data-active:text-foreground",
-        "after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
+        "after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100 group-data-[variant=line]/tabs-list:after:bottom-[-1px] group-data-[variant=line]/tabs-list:after:h-[2px] group-data-[variant=line]/tabs-list:after:rounded-full",
         className,
       )}
       {...props}

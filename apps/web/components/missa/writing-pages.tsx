@@ -1,0 +1,685 @@
+"use client";
+
+import {
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import {
+  EditorContent,
+  Extension,
+  useEditor,
+  type Editor,
+  type JSONContent,
+} from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import TextAlign from "@tiptap/extension-text-align";
+import { writingTypeface } from "@/components/missa/writing-typefaces";
+import { cn } from "@/lib/utils";
+import { SearchHighlight } from "@/lib/writing-search";
+import {
+  CanvasSheet,
+  type CanvasCallbacks,
+} from "@/components/missa/writing-canvas";
+import {
+  PAGE_SIZES,
+  emptyPage,
+  type FlowPage,
+  type JsonNode,
+  type WritingDocument,
+} from "@/lib/writing-document";
+
+/**
+ * The pages a creator writes on in the writing room. Each page is its own
+ * editor with its own format (alignment, spacing, margins, typeface), so a
+ * poem can set every page differently. Every space, tab and line break is kept
+ * as typed.
+ *
+ * Page view draws real printed pages at their paper size; draft view drops
+ * the paper and keeps the format, for small screens.
+ *
+ * In page view, text flows between pages as it is written: paragraphs that
+ * run past a page's bottom margin move to the top of a page that continues
+ * it, and come back when there is room again. A page the writer adds is never
+ * merged into another, so a page set apart for a poem stays apart.
+ */
+
+const MM = 96 / 25.4;
+
+export type PagesView = "page" | "draft";
+
+export type PageEditors = Map<string, Editor>;
+
+type PageCallbacks = {
+  onContent: (pageId: string, content: JsonNode) => void;
+  onFocus: (pageId: string, editor: Editor) => void;
+  onExit: (pageId: string, direction: "up" | "down") => boolean;
+  onRemoveEmpty: (pageId: string) => boolean;
+};
+
+/** Tab writes a tab. Escape, then Tab, leaves the page for the next control. */
+const PageKeys = Extension.create<{
+  pageId: string;
+  callbacks: { current: PageCallbacks };
+}>({
+  name: "pageKeys",
+  addOptions() {
+    return {
+      pageId: "",
+      callbacks: { current: null as unknown as PageCallbacks },
+    };
+  },
+  addStorage() {
+    return { leaving: false };
+  },
+  onUpdate() {
+    this.storage.leaving = false;
+  },
+  addKeyboardShortcuts() {
+    return {
+      Escape: () => {
+        this.storage.leaving = true;
+        return false;
+      },
+      Tab: ({ editor }) => {
+        if (this.storage.leaving) {
+          this.storage.leaving = false;
+          return false;
+        }
+        editor.view.dispatch(editor.state.tr.insertText("\t"));
+        return true;
+      },
+      ArrowDown: ({ editor }) => {
+        const { selection, doc } = editor.state;
+        if (!selection.empty || selection.$head.after(1) !== doc.content.size)
+          return false;
+        if (!editor.view.endOfTextblock("down")) return false;
+        return this.options.callbacks.current.onExit(
+          this.options.pageId,
+          "down",
+        );
+      },
+      ArrowUp: ({ editor }) => {
+        const { selection } = editor.state;
+        if (!selection.empty || selection.$head.before(1) !== 0) return false;
+        if (!editor.view.endOfTextblock("up")) return false;
+        return this.options.callbacks.current.onExit(this.options.pageId, "up");
+      },
+      Backspace: ({ editor }) => {
+        const { selection } = editor.state;
+        if (!selection.empty || selection.from > 1 || !editor.isEmpty)
+          return false;
+        return this.options.callbacks.current.onRemoveEmpty(
+          this.options.pageId,
+        );
+      },
+    };
+  },
+});
+
+/** The editor setup every page and text box shares. */
+export function writingExtensions() {
+  return [
+    StarterKit.configure({
+      code: false,
+      codeBlock: false,
+      link: false,
+      heading: { levels: [1, 2] },
+    }),
+    TextAlign.configure({
+      types: ["heading", "paragraph"],
+      alignments: ["left", "center", "right", "justify"],
+    }),
+    SearchHighlight,
+  ];
+}
+
+export const WRITING_TEXT_CLASS =
+  "outline-none [&_p]:m-0 [&_p]:min-h-[1lh] [&_h1]:m-0 [&_h1]:text-[1.6em] [&_h1]:font-medium [&_h2]:m-0 [&_h2]:text-[1.25em] [&_h2]:font-medium [&_blockquote]:ms-[2em] [&_blockquote]:italic [&_hr]:my-[1lh] [&_hr]:border-border [&_ul]:ps-[1.5em] [&_ul]:list-disc [&_ol]:ps-[1.5em] [&_ol]:list-decimal";
+
+/** Tab writes a tab in a text box too; Escape, then Tab, leaves it. */
+export const TabKeys = Extension.create({
+  name: "tabKeys",
+  addStorage() {
+    return { leaving: false };
+  },
+  onUpdate() {
+    this.storage.leaving = false;
+  },
+  addKeyboardShortcuts() {
+    return {
+      Escape: () => {
+        this.storage.leaving = true;
+        return false;
+      },
+      Tab: ({ editor }) => {
+        if (this.storage.leaving) {
+          this.storage.leaving = false;
+          return false;
+        }
+        editor.view.dispatch(editor.state.tr.insertText("\t"));
+        return true;
+      },
+    };
+  },
+});
+
+export function viewMounted(editor: Editor | null): boolean {
+  if (!editor || editor.isDestroyed) return false;
+  try {
+    return Boolean(editor.view.dom);
+  } catch {
+    return false;
+  }
+}
+
+/** Whether the editor's view is in the page; nothing may touch the view before. */
+export function useViewMounted(editor: Editor | null): boolean {
+  return useSyncExternalStore(
+    (notify) => {
+      if (!editor) return () => undefined;
+      editor.on("mount", notify);
+      editor.on("unmount", notify);
+      editor.on("destroy", notify);
+      return () => {
+        editor.off("mount", notify);
+        editor.off("unmount", notify);
+        editor.off("destroy", notify);
+      };
+    },
+    () => viewMounted(editor),
+    () => false,
+  );
+}
+
+export function pageTextStyle(
+  document: WritingDocument,
+  page: FlowPage,
+): CSSProperties {
+  const format = page.format;
+  return {
+    fontSize: `${format.textSize ?? document.textSize}pt`,
+    lineHeight: format.lineHeight,
+    letterSpacing: `${format.letterSpacing}em`,
+    textAlign: format.align,
+    tabSize: 4,
+  };
+}
+
+function PageSheet({
+  document,
+  page,
+  index,
+  view,
+  scale,
+  spellcheck,
+  readOnly,
+  callbacks,
+  editors,
+  markers,
+}: {
+  document: WritingDocument;
+  page: FlowPage;
+  index: number;
+  view: PagesView;
+  scale: number;
+  spellcheck: boolean;
+  readOnly: boolean;
+  callbacks: { current: PageCallbacks };
+  editors: PageEditors;
+  markers: Map<string, HTMLDivElement>;
+}) {
+  const editor = useEditor(
+    {
+      immediatelyRender: true,
+      editable: !readOnly,
+      content: page.content as JSONContent,
+      parseOptions: { preserveWhitespace: "full" },
+      extensions: [
+        ...writingExtensions(),
+        PageKeys.configure({ pageId: page.id, callbacks }),
+      ],
+      editorProps: {
+        attributes: {
+          "aria-label": `Page ${index + 1}`,
+          "aria-describedby": "writing-page-keys",
+          "data-slot": "writing-page-text",
+          class: WRITING_TEXT_CLASS,
+        },
+      },
+      onUpdate: ({ editor: current }) =>
+        callbacks.current.onContent(page.id, current.getJSON() as JsonNode),
+      onFocus: ({ editor: current }) =>
+        callbacks.current.onFocus(page.id, current),
+    },
+    [page.id],
+  );
+  const mounted = useViewMounted(editor);
+
+  useEffect(() => {
+    if (!editor || !mounted || !viewMounted(editor)) return;
+    editors.set(page.id, editor);
+    return () => {
+      if (editors.get(page.id) === editor) editors.delete(page.id);
+    };
+  }, [editor, editors, mounted, page.id]);
+
+  useEffect(() => {
+    if (editor && mounted && viewMounted(editor)) editor.setEditable(!readOnly);
+  }, [editor, mounted, readOnly]);
+
+  useEffect(() => {
+    if (editor && mounted && viewMounted(editor))
+      editor.view.dom.setAttribute("spellcheck", String(spellcheck));
+  }, [editor, mounted, spellcheck]);
+
+  // Text flows on to the next page by itself. Only a first paragraph taller
+  // than the whole page can't flow, and is marked so the writer can break it.
+  const marker = useRef<HTMLDivElement>(null);
+  const [tooTall, setTooTall] = useState(false);
+  useEffect(() => {
+    if (!editor || !mounted || view !== "page" || !viewMounted(editor)) return;
+    const measure = () => {
+      const limit = marker.current?.getBoundingClientRect().top;
+      if (limit === undefined || !viewMounted(editor)) return;
+      const first = editor.view.dom.firstElementChild;
+      setTooTall(
+        Boolean(first && first.getBoundingClientRect().bottom > limit + 1),
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(editor.view.dom);
+    return () => observer.disconnect();
+  }, [editor, mounted, view, document.pageSize, page.format]);
+
+  const size = PAGE_SIZES[document.pageSize];
+  const { margins } = page.format;
+  const face = writingTypeface(page.format.typeface ?? document.typeface);
+  const paged = view === "page";
+  const overflowing = paged && tooTall;
+
+  return (
+    <section
+      aria-label={`Page ${index + 1}`}
+      className="flex w-full flex-col items-center gap-2"
+    >
+      <div
+        data-slot="writing-page"
+        className={cn(
+          "relative bg-background text-foreground",
+          paged
+            ? "shadow-sm ring-1 ring-border print:shadow-none print:ring-0"
+            : "w-full max-w-2xl",
+        )}
+        style={
+          paged
+            ? {
+                width: `${size.width}mm`,
+                minHeight: `${size.height}mm`,
+                padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm`,
+                zoom: scale,
+              }
+            : { padding: "2rem 1rem" }
+        }
+      >
+        <div className={face.className} style={pageTextStyle(document, page)}>
+          <EditorContent editor={editor} />
+        </div>
+        {paged ? (
+          <div
+            ref={(element) => {
+              if (element) markers.set(page.id, element);
+              else if (markers.get(page.id) === marker.current)
+                markers.delete(page.id);
+              marker.current = element;
+            }}
+            aria-hidden="true"
+            className={cn(
+              "pointer-events-none absolute inset-x-0 border-t border-dashed print:hidden",
+              overflowing ? "border-warning" : "border-transparent",
+            )}
+            style={{ top: `${size.height - margins.bottom}mm` }}
+          />
+        ) : null}
+      </div>
+      {overflowing && !readOnly ? (
+        <p className="max-w-prose text-center text-sm text-muted-foreground print:hidden">
+          The first paragraph on page {index + 1} is longer than the page. Press
+          Enter where you’d like it to break, and the rest moves to the next
+          page.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+export function WritingPages({
+  document,
+  onChange,
+  view,
+  spellcheck,
+  readOnly,
+  editors,
+  onActiveEditor,
+  before,
+}: {
+  before?: ReactNode;
+  document: WritingDocument;
+  onChange: (document: WritingDocument) => void;
+  view: PagesView;
+  spellcheck: boolean;
+  readOnly: boolean;
+  editors: PageEditors;
+  onActiveEditor: (pageId: string, editor: Editor) => void;
+}) {
+  const latest = useRef(document);
+  const desk = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    latest.current = document;
+  }, [document]);
+
+  const canvasCallbacks = useRef<CanvasCallbacks>({
+    onBlocks: () => undefined,
+    onFocus: () => undefined,
+  });
+  useEffect(() => {
+    canvasCallbacks.current = {
+      onBlocks: (pageId, blocks) => {
+        const current = latest.current;
+        const next = {
+          ...current,
+          pages: current.pages.map((page) =>
+            page.id === pageId ? { ...page, blocks } : page,
+          ),
+        };
+        latest.current = next;
+        onChange(next);
+      },
+      onFocus: onActiveEditor,
+    };
+  }, [onActiveEditor, onChange]);
+
+  const callbacks = useRef<PageCallbacks>({
+    onContent: () => undefined,
+    onFocus: () => undefined,
+    onExit: () => false,
+    onRemoveEmpty: () => false,
+  });
+  useEffect(() => {
+    callbacks.current = {
+      onContent: (pageId, content) => {
+        const current = latest.current;
+        const next = {
+          ...current,
+          pages: current.pages.map((page) =>
+            page.id === pageId ? { ...page, content } : page,
+          ),
+        };
+        latest.current = next;
+        onChange(next);
+      },
+      onFocus: onActiveEditor,
+      onExit: (pageId, direction) => {
+        const pages = latest.current.pages;
+        const index = pages.findIndex((page) => page.id === pageId);
+        const target = pages[direction === "down" ? index + 1 : index - 1];
+        const editor = target ? editors.get(target.id) : undefined;
+        if (!editor) return false;
+        editor.commands.focus(direction === "down" ? "start" : "end");
+        return true;
+      },
+      onRemoveEmpty: (pageId) => {
+        const pages = latest.current.pages;
+        const index = pages.findIndex((page) => page.id === pageId);
+        if (index < 1) return false;
+        const previous = pages[index - 1]!;
+        const next = {
+          ...latest.current,
+          pages: pages.filter((page) => page.id !== pageId),
+        };
+        latest.current = next;
+        onChange(next);
+        editors.get(previous.id)?.commands.focus("end");
+        return true;
+      },
+    };
+  }, [editors, onActiveEditor, onChange]);
+
+  useEffect(() => {
+    const element = desk.current;
+    // Canvas pages keep their paper in both views, so the scale is kept in both.
+    if (!element) return;
+    const size = PAGE_SIZES[document.pageSize];
+    const resize = () => {
+      const available = element.clientWidth - 32;
+      setScale(Math.max(0.3, Math.min(1.25, available / (size.width * MM))));
+    };
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [document.pageSize, view]);
+
+  const [markers] = useState(() => new Map<string, HTMLDivElement>());
+  // A page that just sent text on is not refilled at once, so a paragraph
+  // on the edge never bounces between two pages.
+  const pushedAt = useRef(new Map<string, number>());
+  const frame = useRef(0);
+
+  /**
+   * Moves the paragraphs from `fromBlock` on to the top of the page that
+   * continues this one. When there is no such page yet, it adds an empty one
+   * first and leaves the text in place; the move happens once that page is on
+   * screen, in one step with the caret, so no keystroke lands on the wrong page.
+   */
+  function push(index: number, fromBlock: number): "moved" | "waiting" {
+    const pages = latest.current.pages;
+    const page = pages[index]!;
+    const next = pages[index + 1];
+    const nextEditor = next?.continues ? editors.get(next.id) : undefined;
+    if (!next?.continues) {
+      const created: FlowPage = { ...emptyPage(page.format), continues: true };
+      const after = [...pages];
+      after.splice(index + 1, 0, created);
+      pushedAt.current.set(created.id, performance.now());
+      const updated = { ...latest.current, pages: after };
+      latest.current = updated;
+      onChange(updated);
+      return "waiting";
+    }
+    if (!nextEditor || !viewMounted(nextEditor)) return "waiting";
+    const editor = editors.get(page.id)!;
+    const state = editor.state;
+    let pos = 0;
+    state.doc.forEach((_node, offset, child) => {
+      if (child === fromBlock) pos = offset;
+    });
+    const moved = (state.doc.content.cut(pos).toJSON() ?? []) as JsonNode[];
+    const caret =
+      editor.isFocused && state.selection.from >= pos
+        ? state.selection.from - pos
+        : null;
+    pushedAt.current.set(page.id, performance.now());
+    // A page made for this move holds one empty paragraph; the text replaces it.
+    const replaceEmpty = nextEditor.isEmpty;
+    editor.view.dispatch(
+      state.tr
+        .delete(pos, state.doc.content.size)
+        .setMeta("addToHistory", false),
+    );
+    nextEditor
+      .chain()
+      .setMeta("addToHistory", false)
+      .insertContentAt(
+        replaceEmpty ? { from: 0, to: nextEditor.state.doc.content.size } : 0,
+        moved as JSONContent[],
+        { updateSelection: false },
+      )
+      .run();
+    if (caret !== null) nextEditor.commands.focus(caret);
+    return "moved";
+  }
+
+  /** Brings the first paragraph of the continuing page back to the end of this page. */
+  function pull(index: number) {
+    const pages = latest.current.pages;
+    const page = pages[index]!;
+    const next = pages[index + 1]!;
+    const editor = editors.get(page.id)!;
+    const nextEditor = editors.get(next.id)!;
+    const nextState = nextEditor.state;
+    const node = nextState.doc.child(0);
+    const end = editor.state.doc.content.size;
+    const caret =
+      nextEditor.isFocused && nextState.selection.from <= node.nodeSize
+        ? nextState.selection.from
+        : null;
+    const emptyPageLeft = nextState.doc.childCount === 1;
+    if (!(emptyPageLeft && nextEditor.isEmpty)) {
+      editor
+        .chain()
+        .setMeta("addToHistory", false)
+        .insertContentAt(end, node.toJSON() as JSONContent, {
+          updateSelection: false,
+        })
+        .run();
+    }
+    if (emptyPageLeft) {
+      const current = latest.current;
+      const updated = {
+        ...current,
+        pages: current.pages.filter((item) => item.id !== next.id),
+      };
+      latest.current = updated;
+      onChange(updated);
+    } else {
+      nextEditor.view.dispatch(
+        nextState.tr.delete(0, node.nodeSize).setMeta("addToHistory", false),
+      );
+    }
+    if (caret !== null) editor.commands.focus(end + caret);
+    else if (emptyPageLeft && nextEditor.isFocused)
+      editor.commands.focus("end");
+  }
+
+  /**
+   * One step of flowing text between pages: "moved" when it moved text, so the
+   * caller can look again; "waiting" when a page is still appearing; "done".
+   */
+  function flowStep(): "moved" | "waiting" | "done" {
+    const pages = latest.current.pages;
+    for (let index = 0; index < pages.length; index += 1) {
+      const page = pages[index]!;
+      // Text never flows into or out of a canvas page.
+      if (page.kind === "canvas") continue;
+      const editor = editors.get(page.id);
+      const marker = markers.get(page.id);
+      // A page still appearing is measured on the next frame.
+      if (!editor || !marker || !viewMounted(editor)) return "waiting";
+      const limit = marker.getBoundingClientRect().top;
+      const blocks = [...editor.view.dom.children];
+      const over = blocks.findIndex(
+        (block) => block.getBoundingClientRect().bottom > limit + 1,
+      );
+      if (over > 0) return push(index, over);
+      const next = pages[index + 1];
+      if (over !== -1 || !next?.continues) continue;
+      const nextEditor = editors.get(next.id);
+      if (!nextEditor || !viewMounted(nextEditor)) return "waiting";
+      // An empty page the text flowed onto goes, unless the writer is on it.
+      const fresh =
+        performance.now() - (pushedAt.current.get(next.id) ?? 0) < 1000;
+      if (nextEditor.isEmpty && !nextEditor.isFocused && !fresh) {
+        pull(index);
+        return "moved";
+      }
+      if (performance.now() - (pushedAt.current.get(page.id) ?? 0) < 400)
+        continue;
+      const first = nextEditor.view.dom.firstElementChild;
+      const last = blocks.at(-1);
+      if (!first || !last) continue;
+      const style = getComputedStyle(first);
+      const need =
+        first.getBoundingClientRect().height +
+        (parseFloat(style.marginTop) + parseFloat(style.marginBottom)) * scale;
+      const room = limit - last.getBoundingClientRect().bottom;
+      if (need + 4 <= room) {
+        pull(index);
+        return "moved";
+      }
+    }
+    return "done";
+  }
+
+  // Text flows after every change, and when the paper, format or zoom change.
+  useEffect(() => {
+    if (view !== "page" || readOnly) return;
+    cancelAnimationFrame(frame.current);
+    let frames = 0;
+    const run = () => {
+      // Each step changes the page at once, so the next one measures afresh.
+      for (let moves = 0; moves < 100; moves += 1) {
+        const step = flowStep();
+        if (step === "done") return;
+        if (step === "waiting") {
+          if (frames++ < 30) frame.current = requestAnimationFrame(run);
+          return;
+        }
+      }
+    };
+    frame.current = requestAnimationFrame(run);
+    return () => cancelAnimationFrame(frame.current);
+    // flowStep reads the latest pages through refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [document, view, readOnly, scale]);
+
+  return (
+    <div
+      ref={desk}
+      className={cn(
+        "flex min-h-full flex-col items-center gap-8 px-4 py-8 print:gap-0 print:p-0",
+        view === "page" ? "bg-muted/40 print:bg-transparent" : "",
+      )}
+    >
+      {before}
+      <p id="writing-page-keys" className="sr-only">
+        Tab writes a tab. To leave the page, press Escape, then Tab.
+      </p>
+      {document.pages.map((page, index) =>
+        page.kind === "canvas" ? (
+          <CanvasSheet
+            key={page.id}
+            document={document}
+            page={page}
+            index={index}
+            scale={scale}
+            spellcheck={spellcheck}
+            readOnly={readOnly}
+            editors={editors}
+            callbacks={canvasCallbacks}
+          />
+        ) : (
+          <PageSheet
+            key={page.id}
+            document={document}
+            page={page}
+            index={index}
+            view={view}
+            scale={scale}
+            spellcheck={spellcheck}
+            readOnly={readOnly}
+            callbacks={callbacks}
+            editors={editors}
+            markers={markers}
+          />
+        ),
+      )}
+    </div>
+  );
+}

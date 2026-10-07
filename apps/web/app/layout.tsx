@@ -9,6 +9,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AnalyticsProvider } from "@/components/analytics-provider";
 import { SiteBeacon } from "@/components/site-beacon";
 import { CookieConsent } from "@/components/missa/cookie-consent";
+import { ShortlistSync } from "@/components/missa/homepage-shortlist";
 import { WebMcpProvider } from "@/components/missa/webmcp-provider";
 import { consentAnsweredScript } from "@/lib/analyticsConsent";
 import { DEFAULT_DESCRIPTION, SITE_NAME } from "@/lib/seo";
@@ -112,6 +113,7 @@ export default function RootLayout({
           <SpellingProvider>
             <AnalyticsProvider>{children}</AnalyticsProvider>
           </SpellingProvider>
+          <ShortlistSync />
           <Toaster />
         </ThemeProvider>
       </body>
