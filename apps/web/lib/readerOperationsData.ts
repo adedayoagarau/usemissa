@@ -221,7 +221,6 @@ export function compatibilityDistributionInputs(input: { radar: Radar; workspace
   return { submissions, readers };
 }
 
-/** CSV of every assignment in the round: submission, reader, state, score, recorded time. */
 /**
  * The date a round asks readers to finish by. Open reads carry it; the
  * organization record keeps it too, so a date set before any read is assigned
@@ -231,6 +230,7 @@ export function roundDueDateFor(workspace: Pick<WorkspaceEngine, 'roundDueDate'>
   return workspace.roundDueDate(roundId) ?? organization?.customization?.roundDueDates?.[roundId];
 }
 
+/** CSV of every assignment in the round: submission, reader, state, score, recorded time. */
 export function roundScoresCsv(view: RoundOperationsView, assignments: Array<{ submissionId: string; reviewerAccountId: string; completedAt?: string; recusedAt?: string; score?: number; recordedAt?: string; rubricVersion?: number; criterionScores?: Record<string, number> }>): string {
   const escape = (value: string | number | undefined) => { const text = value === undefined ? '' : String(value); return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text; };
   const readerLabel = new Map(view.readers.map((reader) => [reader.reviewerAccountId, reader.label]));

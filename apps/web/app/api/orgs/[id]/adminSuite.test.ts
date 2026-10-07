@@ -592,8 +592,15 @@ test('a due date set before any read is assigned is kept and applied to later re
   const roundParams = { params: Promise.resolve({ id: data.organizationId, roundId: round.id }) };
   const saved = await (await patchRound(requestAs(owner, '/round', { method: 'PATCH', body: JSON.stringify({ dueAt: '2030-03-01' }) }), roundParams)).json() as { assignments: number };
   assert.equal(saved.assignments, 0, 'no open reads yet');
-  const assigned = await assignRead(requestAs(owner, '/assign', json({ submissionId: data.unassigned.id, reviewerAccountId: data.accounts.get('reviewer')! })), roundParams);
-  assert.equal(assigned.status, 201);
+  // A reader on another email domain, so the conflict rules allow the read.
+  const radar = await getEngine();
+  const outsideEmail = 'due-date-reader@independent-readers.test';
+  const outside = [...radar.store.accounts.values()].find((account) => account.email === outsideEmail) ?? radar.signUp(outsideEmail, 'due-date-reader-password', 'Due Date Reader').account;
+  if (!radar.store.memberships.some((membership) => membership.accountId === outside.id && membership.organizationId === data.organizationId)) {
+    radar.store.memberships.push({ accountId: outside.id, organizationId: data.organizationId, role: 'reviewer', grantedAt: new Date().toISOString() });
+  }
+  const assigned = await assignRead(requestAs(owner, '/assign', json({ submissionId: data.unassigned.id, reviewerAccountId: outside.id })), roundParams);
+  assert.equal(assigned.status, 201, await assigned.clone().text());
   const assignment = await assigned.json() as { id: string };
   assert.equal(workspace.store.reviewAssignments.get(assignment.id)!.expiresAt, '2030-03-01T23:59:59.000Z');
   const view = await (await getReaderOperations(requestAs(owner, `/reader-operations?roundId=${round.id}`), { params: Promise.resolve({ id: data.organizationId }) })).json() as { round: { dueAt?: string } };

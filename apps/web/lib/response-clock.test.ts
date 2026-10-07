@@ -19,7 +19,7 @@ test("observed data needs at least five reports", () => {
   assert.equal(thin.state, "no-window");
   const enough = responseClock({ submittedOn: "2026-07-01", today: "2026-10-01", observed: { p50Days: 30, p90Days: 45, sampleSize: 12 } });
   assert.equal(enough.state, "time-to-query");
-  assert.equal(enough.basis, "Observed from 12 Missa creators");
+  assert.equal(enough.basis, "From 12 people tracking it on Missa");
 });
 
 test("no reply promised", () => {

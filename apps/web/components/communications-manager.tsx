@@ -44,7 +44,7 @@ interface Preview { submissionId: string; submitterLabel: string; to?: string; s
 
 const MERGE_FIELDS: Array<{ token: string; meaning: string }> = [
   { token: '{{submitterName}}', meaning: 'first name when known' },
-  { token: '{{workTitles}}', meaning: 'the Works this letter is about' },
+  { token: '{{workTitles}}', meaning: 'the pieces this letter is about' },
   { token: '{{opportunityTitle}}', meaning: 'the opportunity' },
   { token: '{{organizationName}}', meaning: 'your display name' },
   { token: '{{stageLabel}}', meaning: 'your word for the stage' },
@@ -117,7 +117,7 @@ export function CommunicationsManager(props: {
           {batches.length === 0 ? (
             <Empty variant="bordered" size="spacious"><EmptyHeader><EmptyTitle>No letters yet</EmptyTitle><EmptyDescription>Compose the first one from a template. Nothing is sent until it is approved.</EmptyDescription></EmptyHeader>{props.canManage ? <Button type="button" variant="outline" onClick={() => setTab('compose')}><PenLine aria-hidden="true" />Compose a letter</Button> : null}</Empty>
           ) : (
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)]">
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)]">
               <ol className="divide-y divide-border rounded-lg border border-border" aria-label="Letter batches">
                 {batches.map((batch) => (
                   <li key={batch.id}>

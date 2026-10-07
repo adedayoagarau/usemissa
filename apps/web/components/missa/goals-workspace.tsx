@@ -299,9 +299,14 @@ export function GoalsWorkspace() {
       className="mx-auto max-w-7xl px-5 py-8 md:px-10 md:py-12"
     >
       <header className="mb-8 flex flex-wrap items-end justify-between gap-5">
-        <h1 className="max-w-xl text-3xl leading-tight font-semibold tracking-tight md:text-4xl">
-          Let’s smash your creative goals together!
-        </h1>
+        <div className="max-w-xl">
+          <h1 className="text-3xl leading-tight font-semibold tracking-tight md:text-4xl">
+            Pick your number.
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Some writers aim for 100 rejections a year. Some aim for one yes.
+          </p>
+        </div>
         <Button
           variant={step === null ? "default" : "outline"}
           disabled={busy}
@@ -954,10 +959,10 @@ export function GoalsWorkspace() {
                   </ul>
                 ) : (
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Any opportunity in{" "}
+                    Any call for{" "}
                     {current.discipline
                       ? label(current.discipline)
-                      : "your practice"}
+                      : "what you make"}
                     .
                   </p>
                 )}

@@ -207,7 +207,7 @@ export async function GET() {
   } else if (practices.length > 0) {
     nextAction = {
       kind: "explore-matches",
-      label: `Explore ${practices.join(" & ")} opportunities`,
+      label: `Explore ${practices.join(" & ")} opportunities`, // missa-language-allow: "practices" is the variable; the label shows discipline names
       description: "Opportunities based on the work you make.",
       href: "/tracker",
     };

@@ -28,7 +28,7 @@ async function getRelatedProfile(
       ? await getPublicProfileById(opportunity.organizationId)
       : await getPublicProfileForOpportunity(opportunity.id);
   } catch (error) {
-    console.warn('Related Organization profile is unavailable; rendering the Opportunity without it.', error);
+    console.warn('Related organization profile is unavailable; rendering the opportunity without it.', error);
     return null;
   }
 }
@@ -39,8 +39,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     const opportunity = await getPublicOpportunityDetail(id);
     if (!opportunity || !PUBLIC_STATUSES.has(opportunity.status)) {
       return pageMetadata({
-        title: 'Opportunity not found',
-        description: 'This Missa opportunity is no longer publicly available.',
+        title: 'Call not found',
+        description: 'This call isn’t listed on Missa anymore.',
         path: `/opportunities/${id}`,
         noIndex: true,
       });

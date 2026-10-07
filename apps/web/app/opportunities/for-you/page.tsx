@@ -8,7 +8,7 @@ import {RecommendationsWorkspace} from '@/components/missa/recommendations-works
 export const metadata = {
   title: 'Opportunities for you',
   description:
-    'Opportunities matched to your practice, with the official source kept in view.',
+    "Opportunities matched to what you make, with the organizer's page kept in view.",
   robots: { index: false, follow: false },
 };
 

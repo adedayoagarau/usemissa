@@ -18,6 +18,7 @@ import { MissaWordmark } from "@/components/missa-wordmark";
 import { useBrowserSession, type BrowserSession } from "@/lib/browserSession";
 import { rememberSignedIn } from "@/lib/signedInHint";
 import styles from "./missa-site-header.module.css";
+import { Sp } from "@/components/missa/spelling";
 
 export type HeaderSession = BrowserSession;
 
@@ -81,7 +82,7 @@ export function MissaSiteHeader({
               href={link.href}
               aria-current={link.label === (current === "Magazine rankings" ? "Rankings" : current) ? "page" : undefined}
             >
-              {link.label}
+              <Sp>{link.label}</Sp>
             </Link>
           ))}
         </nav>
@@ -115,7 +116,7 @@ export function MissaSiteHeader({
                       <UserRound aria-hidden="true" /> Profile
                     </DropdownMenuItem>
                     <DropdownMenuItem render={<Link href="/tracker" />}>
-                      <Bookmark aria-hidden="true" /> My applications
+                      <Bookmark aria-hidden="true" /> Tracker
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
@@ -129,7 +130,7 @@ export function MissaSiteHeader({
             <div className={styles.authActions}>
               <Link href="/login?next=%2Fopportunities">Log in</Link>
               <Link href="/signup" className={styles.createButton}>
-                Create account
+                Get Missa free
               </Link>
             </div>
           )}
@@ -159,7 +160,7 @@ export function MissaSiteHeader({
               aria-current={link.label === (current === "Magazine rankings" ? "Rankings" : current) ? "page" : undefined}
               onClick={() => setMobileOpen(false)}
             >
-              {link.label}
+              <Sp>{link.label}</Sp>
             </Link>
           ))}
           {!session ? (
@@ -175,7 +176,7 @@ export function MissaSiteHeader({
                 className={styles.mobileCreate}
                 onClick={() => setMobileOpen(false)}
               >
-                Create account
+                Get Missa free
               </Link>
             </>
           ) : null}
@@ -185,7 +186,7 @@ export function MissaSiteHeader({
                 Profile
               </Link>
               <Link href="/tracker" onClick={() => setMobileOpen(false)}>
-                My applications
+                Tracker
               </Link>
               <button
                 type="button"
@@ -194,7 +195,7 @@ export function MissaSiteHeader({
               >
                 Log out
               </button>
-              {logoutError ? <p className={styles.mobileError} role="alert">Could not log out. Try again.</p> : null}
+              {logoutError ? <p className={styles.mobileError} role="alert">Couldn’t log out. Try again.</p> : null}
             </>
           ) : null}
         </nav>

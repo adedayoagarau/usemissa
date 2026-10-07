@@ -29,6 +29,8 @@ const webMcpBlockedRoutes = [
   "/organization/:organizationId/settings/:path*",
   "/organization/:organizationId/submissions/:submissionId/:path*",
   "/workspace/settings/:path*",
+  // The writing room: no browser agent tools where a creator writes.
+  "/write",
 ];
 
 const nextConfig: NextConfig = {
@@ -45,6 +47,14 @@ const nextConfig: NextConfig = {
     "../../",
   ),
   allowedDevOrigins: ["127.0.0.1", "10.0.0.119", ...previewHosts],
+  async redirects() {
+    // Sign-up is open, so the waitlist and its confirmation page now lead
+    // there. Campaign tags on old links carry through.
+    return [
+      { source: "/waitlist", destination: "/signup", permanent: true },
+      { source: "/thank-you", destination: "/signup", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {

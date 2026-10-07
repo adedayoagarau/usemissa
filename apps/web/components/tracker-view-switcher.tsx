@@ -92,7 +92,7 @@ export function TrackerViewSwitcher({
               <div className="mt-2 space-y-2">{items.map((item) => <TrackerItemRow key={item.opportunityId} userId={userId} item={item} works={works} />)}</div>
             </div>
           ))}
-          {works.length === 0 && <p className="mt-4 text-sm text-muted-foreground">Add a Work in Library to connect submissions to the piece you sent.</p>}
+          {works.length === 0 && <p className="mt-4 text-sm text-muted-foreground">Add a piece to Library to connect each submission to what you sent.</p>}
         </>}
 
       {mode === 'type' &&

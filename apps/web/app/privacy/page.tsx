@@ -11,7 +11,7 @@ import {
 export const metadata: Metadata = {
   title: 'Privacy',
   description:
-    'What Missa stores when you browse, create an account, save an Opportunity, or publish a portfolio.',
+    'What Missa stores when you browse, create an account, save an opportunity, or publish a portfolio.',
   alternates: { canonical: 'https://www.usemissa.com/privacy' },
 };
 
@@ -24,13 +24,13 @@ export default function PrivacyPage() {
       <div className="mt-10 space-y-8 text-base leading-7 text-muted-foreground">
         <section>
           <h2 className="font-heading text-2xl font-medium text-foreground">Browsing without an account</h2>
-          <p className="mt-3">You can browse the catalogue, directory and rankings without signing in. Detailed product analytics only start if you accept them, and declining changes nothing about what you can use. If you accept, Missa records a first-party session identifier and basic product analytics, such as which pages and filters are used, so we can tell what is working. We do not use it to build a public profile of you, and we do not sell personal data or run advertising.</p>
+          <p className="mt-3">You can browse the catalog, directory and rankings without signing in. Detailed product analytics only start if you accept them, and declining changes nothing about what you can use. If you accept, Missa records a first-party session identifier and basic product analytics, such as which pages and filters are used, so we can tell what is working. We do not use it to build a public profile of you, and we do not sell personal data or run advertising.</p>
         </section>
         <section>
           <h2 className="font-heading text-2xl font-medium text-foreground">Cookies and analytics</h2>
           <p className="mt-3">A banner asks for your analytics decision on your first visit. Turning analytics off stops both the third-party analytics client and Missa&apos;s own event records; turning it on starts them. The cookieless visit counts described below are not affected by this choice. Accepting is never required to use Missa. The only thing stored on your device before you choose is a record of the choice itself, so the banner does not reappear.</p>
           <p className="mt-3">Separately, Missa counts visits without cookies so we know how many people use the site. For each page you open we record the page address, the site that linked you here, the country from your connection, your device type and browser, and page-speed and error measurements. To tell one visit from another we use a code made by scrambling your IP address and browser details with a random key that changes every day and is then deleted. That code cannot be turned back into your IP address, cannot follow you from one day to the next, and nothing is stored on your device. We never store your IP address or browser details themselves. If your browser sends a Global Privacy Control signal, these visits are not counted.</p>
-          <p className="mt-3">Signing in, saving an Opportunity, or submitting an application still produces account and operational records. Those are part of the service you asked for, not optional analytics.</p>
+          <p className="mt-3">Signing in, saving an opportunity, or submitting an application still produces account and operational records. Those are part of the service you asked for, not optional analytics.</p>
           <AnalyticsChoiceControl />
         </section>
         <section>
@@ -39,15 +39,15 @@ export default function PrivacyPage() {
         </section>
         <section>
           <h2 className="font-heading text-2xl font-medium text-foreground">Saves, applications and preparation</h2>
-          <p className="mt-3">When you save an Opportunity, follow a deadline, or prepare application material, that content is stored on your account so it is there when you return. This work is private by default. Missa does not send an application, and does not contact an Organization on your behalf, unless you take that step with the official source yourself.</p>
+          <p className="mt-3">When you save an opportunity, follow a deadline, or prepare application material, that content is stored on your account so it is there when you return. This work is private by default. Missa does not send an application, and does not contact an organization on your behalf, unless you take that step with the official source yourself.</p>
         </section>
         <section>
           <h2 className="font-heading text-2xl font-medium text-foreground">Portfolio</h2>
           <p className="mt-3">If you publish a portfolio, the details you add there are visible to anyone with the link. You choose what to include, and you can change or remove it. Anything you leave unpublished stays out of your public portfolio.</p>
         </section>
         <section>
-          <h2 className="font-heading text-2xl font-medium text-foreground">Submissions to Organizations</h2>
-          <p className="mt-3">When you submit to an Organization through Missa, the material and details you choose to include are shared with that Organization and the reviewers it assigns. The Organization then handles them under its own privacy policy. Missa keeps a receipt of the submission on your account.</p>
+          <h2 className="font-heading text-2xl font-medium text-foreground">Submissions to organizations</h2>
+          <p className="mt-3">When you submit to an organization through Missa, the material and details you choose to include are shared with that organization and the reviewers it assigns. The organization then handles them under its own privacy policy. Missa keeps a receipt of the submission on your account.</p>
         </section>
         <section>
           <h2 className="font-heading text-2xl font-medium text-foreground">Connected services</h2>
@@ -76,7 +76,7 @@ export default function PrivacyPage() {
         </section>
         <section>
           <h2 className="font-heading text-2xl font-medium text-foreground">Retention and your choices</h2>
-          <p className="mt-3">We keep account records while your account is open. Closing your account from Profile deactivates it and signs you out. To have your personal data deleted, email us and we will delete or anonymize it within 30 days, except billing records we must keep by law and backups that expire on their normal cycle. Submissions already sent to an Organization stay with that Organization.</p>
+          <p className="mt-3">We keep account records while your account is open. Closing your account from Profile deactivates it and signs you out. To have your personal data deleted, email us and we will delete or anonymize it within 30 days, except billing records we must keep by law and backups that expire on their normal cycle. Submissions already sent to an organization stay with that organization.</p>
           <p className="mt-3">You can ask us to access, correct, export, or delete your data, to restrict or object to how we use it, or to explain what we hold. Email us using the address below and we will reply within 30 days. You can also complain to your local data protection authority, such as the Nigeria Data Protection Commission, the UK Information Commissioner&apos;s Office, or a supervisory authority in the European Union.</p>
         </section>
         <section>

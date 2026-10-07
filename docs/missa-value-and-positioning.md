@@ -9,6 +9,11 @@ scope: Internal positioning, fundraising, product strategy, and public-copy hier
 
 # Missa value and positioning
 
+> Public messaging and microcopy now live in
+> [`missa-messaging.md`](./missa-messaging.md). This document keeps the
+> strategy, business model and investor narrative. Its "Messaging hierarchy"
+> section is superseded.
+
 This document explains what Missa is worth to the creators and organizations who use and pay for it, and to the investors who may fund it. It is the narrative layer between the current product description and the longer-term product strategy.
 
 ## The core thesis

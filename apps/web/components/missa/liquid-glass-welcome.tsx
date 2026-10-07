@@ -246,28 +246,29 @@ export function LiquidGlassWelcome() {
             />
           </Link>
           <Link href="/opportunities" className={styles.skip}>
-            Explore Missa <ArrowRight size={16} aria-hidden="true" />
+            Browse open calls <ArrowRight size={16} aria-hidden="true" />
           </Link>
         </header>
         <section className={styles.hero} aria-labelledby="welcome-title">
           <div className={styles.intro}>
-            <p className={styles.eyebrow}>A little space for possibility</p>
+            <p className={styles.eyebrow}>Welcome to Missa</p>
             <h1 id="welcome-title" className={`font-heading ${styles.title}`}>
-              Make room for <em>what’s next.</em>
+              Find the call. <em>Make the deadline.</em>
             </h1>
             <p className={styles.description}>
-              The residency that gives you space. The journal that gets your
-              work. The opportunity you didn’t know was out there.
+              The residency with a studio. The magazine that publishes work
+              like yours. The grant you hadn’t heard of. All on one list, with
+              the date.
             </p>
             <div className={styles.actions}>
               <Link
                 href="/onboarding"
                 className={`${buttonVariants()} ${styles.primary}`}
               >
-                Find my next step <ArrowRight size={16} aria-hidden="true" />
+                Tell us what you make <ArrowRight size={16} aria-hidden="true" />
               </Link>
               <p className={styles.note}>
-                For wherever you are in your creative practice.
+                Free. You can skip any of it.
               </p>
             </div>
           </div>
@@ -283,9 +284,9 @@ export function LiquidGlassWelcome() {
                   <div className={styles.fallbackOrb} />
                   {open && (
                     <div className={styles.fallbackCards}>
-                      <span>A new chapter</span>
-                      <span>Room to grow</span>
-                      <span>Somewhere new</span>
+                      <span>Residencies</span>
+                      <span>Grants</span>
+                      <span>Magazines</span>
                     </div>
                   )}
                 </div>
@@ -297,7 +298,7 @@ export function LiquidGlassWelcome() {
                 style={{ visibility: graphics ? "visible" : "hidden" }}
               />
               <div className={styles.sceneLabel} aria-hidden="true">
-                <span>A world of possibilities</span>
+                <span>Open calls</span>
                 <span>Missa</span>
               </div>
               <motion.div
@@ -306,11 +307,11 @@ export function LiquidGlassWelcome() {
                 aria-hidden="true"
               >
                 <p className="font-heading">
-                  Something good
+                  Your next call
                   <br />
-                  is taking shape.
+                  is in here somewhere.
                 </p>
-                <span>Give it a little nudge.</span>
+                <span>Give it a nudge.</span>
               </motion.div>
               <motion.div
                 className={styles.openCopy}
@@ -318,8 +319,8 @@ export function LiquidGlassWelcome() {
                 style={{ opacity: revealOpacity }}
                 aria-hidden="true"
               >
-                <p className="font-heading">There’s space for you.</p>
-                <span>And for the work only you can make.</span>
+                <p className="font-heading">There they are.</p>
+                <span>Each one with the fee, the rules and the date.</span>
               </motion.div>
               <Button
                 variant="ghost"
@@ -351,7 +352,7 @@ export function LiquidGlassWelcome() {
               </div>
             </div>
             <div className={styles.sceneFooter}>
-              <span>Made for the way you create.</span>
+              <span>Poets who paint are welcome.</span>
               <Button
                 variant="ghost"
                 aria-expanded={open}
@@ -367,7 +368,7 @@ export function LiquidGlassWelcome() {
             </div>
             <span className="sr-only" role="status">
               {open
-                ? "Possibilities revealed. Continue with Find my next step, or explore Missa."
+                ? "Open. Continue with Tell us what you make, or browse open calls."
                 : "Open the illustration by dragging upward or using the open button."}
             </span>
           </div>
@@ -376,22 +377,22 @@ export function LiquidGlassWelcome() {
           <div className={styles.value}>
             <Compass size={20} aria-hidden="true" />
             <div>
-              <strong>Find your openings</strong>
-              <p>Residencies, grants, journals, and open calls.</p>
+              <strong>Find the call</strong>
+              <p>Residencies, grants, magazines and open calls.</p>
             </div>
           </div>
           <div className={styles.value}>
             <Bookmark size={20} aria-hidden="true" />
             <div>
-              <strong>Keep the good ones close</strong>
-              <p>Save opportunities. Come back when you’re ready.</p>
+              <strong>Save it</strong>
+              <p>Keep the ones you want. Come back when you’re ready.</p>
             </div>
           </div>
           <div className={styles.value}>
             <Sprout size={20} aria-hidden="true" />
             <div>
-              <strong>Build at your own pace</strong>
-              <p>A home for your work and what comes next.</p>
+              <strong>Make the deadline</strong>
+              <p>We’ll remind you before each one closes.</p>
             </div>
           </div>
         </div>

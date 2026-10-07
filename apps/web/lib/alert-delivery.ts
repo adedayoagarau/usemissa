@@ -9,6 +9,7 @@ import {
 import type { Alert, RadarEngine } from '@missa/radar-engine';
 import { sendMail } from './mail-service';
 import { renderAlertDigestEmail } from '../emails/alert-digest';
+import { accountSpellings } from './account-spelling';
 
 export interface AlertDeliveryReport {
   status: 'sent' | 'skipped' | 'partial';
@@ -102,6 +103,11 @@ export async function deliverPendingAlertEmails(engine: RadarEngine, now = new D
   const inboxRepository = creatorRelationalAuthorityEnabled(process.env)
     ? new PostgresCreatorInboxRepository(creatorPoolFor(connectionString))
     : undefined;
+  const accounts = [...engine.store.accounts.values()];
+  const spellings = await accountSpellings(
+    creatorPoolFor(connectionString),
+    accounts.filter((candidate) => candidate.userId !== undefined && byUser.has(candidate.userId)).map((candidate) => candidate.id),
+  );
   let recipients = 0;
   let sentAlerts = 0;
   let failed = 0;
@@ -139,6 +145,7 @@ export async function deliverPendingAlertEmails(engine: RadarEngine, now = new D
       email: account.email,
       opportunity: (id) => digestOpportunity(engine, id),
       now,
+      spelling: spellings.get(account.id),
     });
 
     const report = await sendMail({

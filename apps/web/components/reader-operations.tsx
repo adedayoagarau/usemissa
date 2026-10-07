@@ -221,7 +221,7 @@ export function ReaderOperations({ organizationId, initial, canManage, stageLabe
                   <TableHead className="text-right">Reads</TableHead>
                   <TableHead className="text-right">Average</TableHead>
                   <TableHead className="text-right">Spread</TableHead>
-                  {canManage ? <TableHead>Decision per Work</TableHead> : null}
+                  {canManage ? <TableHead>Decision on each piece</TableHead> : null}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -257,7 +257,7 @@ export function ReaderOperations({ organizationId, initial, canManage, stageLabe
               </TableBody>
             </Table>
           )}
-          <p className="mt-3 text-xs text-muted-foreground">Average and spread come from recorded scores only. A decision is a separate act per Work and never follows from a score automatically.</p>
+          <p className="mt-3 text-xs text-muted-foreground">Average and spread come from recorded scores only. A decision is a separate step for each piece and never follows from a score automatically.</p>
         </TabsContent>
 
         {canManage ? (

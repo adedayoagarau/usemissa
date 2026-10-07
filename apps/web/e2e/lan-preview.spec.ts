@@ -8,7 +8,7 @@ test('preview initializes when HTTP does not expose randomUUID', async ({ page }
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error' && /hydrat|didn't match/i.test(message.text())) errors.push(message.text()); });
   await page.goto('/design-system/discovery-journey/home');
-  await expect(page.getByRole('heading', { name: 'Opportunities and grants for every creator' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Find the call. Make the deadline.' })).toBeVisible();
   await page.getByRole('navigation', { name: 'Review sequence' }).getByRole('link', { name: 'Signup', exact: true }).click();
   await expect(page.locator('#email')).toBeVisible();
   const ids = await page.evaluate(() => [crypto.randomUUID(), crypto.randomUUID()]);

@@ -28,7 +28,7 @@ export function organizationSetupSteps(input: { radar: Pick<RadarEngine, 'store'
   const batches = workspace.communicationBatchesForOrganization(organizationId);
   return [
     { id: 'structure', title: 'Create a team and a program', detail: 'Programs group your opportunities, for example "Annual prize".', done: programs.length > 0, href: `/workspace?organizationId=${id}`, action: 'Open the builder' },
-    { id: 'opportunity', title: 'Publish an opportunity', detail: 'A published opportunity appears on your public page and accepts submissions.', done: calls.some((call) => call.status === 'published'), href: organizationDestinationHref('opportunities', organizationId), action: 'Open Opportunities' },
+    { id: 'opportunity', title: 'Publish an opportunity', detail: 'A published opportunity appears on your public page and accepts submissions.', done: calls.some((call) => call.status === 'published'), href: organizationDestinationHref('opportunities', organizationId), action: 'Open calls' },
     { id: 'form', title: 'Build the submission form', detail: 'Add the questions and files you need from each submitter.', done: forms.some((form) => form.fields.length > 0), href: `/workspace?organizationId=${id}`, action: 'Open the form builder' },
     { id: 'readers', title: 'Invite your readers', detail: 'Members with the reviewer role can be given reads and see only their own queue.', done: readers.length > 0, href: organizationDestinationHref('people', organizationId), action: 'Open People' },
     { id: 'round', title: 'Open a reading round', detail: 'Rounds hold reads, due dates and scores, and feed the next stage.', done: rounds.length > 0, href: organizationDestinationHref('reviews', organizationId), action: 'Open Reviews' },

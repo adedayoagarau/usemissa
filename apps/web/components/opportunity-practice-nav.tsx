@@ -21,7 +21,7 @@ const featuredPractices = [
   { label: "Music & sound", shortLabel: "Music", icon: Music2 },
   { label: "Design", shortLabel: "Design", icon: Shapes },
   {
-    label: "Interdisciplinary, hybrid & emerging practice",
+    label: "Interdisciplinary, hybrid & emerging practice", // missa-language-allow: matched against the taxonomy label; shortLabel is what shows
     shortLabel: "Interdisciplinary",
     icon: BookOpenText,
   },
@@ -57,7 +57,7 @@ export function OpportunityPracticeNav({
   const allSelected = selectedTaxonomy.length === 0;
 
   return (
-    <nav className={styles.nav} aria-label="Creative practice">
+    <nav className={styles.nav} aria-label="Browse by what you make">
       <div className={styles.scroller}>
         <Link
           href={hrefFor(currentQuery)}

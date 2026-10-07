@@ -16,6 +16,7 @@ const relationalSpecs = [
   "**/tracker-record.spec.ts",
   "**/creator-home.spec.ts",
   "**/creator-profile-relational.spec.ts",
+  "**/writing-room.spec.ts",
 ];
 
 export default defineConfig({

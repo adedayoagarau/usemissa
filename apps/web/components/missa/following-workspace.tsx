@@ -25,6 +25,7 @@ import type {
 } from "@/lib/creator-following";
 import { applicationDate } from "@/lib/application-workspace-types";
 import { toast } from "sonner";
+import { Sp, useSp } from "@/components/missa/spelling";
 
 const label = (s: string) =>
   s
@@ -32,6 +33,7 @@ const label = (s: string) =>
     .replaceAll("-", " ")
     .replace(/^./, (v) => v.toUpperCase());
 export function FollowingWorkspace() {
+  const sp = useSp();
   const params = useSearchParams(),
     router = useRouter();
   const [view, setView] = useState("following"),
@@ -109,7 +111,7 @@ export function FollowingWorkspace() {
           Following
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Organizations and programs you want to hear from.
+          <Sp>Organizations and programs you want to hear from.</Sp>
         </p>
       </header>
       <Tabs
@@ -132,7 +134,7 @@ export function FollowingWorkspace() {
           <div className="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap">
             <Field className="col-span-2 min-w-0 flex-1">
               <FieldLabel htmlFor="following-search" className="sr-only">
-                Find an organization or program
+                <Sp>Find an organization or program</Sp>
               </FieldLabel>
               <Input
                 id="following-search"
@@ -143,8 +145,8 @@ export function FollowingWorkspace() {
                 }}
                 placeholder={
                   kind === "organization"
-                    ? "Find an organization"
-                    : "Find a prize or program"
+                    ? sp("Find an organization")
+                    : sp("Find a prize or program")
                 }
               />
             </Field>
@@ -160,8 +162,8 @@ export function FollowingWorkspace() {
                   setPage(0);
                 }}
               >
-                <option value="organization">Organizations</option>
-                <option value="program">Programs</option>
+                <option value="organization">{sp("Organizations")}</option>
+                <option value="program">{sp("Programs")}</option>
               </NativeSelect>
             </Field>
             <Field className="min-w-0 sm:w-auto">
@@ -187,7 +189,7 @@ export function FollowingWorkspace() {
           </div>
           {error ? (
             <div role="alert" className="text-sm text-destructive">
-              {error}
+              {sp(error)}
               <Button variant="ghost" onClick={() => setRefresh((v) => v + 1)}>
                 Try again
               </Button>
@@ -267,12 +269,12 @@ export function FollowingWorkspace() {
                     {query || discipline
                       ? "No matches here yet"
                       : view === "following"
-                        ? `Which ${kind === "program" ? "programs" : "organizations"} are on your list?`
+                        ? sp(`Which ${kind === "program" ? "programs" : "organizations"} are on your list?`)
                         : "No records found"}
                   </h2>
                   <p className="max-w-lg text-sm text-muted-foreground">
                     {view === "following" && !query && !discipline
-                      ? "Follow a favorite to hear when a confirmed call opens. You can follow it between application rounds."
+                      ? sp("Follow a favorite to hear when a confirmed call opens. You can follow it between application rounds.")
                       : "Try another name or discipline."}
                   </p>
                   {view === "following" ? (
@@ -344,6 +346,7 @@ function FollowingDetail({
   onOpen: (item: { kind: FollowKind; id: string }) => void;
   onChanged: () => void;
 }) {
+  const sp = useSp();
   const [data, setData] = useState<FollowDetail | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -411,12 +414,12 @@ function FollowingDetail({
         <SheetHeader variant="section" className="gap-3 px-6 pt-12 pb-6">
           <SheetTitle className="font-heading text-3xl leading-tight break-words">
             {data?.name ??
-              (selected.kind === "program" ? "Program" : "Organization")}
+              sp(selected.kind === "program" ? "Program" : "Organization")}
           </SheetTitle>
           <SheetDescription>
             {data?.kind === "program"
               ? data.organizationName
-              : "Organization profile"}
+              : sp("Organization profile")}
           </SheetDescription>
         </SheetHeader>
         <div className="space-y-8 px-6 pb-8">
@@ -461,7 +464,7 @@ function FollowingDetail({
                       onOpen({ kind: "organization", id: data.organizationId! })
                     }
                   >
-                    View organization
+                    <Sp>View organization</Sp>
                     <ArrowRight />
                   </Button>
                 ) : null}
@@ -473,7 +476,7 @@ function FollowingDetail({
               ) : null}
               {data.kind === "organization" && data.programs.length ? (
                 <section className="space-y-3">
-                  <h2 className="font-sans text-xl font-semibold">Programs</h2>
+                  <h2 className="font-sans text-xl font-semibold"><Sp>Programs</Sp></h2>
                   {data.programs.map((p) => (
                     <button
                       key={p.id}
@@ -491,7 +494,7 @@ function FollowingDetail({
                 <h2 className="font-sans text-xl font-semibold">
                   {data.kind === "program"
                     ? "Application rounds"
-                    : "Calls from this organization"}
+                    : sp("Calls from this organization")}
                 </h2>
                 {!data.calls.length ? (
                   <p className="text-sm text-muted-foreground">

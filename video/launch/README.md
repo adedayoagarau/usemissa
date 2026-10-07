@@ -14,10 +14,10 @@ npm run render:cuts     # Cut15 and Cut6 in every format
 npm run stills -- LaunchSquare out/stills 30,300,600   # review frames
 ```
 
-`npm run sync` copies the fonts and photography shared with the product from
-`landing/fonts` and `apps/web/public/media/home` into `public/`. Every render
-and studio command runs it first, so the film always uses the same assets as
-the site. Those copies are git-ignored.
+`npm run sync` copies the photography shared with the product from
+`apps/web/public/media/home` into `public/`. Every render and studio command
+runs it first, so the film always uses the same images as the site. Those
+copies are git-ignored. The fonts live in `public/fonts`.
 
 ## Script
 
@@ -28,10 +28,12 @@ the site. Those copies are git-ignored.
 > Miss one, and you wait a year.
 > Missa finds the opportunities that fit what you make, and reminds you before every one of them closes.
 > Talent's your department. Deadlines are ours.
-> Missa. Opportunities for every creator.
+> Missa. Find the call. Make the deadline.
 
 Voiceover: ElevenLabs **eleven_v4**, voice **Lyan** ("Contrarian yet friendly"),
-take 2 of 4. The file is `public/audio/voiceover-script1-lyan.mp3`. The other
+take 2 of 4. The closing line was re-recorded on its own in the same voice and
+model (take 2 of 4 again) and spliced in at "Missa.", matched to the original
+level. The file is `public/audio/voiceover-lyan-find-the-call.mp3`. The other
 takes and the earlier Storyteller, Belle and Daniel auditions are not in the repo. To use a different take, replace the
 file and re-measure the cues (see Sync below).
 
@@ -43,7 +45,7 @@ file and re-measure the cues (see Sync below).
 | "But mostly, it runs on deadlines… wait a year." | **Deadlines** | "deadlines." slams in, then a calendar fills the frame and the days cross off. Grant and residency cards arrive, and their dates get ochre circles. The calendar flips to March for the magazine. A *Closed* stamp hits on "Miss one", then twelve months flip past in grey. |
 | "Missa finds… before every one of them closes." | **Missa** | A forest wipe brings in the wordmark and an opportunity card with "Why this may fit" chips. Three reminders drop in: two weeks before, a week before, the day before. |
 | "Talent's your department. Deadlines are ours." | **Handled** | A grid of six disciplines: writing, visual art, film, music, performance and design. It wipes to sky, and the real Missa calendar appears with each deadline and reminder ringed in ochre. |
-| "Missa. Opportunities for every creator." | **End card** | Wordmark, the line word by word, then *Browse opportunities* and usemissa.com. |
+| "Missa. Find the call. Make the deadline." | **End card** | Wordmark, the line word by word, then *Browse open calls* and usemissa.com. |
 
 ## Sound
 

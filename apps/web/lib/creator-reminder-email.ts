@@ -1,6 +1,7 @@
 import { creatorPoolFor, pendingCreatorReminderEmails } from '@missa/radar-adapters';
 import { DEADLINE_MOMENT_TEMPLATE_VERSION, noticeUnsubscribeCategory, renderDeadlineMomentEmail } from '../emails/deadline-moments';
 import { sendMail } from './mail-service';
+import { accountSpellings } from './account-spelling';
 
 export type CreatorReminderEmailReport = {
   status: 'sent' | 'skipped' | 'partial';
@@ -26,12 +27,16 @@ export async function deliverCreatorReminderEmails(now = new Date()): Promise<Cr
 
   let sent = 0;
   let failed = 0;
-  for (const reminder of await pendingCreatorReminderEmails(creatorPoolFor(connectionString))) {
+  const pool = creatorPoolFor(connectionString);
+  const reminders = await pendingCreatorReminderEmails(pool);
+  const spellings = await accountSpellings(pool, reminders.map((reminder) => reminder.accountId));
+  for (const reminder of reminders) {
     const { subject, html, text } = renderDeadlineMomentEmail({
       accountId: reminder.accountId,
       email: reminder.email,
       notice: reminder,
       now,
+      spelling: spellings.get(reminder.accountId),
     });
     const report = await sendMail({
       recipientEmail: reminder.email,

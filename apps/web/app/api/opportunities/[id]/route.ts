@@ -27,10 +27,10 @@ export async function GET(
   );
 
   if (!result) {
-    return NextResponse.json({ error: "Opportunity not found" }, { status: 404 });
+    return NextResponse.json({ error: "Call not found" }, { status: 404 });
   }
   if (!session && !PUBLIC_STATUSES.has(result.status)) {
-    return NextResponse.json({ error: "Opportunity not found" }, { status: 404, headers: { "cache-control": "public, s-maxage=60" } });
+    return NextResponse.json({ error: "Call not found" }, { status: 404, headers: { "cache-control": "public, s-maxage=60" } });
   }
 
   const response = opportunityDetailResponseSchema.parse({
