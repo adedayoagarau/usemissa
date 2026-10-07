@@ -6,6 +6,10 @@ import {
   PORTFOLIO_THEMES,
 } from "@/lib/creator-portfolio-schema";
 import { sampleCreatorPortfolio } from "@/lib/creator-profile-sample";
+import {
+  CRAFT_IDS,
+  sampleCraftPortfolio,
+} from "@/lib/creator-profile-sample-crafts";
 
 export const metadata = {
   title: "Creator portfolio review",
@@ -26,7 +30,9 @@ export default async function Page({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const query = await searchParams;
-  const sample = sampleCreatorPortfolio();
+  // ?craft=visual|sound|film|design shows one fictional creator per craft.
+  const craft = pick(CRAFT_IDS, query.craft);
+  const sample = craft ? sampleCraftPortfolio(craft) : sampleCreatorPortfolio();
   const portfolio = {
     ...sample,
     lens: pick(PORTFOLIO_LENSES, query.lens) ?? sample.lens,

@@ -7,11 +7,15 @@
  *  - Neon Auth (NEXT_PUBLIC_NEON_AUTH_URL) for sign-in requests;
  *  - opportunity and organisation images from any https host;
  *  - fonts self-hosted through next/font/local;
- *  - Stripe and Google only as top-level navigations (checkout, OAuth).
+ *  - Stripe and Google only as top-level navigations (checkout, OAuth);
+ *  - a creator's film, framed from youtube-nocookie.com or player.vimeo.com
+ *    only (frame-src), and never before the visitor presses play.
  *
  * Ship it as Content-Security-Policy-Report-Only first and switch the header
  * to Content-Security-Policy after about a week without unexpected reports.
  */
+import { VIDEO_EMBED_ORIGINS } from './video-embed-origins';
+
 export type CspEnv = Record<string, string | undefined>;
 
 export const CSP_REPORT_PATH = '/api/csp-report';
@@ -51,7 +55,9 @@ export function buildContentSecurityPolicy(env: CspEnv = process.env): string {
       ...(neonAuth ? [neonAuth] : []),
       ...(development ? ['ws:', 'wss:'] : []),
     ],
-    'frame-src': ["'self'"],
+    // A creator's film plays in a frame, and only after a visitor presses play.
+    // Exactly the two hosts creator-work-media.ts builds embed addresses on.
+    'frame-src': ["'self'", ...VIDEO_EMBED_ORIGINS],
     'worker-src': ["'self'", 'blob:'],
     'manifest-src': ["'self'"],
     'object-src': ["'none'"],

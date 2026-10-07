@@ -22,5 +22,7 @@
   --border: var(--ink-2);
   --input: var(--ink-2);
   --ring: var(--accent-tint);
+  /* Hover washes stay dark here, or white text would sit on a near-white row. */
+  --row-hover: color-mix(in srgb, var(--surface) 8%, var(--ink));
   --accent-deep: var(--lichen-tint);
 }

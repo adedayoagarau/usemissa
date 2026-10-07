@@ -483,17 +483,28 @@
   background: var(--profile-subtle);
 }
 .filter button {
+  height: auto;
   min-height: 40px;
   padding: 0 16px;
+  border: 0;
   border-radius: 999px;
   color: var(--profile-muted);
   font-size: 14px;
   font-weight: 500;
 }
+.filter button:hover {
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+  color: var(--profile-ink);
+}
 .filter button[aria-pressed="true"] {
   background: var(--background);
   color: var(--foreground);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 12%, transparent);
+  box-shadow: var(--elevation-control);
+}
+@media (pointer: coarse) {
+  .filter button {
+    min-height: var(--touch-target-min);
+  }
 }
 
 /* Work */
@@ -559,9 +570,15 @@
 }
 .cardMedia {
   display: block;
+  width: 100%;
+  height: auto;
+  padding: 0;
   overflow: hidden;
+  border: 0;
   border-radius: 6px;
   background: var(--profile-subtle);
+  color: inherit;
+  white-space: normal;
   aspect-ratio: 4 / 5;
 }
 .works > li:first-child .cardMedia {
@@ -585,16 +602,22 @@
 }
 .cardText {
   display: flex;
+  width: 100%;
+  height: auto;
   min-height: 300px;
   flex: 1;
   flex-direction: column;
+  align-items: stretch;
   justify-content: space-between;
   gap: 24px;
   padding: clamp(24px, 3vw, 36px);
+  border: 0;
   border-radius: 6px;
   background: var(--profile-tint);
   color: var(--profile-ink);
+  font-weight: 400;
   text-align: left;
+  white-space: normal;
 }
 .cardTextMeta {
   color: var(--profile-muted);
@@ -646,23 +669,6 @@
   font-size: 24px;
   line-height: 1.2;
 }
-.play {
-  display: inline-flex;
-  width: 44px;
-  height: 44px;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: var(--background);
-  color: var(--foreground);
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--ink) 18%, transparent);
-}
-.play svg {
-  width: 16px;
-  height: 16px;
-  fill: currentColor;
-}
 .cardPlay {
   position: absolute;
   top: 14px;
@@ -686,7 +692,15 @@
   line-height: 1.1;
 }
 .cardTitle button {
+  display: inline;
+  max-width: none;
+  overflow: visible;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
   text-align: left;
+  text-overflow: clip;
+  white-space: normal;
 }
 .cardTitle button:hover {
   text-decoration: underline;
@@ -757,76 +771,10 @@
   color: var(--muted-foreground);
   font-size: 13px;
 }
-.dialogAudio {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 16px 8px 8px;
-  border-radius: 999px;
-  background: var(--muted);
-  font-size: 14px;
-}
 .reading {
   font-size: clamp(19px, 2vw, 22px);
   line-height: 1.7;
   white-space: pre-line;
-}
-
-/* Mini player */
-.miniPlayer {
-  position: sticky;
-  bottom: 16px;
-  z-index: 10;
-  display: flex;
-  width: min(520px, calc(100% - 32px));
-  align-items: center;
-  gap: 12px;
-  margin: 0 auto 16px;
-  padding: 8px 10px 8px 8px;
-  border-radius: 14px;
-  background: var(--ink);
-  color: var(--surface);
-  box-shadow: 0 16px 48px color-mix(in srgb, var(--ink) 24%, transparent);
-}
-.miniPlayer img {
-  width: 44px;
-  height: 44px;
-  border-radius: 6px;
-  object-fit: cover;
-}
-.miniText {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-}
-.miniText > span:first-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.miniTrack {
-  display: block;
-  height: 3px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--surface) 24%, transparent);
-}
-.miniTrack span {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--surface);
-}
-.miniError {
-  color: var(--ochre-tint);
-  font-weight: 400;
-}
-.miniPlayer .play {
-  background: var(--surface);
-  color: var(--ink);
 }
 
 /* Upcoming */

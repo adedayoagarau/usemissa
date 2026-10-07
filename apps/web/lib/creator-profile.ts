@@ -11,14 +11,16 @@ import {
   type PortfolioWork,
 } from "./creator-portfolio-schema";
 
-export type WorkFormat = "Writing" | "Images" | "Sound" | "Link";
+export type WorkFormat = "Writing" | "Images" | "Sound" | "Film" | "Link";
 
 /** Formats come from what a work actually contains, never from practices. */
 export function workFormats(work: PortfolioWork): WorkFormat[] {
   const formats: WorkFormat[] = [];
   if (work.text.trim()) formats.push("Writing");
-  if (work.image) formats.push("Images");
+  // A film's picture is its poster, not a work of images.
+  if (work.image && !work.video.trim()) formats.push("Images");
   if (work.audio) formats.push("Sound");
+  if (work.video.trim()) formats.push("Film");
   if (!formats.length && work.url) formats.push("Link");
   return formats;
 }

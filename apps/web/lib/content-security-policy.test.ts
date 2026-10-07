@@ -34,6 +34,21 @@ test('policy follows configured PostHog and Neon Auth hosts', () => {
   assert.ok(policy.get('connect-src')!.includes('https://auth.example.neon.tech'));
 });
 
+test('frames are limited to this site and the two hosts a creator film plays from', () => {
+  for (const NODE_ENV of ['production', 'development']) {
+    const policy = directives(buildContentSecurityPolicy({ NODE_ENV }));
+    assert.deepEqual(policy.get('frame-src'), [
+      "'self'",
+      'https://www.youtube-nocookie.com',
+      'https://player.vimeo.com',
+    ]);
+    // Nothing else may frame Missa, and no other directive gained a host.
+    assert.deepEqual(policy.get('frame-ancestors'), ["'none'"]);
+    assert.ok(!policy.get('script-src')!.some((value) => /youtube|vimeo/.test(value)));
+    assert.ok(!policy.get('connect-src')!.some((value) => /youtube|vimeo/.test(value)));
+  }
+});
+
 test('development allows eval and the hot reload socket', () => {
   const policy = directives(buildContentSecurityPolicy({ NODE_ENV: 'development' }));
   assert.ok(policy.get('script-src')!.includes("'unsafe-eval'"));
