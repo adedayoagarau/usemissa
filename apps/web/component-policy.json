@@ -1003,6 +1003,12 @@
       "implementation": "components/missa/person-avatar.tsx",
       "boundary": "A person's initials on one of twelve categorical hues derived from their identity, so a person keeps one colour on every surface. The colour identifies; it never states status."
     },
+    "OpportunityTypeArt": {
+      "base": "custom-svg",
+      "motion": "never",
+      "implementation": "components/missa/opportunity-type-art.tsx",
+      "boundary": "Drawn stand-in for an opportunity with no cleared photo: one line illustration per kind of opportunity on that kind's categorical hue. Decorative (aria-hidden); never a photo, so it is not mistaken for the opportunity's own image. The hue identifies the kind, never a status."
+    },
     "LabelPill": {
       "base": "Badge",
       "motion": "never",

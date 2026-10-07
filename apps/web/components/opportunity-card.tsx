@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { opportunityFreshness } from "@/lib/opportunityFreshness";
 import { cleanTitleOrLabel } from "@/lib/textUtils";
 import { Sp } from "@/components/missa/spelling";
+import { OpportunityTypeArt } from "@/components/missa/opportunity-type-art";
 
 function deadlineCopy(deadline: OpportunityBrowseProjection["deadline"]): {
   label: string;
@@ -54,17 +55,6 @@ function deadlineCopy(deadline: OpportunityBrowseProjection["deadline"]): {
   };
 }
 
-function sourceInitials(name: string): string {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase() || "M"
-  );
-}
 
 function typeLabel(type: OpportunityBrowseProjection["type"]): string {
   return type === "open-call"
@@ -111,7 +101,7 @@ export function OpportunityCard({
       )}
     >
       <Link href={detailHref} className="flex gap-3 p-3.5 pb-2.5">
-        <div className="relative flex h-28 w-[4.75rem] shrink-0 items-center justify-center overflow-hidden rounded-sm border border-border bg-[linear-gradient(145deg,#e9f0f2,#b9cdd2)] text-center text-[10px] font-semibold tracking-[0.12em] text-slate-700 uppercase">
+        <div className="relative flex h-28 w-[4.75rem] shrink-0 items-center justify-center overflow-hidden rounded-sm border border-border">
           {item.identityAssetUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -120,7 +110,7 @@ export function OpportunityCard({
               className="h-full w-full object-cover"
             />
           ) : (
-            <span className="px-2">{sourceInitials(sourceName)}</span>
+            <OpportunityTypeArt type={item.type} />
           )}
         </div>
         <div className="min-w-0 flex-1">
