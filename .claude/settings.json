@@ -37,5 +37,9 @@
       "$defaults",
       "In adedayoagarau/usemissa, when the user asks to land or merge pull requests, including ones opened by other Claude sessions: merging main into a PR branch, resolving its conflicts, and pushing that merge commit (never a force push, rebase or other history rewrite); marking draft PRs ready for review; changing a PR's base branch; and merging PRs whose CI passes."
     ]
+  },
+  "attribution": {
+    "commit": "",
+    "pr": ""
   }
 }
