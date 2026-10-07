@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { planDistribution } from '@missa/workspace-engine';
 import { persistOrganizationMutation, requireOrganizationAccess } from '@/lib/organizationAccess';
-import { compatibilityDistributionInputs } from '@/lib/readerOperationsData';
+import { compatibilityDistributionInputs, roundDueDateFor } from '@/lib/readerOperationsData';
 import { workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
 const headers = { 'Cache-Control': 'private, no-store' };
@@ -63,7 +63,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (dryRun) return NextResponse.json({ dryRun: true, plan }, { headers });
 
   const actor = result.access.session.account.id;
-  const dueAt = workspace.roundDueDate(roundId);
+  const dueAt = roundDueDateFor(workspace, result.access.radar.store.organizations.get(id), roundId);
   workspace.withdrawOpenReads(id, roundId, from, 'Moved to another reader by the organization', actor);
   const applied = workspace.applyDistribution(roundId, assignments, actor, { expiresAt: dueAt });
   await persistOrganizationMutation(result.access, { action: 'review-assignment.reassigned', targetType: 'review_round', targetId: roundId, detail: { fromReviewerAccountId: from, withdrawn: open.length, created: applied.created.length, underCovered: underCovered.length } });

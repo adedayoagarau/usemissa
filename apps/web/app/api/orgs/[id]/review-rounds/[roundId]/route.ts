@@ -38,6 +38,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
   try {
     const changed = result.access.workspace.setRoundDueDate(id, roundId, dueAt, result.access.session.account.id);
+    const organization = result.access.radar.store.organizations.get(id)!;
+    const dueDates = { ...(organization.customization?.roundDueDates ?? {}) };
+    if (dueAt) dueDates[roundId] = dueAt;
+    else delete dueDates[roundId];
+    organization.customization = { ...(organization.customization ?? {}), roundDueDates: dueDates };
     await persistOrganizationMutation(result.access, { action: 'review-round.due_date_set', targetType: 'review_round', targetId: roundId, detail: { dueAt: dueAt ?? null, assignments: changed } });
     return NextResponse.json({ roundId, dueAt: dueAt ?? null, assignments: changed }, { headers });
   } catch (error) {
