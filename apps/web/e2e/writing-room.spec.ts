@@ -31,15 +31,23 @@ async function signIn(page: Page) {
 }
 
 test("signed-out visitors are sent to sign in and back", async ({ page }) => {
-  await page.goto("/write");
-  await expect(page).toHaveURL(/\/login\?next=%2Fwrite$/);
+  await page.goto("/doc");
+  await expect(page).toHaveURL(/\/login\?next=%2Fdoc$/);
+});
+
+test("the old /write address opens the writing room at /doc", async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.goto("/write?entry=writing_00000000-0000-4000-8000-000000000000");
+  await expect(page).toHaveURL(/\/doc(?:\?|$)/);
 });
 
 test("the writing room saves as you type, reopens entries and deletes them", async ({
   page,
 }) => {
   await signIn(page);
-  const response = await page.goto("/write");
+  const response = await page.goto("/doc");
   // No browser agent tools where a creator writes.
   expect(response?.headers()["permissions-policy"]).toContain("tools=()");
 
@@ -48,7 +56,7 @@ test("the writing room saves as you type, reopens entries and deletes them", asy
   await writing.pressSequentially("The river does not wait for anyone.");
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
   await expect(page.getByText("7 words")).toBeVisible();
-  await expect(page).toHaveURL(/\/write\?entry=writing_/);
+  await expect(page).toHaveURL(/\/doc\?entry=writing_/);
 
   // A reload reopens the saved entry from the account.
   await page.reload();
@@ -130,7 +138,7 @@ test("the timer counts down and hides the controls until it is paused", async ({
   page,
 }) => {
   await signIn(page);
-  await page.goto("/write");
+  await page.goto("/doc");
   const writing = pageText(page);
   await page.getByRole("button", { name: "Start 15-minute timer" }).click();
   const pause = page.getByRole("button", { name: "Pause timer" });
@@ -158,7 +166,7 @@ test("the writer chooses a typeface and the choice is kept", async ({
   page,
 }) => {
   await signIn(page);
-  await page.goto("/write");
+  await page.goto("/doc");
   const writing = pageText(page);
   const before = await writing.evaluate(
     (element) => getComputedStyle(element).fontFamily,
@@ -203,7 +211,7 @@ test("pages keep their own format and every space and tab", async ({
   page,
 }) => {
   await signIn(page);
-  await page.goto("/write");
+  await page.goto("/doc");
   await page.getByRole("textbox", { name: "Title" }).fill("Harmattan");
   const first = pageText(page);
   await first.click();
@@ -263,7 +271,7 @@ test("projects gather pieces in an order, outline them and compile them", async 
   page,
 }) => {
   await signIn(page);
-  await page.goto("/write");
+  await page.goto("/doc");
   const writing = pageText(page);
   await expect(writing).toBeFocused();
 
@@ -336,7 +344,9 @@ test("projects gather pieces in an order, outline them and compile them", async 
   const compileDialog = page.getByRole("dialog", { name: /Compile/ });
   await compileDialog.getByRole("button", { name: "Compile" }).click();
   await expect(
-    page.getByRole("main").getByRole("heading", { level: 2, name: "Harmattan" }),
+    page
+      .getByRole("main")
+      .getByRole("heading", { level: 2, name: "Harmattan" }),
   ).toBeVisible();
   const compiledPages = page.locator('[data-slot="writing-page-text"]');
   await expect(compiledPages.first()).toHaveText("Harmattan");
@@ -372,4 +382,43 @@ test("projects gather pieces in an order, outline them and compile them", async 
   await expect(
     page.locator('[data-slot="sheet-content"]').getByRole("link"),
   ).toHaveCount(3);
+});
+
+test("text flows onto the next page and back as it is written", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await signIn(page);
+  await page.goto("/doc");
+  const first = pageText(page, 0);
+  await expect(first).toBeFocused();
+  // Printed pages are the default at this width. An A4 page at 12 pt and 1.5 spacing holds about 38 lines.
+  for (let line = 1; line <= 45; line += 1) {
+    await page.keyboard.type(`Line ${line}`);
+    if (line < 45) await page.keyboard.press("Enter");
+  }
+  const second = pageText(page, 1);
+  await expect(second).toBeVisible();
+  await expect(second).toContainText("Line 45");
+  // The caret follows the text onto the new page.
+  await expect(second).toBeFocused();
+  await expect(first).toContainText("Line 1");
+  await expect(first).not.toContainText("Line 45");
+  await page.keyboard.type(" and on");
+  await expect(second).toContainText("Line 45 and on");
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+  // Deleting lines on the first page brings text back, and the empty page goes.
+  await first.getByText("Line 1", { exact: true }).click();
+  await page.keyboard.press("Home");
+  await first
+    .getByText("Line 12", { exact: true })
+    .click({ modifiers: ["Shift"] });
+  await page.keyboard.press("Shift+End");
+  // The editor reads a mouse-made selection on the browser's next selection event.
+  await page.waitForTimeout(150);
+  await page.keyboard.press("Backspace");
+  await expect(pageText(page, 1)).toHaveCount(0);
+  await expect(first).toContainText("Line 45 and on");
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
 });

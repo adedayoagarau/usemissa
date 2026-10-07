@@ -64,7 +64,7 @@ test("only the writing module names the writing tables", () => {
 
 test("only the writing room and its routes use the writing repository", () => {
   const allowed = (path: string) =>
-    path === "apps/web/app/write/page.tsx" ||
+    path === "apps/web/app/doc/page.tsx" ||
     path.startsWith("apps/web/app/api/me/writing/") ||
     path === "apps/web/lib/writing-repository.test.ts" ||
     path === "apps/web/lib/writing-boundary.test.ts";
@@ -83,7 +83,7 @@ test("only the writing room and its routes use the writing repository", () => {
 test("the writing module imports no AI or model SDK", () => {
   const moduleFiles = sources.filter(
     ({ path }) =>
-      /^apps\/web\/(?:lib\/writing[^/]*|components\/missa\/writing-[^/]*|app\/write\/[^/]*)$/.test(
+      /^apps\/web\/(?:lib\/writing[^/]*|components\/missa\/writing-[^/]*|app\/(?:doc|write)\/[^/]*)$/.test(
         path,
       ) || path.startsWith("apps/web/app/api/me/writing/"),
   );

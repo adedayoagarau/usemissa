@@ -351,7 +351,7 @@ only boundary. Bordered or filled children use the ladder value.
 | ------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------- |
 | Public / marketing | Spacious    | `/`, `/guides`, `/guides/*`, `/about`, `/methodology`, `/discover/*`                                             |
 | Public record      | Comfortable | `/opportunities`, `/opportunities/*`, `/journals/*`, `/@handle`, `/profile/*`                                    |
-| Creator product    | Comfortable | `/home`, `/profile`, `/settings/*`, `/tracker`, `/library/*`, `/inbox`, `/calendar`, `/write`                             |
+| Creator product    | Comfortable | `/home`, `/profile`, `/settings/*`, `/tracker`, `/library/*`, `/inbox`, `/calendar`, `/doc`                               |
 | Organization       | Compact     | Organization workspace, builder, submissions, reviews, decisions, messages, delivery, insights, people, settings |
 | Reviewer           | Compact     | Reviewer queue and work surfaces                                                                                 |
 | Platform Admin     | Compact     | All admin routes                                                                                                 |

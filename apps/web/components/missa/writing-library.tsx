@@ -168,7 +168,7 @@ function PieceLink({
 }) {
   return (
     <a
-      href={`/write?entry=${encodeURIComponent(piece.id)}`}
+      href={`/doc?entry=${encodeURIComponent(piece.id)}`}
       aria-current={piece.open ? "true" : undefined}
       className="flex min-w-0 flex-1 flex-col gap-0.5 rounded-md outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
       onClick={(event) => {
