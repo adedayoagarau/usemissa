@@ -75,7 +75,7 @@ Notion-style spot scenes that sit beside section statements.
 | Slot | Where it sits | Rendered box | Subject |
 | --- | --- | --- | --- |
 | `hero` | Right of the hero headline on desktop, hidden on phones | 420 × 280 | A creator at a desk pinning a call to a corkboard above it, a calendar with one date circled in Forest |
-| `after-find` | Beside "Everything after you find the call." | 280 × 180 | A figure sliding a manuscript into an envelope, a bell above it |
+| `after-find` | Beside "After you find an open call." | 280 × 180 | A figure sliding a manuscript into an envelope, a bell above it |
 | `questions` | Under "Questions about Missa." in the left column | 240 × 200 | Two figures at a café table, one pointing at a printed call |
 | `close` | Behind the cards in the Forest close panel | 320 × 220 | A desk corner with an open notebook, envelope and pinned postcard, in white line at 60% on Forest, no fills |
 
