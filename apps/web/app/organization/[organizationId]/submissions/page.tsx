@@ -1,8 +1,5 @@
-import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowRight, Download } from 'lucide-react';
-import { buttonVariants } from '@/components/ui/button';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
 import { getRelationalWorkspace, getWorkspaceEngine, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
@@ -11,7 +8,8 @@ import { decisionSummary, paymentLane, receiptLane, reviewLane, submissionNextAc
 import type { SubmissionStatus } from '@missa/workspace-engine';
 import styles from './submissions.module.css';
 import { organizationIntakeFlags, INTAKE_FLAG_LABELS } from '@/lib/intakeData';
-import { BULK_TRIAGE_FORM_ID, BulkTriageBar, ScreeningRulesDialog } from '@/components/submission-triage';
+import { ScreeningRulesDialog } from '@/components/submission-triage';
+import { SubmissionsWorkspace, type SubmissionRow } from '@/components/submissions-workspace';
 
 type Query = { q?: string; opportunity?: string; receipt?: string; review?: string; decision?: string; selected?: string; flag?: string };
 
@@ -58,16 +56,46 @@ export default async function OrganizationSubmissionsPage({ params, searchParams
     if (query.flag === 'any' && row.flags.length === 0) return false;
     return !normalizedQuery || `${row.submitter} ${row.submission.openCallTitle} ${row.works.map((work) => work.title).join(' ')}`.toLocaleLowerCase('en').includes(normalizedQuery);
   });
-  const selected = visible.find((row) => row.submission.id === query.selected) ?? visible[0];
-  const hasFilters = Boolean(normalizedQuery || query.opportunity || query.receipt || query.review || query.decision || query.flag);
-  const base = `/organization/${encodeURIComponent(organizationId)}/submissions`;
-  function selectionHref(submissionId: string) { const params = new URLSearchParams(); if (query.q) params.set('q', query.q); if (query.opportunity) params.set('opportunity', query.opportunity); if (query.receipt) params.set('receipt', query.receipt); if (query.review) params.set('review', query.review); if (query.decision) params.set('decision', query.decision); if (query.flag) params.set('flag', query.flag); params.set('selected', submissionId); return `${base}?${params.toString()}`; }
-  const outcomeByWork = selected ? new Map(selected.decisions.map((decision) => [decision.workId, decision.outcome])) : new Map<string, string>();
+  const screeningCall = workspace && query.opportunity ? opportunities.find((opportunity) => opportunity.id === query.opportunity) : undefined;
+  const view: SubmissionRow[] = visible.map((row) => {
+    const outcomeByWork = new Map(row.decisions.map((decision) => [decision.workId, decision.outcome as string]));
+    return {
+      id: row.submission.id,
+      submitter: row.submitter,
+      openCallId: row.submission.openCallId,
+      opportunityTitle: row.submission.openCallTitle,
+      submittedAt: row.submission.submittedAt,
+      category: row.submission.category || undefined,
+      works: row.works.map((work) => ({ id: work.id, title: work.title, hasFile: (work.fileUrls?.length ?? (work.fileUrl ? 1 : 0)) > 0, outcome: outcomeByWork.get(work.id) })),
+      receipt: row.receipt,
+      review: row.review,
+      decision: row.decision,
+      payment: row.payment,
+      next: row.next,
+      flags: row.flags.map((flag: { code: keyof typeof INTAKE_FLAG_LABELS; message: string }) => ({ code: flag.code, label: INTAKE_FLAG_LABELS[flag.code], message: flag.message })),
+    };
+  });
 
-  return <main id="organization-main" className={styles.main}><header className={styles.header}><div><p className={styles.eyebrow}>Queue and dossier</p><h1>Submissions</h1><p>Sort out receipt issues, send work to review and prepare a decision on each piece, with receipt, review and decision kept apart.</p></div><div className={styles.headerActions}><span className={styles.role}>{projection.label}</span>{rows.length ? <a className={buttonVariants({ variant: 'outline', size: 'sm' })} href={`/api/orgs/${encodeURIComponent(organizationId)}/${relational ? 'submissions/export' : 'insights/export'}`} download><Download aria-hidden="true" />{relational ? 'Export JSON' : 'Export CSV'}</a> : null}</div></header>
-    <form className={styles.filters} role="search"><label><span>Search</span><input name="q" defaultValue={query.q ?? ''} placeholder="Submitter, Work, or Opportunity" /></label><label><span>Call</span><select name="opportunity" defaultValue={query.opportunity ?? ''}><option value="">All calls</option>{opportunities.map((opportunity) => <option key={opportunity.id} value={opportunity.id}>{opportunity.title}</option>)}</select></label><label><span>Receipt</span><select name="receipt" defaultValue={query.receipt ?? ''}><option value="">All receipt states</option><option>Received</option><option>Needs attention</option><option>Withdrawn</option></select></label><label><span>Review</span><select name="review" defaultValue={query.review ?? ''}><option value="">All review states</option><option>Not started</option><option>In review</option><option>Review complete</option></select></label><label><span>Decision</span><select name="decision" defaultValue={query.decision ?? ''}><option value="">All decision states</option><option>No decisions</option><option>Partially decided</option><option>Partially accepted</option><option>Mixed</option><option>Accepted</option><option>Declined</option><option>Waitlisted</option></select></label><label><span>Flags</span><select name="flag" defaultValue={query.flag ?? ''}><option value="">All submissions</option><option value="any">Flagged for a look</option></select></label><div className={styles.filterActions}><button className={styles.apply} type="submit">Apply</button>{hasFilters ? <Link className={styles.clear} href={base}>Clear</Link> : null}</div></form>
-    <div className={styles.summary}><strong>{visible.length} {visible.length === 1 ? 'Submission' : 'Submissions'}</strong><span>{hasFilters ? `Filtered from ${rows.length}` : `${rows.filter((row) => row.flags.length).length} flagged for a look`}</span></div>
-    {workspace ? <div className="flex flex-wrap items-end justify-between gap-3"><BulkTriageBar organizationId={organizationId} />{query.opportunity && opportunities.some((opportunity) => opportunity.id === query.opportunity) ? <ScreeningRulesDialog organizationId={organizationId} openCallId={query.opportunity} opportunityTitle={opportunities.find((opportunity) => opportunity.id === query.opportunity)!.title} rules={radar.store.organizations.get(organizationId)?.customization?.eligibilityRules?.[query.opportunity] ?? {}} /> : null}</div> : null}
-    {visible.length && selected ? <div className={styles.layout}><section className={styles.queue} aria-label="Submission queue">{visible.map((row, index) => <article className={styles.row} data-selected={row.submission.id === selected.submission.id} key={row.submission.id}><span className={styles.rowMarker} aria-hidden="true">{index + 1}</span><div className={styles.identity}>{workspace ? <label className="mb-2 flex items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" name="submissionId" value={row.submission.id} form={BULK_TRIAGE_FORM_ID} className="size-4 accent-primary" />Select<span className="sr-only"> {row.submitter}</span></label> : null}<h2>{row.submitter}</h2><p>{row.submission.openCallTitle} · {new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(new Date(row.submission.submittedAt))}</p><p className={styles.works}>{row.works.length} {row.works.length === 1 ? 'Work' : 'Works'} · {row.submission.category || 'No category supplied'}</p><dl className={styles.lanes}><div><dt>Receipt</dt><dd>{row.receipt}</dd></div><div><dt>Review</dt><dd>{row.review}</dd></div><div><dt>Decision</dt><dd>{row.decision}</dd></div></dl>{row.flags.length ? <ul className="mt-2 flex flex-wrap gap-1" aria-label="Flags">{row.flags.map((flag: { code: keyof typeof INTAKE_FLAG_LABELS; message: string }) => <li key={flag.code} title={flag.message} className="rounded-full border border-border px-2 py-0.5 text-xs text-foreground">{INTAKE_FLAG_LABELS[flag.code]}</li>)}</ul> : null}<div className={styles.next}><span>{row.next}</span><span>{row.payment}</span></div></div><Link className={`${styles.open} ${styles.desktopOpen}`} aria-current={row.submission.id === selected.submission.id ? 'true' : undefined} href={selectionHref(row.submission.id)}>{row.submission.id === selected.submission.id ? 'Selected' : 'Open'}<ArrowRight aria-hidden="true" /></Link><Link className={`${styles.open} ${styles.mobileOpen}`} href={`${base}/${encodeURIComponent(row.submission.id)}`}>Open dossier<ArrowRight aria-hidden="true" /></Link></article>)}</section><aside className={styles.dossier} aria-labelledby="selected-submission-title"><header className={styles.dossierHeader}><p className={styles.eyebrow}>Selected Submission</p><h2 id="selected-submission-title">{selected.submitter}</h2><p>{selected.submission.openCallTitle} · {selected.submission.category || 'No category supplied'}</p></header><div className={styles.dossierBody}><dl className={styles.factList}><div><dt>Receipt</dt><dd>{selected.receipt}</dd></div><div><dt>Review</dt><dd>{selected.review}</dd></div><div><dt>Decision summary</dt><dd>{selected.decision}</dd></div><div><dt>Payment</dt><dd>{selected.payment}</dd></div></dl><section className={styles.workList}><header><h3>Works</h3><span>{selected.works.length}</span></header>{selected.works.map((work) => <article className={styles.work} key={work.id}><div><strong>{work.title}</strong><span>{(work.fileUrls?.length ?? (work.fileUrl ? 1 : 0)) > 0 ? 'Material available' : 'No file attached'}</span></div><span className={styles.outcome}>{outcomeByWork.get(work.id) ?? 'No decision'}</span></article>)}</section><footer className={styles.dossierFooter}><div><strong>{selected.next}</strong><span>No due date is stored for this action.</span></div><Link className={styles.full} href={`${base}/${encodeURIComponent(selected.submission.id)}`}>Open full dossier<ArrowRight aria-hidden="true" /></Link></footer></div></aside></div> : <section className={styles.empty}><h2>{rows.length ? 'No submissions match these filters' : 'No submissions yet'}</h2><p>{rows.length ? 'Your filters remain applied. Clear them to return to the full queue.' : 'Submissions show up here once a call is published and someone applies through its form.'}</p>{rows.length ? <Link className={styles.clear} href={base}>Clear filters</Link> : <Link className={styles.opportunitiesLink} href={`/organization/${encodeURIComponent(organizationId)}/opportunities`}>View calls</Link>}</section>}
-  </main>;
+  return (
+    <main id="organization-main" className={styles.main}>
+      <header className="grid gap-1 border-b border-border pb-5">
+        <h1 className="font-heading text-3xl font-medium tracking-tight text-foreground">Submissions</h1>
+        <p className="text-sm text-muted-foreground">Everything that came in, in sections by what it needs next. Receipt, review and decision stay separate.</p>
+      </header>
+      <div className="pt-6">
+        <SubmissionsWorkspace
+          organizationId={organizationId}
+          rows={view}
+          total={rows.length}
+          opportunities={opportunities}
+          filters={{ q: query.q, opportunity: query.opportunity, receipt: query.receipt, review: query.review, decision: query.decision, flag: query.flag }}
+          canTriage={Boolean(workspace)}
+          exportHref={rows.length ? `/api/orgs/${encodeURIComponent(organizationId)}/${relational ? 'submissions/export' : 'insights/export'}` : undefined}
+          exportLabel={relational ? 'Export JSON' : 'Export CSV'}
+          initialSelected={query.selected}
+          screening={screeningCall ? <ScreeningRulesDialog organizationId={organizationId} openCallId={screeningCall.id} opportunityTitle={screeningCall.title} rules={radar.store.organizations.get(organizationId)?.customization?.eligibilityRules?.[screeningCall.id] ?? {}} /> : null}
+        />
+      </div>
+    </main>
+  );
 }

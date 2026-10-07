@@ -63,6 +63,12 @@
       "composition": ["Progress", "Table", "Tabs", "Sheet", "DropdownMenu", "Popover", "Dialog", "Field", "Input", "Avatar", "Checkbox", "Switch", "Button", "Alert", "Empty", "Sonner", "CountBadge", "CalibrationBadge", "WorkDecisionBadge", "SegmentedChoice", "ListGroup", "DetailFields"],
       "boundary": "One round at a time. Progress and calibration are derived from recorded assignments and scores; distribution previews a deterministic plan with conflict reasons before writing, and the commit applies only the previewed plan. Decisions remain per Work through the existing decision route."
     },
+    "composition.submissions-workspace": {
+      "semantic": "SubmissionsWorkspace",
+      "implementation": "apps/web/components/submissions-workspace.tsx",
+      "composition": ["InputGroup", "Select", "Table", "Checkbox", "Sheet", "DropdownMenu", "Dialog", "Button", "Empty", "Sonner", "ListGroup", "DetailFields", "PersonAvatar", "DecisionSummaryBadge", "IntakeFlagBadge", "WorkDecisionBadge"],
+      "boundary": "The organization's submission list. Filters live in the address and are applied on the server. Sections order rows by the next step; bulk decisions only fill undecided Works after a confirmation, and bulk letters are drafts that still pass approval. Receipt, review and decision stay separate facts."
+    },
     "composition.communications-manager": {
       "semantic": "CommunicationsManager",
       "implementation": "apps/web/components/communications-manager.tsx",
@@ -1045,6 +1051,18 @@
       "motion": "never",
       "implementation": "components/missa/operations-badges.tsx",
       "boundary": "Labels a provider delivery record (Delivered, Accepted by provider, In progress, Needs attention). Accepted is never shown as delivered."
+    },
+    "DecisionSummaryBadge": {
+      "base": "Badge",
+      "motion": "never",
+      "implementation": "components/missa/operations-badges.tsx",
+      "boundary": "Labels the recorded decisions across a submission's Works (Not decided, Partly decided, Accepted, Mixed). It reflects recorded decisions only and never implies a letter was sent."
+    },
+    "IntakeFlagBadge": {
+      "base": "Badge",
+      "motion": "never",
+      "implementation": "components/missa/operations-badges.tsx",
+      "boundary": "Names an intake flag (Too many Works, Missing file, Repeat submitter) with its reason in the accessible name. A prompt to look; it never declines or hides a submission."
     },
     "HueTile": {
       "base": "span",
