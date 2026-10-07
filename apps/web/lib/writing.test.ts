@@ -5,9 +5,12 @@ import {
   isWritingEntryId,
   newWritingEntryId,
   parseWritingSaveRequest,
+  readingTime,
+  textCounts,
   WRITING_BODY_MAX,
   writingPreview,
 } from "./writing.ts";
+import { opensQuote } from "./writing-typing.ts";
 
 test("entry ids are created on the device and validated on the server", () => {
   const id = newWritingEntryId();
@@ -115,4 +118,22 @@ test("a save names its text and the revision it was written on", () => {
       })
     ),
   );
+});
+
+test("the word count counts words, characters and reading time", () => {
+  assert.deepEqual(textCounts("The rain came\nearly."), {
+    words: 4,
+    characters: 19,
+    charactersWithoutSpaces: 17,
+  });
+  assert.equal(readingTime(0), "None");
+  assert.equal(readingTime(40), "About 1 minute");
+  assert.equal(readingTime(2380), "About 10 minutes");
+});
+
+test("a quote opens after a space, a bracket or a dash, and closes after a letter", () => {
+  for (const before of ["", " ", "\t", "(", "—", "-"])
+    assert.ok(opensQuote(before), JSON.stringify(before));
+  for (const before of ["a", ".", "!", "”"])
+    assert.ok(!opensQuote(before), JSON.stringify(before));
 });

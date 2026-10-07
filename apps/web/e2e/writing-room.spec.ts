@@ -225,7 +225,7 @@ test("pages keep their own format and every space and tab", async ({
   // A second page, with its own format.
   await page.getByRole("button", { name: "More" }).click();
   await page
-    .getByRole("menuitem", { name: "Add a page after this one" })
+    .getByRole("menuitem", { name: "Section break, own format" })
     .click();
   const second = pageText(page, 1);
   await expect(second).toBeFocused();
@@ -670,4 +670,273 @@ test("a piece is written for a call: its limit counted and its blind reading che
   ).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByText("11 words", { exact: true })).toBeVisible();
+});
+
+test("Ctrl+Enter breaks the page as in Google Docs; Backspace joins it again", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await signIn(page);
+  await page.goto("/doc");
+  const first = pageText(page, 0);
+  await expect(first).toBeFocused();
+  await first.pressSequentially("Before the break");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("after it");
+  // The caret at the start of the second line: the break goes there. The
+  // editor reads a caret the browser moved on its next selection event.
+  await page.keyboard.press("Home");
+  await page.waitForTimeout(150);
+  await page.keyboard.press("Control+Enter");
+  const second = pageText(page, 1);
+  await expect(second).toBeFocused();
+  await expect(first).toHaveText("Before the break");
+  await expect(second).toHaveText("after it");
+  const breaks = page.locator('[data-slot="writing-break"]');
+  await expect(breaks).toHaveText(["Page break"]);
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+  // A page break keeps the section's format: a change reaches both pages.
+  await page.getByRole("button", { name: "Page format" }).click();
+  const format = page.getByRole("dialog", { name: "Format" });
+  await expect(format).toContainText("This section, 2 pages");
+  await format.getByRole("radio", { name: "Center" }).click();
+  await page.keyboard.press("Escape");
+  const align = (index: number) =>
+    pageText(page, index).evaluate(
+      (element) =>
+        getComputedStyle(element.parentElement!.parentElement!).textAlign,
+    );
+  expect(await align(0)).toBe("center");
+  expect(await align(1)).toBe("center");
+
+  // Kept across a reload.
+  await page.reload();
+  await expect(pageText(page, 1)).toHaveText("after it");
+  await expect(breaks).toHaveText(["Page break"]);
+
+  // A section break starts a format of its own.
+  await pageText(page, 1).click();
+  await page.waitForTimeout(150);
+  await page.keyboard.press("End");
+  await page.waitForTimeout(150);
+  await page.getByRole("button", { name: "More" }).click();
+  await page
+    .getByRole("menuitem", { name: "Section break, own format" })
+    .click();
+  await expect(pageText(page, 2)).toBeFocused();
+  await expect(breaks).toHaveText(["Page break", "Section break"]);
+  await page.keyboard.type("a new part");
+  await page.getByRole("button", { name: "Page format" }).click();
+  await expect(format).toContainText("This page");
+  await format.getByRole("radio", { name: "Right" }).click();
+  await page.keyboard.press("Escape");
+  expect(await align(2)).toBe("right");
+  expect(await align(1)).toBe("center");
+
+  // Backspace at the start of a section with its own format asks for the menu.
+  await pageText(page, 2).click();
+  // ProseMirror reads a mouse selection a moment after the click.
+  await page.waitForTimeout(150);
+  await page.keyboard.press("Control+Home");
+  await page.waitForTimeout(150);
+  await page.keyboard.press("Backspace");
+  await expect(page.getByText("This page has its own format.")).toBeVisible();
+  await expect(breaks).toHaveCount(2);
+
+  // Backspace at the start of the page after a page break joins it again.
+  await pageText(page, 1).click();
+  // ProseMirror reads a mouse selection a moment after the click.
+  await page.waitForTimeout(150);
+  await page.keyboard.press("Control+Home");
+  await page.waitForTimeout(150);
+  await page.keyboard.press("Backspace");
+  await expect(breaks).toHaveText(["Section break"]);
+  await expect(pageText(page, 0)).toHaveText("Before the breakafter it");
+  await expect(pageText(page, 1)).toHaveText("a new part");
+
+  // The menu removes a section break, taking the section's format.
+  await pageText(page, 1).click();
+  await page.waitForTimeout(150);
+  await page.getByRole("button", { name: "More" }).click();
+  await page
+    .getByRole("menuitem", {
+      name: "Remove the section break before this page",
+    })
+    .click();
+  await expect(breaks).toHaveCount(0);
+  await expect(pageText(page, 0)).toHaveText(
+    "Before the breakafter ita new part",
+  );
+  expect(await align(0)).toBe("center");
+});
+
+test("the shortcuts writers know from Google Docs, smart punctuation and the word count", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await signIn(page);
+  await page.goto("/doc");
+  const text = pageText(page, 0);
+  await expect(text).toBeFocused();
+
+  // Superscript and subscript, and clearing them.
+  await page.keyboard.type("E = mc");
+  await page.keyboard.press("Control+.");
+  await page.keyboard.type("2");
+  await page.keyboard.press("Control+.");
+  await page.keyboard.type(" and H");
+  await page.keyboard.press("Control+,");
+  await page.keyboard.type("2");
+  await page.keyboard.press("Control+,");
+  await page.keyboard.type("O");
+  await expect(text.locator("sup")).toHaveText("2");
+  await expect(text.locator("sub")).toHaveText("2");
+  await page.keyboard.press("Control+a");
+  await page.keyboard.press("Alt+Shift+5");
+  await expect(text.locator("s")).toHaveCount(1);
+  await page.keyboard.press("Control+\\");
+  await expect(text.locator("s, sup, sub")).toHaveCount(0);
+
+  // A dash after a tab stays as typed; at the start of a line it starts a list.
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Tab");
+  await page.keyboard.type("- not a list");
+  await expect(text.locator("ul")).toHaveCount(0);
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("- one");
+  await expect(text.locator("ul")).toHaveCount(1);
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Tab");
+  await page.keyboard.type("nested");
+  await expect(text.locator("ul ul")).toHaveText("nested");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+
+  // Straight quotes stay straight until smart punctuation is turned on.
+  await page.keyboard.type('"rain"');
+  await expect(text).toContainText('"rain"');
+  await page.getByRole("button", { name: "More" }).click();
+  await page
+    .getByRole("menuitemcheckbox", { name: "Smart quotes and dashes" })
+    .click();
+  await page.keyboard.press("Escape");
+  await text.click();
+  await page.keyboard.press("Control+End");
+  await page.waitForTimeout(150);
+  await page.keyboard.press("Enter");
+  await page.keyboard.type('"it\'s late" -- she said...');
+  await expect(text).toContainText("“it’s late” — she said…");
+
+  // The word count opens from the footer or the keyboard, and counts a selection.
+  await page.keyboard.press("Control+Shift+c");
+  const dialog = page.getByRole("dialog", { name: "Word count" });
+  await expect(dialog).toContainText("Reading time");
+  await expect(
+    (
+      await new AxeBuilder({ page })
+        .include('[data-slot="dialog-content"]')
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await page.keyboard.press("Escape");
+  // The last line: “it’s late” — she said…, four words.
+  await text.click();
+  await page.waitForTimeout(150);
+  await page.keyboard.press("Control+End");
+  await page.keyboard.press("Shift+Home");
+  await page.waitForTimeout(150);
+  await expect(
+    page.getByRole("button", { name: /^4 of \d+ words selected/u }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /selected\. Word count$/u }).click();
+  await expect(dialog).toContainText(
+    "The selected text, then the whole piece.",
+  );
+  await expect(dialog).toContainText(/4 of \d+/u);
+});
+
+test("quiet writing: quiet mode, focus on a paragraph or sentence, typewriter scrolling", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await signIn(page);
+  await page.goto("/doc");
+  const text = pageText(page, 0);
+  await expect(text).toBeFocused();
+  await page.keyboard.type("The rain came early. It stayed.");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Nobody minded.");
+
+  // Quiet mode fades the controls without the timer, and comes back.
+  const header = page.locator("header[data-hidden]");
+  await expect(header).toHaveAttribute("data-hidden", "false");
+  await page.keyboard.press("Control+Shift+f");
+  await expect(header).toHaveAttribute("data-hidden", "true");
+  await page.keyboard.press("Control+Shift+f");
+  await expect(header).toHaveAttribute("data-hidden", "false");
+
+  // Focus on this paragraph dims the others.
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitemradio", { name: "This paragraph" }).click();
+  await text.locator("p").first().click();
+  await page.waitForTimeout(150);
+  await expect(text.locator("p").nth(1)).toHaveClass(/text-muted-foreground/u);
+  await expect(text.locator("p").first()).not.toHaveClass(
+    /text-muted-foreground/u,
+  );
+
+  // Focus on this sentence dims the rest of the paragraph too.
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitemradio", { name: "This sentence" }).click();
+  await text.locator("p").first().click();
+  await page.keyboard.press("End");
+  await page.waitForTimeout(150);
+  await expect(
+    text.locator("p").first().locator("span.text-muted-foreground"),
+  ).toHaveText("The rain came early. ");
+
+  // Every line clear again.
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitemradio", { name: "Every line clear" }).click();
+  await expect(text.locator(".text-muted-foreground")).toHaveCount(0);
+
+  // Typewriter scrolling keeps the line being written near the middle.
+  await page.getByRole("button", { name: "More" }).click();
+  await page
+    .getByRole("menuitemcheckbox", { name: "Typewriter scrolling" })
+    .click();
+  await page.keyboard.press("Escape");
+  await text.click();
+  await page.keyboard.press("Control+End");
+  await page.waitForTimeout(150);
+  for (let line = 0; line < 30; line += 1) {
+    await page.keyboard.press("Enter");
+    await page.keyboard.type(`line ${line}`);
+  }
+  const offset = await page.evaluate(() => {
+    const range = window.getSelection()!.getRangeAt(0);
+    const caret = range.getBoundingClientRect();
+    const box = document
+      .querySelector("main [aria-busy], main .overflow-y-auto")!
+      .getBoundingClientRect();
+    return caret.top + caret.height / 2 - (box.top + box.height / 2);
+  });
+  expect(Math.abs(offset)).toBeLessThan(40);
+
+  // The word count can stay out of sight.
+  await page.getByRole("button", { name: "More" }).click();
+  await page
+    .getByRole("menuitemcheckbox", { name: "Hide the word count" })
+    .click();
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("button", { name: "Word count", exact: true }),
+  ).toHaveText("Word count");
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Word count", exact: true }),
+  ).toBeVisible();
 });

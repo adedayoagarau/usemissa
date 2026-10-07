@@ -9,6 +9,8 @@ import {
   serializeDocument,
   WRITING_PAGES_MAX,
   newCanvasBlock,
+  pageStart,
+  sectionPages,
   toCanvasPage,
   toFlowPage,
   type WritingDocument,
@@ -175,5 +177,47 @@ test("canvas pages are checked like any page", () => {
     ),
     null,
     "only canvas pages hold boxes",
+  );
+});
+
+test("page breaks keep a section together; section breaks start a new one", () => {
+  const text = (words: string) => ({
+    type: "doc",
+    content: [{ type: "paragraph", content: [{ type: "text", text: words }] }],
+  });
+  const document = newDocument("newsreader");
+  const first = { ...document.pages[0]!, content: text("one") };
+  const flowed = { ...emptyPage(), continues: true, content: text("two") };
+  const broken = { ...emptyPage(), pageBreak: true, content: text("three") };
+  const section = { ...emptyPage(), content: text("four") };
+  const after = { ...emptyPage(), pageBreak: true, content: text("five") };
+  document.pages = [first, flowed, broken, section, after];
+
+  assert.deepEqual(
+    document.pages.map((_, index) => pageStart(document.pages, index)),
+    ["first", "flow", "page-break", "section-break", "page-break"],
+  );
+  assert.deepEqual(sectionPages(document.pages, 1), [0, 1, 2]);
+  assert.deepEqual(sectionPages(document.pages, 4), [3, 4]);
+  // A page break is a line between paragraphs; a section starts after a blank line.
+  assert.equal(documentText(document), "one\ntwo\nthree\n\nfour\nfive");
+  assert.ok(parseWritingDocument(serializeDocument(document)));
+
+  assert.equal(
+    parseWritingDocument({
+      ...document,
+      pages: [first, { ...broken, continues: true }],
+    }),
+    null,
+    "a page either continues or follows a break",
+  );
+  const canvas = toCanvasPage(emptyPage(), "a4");
+  assert.equal(
+    parseWritingDocument({
+      ...document,
+      pages: [first, { ...canvas, pageBreak: true }],
+    }),
+    null,
+    "a canvas page starts its own section",
   );
 });

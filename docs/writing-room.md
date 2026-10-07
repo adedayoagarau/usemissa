@@ -50,17 +50,43 @@ A piece is a set of printed pages on one paper size: A4, US Letter, A5 or
 chapbook (5.5 × 8.5 in).
 
 - **Rich text.** Body text, heading, subheading and quotation; bold, italic,
-  underline and strikethrough; line alignment; section breaks; undo and redo.
-  No links, code or embeds.
+  underline, strikethrough, superscript and subscript; line alignment; scene
+  breaks (a rule between scenes); undo and redo. No links, code or embeds.
+- **Keys from Google Docs.** Ctrl or ⌘ + . and , for superscript and
+  subscript; Ctrl or ⌘ + \ clears formatting; Alt + Shift + 5 or ⌘ + Shift + X
+  strike through (as well as Ctrl or ⌘ + Shift + S); Ctrl or ⌘ + Shift + C
+  opens the word count. Keys match on the character typed, never the key's
+  position, so letters made with AltGr (Polish ś, ć; German { [ ]) are never
+  taken. Every key also has a menu or button.
+- **Smart quotes and dashes** (More, a checkbox, off by default): curly quotes,
+  an em dash for two hyphens, an ellipsis for three dots. Off by default so a
+  poem's straight quotes stay as typed; Backspace straight after a change
+  undoes it (`lib/writing-typing.ts`).
+- **Word count** (the footer count, More, or the keys): pages, words,
+  characters with and without spaces, and reading time at 238 words a
+  minute. With text selected, the footer reads "4 of 1,240 words" and the
+  dialog shows the selection's share of each count.
 - **Every space is kept.** Tab writes a tab, runs of spaces stay as typed, and
-  both survive saving, reloading and printing. To leave a page by keyboard,
+  both survive saving, reloading and printing. In a list, Tab nests the item.
+  Typing "- ", "+ " or "* " starts a list only at the start of a line, so a
+  dash after a tab or spaces stays as typed. To leave a page by keyboard,
   press Escape, then Tab.
 - **Format per page.** Each page has its own alignment, line spacing, letter
   spacing, margins (in millimetres), typeface and text size. Page format opens
   from the format bar; “Use this format on every page” copies it to the rest.
-- **Pages are added, moved and deleted** from More. Arrow keys cross from the
-  end of one page to the start of the next. Backspace on an empty page removes
-  it.
+- **Page and section breaks, as in Google Docs and Word.** Ctrl+Enter (⌘+Enter
+  on a Mac), or More, Page break, moves the text after the caret to a new
+  page in the same section; a change of format reaches every page of the
+  section. More, Section break, own format, does the same but the new page
+  starts a section whose format is its own. A label between pages says which
+  break is there; it never prints. Backspace at the very start of a page
+  removes a page break, and the text flows back. A section break with a
+  different format is removed only from More, Remove the section break before
+  this page, and the joined pages take the format of the section before.
+  Stored as `pageBreak` on the page; a page that neither continues nor
+  follows a page break starts a section.
+- **Pages are moved and deleted** from More. Arrow keys cross from the end of
+  one page to the start of the next. Backspace on an empty page removes it.
 - **Text flows from page to page.** In printed-pages view, paragraphs that
   run past a page's bottom margin move to the top of a page that continues it,
   made when needed, and the caret goes with them. Deleting text brings
@@ -68,8 +94,9 @@ chapbook (5.5 × 8.5 in).
   adds is never merged into another, so a page set apart for a poem stays
   apart. Text moves a whole paragraph at a time, so a paragraph is never split
   into two; a single paragraph longer than the page is marked so the writer
-  can break it. Format changes reach every page a text flows across, and
-  plain text gains no blank lines at these breaks (`continues` on the page).
+  can break it. Format changes reach every page of the section, and plain
+  text gains no blank lines at these breaks or at page breaks (`continues` on
+  the page); a section break adds one blank line.
 - **Two views.** Printed pages show each sheet at its real proportions, scaled
   to the window. Draft drops the paper and is the default below 768px wide.
 - **Print or save as PDF** uses the browser's print dialog with the paper size
@@ -83,6 +110,33 @@ server checks the shape and limits (500 pages, 2,000,000 characters, nesting
 depth 40) before saving. `body` stays the plain text of every page, used for
 the word count, previews and the plain-text download. Entries saved before
 pages existed open as one page with their text unchanged.
+
+## Quiet writing
+
+All in More, kept on the device as preferences:
+
+- **Quiet mode** (or Ctrl or ⌘ + Shift + F, Google Docs' compact mode key):
+  the controls fade while the writer writes, with or without the timer. They
+  come back on pointing at them or on reaching them by keyboard, and whenever
+  a dialog or sheet is open.
+- **Focus**: Every line clear, This paragraph, or This sentence. Everything but
+  the paragraph or sentence in hand takes the muted text color (5.55:1 on
+  paper, 7.34:1 in the dark room, so still WCAG AA). Sentences are found by
+  the browser's Unicode rules (`Intl.Segmenter`); nothing reads what the words
+  mean. Dimming never prints (`lib/writing-focus.ts`).
+- **Typewriter scrolling** keeps the line being written in the middle of the
+  window. It moves only as the writer types, never on a click, and jumps
+  rather than glides; half a window of room below the last page lets the last
+  line reach the middle.
+- **Hide the word count** leaves "Word count" in the footer instead of the
+  number; the dialog still opens from it.
+- **Escape in full screen**: where the browser allows (Chrome and Edge),
+  Escape reaches the page, so Escape then Tab still leaves it; holding Escape
+  leaves full screen.
+
+Not built, by choice: parts-of-speech highlighting (iA Writer, Scrivener's
+Linguistic Focus). Even on the device it is automated reading of the writer's
+words, which the room promises not to do (`docs/writing-research.md`).
 
 ## Snapshots, find and replace, appearance
 

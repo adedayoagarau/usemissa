@@ -76,6 +76,13 @@ export type FlowPage = {
    * adds is never merged into another.
    */
   continues?: boolean;
+  /**
+   * The writer broke the page here (Ctrl or ⌘ + Enter): the text starts on a
+   * new page but keeps the format of the page before, as one section. A page
+   * that neither continues nor follows a page break starts a section of its
+   * own, with its own format.
+   */
+  pageBreak?: boolean;
 };
 
 export type WritingDocument = {
@@ -242,7 +249,7 @@ export function documentText(document: WritingDocument): string {
   return document.pages
     .map(
       (page, index) =>
-        (index === 0 ? "" : page.continues ? "\n" : "\n\n") +
+        (index === 0 ? "" : page.continues || page.pageBreak ? "\n" : "\n\n") +
         (page.kind === "canvas"
           ? readingOrder(page.blocks ?? [])
               .map((block) => nodeText(block.content))
@@ -259,6 +266,31 @@ export function flowChain(pages: FlowPage[], index: number): number[] {
   const chain = [start];
   while (pages[chain.at(-1)! + 1]?.continues) chain.push(chain.at(-1)! + 1);
   return chain;
+}
+
+/**
+ * The pages of a page's section: the pages its text flows across and the
+ * pages after a page break, which share one format.
+ */
+export function sectionPages(pages: FlowPage[], index: number): number[] {
+  const joined = (page: FlowPage | undefined) =>
+    Boolean(page?.continues || page?.pageBreak);
+  let start = index;
+  while (start > 0 && joined(pages[start])) start -= 1;
+  const section = [start];
+  while (joined(pages[section.at(-1)! + 1])) section.push(section.at(-1)! + 1);
+  return section;
+}
+
+/** What begins a page: text flowed on, a page break, or a new section. */
+export function pageStart(
+  pages: FlowPage[],
+  index: number,
+): "first" | "flow" | "page-break" | "section-break" {
+  const page = pages[index];
+  if (index === 0 || !page) return "first";
+  if (page.continues) return "flow";
+  return page.pageBreak ? "page-break" : "section-break";
 }
 
 function finite(value: unknown, min: number, max: number): value is number {
@@ -336,6 +368,9 @@ export function parseWritingDocument(value: unknown): WritingDocument | null {
       return null;
     if (page.continues !== undefined && typeof page.continues !== "boolean")
       return null;
+    if (page.pageBreak !== undefined && typeof page.pageBreak !== "boolean")
+      return null;
+    if (page.continues && page.pageBreak) return null;
     if (
       typeof page.id !== "string" ||
       !PAGE_ID.test(page.id) ||
@@ -346,7 +381,7 @@ export function parseWritingDocument(value: unknown): WritingDocument | null {
     if (!validFormat(page.format)) return null;
     if (!validNode(page.content) || page.content.type !== "doc") return null;
     if (page.kind === "canvas") {
-      if (page.continues) return null;
+      if (page.continues || page.pageBreak) return null;
       if (!Array.isArray(page.blocks) || page.blocks.length > CANVAS_BLOCKS_MAX)
         return null;
       const blockIds = new Set<string>();

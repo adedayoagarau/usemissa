@@ -42,6 +42,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -51,9 +52,10 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import type { Editor } from "@tiptap/react";
+import { useEditorState, type Editor } from "@tiptap/react";
 import {
   WritingPages,
+  type PageCommands,
   type PageEditors,
   type PagesView,
 } from "@/components/missa/writing-pages";
@@ -63,6 +65,7 @@ import {
 } from "@/components/missa/writing-format";
 import { WritingSnapshots } from "@/components/missa/writing-snapshots";
 import { WritingFind } from "@/components/missa/writing-find";
+import { WritingWordCount } from "@/components/missa/writing-word-count";
 import { useWritingCall, WritingCall } from "@/components/missa/writing-call";
 import {
   CompileDialog,
@@ -91,8 +94,8 @@ import {
 } from "@/lib/writing";
 import {
   documentText,
-  emptyPage,
   newCanvasBlock,
+  pageStart,
   toCanvasPage,
   toFlowPage,
   newDocument,
@@ -113,6 +116,8 @@ import {
   type WritingProject,
 } from "@/lib/writing-projects";
 import { wordMeter } from "@/lib/writing-call";
+import { setSmartPunctuation } from "@/lib/writing-typing";
+import { redrawFocus, setFocusMode, type FocusMode } from "@/lib/writing-focus";
 import {
   browserWritingDeviceStore,
   httpWritingTransport,
@@ -152,6 +157,16 @@ type Prefs = {
   view: PagesView | null;
   /** The room's colors: light, dark, or whatever the device uses. */
   appearance: "light" | "dark" | "device";
+  /** Curly quotes, an em dash for two hyphens, an ellipsis for three dots. */
+  smartPunctuation: boolean;
+  /** The controls fade while writing, with or without the timer. */
+  quiet: boolean;
+  /** Dims all but the paragraph or sentence in hand. */
+  focus: FocusMode;
+  /** Keeps the line being written in the middle of the window. */
+  typewriter: boolean;
+  /** Leaves the word count out of the footer. */
+  hideCount: boolean;
 };
 
 const PREFS_KEY = "missa.write.prefs.v1";
@@ -161,6 +176,11 @@ const DEFAULT_PREFS: Prefs = {
   minutes: 15,
   view: null,
   appearance: "light",
+  smartPunctuation: false,
+  quiet: false,
+  focus: "off",
+  typewriter: false,
+  hideCount: false,
 };
 const TIMER_LENGTHS = [5, 10, 15, 20, 25, 30, 45, 60];
 
@@ -213,6 +233,14 @@ function readPrefs(): Prefs {
       typeface: storedWritingTypeface(field("typeface")),
       view: view === "page" || view === "draft" ? view : null,
       spellcheck: field("spellcheck") === true,
+      smartPunctuation: field("smartPunctuation") === true,
+      quiet: field("quiet") === true,
+      focus:
+        field("focus") === "paragraph" || field("focus") === "sentence"
+          ? (field("focus") as FocusMode)
+          : "off",
+      typewriter: field("typewriter") === true,
+      hideCount: field("hideCount") === true,
       minutes: TIMER_LENGTHS.includes(minutes as number)
         ? (minutes as number)
         : DEFAULT_PREFS.minutes,
@@ -362,6 +390,7 @@ export function WritingRoom({
   const [snapshotsOpen, setSnapshotsOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
+  const [wordCountOpen, setWordCountOpen] = useState(false);
   const [compileState, setCompileState] = useState<{
     projectId: string | null;
     busy: boolean;
@@ -378,6 +407,42 @@ export function WritingRoom({
     () => prefs.view ?? (window.innerWidth < 768 ? "draft" : "page"),
   );
   const [editors] = useState<PageEditors>(() => new Map());
+  const pageCommands = useRef<PageCommands | null>(null);
+  const scroller = useRef<HTMLDivElement>(null);
+
+  /**
+   * Typewriter scrolling: the line being written stays in the middle of the
+   * window. It moves only as the writer types, never when they click, and
+   * jumps rather than glides, so nothing swims while writing.
+   */
+  function centerCaret() {
+    const container = scroller.current;
+    const selection = window.getSelection();
+    if (!container || !selection?.rangeCount) return;
+    const range = selection.getRangeAt(0).cloneRange();
+    range.collapse(false);
+    let rect = range.getBoundingClientRect();
+    // An empty line has no box of its own; its element has.
+    if (!rect.height) {
+      const node = range.startContainer;
+      const element = node instanceof Element ? node : node.parentElement;
+      if (element) rect = element.getBoundingClientRect();
+    }
+    if (!rect.height) return;
+    const box = container.getBoundingClientRect();
+    const offset = rect.top + rect.height / 2 - (box.top + box.height / 2);
+    if (Math.abs(offset) > 2)
+      container.scrollTo({
+        top: container.scrollTop + offset,
+        behavior: "instant",
+      });
+  }
+  // Shortcut hints in menus follow the keyboard the writer has.
+  const [mac] = useState(
+    () =>
+      typeof navigator !== "undefined" &&
+      /Mac|iPhone|iPad/u.test(navigator.platform || navigator.userAgent),
+  );
   const [compiledEditors] = useState<PageEditors>(() => new Map());
   const [active, setActive] = useState<{
     pageId: string;
@@ -418,11 +483,31 @@ export function WritingRoom({
   const deferredDoc = useDeferredValue(current.doc);
   const body = useMemo(() => documentText(deferredDoc), [deferredDoc]);
   const words = useMemo(() => countWords(body), [body]);
+  // The selected text on the page in hand, for "12 of 1,240 words".
+  const selection = useEditorState({
+    editor: active?.editor ?? null,
+    selector: ({ editor }) => {
+      if (!editor || editor.isDestroyed) return null;
+      const { from, to, empty } = editor.state.selection;
+      return empty ? null : editor.state.doc.textBetween(from, to, "\n");
+    },
+  });
+  const selectedWords = selection ? countWords(selection) : 0;
   const activeIndex = Math.max(
     0,
     current.doc.pages.findIndex((page) => page.id === active?.pageId),
   );
   const activePage = current.doc.pages[activeIndex];
+  const activeStart = pageStart(current.doc.pages, activeIndex);
+  // Only a break between two pages of flowing text can be removed.
+  const activeBreak =
+    (activeStart === "page-break" || activeStart === "section-break") &&
+    activePage?.kind === "flow" &&
+    current.doc.pages[activeIndex - 1]?.kind === "flow"
+      ? activeStart === "page-break"
+        ? "page break"
+        : "section break"
+      : null;
   const inAccount = sync.saved(current.id);
   const pending = syncState.pending.includes(current.id);
   const running = timer.endsAt !== null;
@@ -576,6 +661,34 @@ export function WritingRoom({
     return () => clearInterval(interval);
   }, [timer.endsAt]);
 
+  // Smart quotes and dashes follow the writer's choice on every page.
+  useEffect(() => {
+    setSmartPunctuation(prefs.smartPunctuation);
+  }, [prefs.smartPunctuation]);
+
+  // Focus dimming follows the writer's choice; every page redraws at once.
+  useEffect(() => {
+    setFocusMode(prefs.focus);
+    for (const editor of editors.values())
+      if (!editor.isDestroyed) redrawFocus(editor.view);
+  }, [prefs.focus, editors]);
+
+  // In full screen, Escape reaches the page (to leave it by keyboard) where
+  // the browser allows; holding Escape still leaves full screen.
+  useEffect(() => {
+    const keyboard = (
+      navigator as Navigator & {
+        keyboard?: {
+          lock?: (keys: string[]) => Promise<void>;
+          unlock?: () => void;
+        };
+      }
+    ).keyboard;
+    if (!keyboard?.lock) return;
+    if (fullscreen) void keyboard.lock(["Escape"]).catch(() => undefined);
+    else keyboard.unlock?.();
+  }, [fullscreen]);
+
   // The room's own appearance. Only /doc turns dark, and printing is always on white.
   useEffect(() => {
     const root = document.documentElement;
@@ -690,32 +803,19 @@ export function WritingRoom({
     requestAnimationFrame(focus);
   }
 
-  function addPage() {
-    const pages = [...current.doc.pages];
-    let at = active ? activeIndex + 1 : pages.length;
-    // A new page goes after the text that flows on from this one.
-    while (pages[at]?.continues) at += 1;
-    const format = pages[Math.min(activeIndex, pages.length - 1)]!.format;
-    const page = emptyPage(format);
-    pages.splice(at, 0, page);
-    change({ doc: { ...current.doc, pages } });
-    // The new page takes focus once it is on screen.
-    requestAnimationFrame(() => editors.get(page.id)?.commands.focus("start"));
-  }
-
   function movePage(step: -1 | 1) {
     // A page moved by hand stands on its own; the text after it no longer flows from it.
     const pages = current.doc.pages.map((page, index) =>
       index === activeIndex || index === activeIndex + 1
-        ? { ...page, continues: false }
+        ? { ...page, continues: false, pageBreak: false }
         : page,
     );
     const to = activeIndex + step;
     if (to < 0 || to >= pages.length) return;
     const [page] = pages.splice(activeIndex, 1);
     pages.splice(to, 0, page!);
-    if (pages[to + 1]?.continues)
-      pages[to + 1] = { ...pages[to + 1]!, continues: false };
+    if (pages[to + 1]?.continues || pages[to + 1]?.pageBreak)
+      pages[to + 1] = { ...pages[to + 1]!, continues: false, pageBreak: false };
     change({ doc: { ...current.doc, pages } });
   }
 
@@ -724,7 +824,9 @@ export function WritingRoom({
     const pages = current.doc.pages
       .filter((_, index) => index !== activeIndex)
       .map((page, index) =>
-        index === 0 && page.continues ? { ...page, continues: false } : page,
+        index === 0 && (page.continues || page.pageBreak)
+          ? { ...page, continues: false, pageBreak: false }
+          : page,
       );
     setActive(null);
     change({ doc: { ...current.doc, pages } });
@@ -1162,13 +1264,14 @@ export function WritingRoom({
             ? "This entry was deleted on another device. What you wrote here is saved as a new entry."
             : "";
   const hideChrome =
-    running &&
+    (running || prefs.quiet) &&
     !sheetOpen &&
     !deleteOpen &&
     !formatOpen &&
     !pageDeleteOpen &&
     !snapshotsOpen &&
-    !callOpen;
+    !callOpen &&
+    !wordCountOpen;
   const timerLabel = running
     ? "Pause timer"
     : remaining === 0
@@ -1328,6 +1431,27 @@ export function WritingRoom({
             event.preventDefault();
             sync.flush();
           }
+          // Word count, as in Google Docs.
+          if (
+            (event.metaKey || event.ctrlKey) &&
+            event.shiftKey &&
+            !event.altKey &&
+            event.key.toLowerCase() === "c"
+          ) {
+            event.preventDefault();
+            setWordCountOpen(true);
+          }
+          // Quiet mode, as Google Docs' compact mode: Ctrl or ⌘ + Shift + F.
+          if (
+            (event.metaKey || event.ctrlKey) &&
+            event.shiftKey &&
+            !event.altKey &&
+            event.key.toLowerCase() === "f"
+          ) {
+            event.preventDefault();
+            updatePrefs({ quiet: !prefs.quiet });
+            return;
+          }
           // Find and replace reaches every page and text box, which the browser's own find can't change.
           if (
             (event.metaKey || event.ctrlKey) &&
@@ -1370,8 +1494,12 @@ export function WritingRoom({
           onCopy={copyText}
         />
         <div
+          ref={scroller}
           className="min-h-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto print:overflow-visible"
           aria-busy={current.state === "opening" || undefined}
+          onInput={() => {
+            if (prefs.typewriter) requestAnimationFrame(centerCaret);
+          }}
         >
           {compiled ? (
             <WritingPages
@@ -1426,6 +1554,12 @@ export function WritingRoom({
               key={current.mount}
               document={current.doc}
               onChange={changeDocument}
+              commandsRef={pageCommands}
+              onJoinRefused={() =>
+                toast.info(
+                  "This page has its own format. To join it to the page before, choose More, then Remove the section break before this page.",
+                )
+              }
               view={view}
               spellcheck={prefs.spellcheck}
               readOnly={current.state !== "ready"}
@@ -1452,6 +1586,10 @@ export function WritingRoom({
               }
             />
           )}
+          {prefs.typewriter ? (
+            // Room below the last line, so it can reach the middle too.
+            <div aria-hidden="true" className="h-[50vh] print:hidden" />
+          ) : null}
         </div>
         <p role="status" className="sr-only">
           {announcement}
@@ -1535,18 +1673,32 @@ export function WritingRoom({
         </div>
 
         <p className="text-xs text-muted-foreground">
-          {meter ? (
-            <span
-              className={`font-mono tabular-nums ${meter.over ? "text-ochre-deep" : ""}`}
-            >
-              {meter.label}
-              {meter.over ? (
-                <span className="sr-only">, over the call’s limit</span>
-              ) : null}
-            </span>
-          ) : (
-            <span className="font-mono tabular-nums">{wordLabel(words)}</span>
-          )}
+          <Button
+            variant="ghost"
+            size="xs"
+            aria-label={
+              prefs.hideCount
+                ? "Word count"
+                : `${
+                    selectedWords
+                      ? `${selectedWords.toLocaleString()} of ${wordLabel(words)} selected`
+                      : (meter?.label ?? wordLabel(words))
+                  }${meter?.over ? ", over the call’s limit" : ""}. Word count`
+            }
+            onClick={() => setWordCountOpen(true)}
+          >
+            {prefs.hideCount ? (
+              "Word count"
+            ) : (
+              <span
+                className={`font-mono tabular-nums ${meter?.over && !selectedWords ? "text-ochre-deep" : ""}`}
+              >
+                {selectedWords
+                  ? `${selectedWords.toLocaleString()} of ${wordLabel(words)}`
+                  : (meter?.label ?? wordLabel(words))}
+              </span>
+            )}
+          </Button>
           {status ? (
             <>
               <span aria-hidden="true" className="mx-1.5">
@@ -1643,10 +1795,40 @@ export function WritingRoom({
                 </DropdownMenuLabel>
                 <DropdownMenuItem
                   disabled={current.state !== "ready"}
-                  onClick={addPage}
+                  onClick={() =>
+                    pageCommands.current?.breakPage(
+                      active?.pageId ?? null,
+                      "page",
+                    )
+                  }
                 >
-                  Add a page after this one
+                  Page break
+                  <DropdownMenuShortcut>
+                    {mac ? "⌘↵" : "Ctrl+Enter"}
+                  </DropdownMenuShortcut>
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={current.state !== "ready"}
+                  onClick={() =>
+                    pageCommands.current?.breakPage(
+                      active?.pageId ?? null,
+                      "section",
+                    )
+                  }
+                >
+                  Section break, own format
+                </DropdownMenuItem>
+                {activeBreak ? (
+                  <DropdownMenuItem
+                    disabled={current.state !== "ready"}
+                    onClick={() => {
+                      if (activePage)
+                        pageCommands.current?.joinPage(activePage.id, true);
+                    }}
+                  >
+                    Remove the {activeBreak} before this page
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem
                   disabled={current.state !== "ready" || activeIndex === 0}
                   onClick={() => movePage(-1)}
@@ -1723,6 +1905,56 @@ export function WritingRoom({
                     Draft, no paper
                   </DropdownMenuRadioItem>
                 </DropdownMenuRadioGroup>
+                <DropdownMenuCheckboxItem
+                  checked={prefs.quiet}
+                  onCheckedChange={(checked) => updatePrefs({ quiet: checked })}
+                >
+                  Quiet mode
+                  <DropdownMenuShortcut>
+                    {mac ? "⇧⌘F" : "Ctrl+Shift+F"}
+                  </DropdownMenuShortcut>
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={prefs.typewriter}
+                  onCheckedChange={(checked) =>
+                    updatePrefs({ typewriter: checked })
+                  }
+                >
+                  Typewriter scrolling
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={prefs.hideCount}
+                  onCheckedChange={(checked) =>
+                    updatePrefs({ hideCount: checked })
+                  }
+                >
+                  Hide the word count
+                </DropdownMenuCheckboxItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Focus</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={prefs.focus}
+                  onValueChange={(value) =>
+                    updatePrefs({
+                      focus:
+                        value === "paragraph" || value === "sentence"
+                          ? value
+                          : "off",
+                    })
+                  }
+                >
+                  <DropdownMenuRadioItem value="off" closeOnClick>
+                    Every line clear
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="paragraph" closeOnClick>
+                    This paragraph
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="sentence" closeOnClick>
+                    This sentence
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
@@ -1750,6 +1982,12 @@ export function WritingRoom({
                 </DropdownMenuRadioGroup>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setWordCountOpen(true)}>
+                Word count
+                <DropdownMenuShortcut>
+                  {mac ? "⇧⌘C" : "Ctrl+Shift+C"}
+                </DropdownMenuShortcut>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setFindOpen(true)}>
                 Find and replace
               </DropdownMenuItem>
@@ -1786,6 +2024,14 @@ export function WritingRoom({
                 }
               >
                 Check spelling
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={prefs.smartPunctuation}
+                onCheckedChange={(checked) =>
+                  updatePrefs({ smartPunctuation: checked })
+                }
+              >
+                Smart quotes and dashes
               </DropdownMenuCheckboxItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -1843,6 +2089,14 @@ export function WritingRoom({
           sync.edit(current.id, content, current.projectId);
           setFocusTick((tick) => tick + 1);
         }}
+      />
+
+      <WritingWordCount
+        open={wordCountOpen}
+        onOpenChange={setWordCountOpen}
+        text={body}
+        pages={current.doc.pages.length}
+        selection={selection}
       />
 
       <WritingCall

@@ -171,3 +171,21 @@ export type WritingEntry = WritingEntrySummary & {
   body: string;
   document: string | null;
 };
+
+/** Words read in a minute by an adult reading silently. */
+const READING_PACE = 238;
+
+/** Counts for the word count dialog: words, and characters with and without spaces. */
+export function textCounts(text: string) {
+  return {
+    words: countWords(text),
+    characters: [...text.replace(/\n/gu, "")].length,
+    charactersWithoutSpaces: [...text.replace(/\s/gu, "")].length,
+  };
+}
+
+export function readingTime(words: number): string {
+  if (!words) return "None";
+  const minutes = Math.max(1, Math.round(words / READING_PACE));
+  return `About ${minutes.toLocaleString()} ${minutes === 1 ? "minute" : "minutes"}`;
+}
