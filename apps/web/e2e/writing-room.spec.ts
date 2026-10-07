@@ -479,3 +479,88 @@ test("a page becomes a free canvas with boxes placed by hand and kept", async ({
   await expect(box).toHaveCount(0);
   await expect(pageText(page, 0)).toHaveText(/sand.*wind|wind.*sand/);
 });
+
+test("snapshots keep a version to compare and restore; find replaces across pages; the room can be dark", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await signIn(page);
+  await page.goto("/doc");
+  const first = pageText(page, 0);
+  await expect(first).toBeFocused();
+  await first.pressSequentially("The rain came early.");
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+  // A snapshot, then a change.
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitem", { name: "Snapshots…" }).click();
+  const sheet = page.getByRole("dialog", { name: "Snapshots" });
+  await sheet.getByLabel("Name, if you like").fill("First rain");
+  await sheet.getByRole("button", { name: "Take a snapshot" }).click();
+  await expect(sheet.getByText("First rain")).toBeVisible();
+  await expect(
+    (
+      await new AxeBuilder({ page })
+        .include('[data-slot="sheet-content"]')
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await page.keyboard.press("Escape");
+  await first.click();
+  await page.keyboard.press("Control+End");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("It stayed. The rain is still here.");
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+  // Compare marks the new line.
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitem", { name: "Snapshots…" }).click();
+  await sheet.getByRole("button", { name: "Compare" }).click();
+  const compare = page.getByRole("dialog", { name: "First rain and now" });
+  await expect(
+    compare.getByText("It stayed. The rain is still here."),
+  ).toBeVisible();
+  await expect(compare.getByText("New since:", { exact: false })).toHaveCount(
+    1,
+  );
+  await page.keyboard.press("Escape");
+
+  // Find and replace reaches every match.
+  await page.keyboard.press("Escape");
+  await first.click();
+  await page.keyboard.press("Control+f");
+  const find = page.getByRole("search", { name: "Find and replace" });
+  await find.getByLabel("Find", { exact: true }).fill("rain");
+  await expect(find.getByRole("status")).toHaveText("1 of 2");
+  await find.getByLabel("Replace with").fill("harmattan");
+  await find.getByRole("button", { name: "Replace all" }).click();
+  await expect(first).toHaveText(
+    "The harmattan came early.It stayed. The harmattan is still here.",
+  );
+  await expect(find.getByRole("status")).toHaveText("No matches");
+  await page.keyboard.press("Escape");
+  await expect(find).toBeHidden();
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+  // Restoring brings the snapshot back and keeps the text from before.
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitem", { name: "Snapshots…" }).click();
+  await sheet.getByRole("button", { name: "Options for First rain" }).click();
+  await page.getByRole("menuitem", { name: "Restore this snapshot…" }).click();
+  await page.getByRole("button", { name: "Restore", exact: true }).click();
+  await expect(pageText(page, 0)).toHaveText("The rain came early.");
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitem", { name: "Snapshots…" }).click();
+  await expect(sheet.getByText("Before restoring First rain")).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // Dark appearance is kept.
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitemradio", { name: "Dark" }).click();
+  await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+  await expect(
+    (await new AxeBuilder({ page }).withTags(["wcag2aa"]).analyze()).violations,
+  ).toEqual([]);
+  await page.reload();
+  await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+});

@@ -13,13 +13,11 @@ what comes next, in the order agreed with the owner.
 | Projects | Projects from templates, a binder to order pieces, loose pieces, an outline of synopses and statuses, compile to one manuscript | 0097 |
 | Pagination | Text flows from page to page as it is written; pages the writer adds stay apart. The room moves to `/doc` | none |
 | Free canvas | Any page can become a canvas of text boxes placed, sized and turned by hand, printed exactly | none |
+| Snapshots, find, dark | Snapshots to compare and restore, find and replace across every page and box, a dark writing room | 0098 |
 
 ## Next, in order
 
-1. **Snapshots, find and replace, dark mode.** A snapshot of a piece at any
-   time, compared side by side with the current text and restorable; find and
-   replace across a piece's pages; a dark writing room.
-2. **Writing for a call.** Tie a piece or project to a call: its prompts and
+1. **Writing for a call.** Tie a piece or project to a call: its prompts and
    limits beside the draft, a live count against its word or page limit, and a
    check that your name isn't in material read blind, reusing the pre-submit
    check.

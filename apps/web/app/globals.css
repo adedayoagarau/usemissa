@@ -5,6 +5,7 @@
 @source not "../components/shadcn-studio";
 @source not "./design-system";
 @import "../components/design-system/collection-palette.css";
+@import "../components/design-system/dark-palette.css";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
@@ -233,40 +234,42 @@ body {
 }
 
 .dark {
-  /* Dark mode isn't in scope for this story (no dark-mode requirement in the
-     UX spec) -- kept as shadcn's own generated defaults so the class exists
-     and doesn't crash if toggled, not tuned to the brand palette yet. */
-  --background: #171418;
-  --foreground: #f5f1f7;
-  --card: #211b23;
-  --card-foreground: #f5f1f7;
-  --popover: #211b23;
-  --popover-foreground: #f5f1f7;
-  --primary: #a991b5;
-  --primary-foreground: #171418;
-  --secondary: #33233b;
-  --secondary-foreground: #f5f1f7;
-  --muted: #2a242d;
-  --muted-foreground: #b9afbd;
-  --accent: #33233b;
-  --accent-foreground: #f5f1f7;
-  --destructive: #d88991;
-  --border: #423746;
-  --input: #423746;
-  --ring: #a991b5;
-  --chart-1: #a991b5;
-  --chart-2: #9baa79;
-  --chart-3: #d1a65f;
-  --chart-4: #79a7b6;
-  --chart-5: #d88991;
-  --sidebar: #211b23;
-  --sidebar-foreground: #f5f1f7;
-  --sidebar-primary: #a991b5;
-  --sidebar-primary-foreground: #171418;
-  --sidebar-accent: #33233b;
-  --sidebar-accent-foreground: #f5f1f7;
-  --sidebar-border: #423746;
-  --sidebar-ring: #a991b5;
+  /* Missa in the dark: warm near-black paper, ink-light text and a lighter
+     Forest for actions. Used by the writing room's dark appearance (/doc);
+     the rest of Missa stays light (DESIGN.md, Open Decisions). Text pairs
+     keep WCAG AA contrast on the background. */
+  --background: var(--dark-paper);
+  --foreground: var(--dark-ink);
+  --card: var(--dark-paper-raised);
+  --card-foreground: var(--dark-ink);
+  --popover: var(--dark-paper-raised);
+  --popover-foreground: var(--dark-ink);
+  --primary: var(--dark-forest);
+  --primary-foreground: var(--dark-forest-ink);
+  --secondary: var(--dark-paper-secondary);
+  --secondary-foreground: var(--dark-ink);
+  --muted: var(--dark-paper-muted);
+  --muted-foreground: var(--dark-ink-muted);
+  --accent: var(--dark-forest-tint);
+  --accent-foreground: var(--dark-ink);
+  --destructive: var(--dark-clay);
+  --border: var(--dark-line);
+  --input: var(--dark-line);
+  --ring: var(--dark-forest);
+  --chart-1: var(--dark-forest);
+  --chart-2: var(--dark-lichen);
+  --chart-3: var(--dark-ochre);
+  --chart-4: var(--dark-mineral-blue);
+  --chart-5: var(--dark-clay);
+  --sidebar: var(--dark-paper-raised);
+  --sidebar-foreground: var(--dark-ink);
+  --sidebar-primary: var(--dark-forest);
+  --sidebar-primary-foreground: var(--dark-forest-ink);
+  --sidebar-accent: var(--dark-forest-tint);
+  --sidebar-accent-foreground: var(--dark-ink);
+  --sidebar-border: var(--dark-line);
+  --sidebar-ring: var(--dark-forest);
+  color-scheme: dark;
 }
 
 @layer base {

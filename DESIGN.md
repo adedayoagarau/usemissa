@@ -910,7 +910,7 @@ The following remain intentionally provisional:
 - the exact Newsreader optical-size and weight tuning after representative public, creator, organization, and portfolio screens are reviewed;
 - the final strength of Forest in active navigation;
 - the exact organization navigation shell: top navigation, sidebar, or adaptive hybrid;
-- whether dark mode becomes a supported product theme;
+- whether dark mode becomes a supported product theme beyond the writing room (the room offers Light, Dark and Match this device since October 2026, using the tuned `.dark` tokens);
 - the final border contrast after reviewing real white-canvas screens.
 
 Resolve these through representative screens, then update this file rather than accumulating one-off exceptions in code.

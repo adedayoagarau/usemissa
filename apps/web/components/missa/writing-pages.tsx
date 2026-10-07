@@ -19,6 +19,7 @@ import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
 import { writingTypeface } from "@/components/missa/writing-typefaces";
 import { cn } from "@/lib/utils";
+import { SearchHighlight } from "@/lib/writing-search";
 import {
   CanvasSheet,
   type CanvasCallbacks,
@@ -132,6 +133,7 @@ export function writingExtensions() {
       types: ["heading", "paragraph"],
       alignments: ["left", "center", "right", "justify"],
     }),
+    SearchHighlight,
   ];
 }
 
