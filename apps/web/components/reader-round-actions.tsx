@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowRightLeft, CalendarClock, FileText, Globe, ListChecks, Plus, Trash2, Trophy } from 'lucide-react';
+import { ArrowRightLeft, CalendarClock, CalendarCheck, FileText, Globe, ListChecks, Plus, Trash2, Trophy } from 'lucide-react';
 import type { RoundOperationsView } from '@/lib/readerOperationsData';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -12,58 +12,111 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
+import { SegmentedChoice } from '@/components/missa/segmented-choice';
 import { RUBRIC_UI_LIMITS } from '@/lib/rubricClient';
+
+/**
+ * Dialogs here open from their own button by default. Pass open and
+ * onOpenChange to open one from elsewhere, such as the round's actions menu;
+ * the dialog then renders no button of its own.
+ */
+type OpenControl = { open?: boolean; onOpenChange?: (open: boolean) => void };
+
+function useOpenControl(control: OpenControl, onOpen?: () => void): [boolean, (open: boolean) => void, boolean] {
+  const [own, setOwn] = useState(false);
+  const controlled = control.open !== undefined;
+  const open = controlled ? Boolean(control.open) : own;
+  // Reset the form each time the dialog opens, whoever opened it.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) onOpen?.();
+  }
+  return [open, (next) => { if (controlled) control.onOpenChange?.(next); else setOwn(next); }, controlled];
+}
+
+const shortDate = (value: string) => new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value.length === 10 ? `${value}T12:00:00Z` : value));
 
 function dateInputValue(value?: string): string {
   return value ? value.slice(0, 10) : '';
 }
 
-/** Sets the date readers are asked to finish by; applies to every open read in the round. */
-export function RoundDueDateControl({ base, roundId, dueAt, onSaved }: { base: string; roundId: string; dueAt?: string; onSaved: () => Promise<void> }) {
-  const [value, setValue] = useState(dateInputValue(dueAt));
+/**
+ * A date shown as a field value, edited in a small popover: the way a task
+ * tool shows a due date. Saving and clearing go through the caller's route.
+ */
+function DateFieldPopover({ id, icon, label, emptyLabel, description, value, onSave }: { id: string; icon: React.ReactNode; label: string; emptyLabel: string; description: string; value?: string; onSave: (next: string | null) => Promise<boolean> }) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(dateInputValue(value));
   const [pending, startTransition] = useTransition();
-  const save = (next: string | null) => startTransition(async () => {
-    const response = await fetch(`${base}/review-rounds/${encodeURIComponent(roundId)}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ dueAt: next }) });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) { toast.error(body.error ?? 'The due date could not be saved.'); return; }
-    toast.success(next ? `Due date set on ${body.assignments} open ${body.assignments === 1 ? 'read' : 'reads'}.` : 'Due date cleared.');
-    if (!next) setValue('');
-    await onSaved();
-  });
+  const save = (next: string | null) => startTransition(async () => { if (await onSave(next)) setOpen(false); });
   return (
-    <div className="flex flex-wrap items-end gap-2">
-      <Field className="w-auto">
-        <FieldLabel htmlFor={`round-due-${roundId}`}><CalendarClock aria-hidden="true" className="mr-1 inline size-4" />Reads due by</FieldLabel>
-        <Input id={`round-due-${roundId}`} type="date" size="compact" value={value} onChange={(event) => setValue(event.target.value)} className="w-40" />
-      </Field>
-      <Button type="button" size="sm" variant="outline" onClick={() => save(value || null)} disabled={pending || value === dateInputValue(dueAt)}>Save date</Button>
-      {dueAt ? <Button type="button" size="sm" variant="ghost" onClick={() => save(null)} disabled={pending}>Clear</Button> : null}
-    </div>
+    <Popover open={open} onOpenChange={(next) => { setOpen(next); if (next) setDraft(dateInputValue(value)); }}>
+      <PopoverTrigger render={<Button type="button" variant="ghost" size="sm" />}>
+        {icon}
+        <span><span className="text-muted-foreground">{label}</span> <span className={value ? 'text-foreground' : 'text-muted-foreground'}>{value ? shortDate(value) : emptyLabel}</span></span>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-72">
+        <PopoverHeader>
+          <PopoverTitle>{label}</PopoverTitle>
+          <PopoverDescription>{description}</PopoverDescription>
+        </PopoverHeader>
+        <Field>
+          <FieldLabel htmlFor={id} className="sr-only">{label}</FieldLabel>
+          <Input id={id} type="date" value={draft} onChange={(event) => setDraft(event.target.value)} />
+        </Field>
+        <div className="flex justify-end gap-2">
+          {value ? <Button type="button" size="sm" variant="ghost" onClick={() => save(null)} disabled={pending}>Clear</Button> : null}
+          <Button type="button" size="sm" onClick={() => save(draft || null)} disabled={pending || !draft || draft === dateInputValue(value)}>{pending ? 'Saving…' : 'Save'}</Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** Sets the date readers are asked to finish by; applies to every open read in the round and to reads assigned later. */
+export function RoundDueDateControl({ base, roundId, dueAt, onSaved }: { base: string; roundId: string; dueAt?: string; onSaved: () => Promise<void> }) {
+  return (
+    <DateFieldPopover
+      id={`round-due-${roundId}`}
+      icon={<CalendarClock aria-hidden="true" />}
+      label="Reads due"
+      emptyLabel="not set"
+      description="Applies to every open read in this round and to reads assigned later."
+      value={dueAt}
+      onSave={async (next) => {
+        const response = await fetch(`${base}/review-rounds/${encodeURIComponent(roundId)}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ dueAt: next }) });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) { toast.error(body.error ?? 'The due date could not be saved.'); return false; }
+        toast.success(next ? `Due date set on ${body.assignments} open ${body.assignments === 1 ? 'read' : 'reads'}.` : 'Due date cleared.');
+        await onSaved();
+        return true;
+      }}
+    />
   );
 }
 
 /** The date submitters are told to expect a decision by, for the round's opportunity. */
 export function DecisionDateControl({ base, openCallId, date, onSaved }: { base: string; openCallId: string; date?: string; onSaved: () => Promise<void> }) {
-  const [value, setValue] = useState(date ?? '');
-  const [pending, startTransition] = useTransition();
-  const save = (next: string | null) => startTransition(async () => {
-    const response = await fetch(`${base}/open-calls/${encodeURIComponent(openCallId)}/decision-date`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ date: next }) });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) { toast.error(body.error ?? 'The date could not be saved.'); return; }
-    toast.success(next ? 'Submitters will see this date on their tracker.' : 'Expected decision date removed.');
-    if (!next) setValue('');
-    await onSaved();
-  });
   return (
-    <div className="flex flex-wrap items-end gap-2">
-      <Field className="w-auto">
-        <FieldLabel htmlFor={`decision-date-${openCallId}`}>Decisions expected by</FieldLabel>
-        <Input id={`decision-date-${openCallId}`} type="date" size="compact" value={value} onChange={(event) => setValue(event.target.value)} className="w-40" />
-      </Field>
-      <Button type="button" size="sm" variant="outline" onClick={() => save(value || null)} disabled={pending || value === (date ?? '')}>Save date</Button>
-      {date ? <Button type="button" size="sm" variant="ghost" onClick={() => save(null)} disabled={pending}>Clear</Button> : null}
-    </div>
+    <DateFieldPopover
+      id={`decision-date-${openCallId}`}
+      icon={<CalendarCheck aria-hidden="true" />}
+      label="Decisions by"
+      emptyLabel="not set"
+      description="Submitters see this date on their tracker."
+      value={date}
+      onSave={async (next) => {
+        const response = await fetch(`${base}/open-calls/${encodeURIComponent(openCallId)}/decision-date`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ date: next }) });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) { toast.error(body.error ?? 'The date could not be saved.'); return false; }
+        toast.success(next ? 'Submitters will see this date on their tracker.' : 'Expected decision date removed.');
+        await onSaved();
+        return true;
+      }}
+    />
   );
 }
 
@@ -105,7 +158,7 @@ export function ReassignReadsDialog({ base, roundId, reader, view, onDone }: { b
   const submission = (submissionId: string) => view.ranking.find((row) => row.submissionId === submissionId)?.submitterLabel ?? submissionId;
   return (
     <>
-      <Button type="button" variant="ghost" size="xs" onClick={() => setOpen(true)} aria-label={`Move ${reader.label}'s open reads`}><ArrowRightLeft aria-hidden="true" />Move open reads</Button>
+      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)} aria-label={`Move ${reader.label}'s open reads`}><ArrowRightLeft aria-hidden="true" />Move open reads</Button>
       <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) { setPlan(null); setError(null); } }}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
@@ -146,9 +199,9 @@ export function ReassignReadsDialog({ base, roundId, reader, view, onDone }: { b
 interface PromotionPreview { promoted: Array<{ submissionId: string; submitterLabel: string; averageScore?: number }>; cutoff?: number; tiedOut: Array<{ submissionId: string; submitterLabel: string; averageScore?: number }> }
 
 /** Creates the next round from the top of this one and, optionally, drafts the stage letter. */
-export function PromoteDialog({ base, roundId, organizationId, scored }: { base: string; roundId: string; organizationId: string; scored: number }) {
+export function PromoteDialog({ base, roundId, organizationId, scored, ...control }: { base: string; roundId: string; organizationId: string; scored: number } & OpenControl) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen, controlled] = useOpenControl(control);
   const [name, setName] = useState('Shortlist round');
   const [top, setTop] = useState(Math.min(10, Math.max(1, scored)));
   const [letterKind, setLetterKind] = useState<'' | 'longlist' | 'shortlist' | 'finalists'>('shortlist');
@@ -174,7 +227,7 @@ export function PromoteDialog({ base, roundId, organizationId, scored }: { base:
   });
   return (
     <>
-      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)} disabled={scored === 0}><Trophy aria-hidden="true" />Promote to next round</Button>
+      {controlled ? null : <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)} disabled={scored === 0}><Trophy aria-hidden="true" />Promote to next round</Button>}
       <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) { setPreview(null); setError(null); } }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -209,42 +262,81 @@ export function PromoteDialog({ base, roundId, organizationId, scored }: { base:
 }
 
 /** Creates a review round on one of the organization's opportunities. */
-export function NewRoundForm({ organizationId, openCalls }: { organizationId: string; openCalls: Array<{ id: string; title: string }> }) {
+function useCreateRound(organizationId: string) {
   const router = useRouter();
-  const [openCallId, setOpenCallId] = useState(openCalls[0]?.id ?? '');
-  const [name, setName] = useState('Readers');
   const [pending, startTransition] = useTransition();
-  if (openCalls.length === 0) return null;
-  const create = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    startTransition(async () => {
-      const response = await fetch(`/api/orgs/${encodeURIComponent(organizationId)}/open-calls/${encodeURIComponent(openCallId)}/review-rounds`, { method: 'POST', headers: { 'content-type': 'application/json', 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ name }) });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) { toast.error(body.error ?? 'The round could not be created.'); return; }
-      toast.success(`Round “${name}” created. Distribute readers to start.`);
-      router.push(`/organization/${encodeURIComponent(organizationId)}/reviews?selected=${encodeURIComponent(body.id)}`);
-      router.refresh();
-    });
-  };
+  const create = (openCallId: string, name: string, onCreated?: () => void) => startTransition(async () => {
+    const response = await fetch(`/api/orgs/${encodeURIComponent(organizationId)}/open-calls/${encodeURIComponent(openCallId)}/review-rounds`, { method: 'POST', headers: { 'content-type': 'application/json', 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ name }) });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) { toast.error(body.error ?? 'The round could not be created.'); return; }
+    toast.success(`Round “${name}” created. Distribute readers to start.`);
+    onCreated?.();
+    router.push(`/organization/${encodeURIComponent(organizationId)}/reviews?selected=${encodeURIComponent(body.id)}`);
+    router.refresh();
+  });
+  return { create, pending };
+}
+
+function NewRoundFields({ openCalls, openCallId, setOpenCallId, name, setName }: { openCalls: Array<{ id: string; title: string }>; openCallId: string; setOpenCallId: (id: string) => void; name: string; setName: (name: string) => void }) {
   return (
-    <form onSubmit={create} className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-border p-4" aria-label="Create a review round">
-      <Field className="min-w-56 flex-1">
+    <>
+      <Field className="min-w-0 flex-1">
         <FieldLabel htmlFor="new-round-opportunity">Opportunity</FieldLabel>
         <NativeSelect className="w-full" id="new-round-opportunity" value={openCallId} onChange={(event) => setOpenCallId(event.target.value)}>{openCalls.map((call) => <NativeSelectOption key={call.id} value={call.id}>{call.title}</NativeSelectOption>)}</NativeSelect>
       </Field>
-      <Field className="w-56">
+      <Field className="min-w-0 sm:w-56">
         <FieldLabel htmlFor="new-round-name">Round name</FieldLabel>
         <Input id="new-round-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={120} />
       </Field>
-      <Button type="submit" variant="outline" disabled={pending || !name.trim() || !openCallId}><Plus aria-hidden="true" />New round</Button>
+    </>
+  );
+}
+
+/** Inline form for the first round, shown when the organization has none. */
+export function NewRoundForm({ organizationId, openCalls }: { organizationId: string; openCalls: Array<{ id: string; title: string }> }) {
+  const [openCallId, setOpenCallId] = useState(openCalls[0]?.id ?? '');
+  const [name, setName] = useState('First read');
+  const { create, pending } = useCreateRound(organizationId);
+  if (openCalls.length === 0) return null;
+  return (
+    <form onSubmit={(event) => { event.preventDefault(); create(openCallId, name); }} className="flex w-full flex-col gap-3 text-start sm:flex-row sm:items-end" aria-label="Create a review round">
+      <NewRoundFields openCalls={openCalls} openCallId={openCallId} setOpenCallId={setOpenCallId} name={name} setName={setName} />
+      <Button type="submit" disabled={pending || !name.trim() || !openCallId}><Plus aria-hidden="true" />Create round</Button>
     </form>
   );
 }
 
+/** The same form in a dialog, opened from the round's actions menu. */
+export function NewRoundDialog({ organizationId, openCalls, defaultOpenCallId, ...control }: { organizationId: string; openCalls: Array<{ id: string; title: string }>; defaultOpenCallId?: string } & OpenControl) {
+  const [open, setOpen] = useOpenControl(control);
+  const [openCallId, setOpenCallId] = useState(defaultOpenCallId ?? openCalls[0]?.id ?? '');
+  const [name, setName] = useState('Second read');
+  const { create, pending } = useCreateRound(organizationId);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="sm:max-w-lg">
+        <form onSubmit={(event) => { event.preventDefault(); create(openCallId, name, () => setOpen(false)); }} className="grid gap-4" aria-label="Create a review round">
+          <DialogHeader>
+            <DialogTitle>New review round</DialogTitle>
+            <DialogDescription>A round holds its own readers, due date, brief and rubric. Distribute readers to it once it exists.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <NewRoundFields openCalls={openCalls} openCallId={openCallId} setOpenCallId={setOpenCallId} name={name} setName={setName} />
+          </div>
+          <DialogFooter>
+            <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
+            <Button type="submit" disabled={pending || !name.trim() || !openCallId}>{pending ? 'Creating…' : 'Create round'}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /** What readers must read and acknowledge before scoring in this round. */
-export function RoundBriefDialog({ base, roundId, brief, onSaved }: { base: string; roundId: string; brief?: string; onSaved: () => Promise<void> }) {
-  const [open, setOpen] = useState(false);
+export function RoundBriefDialog({ base, roundId, brief, onSaved, ...control }: { base: string; roundId: string; brief?: string; onSaved: () => Promise<void> } & OpenControl) {
   const [text, setText] = useState(brief ?? '');
+  const [open, setOpen, controlled] = useOpenControl(control, () => setText(brief ?? ''));
   const [pending, startTransition] = useTransition();
   const save = () => startTransition(async () => {
     const response = await fetch(`${base}/review-rounds/${encodeURIComponent(roundId)}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ brief: text.trim() ? text : null }) });
@@ -256,7 +348,7 @@ export function RoundBriefDialog({ base, roundId, brief, onSaved }: { base: stri
   });
   return (
     <>
-      <Button type="button" variant="outline" size="sm" onClick={() => { setText(brief ?? ''); setOpen(true); }}><FileText aria-hidden="true" />{brief ? 'Edit reader brief' : 'Add reader brief'}</Button>
+      {controlled ? null : <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}><FileText aria-hidden="true" />{brief ? 'Edit reader brief' : 'Add reader brief'}</Button>}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
@@ -280,8 +372,8 @@ export function RoundBriefDialog({ base, roundId, brief, onSaved }: { base: stri
 interface ResultsPreview { stages: Array<{ stage: string; label: string; entries: Array<{ name: string; workTitles: string[] }> }>; winners: Array<{ name: string; workTitles: string[] }> }
 
 /** Publish the stages and winners for an opportunity on a public page, after previewing exactly what is shown. */
-export function PublishResultsDialog({ base, openCallId, organizationId, stageLabels, published, onSaved }: { base: string; openCallId: string; organizationId: string; stageLabels: Record<string, string>; published?: { stages: string[]; includeWinners: boolean; introduction?: string; publishedAt: string }; onSaved: () => Promise<void> }) {
-  const [open, setOpen] = useState(false);
+export function PublishResultsDialog({ base, openCallId, organizationId, stageLabels, published, onSaved, ...control }: { base: string; openCallId: string; organizationId: string; stageLabels: Record<string, string>; published?: { stages: string[]; includeWinners: boolean; introduction?: string; publishedAt: string }; onSaved: () => Promise<void> } & OpenControl) {
+  const [open, setOpen, controlled] = useOpenControl(control);
   const [stages, setStages] = useState<Set<string>>(() => new Set(published?.stages ?? []));
   const [includeWinners, setIncludeWinners] = useState(published?.includeWinners ?? false);
   const [introduction, setIntroduction] = useState(published?.introduction ?? '');
@@ -315,7 +407,7 @@ export function PublishResultsDialog({ base, openCallId, organizationId, stageLa
   const publicHref = `/org/${encodeURIComponent(organizationId)}/${encodeURIComponent(openCallId)}/results`;
   return (
     <>
-      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}><Globe aria-hidden="true" />{published ? 'Public results: live' : 'Publish results'}</Button>
+      {controlled ? null : <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}><Globe aria-hidden="true" />{published ? 'Public results: live' : 'Publish results'}</Button>}
       <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) { setPreview(null); setError(null); } }}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
@@ -350,23 +442,35 @@ export function PublishResultsDialog({ base, openCallId, organizationId, stageLa
 type RubricRow = { key: string; id?: string; label: string; description: string; weight: string; maxScore: string };
 type RubricValue = NonNullable<RoundOperationsView['round']['rubric']>;
 
+const SCALE_CHOICES = [3, 4, 5, 10].filter((value) => value >= RUBRIC_UI_LIMITS.minScale && value <= RUBRIC_UI_LIMITS.maxScale);
+
 function rubricRows(rubric?: RubricValue): RubricRow[] {
   return rubric?.criteria.map((criterion) => ({ key: criterion.id, id: criterion.id, label: criterion.label, description: criterion.description ?? '', weight: String(criterion.weight), maxScore: String(criterion.maxScore) })) ?? [];
 }
 
+function blankRow(index: number): RubricRow {
+  return { key: `new-${Date.now()}-${index}`, label: '', description: '', weight: '1', maxScore: '5' };
+}
+
 /**
- * Named criteria with weights and a scale per round. Saving adds a new
- * version; reads already scored keep the version they were scored on.
+ * Named criteria with weights and a scale per round. Each row shows the share
+ * of the final score its weight buys, so the editor sees the effect of a
+ * weight before saving. Saving adds a new version; reads already scored keep
+ * the version they were scored on.
  */
-export function RubricDialog({ base, roundId, rubric, onSaved }: { base: string; roundId: string; rubric?: RubricValue; onSaved: () => Promise<void> }) {
-  const [open, setOpen] = useState(false);
+export function RubricDialog({ base, roundId, rubric, onSaved, ...control }: { base: string; roundId: string; rubric?: RubricValue; onSaved: () => Promise<void> } & OpenControl) {
   const [rows, setRows] = useState<RubricRow[]>(() => rubricRows(rubric));
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [open, setOpen, controlled] = useOpenControl(control, () => { setRows(rubric ? rubricRows(rubric) : [blankRow(0)]); setError(null); });
   const update = (key: string, patch: Partial<RubricRow>) => setRows((current) => current.map((row) => (row.key === key ? { ...row, ...patch } : row)));
+  const totalWeight = rows.reduce((sum, row) => sum + (Number(row.weight) > 0 ? Number(row.weight) : 0), 0);
+  const share = (row: RubricRow) => (totalWeight && Number(row.weight) > 0 ? Math.round((Number(row.weight) / totalWeight) * 100) : 0);
   const save = (criteria: RubricRow[]) => startTransition(async () => {
     setError(null);
-    const body = { criteria: criteria.map((row) => ({ ...(row.id ? { id: row.id } : {}), label: row.label, ...(row.description.trim() ? { description: row.description } : {}), weight: Number(row.weight), maxScore: Number(row.maxScore) })) };
+    const unnamed = criteria.findIndex((row) => !row.label.trim());
+    if (unnamed >= 0) { setError(`Name criterion ${unnamed + 1}, or remove it.`); return; }
+    const body = { criteria: criteria.map((row) => ({ ...(row.id ? { id: row.id } : {}), label: row.label.trim(), ...(row.description.trim() ? { description: row.description.trim() } : {}), weight: Number(row.weight), maxScore: Number(row.maxScore) })) };
     const response = await fetch(`${base}/review-rounds/${encodeURIComponent(roundId)}/rubric`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) { setError(payload.error ?? 'The rubric could not be saved.'); return; }
@@ -376,44 +480,63 @@ export function RubricDialog({ base, roundId, rubric, onSaved }: { base: string;
   });
   return (
     <>
-      <Button type="button" variant="outline" size="sm" onClick={() => { setRows(rubricRows(rubric)); setError(null); setOpen(true); }}><ListChecks aria-hidden="true" />{rubric ? `Rubric v${rubric.version}` : 'Add rubric'}</Button>
+      {controlled ? null : <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}><ListChecks aria-hidden="true" />{rubric ? `Rubric v${rubric.version}` : 'Add rubric'}</Button>}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Rubric for this round</DialogTitle>
-            <DialogDescription>Readers score each criterion. Missa weights them into the 0 to 100 score used for ranking and calibration. Saving creates a new version; reads already scored keep the version they used.</DialogDescription>
+            <DialogTitle>{rubric ? `Rubric · version ${rubric.version}` : 'Rubric'}</DialogTitle>
+            <DialogDescription>Readers score each criterion on its scale. Missa weights the scores into the 0 to 100 score used for ranking. Saving makes a new version; reads already scored keep theirs.</DialogDescription>
           </DialogHeader>
-          {rows.length ? (
-            <ol className="grid max-h-[60vh] gap-3 overflow-y-auto">
-              {rows.map((row, index) => (
-                <li key={row.key} className="grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-[1fr_6rem_6rem_auto] sm:items-end">
-                  <Field>
-                    <FieldLabel htmlFor={`criterion-label-${row.key}`}>Criterion {index + 1}</FieldLabel>
-                    <Input id={`criterion-label-${row.key}`} value={row.label} maxLength={80} onChange={(event) => update(row.key, { label: event.target.value })} placeholder="Voice" />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor={`criterion-weight-${row.key}`}>Weight</FieldLabel>
-                    <Input id={`criterion-weight-${row.key}`} type="number" min={RUBRIC_UI_LIMITS.minWeight} max={RUBRIC_UI_LIMITS.maxWeight} value={row.weight} onChange={(event) => update(row.key, { weight: event.target.value })} />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor={`criterion-scale-${row.key}`}>Scale 0 to</FieldLabel>
-                    <Input id={`criterion-scale-${row.key}`} type="number" min={RUBRIC_UI_LIMITS.minScale} max={RUBRIC_UI_LIMITS.maxScale} value={row.maxScore} onChange={(event) => update(row.key, { maxScore: event.target.value })} />
-                  </Field>
-                  <Button type="button" variant="ghost" size="icon" aria-label={`Remove criterion ${index + 1}`} onClick={() => setRows((current) => current.filter((item) => item.key !== row.key))}><Trash2 aria-hidden="true" /></Button>
-                  <Field className="sm:col-span-4">
-                    <FieldLabel htmlFor={`criterion-description-${row.key}`}>Guidance for readers</FieldLabel>
-                    <Input id={`criterion-description-${row.key}`} value={row.description} maxLength={400} onChange={(event) => update(row.key, { description: event.target.value })} placeholder="Optional. What a top score looks like." />
-                  </Field>
-                </li>
-              ))}
-            </ol>
-          ) : <p className="text-sm text-muted-foreground">No criteria yet. Readers record a single 0 to 100 score until you add some.</p>}
-          {rows.length < RUBRIC_UI_LIMITS.maxCriteria ? <div><Button type="button" variant="outline" size="sm" onClick={() => setRows((current) => [...current, { key: `new-${Date.now()}-${current.length}`, label: '', description: '', weight: '1', maxScore: '5' }])}><Plus aria-hidden="true" />Add criterion</Button></div> : null}
-          {error ? <Alert variant="destructive"><AlertTitle>Not saved</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
+          <div className="-mx-4 max-h-[60vh] overflow-y-auto border-y border-border">
+            {rows.length ? (
+              <ol aria-label="Criteria" className="divide-y divide-border">
+                {rows.map((row, index) => (
+                  <li key={row.key} className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-6">
+                    <div className="grid min-w-0 gap-2">
+                      <Field>
+                        <FieldLabel htmlFor={`criterion-label-${row.key}`} className="sr-only">Criterion {index + 1} name</FieldLabel>
+                        <Input id={`criterion-label-${row.key}`} value={row.label} maxLength={80} onChange={(event) => update(row.key, { label: event.target.value })} placeholder={`Criterion ${index + 1}, for example Voice`} />
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor={`criterion-description-${row.key}`} className="sr-only">Guidance for readers on criterion {index + 1}</FieldLabel>
+                        <Textarea id={`criterion-description-${row.key}`} value={row.description} maxLength={400} rows={2} onChange={(event) => update(row.key, { description: event.target.value })} placeholder="What a top score looks like. Readers see this beside the scale." />
+                      </Field>
+                    </div>
+                    <div className="flex flex-wrap items-end gap-4 sm:flex-nowrap">
+                      <Field className="w-20 gap-2">
+                        <FieldLabel htmlFor={`criterion-weight-${row.key}`}>Weight</FieldLabel>
+                        <Input id={`criterion-weight-${row.key}`} type="number" inputMode="numeric" min={RUBRIC_UI_LIMITS.minWeight} max={RUBRIC_UI_LIMITS.maxWeight} value={row.weight} onChange={(event) => update(row.key, { weight: event.target.value })} />
+                      </Field>
+                      <div className="grid gap-2">
+                        <span id={`criterion-scale-${row.key}`} className="text-sm font-medium text-foreground">Scale</span>
+                        <SegmentedChoice
+                          aria-labelledby={`criterion-scale-${row.key}`}
+                          fit="content"
+                          value={row.maxScore}
+                          onValueChange={(value) => update(row.key, { maxScore: value })}
+                          options={SCALE_CHOICES.map((value) => ({ value: String(value), label: `0–${value}`, accessibleLabel: `0 to ${value}` }))}
+                        />
+                      </div>
+                      <div className="grid w-14 gap-2 text-end">
+                        <span className="text-sm font-medium text-foreground">Share</span>
+                        <span className="flex h-9 items-center justify-end font-mono text-sm text-muted-foreground tabular-nums" aria-label={`${row.label || `Criterion ${index + 1}`} is ${share(row)}% of the score`}>{share(row)}%</span>
+                      </div>
+                      <Button type="button" variant="ghost" size="icon" aria-label={`Remove ${row.label || `criterion ${index + 1}`}`} onClick={() => setRows((current) => current.filter((item) => item.key !== row.key))}><Trash2 aria-hidden="true" /></Button>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            ) : <p className="p-4 text-sm text-muted-foreground">No criteria. Readers record a single 0 to 100 score until you add one.</p>}
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {rows.length < RUBRIC_UI_LIMITS.maxCriteria ? <Button type="button" variant="ghost" size="sm" onClick={() => setRows((current) => [...current, blankRow(current.length)])}><Plus aria-hidden="true" />Add criterion</Button> : <span className="text-sm text-muted-foreground">{RUBRIC_UI_LIMITS.maxCriteria} criteria is the most a rubric holds.</span>}
+            <span className="text-sm text-muted-foreground">{rows.length} {rows.length === 1 ? 'criterion' : 'criteria'} · weights total <span className="font-mono tabular-nums">{totalWeight}</span></span>
+          </div>
+          {error ? <div><Alert variant="destructive"><AlertTitle>Not saved</AlertTitle><AlertDescription>{error}</AlertDescription></Alert></div> : null}
           <DialogFooter>
-            {rubric ? <Button type="button" variant="ghost" disabled={pending} onClick={() => save([])}>Remove rubric</Button> : null}
+            {rubric ? <Button type="button" variant="ghost" disabled={pending} onClick={() => save([])} className="sm:me-auto">Remove rubric</Button> : null}
             <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
-            <Button type="button" onClick={() => save(rows)} disabled={pending || !rows.length}>{pending ? 'Saving…' : 'Save rubric'}</Button>
+            <Button type="button" onClick={() => save(rows)} disabled={pending || !rows.length}>{pending ? 'Saving…' : rubric ? 'Save as new version' : 'Save rubric'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
