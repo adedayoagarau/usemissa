@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Home from "@/app/design-system/homepage-hero/page";
-import Opportunities from "@/app/opportunities/page";
+import Opportunities from "@/app/opportunities/(browse)/page";
 import Rankings from "@/app/rankings/magazines/page";
 import Directory from "@/app/directory/page";
 import Compare from "@/app/rankings/compare/page";

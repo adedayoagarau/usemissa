@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const opportunitiesPage = readFileSync(
-  new URL("../app/opportunities/page.tsx", import.meta.url),
+  new URL("../app/opportunities/(browse)/page.tsx", import.meta.url),
   "utf8",
 );
 const forYouPage = readFileSync(

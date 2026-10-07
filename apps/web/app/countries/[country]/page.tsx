@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { ArrowRight, Building2, Globe, MapPin } from "lucide-react";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { pageMetadata, JsonLd, breadcrumbJsonLd, absoluteUrl } from "@/lib/seo";
-import { normalizeCountry } from "@missa/contracts";
+import { CANONICAL_COUNTRIES, normalizeCountry } from "@missa/contracts";
 import { getSemanticUrlForProfile } from "@missa/radar-adapters";
 import { getPublicProfileBrowse } from "@/lib/publicProfileReads";
 import { getPublicOpportunityPage } from "@/lib/publicOpportunityReads";
@@ -57,14 +57,27 @@ const OPP_TYPE_LABEL: Record<string, string> = {
   job: "Job",
 };
 
+/**
+ * The hub for a known country (or "global"). Unknown codes 404 rather than
+ * rendering an indexable page for any two letters, and aliases such as
+ * "nigeria" redirect to the canonical lowercase code.
+ */
+function resolveCountryHub(slug: string): { countryCode: string; country: string } {
+  const normalized = normalizeCountry(slug);
+  if (!normalized) notFound();
+  if (normalized.countryCode !== "GLOBAL" && !CANONICAL_COUNTRIES[normalized.countryCode]) notFound();
+  const canonicalSlug = normalized.countryCode.toLowerCase();
+  if (slug !== canonicalSlug) permanentRedirect(`/countries/${canonicalSlug}`);
+  return normalized;
+}
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ country: string }>;
 }): Promise<Metadata> {
   const { country } = await params;
-  const normalized = normalizeCountry(country);
-  if (!normalized) return { title: "Country Not Found" };
+  const normalized = resolveCountryHub(country);
 
   const isGlobal = normalized.countryCode === "GLOBAL";
   const displayName = isGlobal ? "Worldwide" : normalized.country;
@@ -85,9 +98,7 @@ export default async function CountryHubPage({
 }) {
   const { country } = await params;
 
-  // Resolve the slug/code to a canonical country
-  const normalized = normalizeCountry(country);
-  if (!normalized) notFound();
+  const normalized = resolveCountryHub(country);
 
   const { countryCode, country: countryName } = normalized;
   const isGlobal = countryCode === "GLOBAL";

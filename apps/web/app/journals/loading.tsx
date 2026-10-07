@@ -8,12 +8,12 @@ export default function JournalsLoading() {
       <p className="text-sm font-semibold tracking-[0.2em] text-primary uppercase">
         Missa directory
       </p>
-      <h1
+      <p
         id="journals-loading-heading"
         className="mt-2 font-sans text-2xl font-medium tracking-tight"
       >
         Find a home for your writing.
-      </h1>
+      </p>
       <p
         className="mt-2 text-sm leading-6 text-muted-foreground"
         role="status"

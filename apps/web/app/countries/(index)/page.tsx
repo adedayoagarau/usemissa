@@ -7,7 +7,7 @@ import {
   CANONICAL_COUNTRIES,
 } from "@missa/contracts";
 import { getPublicProfileCountryCounts } from "@/lib/publicProfileReads";
-import styles from "./countries.module.css";
+import styles from "../countries.module.css";
 
 /** Served from the CDN and regenerated at most every five minutes. */
 export const revalidate = 300;

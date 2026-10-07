@@ -429,11 +429,9 @@ export function InstitutionProfileView({
                         {profile.opportunities.length ? (
                           <div className={styles.opportunities}>
                             {profile.opportunities.map((opp, index) => {
-                              const detail = opportunityActions ? (opp.id in opportunityActions ? `/opportunities/${encodeURIComponent(opp.id)}` : undefined) :
-                                opp.detailUrl?.startsWith("/") &&
-                                !opp.detailUrl.startsWith("//")
-                                  ? opp.detailUrl
-                                  : safeHref(opp.detailUrl);
+                              const localDetail = opp.detailUrl?.startsWith("/") && !opp.detailUrl.startsWith("//") ? opp.detailUrl : undefined;
+                              const detail = opportunityActions ? (opp.id in opportunityActions ? localDetail ?? `/opportunities/${encodeURIComponent(opp.id)}` : undefined) :
+                                localDetail ?? safeHref(opp.detailUrl);
                               const official = safeHref(opp.officialWebsite);
                               return (
                                 <Card

@@ -374,6 +374,15 @@ export function OpportunityDetailView({
               >
                 {cleanTitle}
               </h1>
+              {opportunity.status === "closed" ? (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  This call has closed. Missa keeps the page so you can find it
+                  again if it opens next cycle.{" "}
+                  <Link href="/opportunities" className="text-primary underline underline-offset-4">
+                    See open calls
+                  </Link>
+                </p>
+              ) : null}
 
               {/* Scannable Signal Badges (Chips) */}
               <div

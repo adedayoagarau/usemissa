@@ -21,7 +21,7 @@ import {
   previewItemsForQuery,
 } from "@/lib/opportunityPreviewFixtures";
 import { OpportunitiesBrowse } from "@/components/missa/opportunities-browse";
-import styles from "./opportunities.module.css";
+import styles from "../opportunities.module.css";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
