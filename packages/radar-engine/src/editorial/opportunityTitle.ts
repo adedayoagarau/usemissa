@@ -462,7 +462,9 @@ const NON_OPPORTUNITY_PATTERNS: Array<{ signal: string; pattern: RegExp; require
   { signal: 'subscription', pattern: /\bsubscri(?:be|ption)s?\b/i, unlessCall: true },
   { signal: 'site-page', pattern: /^\s*(?:about(?:\s+us)?|contact(?:\s+us)?|masthead|staff|privacy\s+policy|terms(?:\s+of\s+(?:service|use))?|log\s*-?\s*in|sign\s*-?\s*in|shop|store|cart|donate|archive|past\s+issues)\s*$/i },
   { signal: 'site-page', pattern: /^\s*(?:terms\s*(?:&|and)\s*conditions|hours,?\s+tickets)\b|^\s*(?:(?:read|see)\s+)?more\W*$/i },
-  { signal: 'procurement', pattern: /\b(?:tenders?|procurement|rfps?|request\s+for\s+(?:proposals?|quotations?)|bids?)\b/i, requiresNoStrongCreativeSignal: true },
+  { signal: 'procurement', pattern: /\b(?:tenders?|e-?procurement|procurement|rfps?|request\s+for\s+(?:proposals?|quotations?)|bids?)\b/i, requiresNoStrongCreativeSignal: true },
+  // Public procurement portals in other languages ("E-Prokurimi", Kosovo's).
+  { signal: 'procurement', pattern: /\b(?:(?:e-?)?prokurim\w*|licitaci(?:ón|on|ones)|appalt[oi]|aanbesteding\w*|march[ée]s?\s+publics?)(?![\p{L}])/iu, requiresNoStrongCreativeSignal: true },
   { signal: 'non-creative-institution', pattern: /\b(?:admissions?|asylum|immigration|nurse|nursing|p(?:a)?ediatric\w*|medical|clinical|surg(?:ery|ical)|(?:school|college|faculty|department)\s+of\s+medicine|(?:family|community|internal|molecular|emergency)\s+medicine)\b/i, requiresNoStrongCreativeSignal: true },
   { signal: 'non-creative-assistance', pattern: /\b(?:housing|rent(?:al)?\s+assistance|mortgage|homebuyers?|home\s+repair|tenants?|utility|utilities|childcare|food\s+(?:assistance|shelf|bank)|small\s+business(?:es)?|workforce)\b/i, requiresNoCreativeSignal: true },
   // A platform interviewing artists for its own web feature ("Open Call —

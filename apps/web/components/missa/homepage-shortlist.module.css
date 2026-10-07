@@ -1,0 +1,210 @@
+.toggle[data-on] {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.toggle[data-on] svg {
+  fill: currentColor;
+}
+
+.toggle svg {
+  transition: fill 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.save {
+  /* Keeps the icon button at the public 44px target inside the card media. */
+  flex: 0 0 auto;
+}
+
+/*
+ * The bar is anchored to the bottom of the viewport so shortlisting never
+ * moves the grid the visitor is reading. It enters once, from its first
+ * frame, on the enter curve; reduced motion shows it in place.
+ */
+.bar {
+  position: fixed;
+  z-index: 40;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bar[data-open] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.barInner {
+  display: flex;
+  width: min(calc(100% - 48px), 1360px);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-row) var(--space-group);
+  margin: 0 auto;
+  padding: var(--space-row) 0 max(var(--space-row), env(safe-area-inset-bottom));
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-row);
+  min-width: 0;
+}
+
+.summaryIcon {
+  width: 18px;
+  height: 18px;
+  align-self: center;
+  color: var(--primary);
+  fill: currentColor;
+}
+
+.heading {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.count {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--ink-2);
+}
+
+.items {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-row);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: inline-flex;
+  max-width: 100%;
+  min-height: 40px;
+  align-items: center;
+  gap: 2px;
+  padding-inline-start: 12px;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--surface-subtle);
+  font-size: 0.875rem;
+}
+
+.item a {
+  overflow: hidden;
+  max-width: 28ch;
+  color: inherit;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item a:hover,
+.item a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.more {
+  color: var(--ink-2);
+  font-size: 0.875rem;
+}
+
+.remove {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.remove svg {
+  width: 14px;
+  height: 14px;
+}
+
+.remove:hover,
+.remove:focus-visible {
+  background: var(--surface-muted);
+  color: var(--ink);
+}
+
+.remove:focus-visible,
+.textLink:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-row) var(--space-group);
+  margin-inline-start: auto;
+}
+
+.textLink {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.textLink:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+@media (max-width: 767px) {
+  .items,
+  .clear {
+    display: none;
+  }
+
+  .barInner {
+    width: min(calc(100% - 32px), 1360px);
+  }
+
+  .actions {
+    width: 100%;
+    margin-inline-start: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar,
+  .toggle svg {
+    transition: none;
+  }
+}
+
+.clear {
+  display: inline-flex;
+}

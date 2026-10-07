@@ -1,0 +1,676 @@
+/*
+ * Homepage, category standard, product-led. The live catalogue is the hero;
+ * everything here shares the catalogue's width and the Spacious density mode.
+ */
+
+.page {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.hero {
+  display: grid;
+  width: min(calc(100% - 48px), 1360px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 520px);
+  gap: var(--space-section);
+  align-items: center;
+  margin: 0 auto;
+  padding: var(--space-group) 0 0;
+}
+
+.heroCopy {
+  min-width: 0;
+}
+
+.heroTour {
+  min-width: 0;
+}
+
+.heroArt {
+  display: block;
+  width: 100%;
+  max-width: 440px;
+  min-width: 0;
+  justify-self: end;
+}
+
+.heroArt[data-beside-tour] {
+  display: none;
+}
+
+.hero h1 {
+  max-width: 13em;
+  margin: 0;
+  font-size: clamp(2.25rem, 4.5vw, 3.5rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+
+.lede {
+  max-width: 58ch;
+  margin: var(--space-row) 0 0;
+  color: var(--ink-2);
+  font-size: 1.125rem;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-row) var(--space-group);
+  margin: var(--space-row) 0 0;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.totals strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.browseAll {
+  margin: var(--space-group) 0 0;
+}
+
+.textLink {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.textLink:hover,
+.textLink:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.textLink:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.section {
+  width: min(calc(100% - 48px), 1360px);
+  margin: 0 auto;
+  padding: var(--space-section-major) 0 0;
+}
+
+.sectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-row) var(--space-gap);
+  margin-bottom: var(--space-group);
+}
+
+.section h2,
+.close h2 {
+  max-width: 22ch;
+  margin: 0;
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+
+/* A scene beside a section statement, sitting on the same baseline. */
+.sectionArt {
+  width: min(360px, 34%);
+  flex: 0 0 auto;
+  margin-bottom: calc(-1 * var(--space-row));
+}
+
+.sectionHead .textLink {
+  margin-top: var(--space-row);
+}
+
+.sectionLede {
+  max-width: 56ch;
+  margin: var(--space-row) 0 0;
+  color: var(--ink-2);
+  font-size: 1.0625rem;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+/* Feature cards: a tinted stage holding a whole product vignette, then the
+   statement on the page below it. */
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-gap);
+}
+
+.featureSlot {
+  display: flex;
+  min-width: 0;
+}
+
+.feature {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.featureStage {
+  position: relative;
+  display: grid;
+  height: 420px;
+  place-items: center;
+  /* The top band holds the feature's object; the product sits below it. */
+  padding: 92px var(--space-group) calc(var(--space-section) + 8px);
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background: var(--surface-subtle);
+}
+
+.featureStage[data-tone="ochre"] {
+  background: var(--ochre-tint);
+}
+
+.featureStage[data-tone="lichen"] {
+  background: var(--lichen-tint);
+}
+
+.featureStage[data-tone="blue"] {
+  background: var(--mineral-blue-tint);
+}
+
+.featureProduct {
+  width: 100%;
+  max-width: 360px;
+  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.feature:hover .featureProduct {
+  transform: translateY(-4px);
+}
+
+/* The feature's object, a small drawing in the stage's corner. */
+.featureSpot {
+  position: absolute;
+  top: 18px;
+  left: 20px;
+  width: 72px;
+  pointer-events: none;
+}
+
+.featureCaption {
+  position: absolute;
+  bottom: 14px;
+  left: 18px;
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 0.75rem;
+}
+
+.trackerStack {
+  display: grid;
+  gap: 10px;
+}
+
+.trackerStack > *,
+.vignetteFrame {
+  overflow: hidden;
+  border-radius: 14px;
+  box-shadow: 0 16px 36px -24px color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+.vignetteFrame {
+  border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+}
+
+.featureText {
+  padding: var(--space-group) 4px 0;
+}
+
+.featureText h3 {
+  max-width: 20ch;
+  margin: 0;
+  font-size: clamp(1.375rem, 1.8vw, 1.625rem);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.featureText p {
+  max-width: 40ch;
+  margin: var(--space-row) 0 0;
+  color: var(--ink-2);
+  font-size: 1rem;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.featureText .textLink {
+  margin-top: 4px;
+}
+
+/* Questions: the statement on the left, the answers on the right. */
+
+.questionsLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: var(--space-section) var(--space-section);
+  align-items: start;
+}
+
+.questionsIntro {
+  position: sticky;
+  top: calc(var(--space-group) + 64px);
+}
+
+.questionsIntro .textLink {
+  margin-top: var(--space-row);
+}
+
+.questionsArt {
+  max-width: 300px;
+  margin-top: var(--space-section);
+}
+
+.questions {
+  width: 100%;
+}
+
+.questionItem {
+  transition: background-color 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.questionTrigger {
+  min-height: 56px;
+  font-size: 1.0625rem;
+}
+
+.questionContent p {
+  max-width: 64ch;
+  margin: 0;
+  color: var(--ink-2);
+  line-height: 1.55;
+}
+
+/* Close: one Forest panel, the product as its illustration. */
+
+.close {
+  width: min(calc(100% - 48px), 1360px);
+  margin: var(--space-section-major) auto 0;
+}
+
+.closePanel {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: var(--space-section) var(--space-section);
+  align-items: center;
+  overflow: hidden;
+  padding: var(--space-section) var(--space-section);
+  border-radius: var(--radius-xl);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.closePanel h2 {
+  max-width: 18ch;
+  margin: 0;
+  color: inherit;
+  font-size: clamp(1.875rem, 3.4vw, 2.75rem);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+
+.closeLede {
+  max-width: 44ch;
+  margin: var(--space-row) 0 0;
+  color: color-mix(in srgb, var(--primary-foreground) 78%, transparent);
+  font-size: 1.0625rem;
+  line-height: 1.5;
+}
+
+.closeActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-row) var(--space-gap);
+  margin-top: var(--space-group);
+}
+
+.closePrimary {
+  background: var(--primary-foreground);
+  color: var(--primary);
+}
+
+.closePrimary:hover,
+.closePrimary:focus-visible {
+  background: var(--accent-tint);
+  color: var(--accent-deep);
+}
+
+.closeLink {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 6px;
+  color: inherit;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.closeLink:hover,
+.closeLink:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.closeLink:focus-visible,
+.closePrimary:focus-visible {
+  outline: 2px solid var(--primary-foreground);
+  outline-offset: 3px;
+}
+
+.closeCards {
+  position: relative;
+  display: grid;
+  min-height: 200px;
+  align-content: center;
+  justify-items: end;
+}
+
+/* The desk scene sits behind the cards in white line on Forest. */
+.closeScene {
+  position: absolute;
+  top: 50%;
+  right: -8%;
+  width: min(440px, 112%);
+  opacity: 0.5;
+  transform: translateY(-30%);
+  pointer-events: none;
+}
+
+.closeCard {
+  display: grid;
+  width: min(100%, 360px);
+  gap: 4px;
+  padding: var(--space-row) var(--space-inset);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 24px 48px -24px color-mix(in srgb, var(--accent-deep) 70%, transparent);
+  grid-area: 1 / 1;
+  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.closeCard strong {
+  overflow: hidden;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.closeCard > span:last-child {
+  color: var(--ink-2);
+  font-size: 0.875rem;
+}
+
+.closeCard:not([data-back]) {
+  position: relative;
+  z-index: 1;
+}
+
+.closeCard[data-back] {
+  transform: translate(-24px, -84px) rotate(-3deg);
+  opacity: 0.92;
+}
+
+.closePanel:hover .closeCard[data-back] {
+  transform: translate(-30px, -92px) rotate(-4deg);
+}
+
+.closePanel:hover .closeCard:not([data-back]) {
+  transform: translateY(-4px);
+}
+
+.closeCardLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.footer {
+  border-top: 1px solid var(--border);
+  background: var(--canvas-subtle);
+}
+
+.footerInner {
+  width: min(calc(100% - 48px), 1360px);
+  margin: 0 auto;
+  padding: var(--space-section) 0 var(--space-section-major);
+}
+
+.footerBrand {
+  margin-bottom: var(--space-section);
+}
+
+.footerTagline {
+  margin: var(--space-row) 0 0;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+}
+
+.footerColumns {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-group) var(--space-gap);
+}
+
+.footerColumns > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.footerHeading {
+  margin-bottom: var(--space-row);
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.footerColumns a {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.footerColumns a:hover,
+.footerColumns a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.footerLegal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-row) var(--space-group);
+  margin-top: var(--space-section);
+  padding-top: var(--space-group);
+  border-top: 1px solid var(--border);
+  color: var(--ink-2);
+  font-size: 0.875rem;
+}
+
+.footerLegal a {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
+}
+
+.footerLegal a:hover,
+.footerLegal a:focus-visible {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.footerLegal span {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+}
+
+@media (max-width: 1023px) {
+  /* The tour is a desktop flourish; smaller screens get the hero scene in
+     its place, beside the copy. */
+  .hero {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 280px);
+    gap: var(--space-group);
+  }
+
+  .heroTour {
+    display: none;
+  }
+
+  .heroArt[data-beside-tour] {
+    display: block;
+  }
+
+  .features {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-section);
+  }
+
+  .featureStage {
+    height: auto;
+    min-height: 320px;
+  }
+
+  .questionsLayout,
+  .closePanel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .questionsIntro {
+    position: static;
+  }
+
+  .closeCards {
+    min-height: 0;
+    justify-items: start;
+    padding-top: var(--space-section);
+  }
+
+  .footerColumns {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .sectionArt {
+    width: min(260px, 70%);
+    margin: var(--space-row) 0 0;
+  }
+
+  .questionsArt {
+    max-width: 220px;
+    margin-top: var(--space-group);
+  }
+
+  .closePanel {
+    padding: var(--space-group) var(--space-inset);
+  }
+
+  .footerColumns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 639px) {
+  .hero,
+  .section,
+  .close,
+  .footerInner {
+    width: min(calc(100% - 32px), 1360px);
+  }
+
+  .closeCard[data-back] {
+    transform: translate(0, -76px) rotate(-2deg);
+  }
+
+  /* Bring the first card's title into a 390x844 fold under the consent
+     banner without touching the copy. */
+  .hero {
+    padding-top: var(--space-row);
+  }
+
+  .hero h1 {
+    font-size: 2.125rem;
+  }
+
+  /* Phones stack the scene under the copy, kept small so the first card
+     still starts near the fold. */
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  /* The drawing carries its own white space; pull it in so the search
+     follows close behind. */
+  .heroArt {
+    max-width: 210px;
+    margin: 4px 0 -16px -8px;
+    justify-self: start;
+  }
+
+  .lede {
+    margin-top: 8px;
+    font-size: 1rem;
+    line-height: 1.45;
+  }
+
+  .totals {
+    margin-top: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .featureProduct,
+  .closeCard,
+  .questionItem {
+    transition: none;
+  }
+
+  .feature:hover .featureProduct {
+    transform: none;
+  }
+
+  .closePanel:hover .closeCard[data-back] {
+    transform: translate(-24px, -84px) rotate(-3deg);
+  }
+
+  .closePanel:hover .closeCard:not([data-back]) {
+    transform: none;
+  }
+}

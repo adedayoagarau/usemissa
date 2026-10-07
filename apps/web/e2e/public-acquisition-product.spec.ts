@@ -15,9 +15,7 @@ test("public Home leads with useful Opportunities and no operational theatre", a
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", {
-      name: "Calls turn up everywhere.",
-    }),
+    page.getByRole("region", { name: "Open opportunities" }).getByRole("article").first(),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Browse open calls" }).first(),

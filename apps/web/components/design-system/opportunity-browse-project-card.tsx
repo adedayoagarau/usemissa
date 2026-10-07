@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
 import { SaveOpportunityButton } from "@/components/save-opportunity-button";
 import { CalendarDays, MapPin, Tag } from "lucide-react";
 import type { OpportunityBrowseProjection } from "@missa/radar-engine";
 import { AddOpportunityToCalendarButton } from "@/components/add-opportunity-to-calendar-button";
 import { NativeBadge } from "@/components/uitripled/native-badge-carbon";
+import { CallCover } from "@/components/illustrations/missa-illustrations";
 import { OrganizationMark } from "@/components/missa/organization-mark";
 import styles from "./opportunity-browse-project-card.module.css";
 
@@ -112,9 +113,15 @@ function statusBadge(
 export function OpportunityBrowseProjectCard({
   item,
   signedIn,
+  saveAction,
+  showCalendarAction = true,
 }: {
   signedIn?: boolean;
   item: OpportunityCardItem;
+  /** Replaces the default save control; a surface-specific save keeps the card's layout. */
+  saveAction?: ReactNode;
+  /** Off where the save already keeps the deadline, so one ask per card. */
+  showCalendarAction?: boolean;
 }) {
   const practices = Array.from(
     new Set(
@@ -155,13 +162,14 @@ export function OpportunityBrowseProjectCard({
               onError={() => setFailedImage(cardImage)}
             />
           ) : (
-            <span className={styles.identityPlate} aria-hidden="true">
+            // No editorial image: the call type's illustrated cover, with the
+            // organization's mark on it when one is on file. The name is in
+            // the card body, so both are decorative.
+            <span className={styles.cover} aria-hidden="true">
+              <CallCover type={item.type} title={item.title} />
               {item.identityLogoUrl ? (
-                <OrganizationMark src={item.identityLogoUrl} />
+                <OrganizationMark src={item.identityLogoUrl} className={styles.coverMark} />
               ) : null}
-              <span className={styles.identityName}>
-                {item.organizationName || typeLabel(item.type)}
-              </span>
             </span>
           )}
         </Link>
@@ -188,7 +196,9 @@ export function OpportunityBrowseProjectCard({
             </NativeBadge>
           ) : null}
         </div>
-        {signedIn === undefined ? (
+        {saveAction !== undefined ? (
+          <div className={styles.saveAction}>{saveAction}</div>
+        ) : signedIn === undefined ? (
           <SaveOpportunityButton
             opportunityId={item.id}
             className={styles.saveAction}
@@ -212,7 +222,7 @@ export function OpportunityBrowseProjectCard({
             {item.title}
           </Link>
         </h2>
-        {item.organizationName && cardImage ? (
+        {item.organizationName ? (
           <p className={styles.org}>{item.organizationName}</p>
         ) : null}
         {practices.length > 0 ? (
@@ -235,14 +245,16 @@ export function OpportunityBrowseProjectCard({
           ) : null}
         </div>
       </div>
-      <div className={styles.footer}>
-        <AddOpportunityToCalendarButton
-          item={item}
-          showLabel
-          signedIn={Boolean(signedIn)}
-          tracked={item.personal?.tracked}
-          returnTo={detailHref}
-        />
+      <div className={styles.footer} data-single={!showCalendarAction || undefined}>
+        {showCalendarAction ? (
+          <AddOpportunityToCalendarButton
+            item={item}
+            showLabel
+            signedIn={Boolean(signedIn)}
+            tracked={item.personal?.tracked}
+            returnTo={detailHref}
+          />
+        ) : null}
         <Link href={detailHref} className={styles.view}>
           View opportunity
         </Link>

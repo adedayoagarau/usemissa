@@ -209,6 +209,12 @@ const SERVED_ASSET_URL = "coalesce(nullif(a.metadata->>'storedUrl', ''), a.url)"
 const NON_EDITORIAL_MEDIA_PATTERN =
   "submittable|slideroom|callforentry|typeform|airtable|entrythingy|duotrope|duosuma|submit[-_]?button|powered[+%20_-]*by|wordpress[-_]?logo|automattic|wix.*(?:badge|banner)|squarespace.*logo|placeholder|editmysite|curatorspace|webclip([._/?-]|$)";
 
+// Older imports filed some logos, favicons and background-removed cutouts as
+// artwork. Whatever their recorded kind, an address that says so never fills
+// a card cover: the card shows the call type's illustrated cover and, when
+// one is on file, the organization's mark. Not applied to the mark lookup.
+const NON_COVER_MEDIA_PATTERN = "logo|favi|apple-touch-icon|removebg";
+
 // Values provisioned from stdin can carry a trailing newline in Vercel.
 // Normalize feature flags so a valid production configuration cannot silently
 // fall back to legacy taxonomy reads.
@@ -493,7 +499,8 @@ function baseFrom(
           and v.profile_id = o.organization_id
           and v.asset_type in ('banner', 'issue_cover')
           and coalesce(v.image_url, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
-          and coalesce(v.label, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'`
+          and coalesce(v.label, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
+          and coalesce(v.image_url, '') !~* '${NON_COVER_MEDIA_PATTERN}'`
     : "";
   const garyLogoSelect = garyVisualsReads
     ? `
@@ -527,6 +534,8 @@ function baseFrom(
           and coalesce(a.url, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
           and coalesce(a.alt, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
           and coalesce(a.source_url, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
+          and coalesce(a.url, '') !~* '${NON_COVER_MEDIA_PATTERN}'
+          and coalesce(a.metadata->>'storedUrl', '') !~* '${NON_COVER_MEDIA_PATTERN}'
         union all
         select ${SERVED_ASSET_URL} as url, a.alt, a.attribution_requirement as credit,
           case a.kind
@@ -544,6 +553,8 @@ function baseFrom(
           and coalesce(a.url, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
           and coalesce(a.alt, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
           and coalesce(a.source_url, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
+          and coalesce(a.url, '') !~* '${NON_COVER_MEDIA_PATTERN}'
+          and coalesce(a.metadata->>'storedUrl', '') !~* '${NON_COVER_MEDIA_PATTERN}'
         ${garyVisualsSelect}
       ) asset_candidate
       order by

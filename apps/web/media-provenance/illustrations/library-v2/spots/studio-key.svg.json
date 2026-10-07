@@ -1,0 +1,16 @@
+{
+  "asset": "public/illustrations/library-v2/spots/studio-key.svg",
+  "library": "Missa illustration library v2, 6 October 2026",
+  "export": "detailed editing master",
+  "method": "Built-in image generation; approved hero used as style reference in every call; contours traced with Potrace and optimised with SVGO.",
+  "styleReference": "sources/hero.png",
+  "prompt": "Use case: illustration-story. Create ONE original standalone editorial illustration for Missa's creative opportunity platform. The attached image is the APPROVED STYLE REFERENCE: match its confident black-ink cartoon drawing, supple organic contours, generous solid black shapes and warm observed character. Draw the new subject described below, not the reference scene. Premium professional illustration craft, not thin technical diagrams or generic corporate vector art. Crisp flat shapes on pure white background. Very clear black/white silhouettes. No grey, gradients, shading, texture, hatching, stippling, borders, typography, lettering, logos or watermark. Keep all objects distinct and anatomically convincing; no ambiguous intersections. At most ONE simple flat muted green accent as specified, deliberately separated from black ink so it can become an editable vector layer. The finished deliverable will be converted to themeable SVG so use solid colours and elegantly simplified closed contours. No extra objects beyond the brief.\nSubject: A large beautifully drawn studio key on a simple round keyring with a blank little paper tag. Confident black ink, broad black key bow, an elegant irregular outline and very few details. One flat muted green tag.\nComposition: landscape 5:4, 1280x1024. A single compact editorial object vignette, simplified details to read beautifully at 120px wide. Entire artwork fits comfortably in central 75%, generous white margins, no object touching edge.",
+  "sourceRaster": "sources/studio-key.png",
+  "viewBox": "17.1 10.0 858.8 687.0",
+  "bytes": 6971,
+  "layers": {
+    "paper": 7,
+    "accent": 1,
+    "ink": 3
+  }
+}
