@@ -5,8 +5,9 @@ import { MissaWordmark } from "@/components/missa-wordmark";
 
 /**
  * Shared frame for log in, sign up, and password recovery: a white form
- * column with the wordmark and legal links, and an inset photograph with an
- * editorial caption on wide screens. Small screens show the form only.
+ * column with the wordmark and legal links, and an inset illustration with an
+ * editorial caption on wide screens. Small screens show the form only. The
+ * illustrations are made with AI, and the caption says so.
  */
 
 export type AuthVisual = "signup" | "login" | "recovery";
@@ -17,18 +18,18 @@ const VISUALS: Record<
 > = {
   signup: {
     src: "/media/home/generated/residencies.webp",
-    title: "Find the call worth your time.",
-    body: "Compare the facts, open the official source, and keep track of what comes next.",
+    title: "Find the call. Make the deadline.",
+    body: "Save calls, get reminded before they close, and keep track of what you sent.",
   },
   login: {
     src: "/media/home/generated/publications.webp",
     title: "Your deadlines, where you left them.",
-    body: "Saved opportunities and applications stay private to your account.",
+    body: "Your saved calls and what you sent stay private to your account.",
   },
   recovery: {
     src: "/media/home/generated/exhibitions.webp",
-    title: "Find the call worth your time.",
-    body: "Compare the facts, open the official source, and keep track of what comes next.",
+    title: "Find the call. Make the deadline.",
+    body: "Every call links to the organizer’s own page, with the fee and the rules up front.",
   },
 };
 
@@ -87,6 +88,9 @@ export function AuthShell({
               </p>
               <p className="mt-4 max-w-sm text-sm leading-relaxed text-background/85">
                 {art.body}
+              </p>
+              <p className="mt-6 text-xs text-background/70">
+                Illustration made with AI.
               </p>
             </div>
           </div>

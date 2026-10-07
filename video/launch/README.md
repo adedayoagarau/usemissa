@@ -14,10 +14,10 @@ npm run render:cuts     # Cut15 and Cut6 in every format
 npm run stills -- LaunchSquare out/stills 30,300,600   # review frames
 ```
 
-`npm run sync` copies the fonts and photography shared with the product from
-`landing/fonts` and `apps/web/public/media/home` into `public/`. Every render
-and studio command runs it first, so the film always uses the same assets as
-the site. Those copies are git-ignored.
+`npm run sync` copies the photography shared with the product from
+`apps/web/public/media/home` into `public/`. Every render and studio command
+runs it first, so the film always uses the same images as the site. Those
+copies are git-ignored. The fonts live in `public/fonts`.
 
 ## Script
 

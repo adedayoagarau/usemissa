@@ -188,6 +188,19 @@ data: organization names, call titles, quotes or URLs.
 Copy that isn't wrapped stays in US spelling for everyone. Wrap a line when
 it's likely to be read in the UK and has a word that differs.
 
+## Images
+
+Missa shows three kinds of image:
+- **Licensed photos:** credited where they appear.
+- **Organizers' own images:** credited to the organizer.
+- **Illustrations made with AI:** labeled where they appear.
+
+Label every AI illustration where it appears: "Illustration made with AI.", or
+one line per page when a page has several. Never present one as an artist's
+work, a real place or a real person, and never call it a painting or a
+photograph in alt text. Provenance for each generated file lives in
+`apps/web/media-provenance`.
+
 ## Microcopy
 
 | Element | Rule | Example |
@@ -227,9 +240,7 @@ Use these only once Plus is live.
 
 ## Fix these first
 
-These would make the new words untrue.
-
-Fixed with the copy rewrite:
+These would have made the new words untrue. All are fixed:
 
 - The matcher and rankings no longer say "Odds", "Smart", "✨" or "Editorial
   Intelligence & Market Telemetry". The odds score is shown as "Openness".
@@ -239,15 +250,15 @@ Fixed with the copy rewrite:
   available, limited and planned.
 - `/waitlist` and `/thank-you` redirect to sign-up and are out of the sitemap.
   `/welcome` stays as an optional entry screen, rewritten.
-
-Still open:
-
-- The homepage and sign-up images are AI-generated, and their prompt files in
-  `apps/web/public/media/home/generated/*.webp.json` are publicly served.
-- `landing/` has invented testimonials and stats, and the root `vercel.json`
-  still points at it.
-- Plus and text reminders appear on `/plan`, in Terms and in Privacy, while the
-  positioning doc says they're unreleased.
+- The AI illustrations on the homepage, sign-up and onboarding are labeled,
+  and their prompt files are no longer publicly served.
+- `landing/` and its invented testimonials are gone, along with the root
+  `vercel.json` that pointed at it. The film's fonts moved to
+  `video/launch/public/fonts`.
+- `/plan` lists what Plus includes, taken from `CREATOR_PLAN_LIMITS`. Text
+  reminders show as coming soon until texts can be sent, and Plus can only be
+  bought once Stripe prices are set. Terms and Privacy describe both as
+  conditional.
 
 ## How this is enforced
 

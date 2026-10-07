@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useSpelling } from "@/components/missa/spelling";
 import styles from "./plan-product.module.css";
 
 type Offer = { interval: "month" | "year"; label: string };
@@ -19,10 +20,25 @@ type PlanProductProps = {
   /** Prices shown are the visitor's regional prices. */
   regional?: boolean;
   checkout: "success" | "cancelled" | null;
+  /** Text reminders can be sent: the SMS provider is configured. */
+  textReminders: boolean;
 };
 
-const longDate = (iso: string) =>
-  new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" }).format(new Date(iso));
+const longDate = (iso: string, locale: string) =>
+  new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(new Date(iso));
+
+/** What Plus adds, matching CREATOR_PLAN_LIMITS. Texts are listed as coming soon until they can be sent. */
+function plusBenefits(textReminders: boolean): string[] {
+  return [
+    "No limit on calls in progress in your Tracker.",
+    "Start-by dates and steps that move with each deadline.",
+    "A morning alarm on deadline day for anything you haven’t sent.",
+    "A heads-up before a cheaper fee tier ends, and when a call you follow opens.",
+    textReminders
+      ? "Deadline reminders by text, so a closing call reaches you away from email."
+      : "Deadline reminders by text are coming soon.",
+  ];
+}
 
 /**
  * The creator's plan: what Free allows and how much is in use, what Plus adds,
@@ -55,6 +71,7 @@ export function PlanProduct(props: PlanProductProps) {
   }
 
   const onPlus = props.plan !== "free";
+  const locale = useSpelling() === "uk" ? "en-GB" : "en-US";
 
   return (
     <div className={styles.page}>
@@ -78,8 +95,10 @@ export function PlanProduct(props: PlanProductProps) {
         </h2>
         {onPlus ? (
           <ul className={styles.benefits}>
-            <li>No limit on calls in progress in your Tracker.</li>
-            <li>Deadline reminders by text. Add your number in Inbox notification settings.</li>
+            {plusBenefits(props.textReminders).map((benefit) => (
+              <li key={benefit}>{benefit}</li>
+            ))}
+            {props.textReminders ? <li>Add your number in Inbox notification settings to get texts.</li> : null}
           </ul>
         ) : (
           <p className={styles.body}>
@@ -89,7 +108,7 @@ export function PlanProduct(props: PlanProductProps) {
             calls in progress. Submitted and closed calls don&apos;t count.
           </p>
         )}
-        {props.endsAt ? <p className={styles.body}>Plus ends on {longDate(props.endsAt)}. You keep everything you tracked.</p> : null}
+        {props.endsAt ? <p className={styles.body}>Plus ends on {longDate(props.endsAt, locale)}. You keep everything you tracked.</p> : null}
         {props.paid && props.canManage ? (
           <div className={styles.actions}>
             <Button variant="outline" disabled={pending !== null} onClick={() => go("/api/me/plan/portal", {}, "manage")}>
@@ -105,11 +124,12 @@ export function PlanProduct(props: PlanProductProps) {
             Plus
           </h2>
           <ul className={styles.benefits}>
-            <li>Track every call you&apos;re working on, with no limit.</li>
-            <li>Deadline reminders by text, so a closing call reaches you even away from email.</li>
+            {plusBenefits(props.textReminders).map((benefit) => (
+              <li key={benefit}>{benefit}</li>
+            ))}
           </ul>
           <p className={styles.body}>
-            Everything in Free stays free: every Opportunity, its official source, your reminders and The Sunday List.
+            Everything in Free stays free: every call, the organizer’s page, email reminders and The Sunday List.
           </p>
           {props.offers.length ? (
             <div className={styles.actions}>
