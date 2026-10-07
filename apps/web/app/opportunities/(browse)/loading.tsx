@@ -1,6 +1,6 @@
 import { OpportunityShell } from "@/components/opportunity-shell";
 import { Skeleton } from "@/components/ui/skeleton";
-import styles from "./opportunities.module.css";
+import styles from "../opportunities.module.css";
 
 export default function OpportunitiesLoading() {
   return (
@@ -11,7 +11,7 @@ export default function OpportunitiesLoading() {
         aria-labelledby="opportunities-loading-heading"
       >
         <p className={styles.loadingEyebrow}>Opportunities</p>
-        <h1 id="opportunities-loading-heading">Finding open calls…</h1>
+        <p id="opportunities-loading-heading" className={styles.loadingTitle}>Finding open calls…</p>
         <p className={styles.loadingStatus} role="status" aria-live="polite">
           Reading the fine print…
         </p>

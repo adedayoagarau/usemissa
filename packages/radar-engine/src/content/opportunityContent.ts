@@ -119,6 +119,21 @@ function deadlineText(deadline: OpportunityContentBuildInput['deadline']): { val
   return { value: 'Deadline not confirmed', certainty: 'unknown' };
 }
 
+/** One sentence about the deadline that reads well whatever is known. */
+export function deadlineSentence(deadline: OpportunityContentBuildInput['deadline']): string {
+  if (deadline.date) {
+    const parsed = new Date(`${deadline.date}T12:00:00Z`);
+    const formatted = Number.isNaN(parsed.getTime())
+      ? deadline.date
+      : new Intl.DateTimeFormat('en-US', { dateStyle: 'long', timeZone: 'UTC' }).format(parsed);
+    return `The deadline is ${formatted}.`;
+  }
+  if (deadline.raw) return `The listed deadline: ${trimTo(deadline.raw, 120).replace(/[.\s]+$/u, '')}.`;
+  if (deadline.kind === 'rolling' || deadline.kind === 'year-round') return 'Submissions are read on a rolling basis.';
+  if (deadline.kind === 'until-filled') return 'It stays open until filled.';
+  return 'The deadline isn’t confirmed yet; check the official page.';
+}
+
 function feeText(fee: OpportunityContentBuildInput['fee']): { value: string; certainty: 'confirmed' | 'unknown' } {
   if (fee.status === 'no-fee') return { value: 'No fee disclosed', certainty: 'confirmed' };
   if (fee.status === 'paid' && fee.amountCents !== undefined) {
@@ -191,8 +206,8 @@ export function buildOpportunityContent(input: OpportunityContentBuildInput): Op
 
   const summary = trimTo(
     title
-      ? `${organization} lists “${title}”${focusText}. The official deadline is ${deadline.value.toLowerCase()}.${closingText}`
-      : `${organization} is offering a ${typeLabel(input.type)}${focusText}. The official deadline is ${deadline.value.toLowerCase()}.${closingText}`,
+      ? `${organization} lists “${title}”${focusText}. ${deadlineSentence(input.deadline)}${closingText}`
+      : `${organization} is offering a ${typeLabel(input.type)}${focusText}. ${deadlineSentence(input.deadline)}${closingText}`,
     600,
   );
 

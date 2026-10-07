@@ -48,7 +48,10 @@ test("homepage reuses catalogue cards with real backend records", async ({
     expect(item).toBeTruthy();
     await expect(
       card.getByRole("link", { name: "View opportunity", exact: true }),
-    ).toHaveAttribute("href", `/opportunities/${item.id}`);
+    ).toHaveAttribute(
+      "href",
+      `/opportunities/${encodeURIComponent(item.slug || item.id)}`,
+    );
   }
   const homeClass = await section
     .locator("article")

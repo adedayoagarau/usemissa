@@ -7,6 +7,7 @@ import {
 import { MissaWordmark } from "@/components/missa-wordmark";
 import styles from "./public-site-shell.module.css";
 import { contactMailto } from "@/lib/legalContact";
+import { discoveryCollections } from "@/lib/discoveryGuides";
 
 /**
  * Public page frame. It reads no request data, so the pages inside it can be
@@ -24,15 +25,17 @@ export function PublicSiteShell({
   collectionLinks?: Array<{ slug: string; title: string }>;
   session?: HeaderSession;
 }) {
+  // Every public page links the discover hubs, so none of them is orphaned.
+  const collections = collectionLinks ?? discoveryCollections;
   return (
     <div className={styles.site}>
       <MissaSiteHeader session={session} current={current} />
       {children}
       <footer
         className={styles.footer}
-        data-collections={Boolean(collectionLinks?.length) || undefined}
+        data-collections={Boolean(collections.length) || undefined}
       >
-        {collectionLinks?.length ? (
+        {collections.length ? (
           <nav
             className={styles.collections}
             aria-labelledby="footer-collections-title"
@@ -41,7 +44,7 @@ export function PublicSiteShell({
               Keep exploring
             </h2>
             <div>
-              {collectionLinks.map((collection) => (
+              {collections.map((collection) => (
                 <Link
                   key={collection.slug}
                   href={`/discover/${collection.slug}`}
@@ -66,6 +69,8 @@ export function PublicSiteShell({
           <Link href="/residencies">Residencies</Link>
           <Link href="/journals">Journals</Link>
           <Link href="/grants">Grants</Link>
+          <Link href="/presses">Presses</Link>
+          <Link href="/countries">Calls by country</Link>
           <Link href="/rankings/magazines">Magazine rankings</Link>
           <Link href="/rankings/residencies">Residency rankings</Link>
           <Link href="/discover/match">Manuscript matcher</Link>

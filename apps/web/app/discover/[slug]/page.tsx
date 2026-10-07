@@ -19,7 +19,14 @@ import {
   discoveryCollections,
   discoveryContentLastModified,
 } from "@/lib/discoveryGuides";
-import { JsonLd, absoluteUrl, breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
+import {
+  JsonLd,
+  absoluteUrl,
+  breadcrumbJsonLd,
+  currentMonthYear,
+  listingMetadata,
+  pageMetadata,
+} from "@/lib/seo";
 import styles from "./collection.module.css";
 
 export const dynamic = "force-dynamic";
@@ -29,17 +36,24 @@ export function generateStaticParams() {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<Metadata> {
   const { slug } = await params;
   const collection = discoveryCollection(slug);
+  // Sorted and paged variants stay out of the index; the hub itself is dated
+  // so it matches "… October 2026" searches.
   return collection
-    ? pageMetadata({
-        title: collection.title,
-        description: collection.description,
-        path: `/discover/${collection.slug}`,
-      })
+    ? listingMetadata(
+        {
+          title: `${collection.title}, ${currentMonthYear()}`,
+          description: collection.description,
+          path: `/discover/${collection.slug}`,
+        },
+        searchParams,
+      )
     : pageMetadata({
         title: "Collection not found",
         description: "This Missa collection is not available.",
@@ -71,6 +85,7 @@ export default async function DiscoveryCollectionPage({
       : "soonest-deadline";
   const art = collectionArtDirection[slug];
   let nextCursor: string | null = null;
+  let total: number | null = null;
   let items: OpportunityBrowseProjection[] = [];
   let unavailable = false;
   try {
@@ -80,6 +95,7 @@ export default async function DiscoveryCollectionPage({
     );
     items = result.items;
     nextCursor = result.nextCursor ?? null;
+    total = typeof result.total === "number" ? result.total : null;
   } catch {
     unavailable = true;
   }
@@ -214,6 +230,27 @@ export default async function DiscoveryCollectionPage({
             )}
           </div>
         </header>
+        <section
+          className={styles.results}
+          aria-labelledby="collection-guide"
+        >
+          <h2 id="collection-guide" className="font-sans text-xl font-medium">
+            Before you apply
+          </h2>
+          <p className="mt-2 max-w-3xl text-muted-foreground">
+            {total !== null && !unavailable
+              ? `${total.toLocaleString("en-US")} open now on Missa, each linked to the organizer's own page. `
+              : ""}
+            {collection.answer}
+          </p>
+          {collection.checklist.length ? (
+            <ul className="mt-4 grid list-disc gap-1 pl-5 text-sm sm:grid-cols-2">
+              {collection.checklist.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
         <section
           id="browse-results"
           className={styles.results}

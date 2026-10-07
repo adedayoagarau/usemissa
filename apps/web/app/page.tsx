@@ -5,7 +5,7 @@ import {
 import { HomepageHero } from "@/components/missa/homepage-hero";
 import { HomepageNextOpening } from "@/components/missa/homepage-next-opening";
 import { StickyMobileCta } from "@/components/missa/sticky-mobile-cta";
-import { pageMetadata } from "@/lib/seo";
+import { JsonLd, pageMetadata, siteEntityJsonLd } from "@/lib/seo";
 import { getPublicOpportunityPage } from "@/lib/publicOpportunityReads";
 import { selectHomepageCalls, type HomepageCall } from "@/lib/homepageCalls";
 import {
@@ -14,7 +14,7 @@ import {
 } from "@/lib/homepageOrganizations";
 
 export const metadata = pageMetadata({
-  title: "Missa: open calls, grants and residencies",
+  title: "Missa: open calls, grants and residencies for artists and writers",
   description:
     "Open calls, grants, residencies and magazines, each with its fee, who can apply and the organizer's page. Save the ones you want and get reminded before they close.",
   path: "/",
@@ -62,6 +62,7 @@ export default async function HomePage() {
   ]);
   return (
     <>
+      <JsonLd data={siteEntityJsonLd()} />
       <main>
         <HomepageHero />
         <HomepageNextOpening />
