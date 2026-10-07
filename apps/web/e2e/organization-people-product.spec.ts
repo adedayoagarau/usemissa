@@ -8,16 +8,17 @@ async function peopleFixture(page: Page) {
   return { organizationId, email: me.account.email };
 }
 
-test('Access dossier exposes current truth without unsafe access mutations', async ({ page }) => {
+test('Access dossier exposes current truth and guarded access actions', async ({ page }) => {
   const fixture = await peopleFixture(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/organization/${fixture.organizationId}/people?q=${encodeURIComponent(fixture.email)}`);
   await expect(page.getByRole('heading', { name: 'People', level: 1 })).toBeVisible();
   await expect(page.getByText(fixture.email).first()).toBeVisible();
-  await expect(page.getByText('Access changes stay withheld')).toBeVisible();
+  await expect(page.getByText('Owner safeguards apply to every change')).toBeVisible();
   await expect(page.getByText('Compatibility membership seat')).toBeVisible();
   await expect(page.getByText('Not a full permission list')).toBeVisible();
-  await expect(page.getByRole('button', { name: /invite|remove|change role|transfer/iu })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add person' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /transfer/iu })).toHaveCount(0);
   await expect(page.locator('select[aria-label^="Role for"]')).toHaveCount(0);
   await expect(page.locator('body')).not.toContainText(/presence|online now|taxonomy expertise/iu);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
