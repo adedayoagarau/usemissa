@@ -102,6 +102,26 @@ pages existed open as one page with their text unchanged.
   room turns dark; printing is always on white. The dark palette is Missa's
   (`.dark` in `app/globals.css`), with every text pair at WCAG AA or better.
 
+## Writing for a call
+
+- **More, Write for a call…** ties the open piece to a call in the writer's
+  tracker. Calls already sent or decided are left out of the list; with none,
+  the sheet points to Find calls. The piece must be saved to the account
+  first.
+- With a call tied, the sheet shows the call, its deadline, Guidelines, Apply
+  and the tracker record, the writer's checklist for it, and checks on this
+  piece: its words against the word limit, its printed pages against the page
+  limit, the checklist, and, when the call reads blind, whether the writer's
+  name is in the text. Limits taken from the listing say to confirm them in the
+  guidelines. These are Missa's pre-submit checks (`lib/pre-submit-check.ts`),
+  run on the piece in the browser (`lib/writing-call.ts`); the text is not sent
+  anywhere for them.
+- The footer shows words against the limit ("1,240 / 3,000 words"), marked
+  when over. Change call and Write without a call are in the sheet.
+- The link is kept with the piece (`call_id`, migration 0099) and survives
+  saves from any device; it does not change the text's revision. If the call
+  leaves the tracker, the sheet says so and offers another.
+
 ## Free canvas
 
 Any page can switch between **Flowing text** and **Free canvas** (More, This
@@ -238,6 +258,11 @@ erases the other's.
 - Composition `WritingRoom` (`components/missa/writing-room.tsx`) uses installed
   `Button`, `ButtonGroup`, `DropdownMenu`, `Popover`, `Sheet`, `Item`, `Empty`,
   `Alert`, `AlertDialog` and Sonner. No registry items installed.
+- `WritingCall` (`components/missa/writing-call.tsx`) is a `Sheet` of `Item`s
+  with `Empty` and `Spinner`, and reuses `PreSubmitCheckList`, extracted from
+  `components/missa/pre-submit-check.tsx` so the tracker and the room show
+  checks the same way. States: no calls, loading, failed with retry, call
+  left the tracker, linked, passed, needs attention, and saving.
 - Adaptations: semantic tokens only; the writer's chosen face for the page,
   `font-mono` for the timer, size and word count; controls fade with a 180ms
   opacity transition that reduced motion removes; hidden controls cannot be
@@ -271,7 +296,12 @@ erases the other's.
   210mm wide; and a project from a template, opening and writing a piece,
   reordering by menu, outline status and synopsis kept across a reload,
   compile, moving a loose piece in, and deleting the project with its pieces
-  kept, with axe on the new-project dialog, the binder and the outline.
+  kept, with axe on the new-project dialog, the binder and the outline; and a
+  piece tied to a call read blind with a word limit: the name check, the
+  footer count going over, the link kept across a reload, and untying it, with
+  axe on the call sheet.
+- `lib/writing-call.test.ts` (word and page limits, blind reading, the footer
+  meter).
 - Print output checked as PDF: one sheet per page at the paper size, each
   page's own format, no controls.
 - Checked in Chromium at 1440×900, 390×844 and 720×450 (200% zoom), with long
@@ -288,9 +318,10 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/migrations/0095_creator_w
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/migrations/0096_creator_writing_pages.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/migrations/0097_creator_writing_projects.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/migrations/0098_creator_writing_snapshots.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/migrations/0099_creator_writing_calls.sql
 ```
 
-0096, 0097 and 0098 add tables and nullable or defaulted columns only, so each can
+0096 to 0099 add tables and nullable or defaulted columns only, so each can
 run before its code ships. 0097 uses `ON DELETE SET NULL (project_id)`, which
 needs Postgres 15 or later. Without it, saves fail and text stays on the device with a retry notice.
 Without `DATABASE_URL`, the room keeps text in the browser only and says so.

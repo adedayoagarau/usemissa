@@ -126,6 +126,7 @@ const migrationFiles = [
   '0096_creator_writing_pages.sql',
   '0097_creator_writing_projects.sql',
   '0098_creator_writing_snapshots.sql',
+  '0099_creator_writing_calls.sql',
 ];
 
 
