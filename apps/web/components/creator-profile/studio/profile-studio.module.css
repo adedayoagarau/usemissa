@@ -919,3 +919,22 @@
   font-size: 13px;
   line-height: 1.5;
 }
+
+/* The grip that starts a drag in the section list. */
+.moduleGrip {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 36px;
+  color: var(--muted-foreground);
+  touch-action: none;
+}
+.moduleGrip svg {
+  width: 16px;
+  height: 16px;
+}
+.moduleList li:hover .moduleGrip,
+.moduleGrip:focus-visible {
+  color: var(--foreground);
+}

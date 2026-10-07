@@ -10,6 +10,7 @@ import {
   ArrowUpRight,
   Check,
   Eye,
+  GripVertical,
   Inbox,
   Monitor,
   Smartphone,
@@ -21,6 +22,11 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sortable,
+  SortableItem,
+  SortableItemHandle,
+} from "@/components/ui/sortable";
 import { Switch } from "@/components/ui/switch";
 import { PortfolioHandleField } from "@/components/portfolio-handle-field";
 import { PublicCreatorProfile } from "@/components/creator-profile/public-profile";
@@ -186,6 +192,16 @@ export function ProfileStudio({
         item,
       );
       return { ...current, modules: all };
+    });
+  // Dropping a row reorders the sections on the profile; switched-off add-ons
+  // keep their place after them.
+  const dropModules = (next: typeof modules) =>
+    update((current) => {
+      const onProfile = new Set(next.map((module) => module.id));
+      const rest = orderedModules(current.modules).filter(
+        (module) => !onProfile.has(module.id),
+      );
+      return { ...current, modules: [...next, ...rest] };
     });
   const addAddon = (id: PortfolioAddon) => {
     update((current) => ({
@@ -400,62 +416,96 @@ export function ProfileStudio({
           </div>
           <div className={styles.railGroup}>
             <p className={styles.railLabel}>Sections, in page order</p>
-            <ol className={styles.moduleList}>
-              {modules.map((module, index) => {
-                const count = moduleCount(draft, module.id);
-                return (
-                  <li
-                    key={module.id}
-                    className={cn(!module.visible && styles.moduleHidden)}
-                  >
-                    <button
-                      type="button"
-                      className={styles.railItem}
-                      aria-current={panel === module.id ? "true" : undefined}
-                      onClick={() => open(module.id)}
+            <p id="studio-reorder-hint" className="sr-only">
+              Drag a section by its grip to reorder it, or use its move up and
+              move down buttons.
+            </p>
+            <Sortable
+              asChild
+              value={modules}
+              getItemValue={(module) => module.id}
+              onValueChange={dropModules}
+            >
+              <ol
+                className={styles.moduleList}
+                aria-describedby="studio-reorder-hint"
+              >
+                {modules.map((module, index) => {
+                  const count = moduleCount(draft, module.id);
+                  return (
+                    <SortableItem
+                      key={module.id}
+                      value={module.id}
+                      asChild
+                      // Keyboard reordering uses the move buttons, so the row is not a drag target.
+                      tabIndex={-1}
+                      role="listitem"
+                      aria-roledescription={undefined}
+                      aria-describedby={undefined}
                     >
-                      {MODULE_LABELS[module.id]}
-                      {count !== undefined && (
-                        <span className={cn(styles.railHint, "font-mono")}>
-                          {count}
+                      <li
+                        className={cn(!module.visible && styles.moduleHidden)}
+                      >
+                        <SortableItemHandle asChild>
+                          <span
+                            aria-hidden="true"
+                            className={styles.moduleGrip}
+                          >
+                            <GripVertical />
+                          </span>
+                        </SortableItemHandle>
+                        <button
+                          type="button"
+                          className={styles.railItem}
+                          aria-current={
+                            panel === module.id ? "true" : undefined
+                          }
+                          onClick={() => open(module.id)}
+                        >
+                          {MODULE_LABELS[module.id]}
+                          {count !== undefined && (
+                            <span className={cn(styles.railHint, "font-mono")}>
+                              {count}
+                            </span>
+                          )}
+                        </button>
+                        <span className={styles.moduleTools}>
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            disabled={index === 0}
+                            aria-label={`Move ${MODULE_LABELS[module.id]} up`}
+                            onClick={() => moveModule(module.id, -1)}
+                          >
+                            <ArrowUp aria-hidden="true" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            disabled={index === modules.length - 1}
+                            aria-label={`Move ${MODULE_LABELS[module.id]} down`}
+                            onClick={() => moveModule(module.id, 1)}
+                          >
+                            <ArrowDown aria-hidden="true" />
+                          </Button>
+                          <Switch
+                            size="sm"
+                            checked={module.visible}
+                            aria-label={`Show ${MODULE_LABELS[module.id]}`}
+                            onCheckedChange={(visible) =>
+                              toggleModule(module.id, visible)
+                            }
+                          />
                         </span>
-                      )}
-                    </button>
-                    <span className={styles.moduleTools}>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        disabled={index === 0}
-                        aria-label={`Move ${MODULE_LABELS[module.id]} up`}
-                        onClick={() => moveModule(module.id, -1)}
-                      >
-                        <ArrowUp aria-hidden="true" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        disabled={index === modules.length - 1}
-                        aria-label={`Move ${MODULE_LABELS[module.id]} down`}
-                        onClick={() => moveModule(module.id, 1)}
-                      >
-                        <ArrowDown aria-hidden="true" />
-                      </Button>
-                      <Switch
-                        size="sm"
-                        checked={module.visible}
-                        aria-label={`Show ${MODULE_LABELS[module.id]}`}
-                        onCheckedChange={(visible) =>
-                          toggleModule(module.id, visible)
-                        }
-                      />
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
+                      </li>
+                    </SortableItem>
+                  );
+                })}
+              </ol>
+            </Sortable>
             <AddAddonMenu added={addedAddons} onAdd={addAddon} />
             <p className={styles.railNote}>
-              Empty sections are left out for visitors.
+              Drag to reorder. Empty sections are left out for visitors.
             </p>
           </div>
           <div className={styles.railGroup}>

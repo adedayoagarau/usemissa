@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { portfolioSchema } from "./creator-portfolio-schema.ts";
+import {
+  portfolioSchema,
+  publicPortfolioProjection,
+} from "./creator-portfolio-schema.ts";
 import { publicCreatorProjection } from "./public-creator-projection.ts";
 
 test("public creator projection bounds published portfolio content", () => {
@@ -54,4 +57,53 @@ test("public creator projection has no draft or workspace fields", () => {
     serialized,
     /draft|tracker|application|library|settings/iu,
   );
+});
+
+test("public creator projection carries the add-ons visitors can see and nothing private", () => {
+  const portfolio = publicPortfolioProjection(
+    portfolioSchema.parse({
+      handle: "poet",
+      name: "Public Poet",
+      modules: [
+        { id: "services", visible: true, added: true },
+        { id: "collaborators", visible: true, added: true },
+        { id: "booking", visible: true, added: true },
+        { id: "support", visible: true, added: true },
+      ],
+      services: [
+        { id: "sv_1", title: "Commissioned poems", timing: "3 weeks" },
+      ],
+      collaborators: [
+        {
+          id: "c_1",
+          handle: "toni",
+          name: "Toni",
+          role: "Score",
+          confirmed: true,
+        },
+        { id: "c_2", handle: "ana", name: "Ana", role: "Design" },
+      ],
+      booking: { shortBio: "A poet.", longBio: "A longer bio." },
+      support: { label: "Tip jar", url: "https://example.com/tip" },
+    }),
+  );
+  const projection = publicCreatorProjection({
+    canonicalPath: "/@poet",
+    handle: "poet",
+    portfolio,
+    workLimit: 8,
+    includeWorkText: false,
+  }).portfolio!;
+  assert.deepEqual(projection.services, [
+    { title: "Commissioned poems", timing: "3 weeks", price: "", note: "" },
+  ]);
+  assert.deepEqual(projection.collaborators, [
+    { name: "Toni", handle: "toni", role: "Score" },
+  ]);
+  assert.deepEqual(projection.booking, {
+    shortBio: "A poet.",
+    longBio: "A longer bio.",
+  });
+  assert.equal(projection.support.url, "https://example.com/tip");
+  assert.doesNotMatch(JSON.stringify(projection), /"confirmed"|"id":/u);
 });
