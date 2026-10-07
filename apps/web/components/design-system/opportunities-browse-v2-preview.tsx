@@ -31,6 +31,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { EmptyStateArt } from "@/components/illustrations/missa-illustrations";
 import styles from "./opportunities-browse-v2-preview.module.css";
 import dropdownStyles from "@/components/opportunity-dropdown.module.css";
 
@@ -681,6 +682,7 @@ export function OpportunitiesBrowseV2Preview({
           </div>
         ) : displayedItems.length === 0 ? (
           <div className={styles.emptyState} role="status">
+            <EmptyStateArt id="scene-searching" />
             <p className={styles.emptyTitle}>No matches for your current search or filters.</p>
             <button type="button" className={styles.emptyAction} onClick={clearAllFilters}>
               Clear all filters
