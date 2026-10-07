@@ -131,7 +131,7 @@ export function HomepageProof({ showcase }: { showcase: Showcase }) {
       <Reveal className={styles.sectionHead}>
         <div>
           <h2 id="homepage-proof-heading" className="font-heading">
-            Everything after you find the call.
+            After you find an open call.
           </h2>
           <p className={styles.sectionLede}>
             Save it from this page. Missa keeps the date, reminds you before
