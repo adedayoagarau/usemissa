@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     );
     if (!opportunity) {
       return NextResponse.json(
-        { error: "Opportunity not found" },
+        { error: "Call not found" },
         { status: 404, headers: noStore },
       );
     }

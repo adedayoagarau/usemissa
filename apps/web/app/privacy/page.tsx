@@ -46,7 +46,7 @@ export default function PrivacyPage() {
           <p className="mt-3">If you publish a portfolio, the details you add there are visible to anyone with the link. You choose what to include, and you can change or remove it. Anything you leave unpublished stays out of your public portfolio.</p>
         </section>
         <section>
-          <h2 className="font-heading text-2xl font-medium text-foreground">Submissions to Organizations</h2>
+          <h2 className="font-heading text-2xl font-medium text-foreground">Submissions to organizations</h2>
           <p className="mt-3">When you submit to an organization through Missa, the material and details you choose to include are shared with that organization and the reviewers it assigns. The organization then handles them under its own privacy policy. Missa keeps a receipt of the submission on your account.</p>
         </section>
         <section>

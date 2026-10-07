@@ -71,7 +71,7 @@ export async function DELETE(
   if (repository) {
     const body = await request.json().catch(() => ({})) as { expectedRevision?: unknown };
     const envelope = libraryEnvelope(request, session.account.id, 'tracker.work.unlink', { opportunityId }, body.expectedRevision);
-    if (!envelope) return creatorLibraryJson({ error: 'Refresh this Tracker item before unlinking its Work.' }, 400);
+    if (!envelope) return creatorLibraryJson({ error: 'Refresh this Tracker item before you unlink the piece.' }, 400);
     try { return creatorLibraryJson({ status: 'updated', receipt: await repository.linkTrackerWork(envelope, opportunityId) }); }
     catch (error) { return creatorLibraryError(error); }
   }
