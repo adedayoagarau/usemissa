@@ -14,6 +14,7 @@ import styles from "./opportunity-browse-project-card.module.css";
 type OpportunityCardItem = Pick<
   OpportunityBrowseProjection,
   | "id"
+  | "slug"
   | "title"
   | "type"
   | "organizationName"
@@ -125,6 +126,8 @@ export function OpportunityBrowseProjectCard({
     .filter((value): value is string => Boolean(value))
     .slice(0, 2);
   const [failedImage, setFailedImage] = useState<string | null>(null);
+  // The slug is the canonical address; the id still resolves and redirects.
+  const detailHref = `/opportunities/${encodeURIComponent(item.slug || item.id)}`;
   const cardImage =
     item.identityAssetUrl && item.identityAssetUrl !== failedImage
       ? item.identityAssetUrl
@@ -138,7 +141,7 @@ export function OpportunityBrowseProjectCard({
         data-identity-only={!cardImage || undefined}
       >
         <Link
-          href={`/opportunities/${item.id}`}
+          href={detailHref}
           className={styles.mediaLink}
           tabIndex={-1}
           aria-label={`View ${item.title}`}
@@ -198,14 +201,14 @@ export function OpportunityBrowseProjectCard({
               signedIn={signedIn}
               tracked={item.personal?.tracked}
               compact
-              returnTo={`/opportunities/${item.id}`}
+              returnTo={detailHref}
             />
           </div>
         )}
       </div>
       <div className={styles.body}>
         <h2 className={styles.title}>
-          <Link href={`/opportunities/${item.id}`} title={item.title}>
+          <Link href={detailHref} title={item.title}>
             {item.title}
           </Link>
         </h2>
@@ -238,9 +241,9 @@ export function OpportunityBrowseProjectCard({
           showLabel
           signedIn={Boolean(signedIn)}
           tracked={item.personal?.tracked}
-          returnTo={`/opportunities/${item.id}`}
+          returnTo={detailHref}
         />
-        <Link href={`/opportunities/${item.id}`} className={styles.view}>
+        <Link href={detailHref} className={styles.view}>
           View opportunity
         </Link>
       </div>

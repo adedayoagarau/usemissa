@@ -16,9 +16,9 @@ export function generateMetadata({
 }): Promise<Metadata> {
   return listingMetadata(
     {
-      title: "Artist residencies & retreats | Missa",
+      title: "Artist and writer residencies worldwide: open calls and rankings",
       description:
-        "Explore artist residency centers, studios, fellowships, and retreat programs worldwide.",
+        "Residencies, studios and retreats for artists and writers around the world, with their open calls, deadlines, fees and a link to each program's page.",
       path: "/residencies",
     },
     searchParams,

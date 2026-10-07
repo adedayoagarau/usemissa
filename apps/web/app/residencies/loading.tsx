@@ -14,12 +14,12 @@ export default function ResidenciesLoading() {
         <p className="font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground">
           Residencies
         </p>
-        <h1
+        <p
           id="residencies-loading-heading"
           className="mt-3 font-heading text-4xl font-medium tracking-tight sm:text-5xl"
         >
           Loading residency rankings…
-        </h1>
+        </p>
         <p className="mt-4 text-sm text-muted-foreground" role="status" aria-live="polite">
           Finding residencies and their reviews.
         </p>

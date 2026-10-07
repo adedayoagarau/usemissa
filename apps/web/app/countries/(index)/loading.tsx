@@ -14,12 +14,12 @@ export default function CountriesLoading() {
         <p className="font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground">
           Countries
         </p>
-        <h1
+        <p
           id="countries-loading-heading"
           className="mt-3 font-heading text-4xl font-medium tracking-tight sm:text-5xl"
         >
           Loading countries…
-        </h1>
+        </p>
         <p className="mt-4 text-sm text-muted-foreground" role="status" aria-live="polite">
           Counting open calls by country.
         </p>

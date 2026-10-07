@@ -3,7 +3,7 @@ import { publicIndexLayoutStyles as catalogueStyles } from "@/components/missa/p
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { unstable_cache } from "next/cache";
-import { pageMetadata } from "@/lib/seo";
+import { currentYear, pageMetadata } from "@/lib/seo";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { ResidencyRankingsInteractive } from "@/components/rankings/residency-rankings-interactive";
 import {
@@ -18,7 +18,7 @@ import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Residency rankings | Missa",
+  title: `Artist residency rankings ${currentYear()}`,
   description:
     "Artist residencies ranked by Missa on cost, stipends, meals, studios and what residents say, with the source for every fact.",
   path: "/rankings/residencies",

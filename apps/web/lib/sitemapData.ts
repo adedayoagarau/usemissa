@@ -79,7 +79,62 @@ export async function listOpportunitySitemapEntries(): Promise<SitemapEntry[]> {
 export async function listProfileSitemapEntries(): Promise<SitemapEntry[]> {
   const client = getPool();
   if (!client) return [];
-  const result = await client.query<{ path: string; updated_at: Date | null }>({
+  let result;
+  try {
+    result = await queryProfileSitemap(client, USEFUL_PROFILE_SQL);
+  } catch (error) {
+    // The content filter must never cost the whole profile sitemap.
+    console.warn("Profile sitemap content filter failed; listing every profile.", error);
+    result = await queryProfileSitemap(client, "true");
+  }
+  return result.rows.map((row) => ({
+    path: row.path,
+    lastModified: row.updated_at
+      ? new Date(row.updated_at).toISOString()
+      : undefined,
+  }));
+}
+
+/**
+ * A profile worth indexing: it has an open published call, a reading period,
+ * submission guidelines, or a real description. Mirrors `isThinProfile` in
+ * lib/profileSeo.tsx, which noindexes the rest on the page itself.
+ */
+const USEFUL_PROFILE_SQL = `
+  exists (
+    select 1 from gary_profile_observations ob
+    where ob.profile_id = s.id
+      and (
+        length(btrim(coalesce(ob.source_summary, ''))) >= 160
+        or nullif(btrim(coalesce(ob.reading_period, '')), '') is not null
+        or nullif(btrim(coalesce(ob.submission_guidelines_url, '')), '') is not null
+      )
+  )
+  or exists (
+    select 1 from opportunities o
+    where o.organization_id = s.id
+      and o.publication_state = 'published'
+      and o.status = any(array['opening-soon', 'open', 'closing-soon', 'deadline-extended'])
+  )
+  or exists (
+    select 1 from opportunity_profile_links l
+    join opportunities o on o.id = l.opportunity_id
+    where l.profile_id = s.id
+      and l.status = 'confirmed'
+      and l.verified_until > now()
+      and o.publication_state = 'published'
+      and o.status = any(array['opening-soon', 'open', 'closing-soon', 'deadline-extended'])
+  )
+  or exists (
+    select 1 from gary_profile_links gl
+    join gary_call_observations oco on oco.opportunity_id = gl.opportunity_id
+    where gl.profile_id = s.id
+      and gl.status = 'confirmed'
+      and oco.deadline >= current_date
+  )`;
+
+function queryProfileSitemap(client: Pool, usefulSql: string) {
+  return client.query<{ path: string; updated_at: Date | null }>({
     text: `
       with ranked as (
         select p.id, p.profile_kind, p.name, p.name_key, p.canonical_key, p.created_at,
@@ -101,7 +156,7 @@ export async function listProfileSitemapEntries(): Promise<SitemapEntry[]> {
         from ranked
         where profile_rank = 1
       ), slugs as (
-        select profile_kind, created_at,
+        select id, profile_kind, created_at,
           case
             when length(name_slug) >= 3 then name_slug
             when length(key_slug) > 0 then key_slug
@@ -118,15 +173,10 @@ export async function listProfileSitemapEntries(): Promise<SitemapEntry[]> {
           else '/org/'
         end || slug as path,
         created_at as updated_at
-      from slugs
+      from slugs s
       where slug is not null and slug <> ''
+        and (${usefulSql})
       order by path asc`,
     values: [PUBLIC_PROFILE_KINDS],
   });
-  return result.rows.map((row) => ({
-    path: row.path,
-    lastModified: row.updated_at
-      ? new Date(row.updated_at).toISOString()
-      : undefined,
-  }));
 }

@@ -9,9 +9,9 @@ export function generateMetadata({
 }): Promise<Metadata> {
   return listingMetadata(
     {
-      title: "Literary journals & magazines | Missa",
+      title: "Literary magazines accepting submissions: reading periods and fees",
       description:
-        "Explore literary journals and magazines publishing poetry, fiction and essays.",
+        "Literary magazines and journals publishing poetry, fiction and essays, with when each reads submissions, any reading fee and a link to its guidelines.",
       path: "/journals",
     },
     searchParams,
