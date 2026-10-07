@@ -15,6 +15,8 @@ import { JsonLd, absoluteUrl, pageMetadata } from '@/lib/seo';
 import { getRelationalWorkspace, getWorkspaceEngine, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 import { MissaSiteHeader } from '@/components/missa-site-header';
 import styles from './public-organization.module.css';
+import { resolveOrganizationCustomization } from '@/lib/organizationCustomization';
+import '@/components/design-system/organization-palette.css';
 
 export const dynamic = 'force-dynamic';
 
@@ -98,16 +100,23 @@ export default async function PublicOrganizationPage({ params }: { params: Promi
   const practiceLabels = publicPracticeLabels(linked);
   const session = await getSessionAccountFromToken((await cookies()).get(SESSION_COOKIE)?.value);
   const headerSession = session ? { email: session.account.email, hasOrganization: session.memberships.length > 0 } : null;
-  const monogram = organizationMonogram(organization.name);
+  const appearance = resolveOrganizationCustomization(organization);
+  const publicName = portal?.configuration.name ?? appearance.displayName;
+  const monogram = organizationMonogram(publicName);
+  const logo = [portal?.configuration.brand.logoUrl, appearance.logoUrl].map((url) => safePublicMedia(url)).find((url) => url?.startsWith('https://'));
+  const logoAlt = portal?.configuration.brand.logoAlt || `${publicName} logo`;
 
   return <>
     <MissaSiteHeader session={headerSession} current="Organization" />
-    <main id="main-content" className={styles.main}>
+    <main id="main-content" className={styles.main} data-org-accent={appearance.accent !== 'forest' ? appearance.accent : undefined}>
       <JsonLd data={{ '@context': 'https://schema.org', '@type': 'Organization', name: organization.name, url: absoluteUrl(`/org/${organizationId}`), subjectOf: { '@type': 'ItemList', itemListElement: openCalls.map((call, index) => ({ '@type': 'ListItem', position: index + 1, name: call.title, url: absoluteUrl(`/org/${organizationId}/${call.id}`) })) } }} />
       <JsonLd data={{ '@context': 'https://schema.org', '@type': 'ItemList', name: `${organization.name} published Opportunities`, numberOfItems: openCalls.length, itemListElement: openCalls.map((call, index) => ({ '@type': 'ListItem', position: index + 1, name: call.title, url: absoluteUrl(`/org/${organizationId}/${call.id}`) })) }} />
       <header className={styles.identity}>
-        <span className={styles.logo} aria-hidden="true">{monogram || <Building2 />}</span>
-        <div><p className={styles.eyebrow}>Public Organization profile</p><h1>{portal?.configuration.name ?? organization.name}</h1><p>{portal?.configuration.introduction ?? 'Published Opportunities from this Organization. Public profile details are currently limited, so confirm each Opportunity through its linked guidelines or source.'}</p></div>
+        {logo ? <span className={styles.logo}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- organization-supplied https logo from an unknown host */}
+          <img src={logo} alt={logoAlt} className={styles.logoImage} />
+        </span> : <span className={styles.logo} aria-hidden="true">{monogram || <Building2 />}</span>}
+        <div><p className={styles.eyebrow}>Public Organization profile</p><h1>{publicName}</h1><p>{portal?.configuration.introduction ?? 'Published Opportunities from this Organization. Public profile details are currently limited, so confirm each Opportunity through its linked guidelines or source.'}</p></div>
       </header>
       <aside className={styles.identityBoundary}><Info aria-hidden="true" /><div><strong>{portal ? 'Organization submission portal' : 'Limited public profile'}</strong><p>{portal ? `Application information is published in ${portal.configuration.timeZone}. Confirm each Opportunity's dates and requirements before submitting.` : 'Missa currently has the Organization name and published hosted Opportunities. A verified internal domain flag is not shown as a public endorsement, and no private or operational records appear here.'}</p></div></aside>
       <section className={styles.opportunities} aria-labelledby="published-opportunities-title">

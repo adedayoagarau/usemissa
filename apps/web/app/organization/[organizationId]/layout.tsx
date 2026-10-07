@@ -5,6 +5,8 @@ import { getEngine } from '@/lib/engine';
 import { organizationCapabilityProjection, organizationNavigation } from '@/lib/organizationProduct';
 import { OrganizationProductShell } from '@/components/organization-product-shell';
 import { loginRedirectForCurrentRequest } from '@/lib/serverAuthRedirect';
+import { resolveOrganizationCustomization } from '@/lib/organizationCustomization';
+import '@/components/design-system/organization-palette.css';
 
 /** Private organization administration: never index, but name it for tabs. */
 export const metadata = {
@@ -26,5 +28,6 @@ export default async function OrganizationLayout({ children, params }: { childre
   if (!organization) notFound();
   const projection = organizationCapabilityProjection(membership.role);
   const organizations = session.memberships.flatMap((item) => { const candidate = radar.store.organizations.get(item.organizationId); return candidate ? [{ id: candidate.id, name: candidate.name, roleLabel: organizationCapabilityProjection(item.role).label }] : []; });
-  return <OrganizationProductShell organization={{ id: organization.id, name: organization.name, roleLabel: projection.label }} organizations={organizations} roleLabel={projection.label} navigation={organizationNavigation(projection, organization.id)}>{children}</OrganizationProductShell>;
+  const appearance = resolveOrganizationCustomization(organization);
+  return <OrganizationProductShell appearance={{ accent: appearance.accent, density: appearance.density, displayName: appearance.displayName, logoUrl: appearance.logoUrl }} organization={{ id: organization.id, name: organization.name, roleLabel: projection.label }} organizations={organizations} roleLabel={projection.label} navigation={organizationNavigation(projection, organization.id)}>{children}</OrganizationProductShell>;
 }
