@@ -81,8 +81,8 @@ export function HomepageBrowse({
           <p className={styles.browseAll}>
             <Link href={browseAllHref} className={styles.textLink}>
               {remaining > 0
-                ? `See all ${totalCount.toLocaleString("en")} open opportunities`
-                : "Open the full catalogue"}
+                ? `See all ${totalCount.toLocaleString("en")} open calls`
+                : "Open the full catalog"}
               <ArrowUpRight aria-hidden="true" size={18} />
             </Link>
           </p>

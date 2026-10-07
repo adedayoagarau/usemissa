@@ -713,6 +713,9 @@ export function OpportunitiesBrowseV2Preview({
             ))}
           </div>
         )}
+        {!loadFailed && displayedItems.some((item) => !item.identityAssetUrl) ? (
+          <p className={styles.coverNote}>Card illustrations are made with AI.</p>
+        ) : null}
 
         {resultsFooter}
         {!loadFailed && showPagination ? <OpportunityBrowsePagination nextCursor={nextCursor} className={styles.pagination} /> : null}

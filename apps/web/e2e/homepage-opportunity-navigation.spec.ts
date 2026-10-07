@@ -12,7 +12,7 @@ test("homepage opportunity entry points use the catalogue route", async ({
     }),
   ).toHaveAttribute("href", "/opportunities");
   await expect(
-    page.getByRole("link", { name: /See all .* open opportunities|Open the full catalogue/ }),
+    page.getByRole("link", { name: /See all .* open calls|Open the full catalog/ }),
   ).toHaveAttribute("href", "/opportunities");
   await expect(
     page
@@ -21,7 +21,7 @@ test("homepage opportunity entry points use the catalogue route", async ({
   ).toHaveAttribute("href", "/opportunities");
 
   await page
-    .getByRole("link", { name: /See all .* open opportunities|Open the full catalogue/ })
+    .getByRole("link", { name: /See all .* open calls|Open the full catalog/ })
     .click();
   await expect(page).toHaveURL(/\/opportunities$/, { timeout: 30_000 });
   await expect(

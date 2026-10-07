@@ -43,14 +43,14 @@ export function HomepageHero({
     <header className={styles.hero}>
       <div className={styles.heroCopy}>
       <h1 id="homepage-heading" className="font-heading">
-        Find your next open <HeroWord />
+        Find the <HeroWord /> Make the deadline.
       </h1>
       <p className={styles.lede}>
-        Get automated reminders, find your artist circle, and focus on
-        creating.
+        Open calls, grants, residencies and magazines, with the fee, the rules
+        and a reminder before each one closes.
       </p>
       {totals.length ? (
-        <p className={styles.totals} aria-label="Catalogue totals">
+        <p className={styles.totals} aria-label="Catalog totals">
           {totals.map((stat) => (
             <span key={stat.label}>
               <strong>{stat.formatted}</strong> {stat.label}
@@ -134,11 +134,11 @@ export function HomepageProof({ showcase }: { showcase: Showcase }) {
             Everything after you find the call.
           </h2>
           <p className={styles.sectionLede}>
-            Shortlist it from this page. Keep the deadline, get a reminder
-            before it closes, and share the work you make.
+            Save it from this page. Missa keeps the date, reminds you before
+            it closes and remembers what you sent where.
           </p>
           <Link href="/signup" className={styles.textLink}>
-            Create an account <ArrowUpRight aria-hidden="true" size={18} />
+            Get Missa free <ArrowUpRight aria-hidden="true" size={18} />
           </Link>
         </div>
         <MissaArt id="scene-after-find" className={styles.sectionArt} />
@@ -148,7 +148,7 @@ export function HomepageProof({ showcase }: { showcase: Showcase }) {
           id="tracker"
           tone="ochre"
           spot="spot-tracker"
-          headline="Keep every deadline in one view."
+          headline="Keep track."
           href="/tracker"
           action="Open your Tracker"
           caption="Example, built from calls open today"
@@ -161,14 +161,14 @@ export function HomepageProof({ showcase }: { showcase: Showcase }) {
             ) : null
           }
         >
-          Save a call and it waits in your Tracker with its deadline, stage and
-          reminders.
+          What you sent, where and when, and who still owes you a reply. Bring
+          your old spreadsheet with you.
         </FeatureCard>
         <FeatureCard
           id="reminders"
           tone="lichen"
           spot="spot-reminders"
-          headline="A nudge before it closes."
+          headline="Get reminded."
           href="/tracker"
           action="Choose your reminders"
           caption="Example, built from a call open today"
@@ -181,21 +181,22 @@ export function HomepageProof({ showcase }: { showcase: Showcase }) {
             ) : null
           }
         >
-          Missa emails you before a saved call closes. You choose how early.
+          Two weeks before, a week before, three days before, the day before.
+          In your time zone, never during your quiet hours.
         </FeatureCard>
         <FeatureCard
           id="portfolio"
           tone="blue"
           spot="spot-portfolio"
-          headline="One page for the work you make."
+          headline="Share your work."
           href="/profile/portfolio"
           action="Build your portfolio"
-          caption="Example, a fictional creator"
+          caption="Example, a fictional artist"
           delay={0.12}
           stage={<div className={styles.vignetteFrame}><ProfileVignette /></div>}
         >
-          Writing, images and audio on one page. Other creators can follow you
-          and get in touch.
+          Writing, images and audio on one page. Other writers and artists can
+          follow you and get in touch.
         </FeatureCard>
       </div>
     </section>
@@ -214,7 +215,7 @@ export function HomepageQuestionsSection() {
             Questions about Missa.
           </h2>
           <p className={styles.sectionLede}>
-            Short answers to what creators ask first. Anything else, write to
+            Short answers to what people ask first. Anything else, write to
             us.
           </p>
           <a href={contactMailto()} className={styles.textLink}>
@@ -237,14 +238,14 @@ export function HomepageClose({ showcase }: { showcase: Showcase }) {
       <Reveal className={styles.closePanel}>
         <div className={styles.closeCopy}>
           <h2 id="homepage-close-heading" className="font-heading">
-            Shortlist calls. Keep every deadline. Share your work.
+            Save a call. We&rsquo;ll remind you before it closes.
           </h2>
           <p className={styles.closeLede}>
-            Your shortlist comes with you the moment you create an account.
+            Calls you save here come with you when you sign up.
           </p>
           <div className={styles.closeActions}>
             <Link href="/signup" className={`${buttonVariants({ variant: "default" })} ${styles.closePrimary}`}>
-              Create an account
+              Get Missa free
             </Link>
             <Link href="/opportunities" className={styles.closeLink}>
               Browse open calls <ArrowUpRight aria-hidden="true" size={18} />
@@ -257,7 +258,7 @@ export function HomepageClose({ showcase }: { showcase: Showcase }) {
           </span>
           <div className={styles.closeCard} data-back>
             <span className={styles.closeCardLabel}>
-              <Bookmark size={14} /> Shortlisted
+              <Bookmark size={14} /> Saved
             </span>
             <strong>{second?.title ?? "A call you want to come back to"}</strong>
             {second?.organizationName ? <span>{second.organizationName}</span> : null}
@@ -281,7 +282,7 @@ export function HomepageFooterStandard() {
       <div className={styles.footerInner}>
         <div className={styles.footerBrand}>
           <MissaWordmark size="marketing" />
-          <p className={styles.footerTagline}>Open calls for creators, in one place.</p>
+          <p className={styles.footerTagline}>Find the call. Make the deadline.</p>
         </div>
         <nav aria-label="Homepage footer navigation" className={styles.footerColumns}>
           <div>
@@ -323,11 +324,12 @@ export function HomepageFooterStandard() {
           <div>
             <span className={styles.footerHeading}>Account</span>
             <Link href="/login">Log in</Link>
-            <Link href="/signup">Create an account</Link>
+            <Link href="/signup">Get Missa free</Link>
           </div>
         </nav>
         <div className={styles.footerLegal}>
           <span>© {new Date().getFullYear()} Missa</span>
+          <span>The illustrations on this page are made with AI.</span>
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>
         </div>

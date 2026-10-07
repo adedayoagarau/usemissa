@@ -11,7 +11,7 @@ test("public Home leads with useful Opportunities and no operational theatre", a
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: "Find your next open call.",
+      name: "Find the call. Make the deadline.",
     }),
   ).toBeVisible();
   await expect(

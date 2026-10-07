@@ -11,7 +11,7 @@ test("the homepage leads with the live catalogue and its real filters", async ({
   await page.goto("/");
 
   await expect(
-    page.getByRole("heading", { level: 1, name: "Find your next open call." }),
+    page.getByRole("heading", { level: 1, name: "Find the call. Make the deadline." }),
   ).toBeVisible();
   const cards = browse(page).getByRole("article");
   await expect(cards.first()).toBeVisible();
@@ -27,7 +27,7 @@ test("the homepage leads with the live catalogue and its real filters", async ({
     await expect(card).toContainText("Magazine");
   }
   await expect(
-    page.getByRole("link", { name: /See all .* open opportunities|Open the full catalogue/ }),
+    page.getByRole("link", { name: /See all .* open calls|Open the full catalog/ }),
   ).toHaveAttribute("href", /\/opportunities\?.*type=magazine/);
 
   // Opening a call uses the catalogue route.
@@ -90,7 +90,7 @@ test("phone layout keeps filters, cards and footer usable without overflow", asy
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { level: 1, name: "Find your next open call." }),
+    page.getByRole("heading", { level: 1, name: "Find the call. Make the deadline." }),
   ).toBeVisible();
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
@@ -121,15 +121,15 @@ test("product excerpts are labelled as examples and the page passes axe", async 
   await page.goto("/");
   const proof = page.getByRole("region", { name: "Everything after you find the call." });
   await proof.scrollIntoViewIfNeeded();
-  await expect(proof.getByRole("article", { name: "Keep every deadline in one view." })).toBeVisible();
+  await expect(proof.getByRole("article", { name: "Keep track." })).toBeVisible();
   await expect(page.getByText("Example, built from calls open today")).toBeVisible();
-  await expect(proof.getByRole("article", { name: "A nudge before it closes." })).toBeVisible();
+  await expect(proof.getByRole("article", { name: "Get reminded." })).toBeVisible();
   await expect(
     proof.getByRole("link", { name: "Choose your reminders" }),
   ).toHaveAttribute("href", "/tracker");
   await expect(
-    proof.getByRole("article", { name: "One page for the work you make." }),
-  ).toContainText("Example, a fictional creator");
+    proof.getByRole("article", { name: "Share your work." }),
+  ).toContainText("Example, a fictional artist");
   // A block jumped past still reveals: nothing stays at opacity 0.
   await page.getByRole("heading", { name: "Questions about Missa." }).scrollIntoViewIfNeeded();
   await expect
@@ -141,7 +141,7 @@ test("product excerpts are labelled as examples and the page passes axe", async 
     )
     .toEqual(["1", "1", "1"]);
   await page.getByRole("button", { name: "Do I need an account?" }).click();
-  await expect(page.getByText("Browse opportunities and read the details without an account.")).toBeVisible();
+  await expect(page.getByText("Not to browse. You need one to save calls, get reminders and build a portfolio. It's free.")).toBeVisible();
 
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(
@@ -158,7 +158,7 @@ test("hero motion holds on tap or keyboard and stays still under reduced motion"
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { level: 1, name: "Find your next open call." }),
+    page.getByRole("heading", { level: 1, name: "Find the call. Make the deadline." }),
   ).toBeVisible();
   const tour = page.getByRole("button", { name: "Pause the product animation" });
   await expect(tour).toHaveAttribute("aria-pressed", "false");
