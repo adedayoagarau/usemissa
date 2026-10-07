@@ -1,9 +1,12 @@
 import {
+  orderedModules,
   publicationIssue,
+  type PortfolioAddon,
   type PortfolioData,
   type PortfolioModule,
 } from "./creator-portfolio-schema";
 import { featuredWork } from "./creator-profile";
+import { hasPassed, webLinkIssue } from "./creator-profile-addon-fields";
 
 export type StudioPanel =
   "basics" | "appearance" | PortfolioModule | "share" | "publish";
@@ -15,6 +18,44 @@ export type ProfileSuggestion = {
   text: string;
   action: string;
   panel: StudioPanel;
+};
+
+/**
+ * What it takes for an add-on to have anything to show, and how to ask for
+ * the first entry. Mirrors what `publicPortfolioProjection` keeps: an item
+ * needs a title, and Support needs its link.
+ */
+const ADDON_FIRST_ENTRY: Partial<
+  Record<
+    PortfolioAddon,
+    { ask: string; action: string; filled: (draft: PortfolioData) => boolean }
+  >
+> = {
+  editions: {
+    ask: "Add your first edition.",
+    action: "Add edition",
+    filled: (draft) => draft.editions.some((item) => item.title.trim()),
+  },
+  shows: {
+    ask: "Add your first show or performance.",
+    action: "Add show",
+    filled: (draft) => draft.shows.some((item) => item.title.trim()),
+  },
+  services: {
+    ask: "Add your first service.",
+    action: "Add service",
+    filled: (draft) => draft.services.some((item) => item.title.trim()),
+  },
+  teaching: {
+    ask: "Add your first workshop or class.",
+    action: "Add session",
+    filled: (draft) => draft.teaching.some((item) => item.title.trim()),
+  },
+  support: {
+    ask: "Add your support link.",
+    action: "Add link",
+    filled: (draft) => Boolean(draft.support.url.trim()),
+  },
 };
 
 /**
@@ -34,7 +75,21 @@ export function profileSuggestions(
       action: "Add name",
       panel: "basics",
     });
-  const issue = publicationIssue({ ...draft, name: draft.name || "x" });
+  // An add-on counts only while it is on the profile: switched on and shown.
+  // The server checks the same projection, so a switched-off add-on's links
+  // can never hold up publishing.
+  const entries = orderedModules(draft.modules);
+  const shown = (id: PortfolioAddon) =>
+    entries.some(
+      (entry) => entry.id === id && entry.added === true && entry.visible,
+    );
+  // Add-on links get their own, more specific, suggestions below.
+  const issue = publicationIssue({
+    ...draft,
+    name: draft.name || "x",
+    shows: draft.shows.map((item) => ({ ...item, url: "" })),
+    support: { ...draft.support, url: "" },
+  });
   if (issue)
     out.push({
       id: "publication",
@@ -46,6 +101,25 @@ export function profileSuggestions(
         : issue.includes("email")
           ? "about"
           : "basics",
+    });
+  if (shown("support") && webLinkIssue(draft.support.url))
+    out.push({
+      id: "support-link",
+      blocking: true,
+      text: "Your support link isn’t a full web address. Start it with https:// before you publish.",
+      action: "Fix link",
+      panel: "support",
+    });
+  const brokenShows = shown("shows")
+    ? draft.shows.filter((item) => webLinkIssue(item.url))
+    : [];
+  if (brokenShows.length)
+    out.push({
+      id: "shows-link",
+      blocking: true,
+      text: `${brokenShows.length} ${brokenShows.length === 1 ? "show link isn’t" : "show links aren’t"} a full web address. Start ${brokenShows.length === 1 ? "it" : "each"} with https:// before you publish.`,
+      action: "Fix links",
+      panel: "shows",
     });
   const titled = draft.works.filter((work) => work.title.trim());
   if (!titled.length)
@@ -103,6 +177,29 @@ export function profileSuggestions(
       action: "Review",
       panel: "upcoming",
     });
+  const passedSessions = shown("teaching")
+    ? draft.teaching.filter((item) => hasPassed(item.date, today))
+    : [];
+  if (passedSessions.length)
+    out.push({
+      id: "past-teaching",
+      blocking: false,
+      text: `${passedSessions.length} past teaching ${passedSessions.length === 1 ? "session is" : "sessions are"} hidden. Update the date or remove ${passedSessions.length === 1 ? "it" : "them"}.`,
+      action: "Review",
+      panel: "teaching",
+    });
+  for (const [id, entry] of Object.entries(ADDON_FIRST_ENTRY) as [
+    PortfolioAddon,
+    NonNullable<(typeof ADDON_FIRST_ENTRY)[PortfolioAddon]>,
+  ][])
+    if (shown(id) && !entry.filled(draft))
+      out.push({
+        id: `empty-${id}`,
+        blocking: false,
+        text: `${entry.ask} Until then, the section is left out of your profile.`,
+        action: entry.action,
+        panel: id,
+      });
   if (!draft.bio.trim())
     out.push({
       id: "bio",
