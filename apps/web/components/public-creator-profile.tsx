@@ -101,7 +101,7 @@ export function PublicCreatorProfile({
         </section>
       )}
       <footer className={styles.footer}>
-        <span>A creative practice, in progress.</span>
+        <span>A body of work, in progress.</span>
         <Link href="/opportunities">
           Explore opportunities <ArrowUpRight size={16} aria-hidden="true" />
         </Link>

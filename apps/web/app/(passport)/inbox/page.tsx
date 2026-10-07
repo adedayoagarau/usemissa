@@ -67,12 +67,12 @@ function goalHref(alert: InboxSourceAlert): string | undefined {
 
 function safeSummary(alert: InboxSourceAlert): string {
   if (goalHref(alert)) return alert.body;
-  if (alert.kind === 'new-match') return 'This Opportunity may fit the preferences you saved.';
-  if (alert.kind === 'followed-org-new-call') return 'A new Opportunity is available from an Organization you follow.';
+  if (alert.kind === 'new-match') return 'This call may fit the preferences you saved.';
+  if (alert.kind === 'followed-org-new-call') return 'An organization you follow has a new call.';
   if (alert.kind === 'opening-soon') return 'Review the opening window before you begin preparing.';
-  if (alert.kind === 'expected-reopen') return 'This expected window is based on the Opportunity’s previous opening pattern.';
+  if (alert.kind === 'expected-reopen') return 'This expected window is based on when the call opened before.';
   if (alert.kind === 'closing-soon' || alert.kind === 'deadline-reminder') return 'Review the deadline and your next preparation step.';
-  if (['deadline-extended', 'deadline-changed', 'fee-changed', 'eligibility-changed', 'call-reopened', 'call-closed', 'page-gone'].includes(alert.kind)) return 'A material detail on the Opportunity has changed. Review the current record before acting.';
+  if (['deadline-extended', 'deadline-changed', 'fee-changed', 'eligibility-changed', 'call-reopened', 'call-closed', 'page-gone'].includes(alert.kind)) return 'An important detail on this call changed. Check the latest before you act.';
   if (alert.kind === 'response-overdue') return 'It may be time to follow up or update your private Tracker record.';
   if (alert.kind === 'withdrawal-suggested') return 'One accepted submission may affect other active submissions for the same Work.';
   if (alert.kind === 'submission-receipt' || alert.kind === 'submission-decision') return alert.body;
@@ -82,13 +82,13 @@ function safeSummary(alert: InboxSourceAlert): string {
 function safeReason(alert: InboxSourceAlert): string {
   if (goalHref(alert)) return "You scheduled a check-in for this goal.";
   if (alert.kind === 'new-match') return 'It matches a search or preference you saved.';
-  if (alert.kind === 'followed-org-new-call') return 'You follow this Organization.';
+  if (alert.kind === 'followed-org-new-call') return 'You follow this organization.';
   if (alert.kind === 'submission-receipt' || alert.kind === 'submission-decision') return 'This belongs to a submission you made through Missa.';
   if (alert.kind === 'deadline-reminder') return 'You chose reminders for this Tracker item.';
   if (alert.kind === 'response-overdue') return 'This submission is still waiting for a response.';
   if (alert.kind === 'withdrawal-suggested') return 'An accepted submission may require a decision about other active submissions.';
-  if (alert.reason.toLowerCase().includes('follow')) return 'You follow the Organization behind this Opportunity.';
-  return 'This Opportunity is in your Tracker.';
+  if (alert.reason.toLowerCase().includes('follow')) return 'You follow the organizer of this call.';
+  return 'This call is in your Tracker.';
 }
 
 function actionFor(alert: InboxSourceAlert): Pick<InboxProductItem, 'actionHref' | 'actionLabel'> {
@@ -96,8 +96,8 @@ function actionFor(alert: InboxSourceAlert): Pick<InboxProductItem, 'actionHref'
   if (goal) return { actionHref: goal, actionLabel: 'Open goal' };
   if (alert.kind === 'submission-receipt' || alert.kind === 'submission-decision') return { actionHref: '/tracker?view=submissions', actionLabel: alert.kind === 'submission-decision' ? 'View decision' : 'View submissions' };
   if (['deadline-reminder', 'response-overdue', 'withdrawal-suggested'].includes(alert.kind)) return { actionHref: '/tracker', actionLabel: 'Open Tracker' };
-  if (alert.opportunityId) return { actionHref: `/opportunities/${encodeURIComponent(alert.opportunityId)}`, actionLabel: 'View Opportunity' };
-  return { actionHref: '/opportunities', actionLabel: 'Browse Opportunities' };
+  if (alert.opportunityId) return { actionHref: `/opportunities/${encodeURIComponent(alert.opportunityId)}`, actionLabel: 'View call' };
+  return { actionHref: '/opportunities', actionLabel: 'Browse open calls' };
 }
 
 function toProductItem(alert: InboxSourceAlert): InboxProductItem {

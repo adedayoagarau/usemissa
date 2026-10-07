@@ -153,7 +153,7 @@ export function CreatorShell({
           <Shield aria-hidden="true" />
           <span>
             <b>Platform Admin</b>
-            <small>Operate Missa</small>
+            <small>Run Missa</small>
           </span>
         </Link>
       ) : null}

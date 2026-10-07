@@ -273,7 +273,7 @@ function SearchZero({
     <section className={styles.empty} aria-labelledby="tracker-zero-title">
       <Search aria-hidden="true" />
       <h2 id="tracker-zero-title">No Tracker items match “{query}”</h2>
-      <p>Try an Organization, Opportunity, Work, or type name.</p>
+      <p>Try a call, organization, piece or type.</p>
       <button type="button" className={styles.quietButton} onClick={onClear}>
         Clear search
       </button>

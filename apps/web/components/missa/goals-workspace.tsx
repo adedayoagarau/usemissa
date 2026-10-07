@@ -959,10 +959,10 @@ export function GoalsWorkspace() {
                   </ul>
                 ) : (
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Any opportunity in{" "}
+                    Any call for{" "}
                     {current.discipline
                       ? label(current.discipline)
-                      : "your practice"}
+                      : "what you make"}
                     .
                   </p>
                 )}

@@ -187,11 +187,11 @@ export function AuthForm({
         setResumeError(
           "error" in body && body.error
             ? body.error
-            : "We could not finish saving this Opportunity. Your Save request is still available. Try again.",
+            : "Couldn’t finish saving this call. Your save request is still waiting. Try again.",
         );
       } catch {
         setResumeError(
-          "We could not finish saving this Opportunity. Your Save request is still available. Try again.",
+          "Couldn’t finish saving this call. Your save request is still waiting. Try again.",
         );
       } finally {
         setIsResuming(false);
@@ -983,8 +983,8 @@ export function AuthForm({
                 <div>
                   <h2 id="first-save-resolution-title">
                     {resumeState.reason === "closed"
-                      ? "This Opportunity is closed"
-                      : "This Opportunity cannot be saved"}
+                      ? "This call is closed"
+                      : "This call can’t be saved"}
                   </h2>
                   <p>
                     Missa did not add it to your Tracker. You can still review

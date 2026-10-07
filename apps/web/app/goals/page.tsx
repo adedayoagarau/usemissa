@@ -5,8 +5,8 @@ import { CreatorShell } from "@/components/creator-shell";
 import { GoalsWorkspace } from "@/components/missa/goals-workspace";
 import { creatorShellOrganizations } from "@/lib/creatorShellOrganizations";
 export const metadata = {
-  title: "Your practice goals",
-  description: "Track the practice goals you set in Missa and the work behind them.",
+  title: "Your goals",
+  description: "Track the goals you set in Missa and the work behind them.",
   robots: { index: false, follow: false },
 };
 export const dynamic = "force-dynamic";

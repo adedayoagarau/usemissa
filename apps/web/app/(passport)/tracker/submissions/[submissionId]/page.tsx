@@ -105,7 +105,7 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
           <span>{organization ?? 'Organization not listed'} · submitted {formatDate(submission.submittedAt)}</span>
         </div>
         <div className={styles.headerActions}>
-          {call.radarOpportunityId ? <Link href={`/opportunities/${call.radarOpportunityId}`}>View Opportunity<ArrowUpRight aria-hidden="true" /></Link> : null}
+          {call.radarOpportunityId ? <Link href={`/opportunities/${call.radarOpportunityId}`}>View call<ArrowUpRight aria-hidden="true" /></Link> : null}
           {call.guidelineUrl && safeFileHref(call.guidelineUrl) ? <a href={call.guidelineUrl} target="_blank" rel="noreferrer">Guidelines<ArrowUpRight aria-hidden="true" /></a> : null}
         </div>
       </header>
@@ -123,7 +123,7 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
             {works.length ? <div className={styles.works}>{works.map((work) => {
               const decision = decisions.find((item) => item.workId === work.id);
               const files = Array.from(new Set([...(work.fileUrls ?? []), ...(work.fileUrl ? [work.fileUrl] : [])]));
-              return <article key={work.id}><span className={styles.workIcon}><FileText aria-hidden="true" /></span><div><h3>{work.title}</h3><p>Submitted Work {work.order + 1}</p>{files.length ? <ul>{files.map((file) => { const href = safeFileHref(file); return <li key={file}>{href ? <a href={href} target="_blank" rel="noreferrer">{fileLabel(file)}<ArrowUpRight aria-hidden="true" /></a> : <span>File unavailable</span>}</li>; })}</ul> : <span className={styles.unavailable}>No file was attached to this Work.</span>}</div><strong data-outcome={decision?.outcome}>{decision ? statusLabel(decision.outcome) : 'No decision'}</strong></article>;
+              return <article key={work.id}><span className={styles.workIcon}><FileText aria-hidden="true" /></span><div><h3>{work.title}</h3><p>Submitted piece {work.order + 1}</p>{files.length ? <ul>{files.map((file) => { const href = safeFileHref(file); return <li key={file}>{href ? <a href={href} target="_blank" rel="noreferrer">{fileLabel(file)}<ArrowUpRight aria-hidden="true" /></a> : <span>File unavailable</span>}</li>; })}</ul> : <span className={styles.unavailable}>No file was attached to this piece.</span>}</div><strong data-outcome={decision?.outcome}>{decision ? statusLabel(decision.outcome) : 'No decision'}</strong></article>;
             })}</div> : <p className={styles.emptyText}>No submitted Work was recorded with this receipt.</p>}
           </section>
 
@@ -150,7 +150,7 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
 
         <aside className={styles.sideColumn}>
           <section aria-labelledby="submission-summary-title"><p>Receipt summary</p><h2 id="submission-summary-title">Submission</h2><dl><div><dt>Status</dt><dd>{statusLabel(submission.status)}</dd></div><div><dt>Submitted</dt><dd>{formatDate(submission.submittedAt)}</dd></div><div><dt>Works</dt><dd>{works.length}</dd></div><div><dt>Decisions</dt><dd>{decisions.length}</dd></div></dl></section>
-          <section aria-labelledby="payment-record-title"><p>Separate record</p><h2 id="payment-record-title">Payment</h2><strong>{paymentLabel}</strong>{submission.feeCents ? <span>{new Intl.NumberFormat('en', { style: 'currency', currency: 'USD' }).format(submission.feeCents / 100)}</span> : null}<small>Payment state does not change the Submission or Work decision.</small></section>
+          <section aria-labelledby="payment-record-title"><p>Separate record</p><h2 id="payment-record-title">Payment</h2><strong>{paymentLabel}</strong>{submission.feeCents ? <span>{new Intl.NumberFormat('en', { style: 'currency', currency: 'USD' }).format(submission.feeCents / 100)}</span> : null}<small>Payment doesn’t change the decision on the submission or its pieces.</small></section>
           {['submitted', 'in-review'].includes(submission.status) ? <section aria-labelledby="withdraw-submission-title"><p>Submission action</p><h2 id="withdraw-submission-title">Withdraw</h2><span>Withdrawal applies to this complete Missa-hosted submission.</span><WithdrawSubmissionButton submissionId={submission.id} /></section> : null}
         </aside>
       </div>
