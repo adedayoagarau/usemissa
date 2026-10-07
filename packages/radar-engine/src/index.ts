@@ -144,7 +144,7 @@ export {
 } from './tracker/tracker.js';
 export { computeResponseStats, expectedResponseWindowDays, DEFAULT_RESPONSE_WINDOW_DAYS, type ResponseStats } from './tracker/responseStats.js';
 export { RadarServer, type RadarServerOptions } from './server/server.js';
-export { AuthError, DEFAULT_SEAT_LIMITS, membershipsFor, isOrgMember, organizationSeatLimit, organizationSeatUsage, provisionOrgAccount, revokeOrgMembership } from './auth/accounts.js';
+export { AuthError, DEFAULT_SEAT_LIMITS, membershipsFor, isOrgMember, organizationManagesAccount, organizationSeatLimit, organizationSeatUsage, provisionOrgAccount, revokeOrgMembership } from './auth/accounts.js';
 export {
   hashPassword, verifyPassword, createSessionToken, verifySessionToken, type SessionPayload,
   isSessionIssuedAfterRevocation, revokeAccountSessions, sessionRevocationCutoff, type SessionRevocationState,

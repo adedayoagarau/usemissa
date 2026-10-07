@@ -80,24 +80,43 @@ export function logIn(ctx: AuthContext, email: string, password: string): Accoun
   return account;
 }
 
+/**
+ * True when this Organization's SCIM provisioning created the account and the
+ * account belongs to no other Organization. Only then may provisioning change
+ * account-wide state (sign-in, externalId, display name); otherwise it may
+ * change nothing but this Organization's membership.
+ */
+export function organizationManagesAccount(store: RadarStore, organizationId: string, account: Account): boolean {
+  return account.provisionedByOrganizationId === organizationId
+    && !store.memberships.some((membership) => membership.accountId === account.id && membership.organizationId !== organizationId);
+}
+
 export function provisionOrgAccount(
   ctx: AuthContext,
   organizationId: string,
   input: { email: string; externalId?: string; displayName?: string; role?: OrgRole; active?: boolean },
-): { account: Account; membership?: OrgMembership } {
+): { account: Account; membership?: OrgMembership; created: boolean; managed: boolean } {
   if (!ctx.store.organizations.has(organizationId)) throw new AuthError(`Unknown organization: ${organizationId}`);
   const normalized = input.email.trim().toLowerCase();
   if (!normalized.includes('@')) throw new AuthError('A valid email is required');
+  const active = input.active !== false;
   let account = findByEmail(ctx.store, normalized);
+  const created = !account;
   if (!account) {
-    account = { id: ctx.ids.next('acct'), email: normalized, passwordHash: hashPassword(`${ctx.ids.next('scim-secret')}-${ctx.clock.now().toISOString()}`), isAdmin: false, createdAt: ctx.clock.now().toISOString(), active: input.active !== false };
+    // Check the seat before creating anything, so a refused grant leaves no orphan account.
+    const seats = organizationSeatUsage(ctx.store, organizationId);
+    if (active && seats.used >= seats.limit) throw new AuthError(`This organization has reached its ${seats.limit}-seat limit`);
+    account = { id: ctx.ids.next('acct'), email: normalized, passwordHash: hashPassword(`${ctx.ids.next('scim-secret')}-${ctx.clock.now().toISOString()}`), isAdmin: false, createdAt: ctx.clock.now().toISOString(), active, provisionedByOrganizationId: organizationId };
     ctx.store.accounts.set(account.id, account);
   }
-  account.active = input.active !== false;
-  account.externalId = input.externalId ?? account.externalId;
-  account.displayName = input.displayName?.trim() || account.displayName;
-  const membership = account.active === false ? undefined : grantOrgMembership(ctx, account.id, organizationId, input.role ?? 'member');
-  return { account, membership };
+  const managed = organizationManagesAccount(ctx.store, organizationId, account);
+  const membership = active ? grantOrgMembership(ctx, account.id, organizationId, input.role ?? 'member') : undefined;
+  if (managed) {
+    account.active = active;
+    account.externalId = input.externalId ?? account.externalId;
+    account.displayName = input.displayName?.trim() || account.displayName;
+  }
+  return { account, membership, created, managed };
 }
 
 export function grantOrgMembership(ctx: AuthContext, accountId: string, organizationId: string, role: OrgRole): OrgMembership {

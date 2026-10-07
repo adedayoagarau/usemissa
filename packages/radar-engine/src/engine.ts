@@ -57,6 +57,7 @@ import {
   isOrgMember,
   logIn,
   membershipsFor,
+  organizationManagesAccount,
   organizationSeatUsage,
   provisionOrgAccount,
   revokeOrgMembership,
@@ -1025,6 +1026,19 @@ export class RadarEngine {
     organizationId: string,
   ): OrgMembership {
     return revokeOrgMembership(this.store, accountId, organizationId);
+  }
+
+  /** Whether this Organization's SCIM provisioning may change the account's
+   * account-wide state; see auth/accounts.ts organizationManagesAccount. */
+  organizationManagesAccount(
+    organizationId: string,
+    accountId: string,
+  ): boolean {
+    const account = this.store.accounts.get(accountId);
+    return Boolean(
+      account &&
+        organizationManagesAccount(this.store, organizationId, account),
+    );
   }
 
   organizationSeatUsage(
