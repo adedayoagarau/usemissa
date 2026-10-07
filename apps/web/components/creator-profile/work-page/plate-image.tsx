@@ -33,7 +33,6 @@ export function PlateImage({
         <Button
           type="button"
           variant="outline"
-          size="sm"
           className="mt-2 w-fit"
           onClick={() => {
             setFailed(false);

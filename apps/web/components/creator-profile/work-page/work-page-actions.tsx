@@ -80,13 +80,14 @@ export function RightsLine({
 }) {
   return (
     <div className={styles.rights}>
-      <p>
-        {notice}{" "}
+      <div className={styles.rightsText}>
+        <p>{notice}</p>
         {ask && (
           <Button
             type="button"
             variant="link"
             size="inline"
+            className={styles.ask}
             onClick={() =>
               requestInquiry({
                 topic: "publication",
@@ -97,7 +98,7 @@ export function RightsLine({
             {ask}
           </Button>
         )}
-      </p>
+      </div>
       <p className={`${styles.address} font-mono`}>{address}</p>
     </div>
   );

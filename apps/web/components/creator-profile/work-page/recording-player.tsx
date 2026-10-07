@@ -22,7 +22,11 @@ export function RecordingPlayer({
   return (
     <div className={styles.player}>
       <audio
-        ref={audio}
+        ref={(element) => {
+          audio.current = element;
+          // The file can fail before the page has hydrated, so the event is missed.
+          if (element?.error) setFailed(true);
+        }}
         controls
         preload="none"
         src={src}
@@ -40,7 +44,6 @@ export function RecordingPlayer({
           <Button
             type="button"
             variant="outline"
-            size="sm"
             className="mt-2 w-fit"
             onClick={() => {
               setFailed(false);

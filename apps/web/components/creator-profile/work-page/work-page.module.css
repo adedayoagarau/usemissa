@@ -18,6 +18,9 @@
     var(--creator-canvas)
   );
   --page-gutter: clamp(16px, 4vw, 56px);
+  /* The site header stays at the top of the screen; anchors and the contents list clear it. */
+  --page-header: 72px;
+  --page-clear: calc(var(--page-header) + 24px);
   position: relative;
   container: workpage / inline-size;
   background: var(--creator-canvas, var(--background));
@@ -226,9 +229,9 @@
 }
 .contentsWide {
   position: sticky;
-  top: 24px;
+  top: var(--page-clear);
   display: flex;
-  max-height: calc(100dvh - 48px);
+  max-height: calc(100dvh - var(--page-clear) - 24px);
   flex-direction: column;
   gap: 14px;
   overflow-y: auto;
@@ -267,6 +270,9 @@
   line-height: 1.35;
   overflow-wrap: anywhere;
   text-decoration: none;
+}
+.contentsList a:focus-visible {
+  outline-offset: -2px;
 }
 .contentsList a:hover {
   color: var(--page-ink);
@@ -311,7 +317,7 @@
   min-width: 0;
   flex-direction: column;
   gap: 28px;
-  scroll-margin-top: 24px;
+  scroll-margin-top: var(--page-clear);
 }
 .partHead {
   display: flex;
@@ -378,7 +384,7 @@
 }
 .plates li {
   min-width: 0;
-  scroll-margin-top: 24px;
+  scroll-margin-top: var(--page-clear);
 }
 .plate {
   display: flex;
@@ -446,7 +452,7 @@
   border-radius: 16px;
   background: var(--page-ink);
   color: var(--creator-canvas, var(--background));
-  scroll-margin-top: 24px;
+  scroll-margin-top: var(--page-clear);
 }
 .recording .partLabel,
 .recording .note {
@@ -659,18 +665,26 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  align-items: baseline;
-  gap: 8px 24px;
-  padding: 24px 0 32px;
+  align-items: center;
+  gap: 4px 24px;
+  padding: 12px 0 20px;
   border-top: 1px solid var(--page-line);
   color: var(--page-muted);
   font-size: 13px;
+}
+.rightsText {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 8px;
+  min-width: 0;
 }
 .rights p {
   margin: 0;
   overflow-wrap: anywhere;
 }
-.rights [data-slot="button"] {
+.ask {
+  min-height: 44px;
   font-size: 13px;
   color: var(--primary);
   font-weight: 600;

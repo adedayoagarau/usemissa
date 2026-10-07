@@ -228,6 +228,23 @@
       "appearance": "tabbed-messages-invitations-followers-following-with-archive",
       "boundary": "Senders never see the creator's address unless the creator replies by email; organizations are not told when an invitation is declined."
     },
+    "composition.creator-work-page": {
+      "semantic": "CreatorWorkPage",
+      "implementation": "components/creator-profile/work-page/work-page.tsx",
+      "composition": ["Breadcrumb", "Button", "Collapsible", "Item", "Alert", "ProvenanceBadge", "ProfileConnect"],
+      "appearance": "creator-theme-reading-page-with-contents-beside-ordered-parts",
+      "typography": "Newsreader for the title, standfirst and reading text; Fragment Mono for counts, years and part numbers only; Instrument Sans for everything else",
+      "states": ["default", "hover", "focus-visible", "empty", "media-error", "audio-error", "loading-lazy-media"],
+      "boundary": "Only a work the published profile shows has a page, so an unshown work or an unknown address is a 404 and an alias handle redirects. The page never carries decision ids; Confirmed is whatever the server derived for the track-record entry that names the work. A work with parts shows its parts; without parts it shows its own text, picture and audio."
+    },
+    "composition.creator-work-page-fields": {
+      "semantic": "WorkPageFields",
+      "implementation": "components/creator-profile/studio/work-page-fields.tsx",
+      "composition": ["Collapsible", "Button", "Input", "Textarea", "NativeSelect", "ItemList", "MediaField"],
+      "appearance": "one-disclosure-per-work-with-address-context-rights-credits-and-parts",
+      "reorder": "explicit-move-up-down-buttons",
+      "boundary": "The page address is tidied as it is typed and the studio says in a sentence when the address a work gets is not the one asked for (reserved word, or an address another work has)."
+    },
     "composition.writing-room": {
       "semantic": "WritingRoom",
       "implementation": "components/missa/writing-room.tsx",
@@ -1381,6 +1398,8 @@
     "CreatorCv": ["EditorialTypography", "PrintStyles", "ProvenanceMark"],
     "ProfileConnect": ["Button", "Dialog", "Field", "Input", "NativeSelect", "Textarea"],
     "ProfileInbox": ["Tabs", "Button", "Empty", "Link"],
+    "CreatorWorkPage": ["Breadcrumb", "Button", "Collapsible", "Item", "Alert", "ProvenanceBadge", "ProfileConnect"],
+    "WorkPageFields": ["Collapsible", "Button", "Input", "Textarea", "NativeSelect", "ItemList", "MediaField"],
     "WritingRoom": ["WritingPages", "WritingFormatBar", "WritingFormatSheet", "WritingLibrary", "Button", "DropdownMenu", "Popover", "Dialog", "AlertDialog", "Alert"]
   },
   "motion": {
