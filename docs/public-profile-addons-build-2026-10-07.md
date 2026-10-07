@@ -65,6 +65,10 @@ Read these before changing anything.
 - Visitor page: `components/creator-profile/sections/`
   - `shared.tsx` exports `Heading`, `SectionHead`, `safeHref`, `hostname` and the
     profile stylesheet as `profileStyles`.
+  - `shared.tsx` also exports `EnquireButton`, which opens the profile's message
+    form with a topic and first line filled in (`requestInquiry` in
+    `profile-connect.tsx`). Sections receive `canContact` and leave the button
+    out when the visitor has no way to write.
   - One file per add-on exports `<id>Section = { filled, Section }`;
     `index.ts` registers them in `ADDON_SECTIONS`. `public-profile.tsx` renders
     any add-on through that registry, so adding a section never touches
@@ -149,17 +153,17 @@ Add-on library board draws them. Each section follows the profile's grammar
 
 - **Editions.** A row per edition: image (or a type-only plate), title, then
   `medium · size · year`, and "4 of 12 available". Enquiries only: "Enquire"
-  opens the existing `ProfileConnect` message form with the topic and the
-  edition's title filled in. Sold out (available `0`) reads "Sold out" and the
+  opens the message form (`EnquireButton`, topic `commission`) with the
+  edition's title as the first line. Sold out (available `0`) reads "Sold out" and the
   action becomes "Ask about another print". No price, no checkout.
 - **Shows and performances.** A CV-style list grouped by year, newest first,
   with `Solo`, `Group`, `Premiere`, `Screening`, `Performance` tags and the
   venue. A show with a link links out.
 - **Services.** Title, typical timing, an optional price line and a note.
   "Rates are optional": omit the price cleanly. A single "Get in touch" action
-  uses `ProfileConnect` with the Commission topic.
+  uses `EnquireButton` with the Commission topic.
 - **Teaching.** Workshops with date, place and places left ("3 places left",
-  hidden when unstated, "Full" at `0`). "Request a place" opens `ProfileConnect`.
+  hidden when unstated, "Full" at `0`). "Request a place" uses `EnquireButton` with the Booking topic and the session's title.
   Past sessions are already dropped by the projection.
 - **Support.** One link, clearly marked as leaving Missa ("Payments happen
   outside Missa."), opens in a new tab with the `(opens in a new tab)` text.
