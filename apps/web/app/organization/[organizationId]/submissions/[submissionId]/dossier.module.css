@@ -34,3 +34,7 @@
 .boundary { margin-top: 24px; padding: 18px; border: 1px solid var(--border); border-radius: 10px; color: var(--muted-foreground); font-size: .78rem; line-height: 1.6; }
 @media (max-width: 800px) { .facts { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 680px) { .main { width: min(100% - 32px, 620px); padding-top: 22px; } .header { align-items: flex-start; flex-direction: column; } .nextAction { max-width: none; width: 100%; } .facts { grid-template-columns: 1fr; } .item { align-items: flex-start; grid-template-columns: 1fr; } .item > span { width: fit-content; } }
+.sectionActions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.itemActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
+.itemActions > span { padding: 5px 8px; border: 1px solid var(--border); border-radius: 999px; color: var(--accent-deep); font-size: .65rem; font-weight: 700; text-transform: capitalize; }
+@media (max-width: 680px) { .itemActions { justify-content: flex-start; } }
