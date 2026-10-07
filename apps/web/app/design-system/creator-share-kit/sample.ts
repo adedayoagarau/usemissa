@@ -58,6 +58,7 @@ export function shareSamplePortfolio(
       photo: "",
     };
   if (off(options.open)) portfolio = { ...portfolio, openTo: [] };
+  if (off(options.image)) patchFeatured({ image: "" });
   if (off(options.text)) patchFeatured({ text: "" });
   if (on(options.bare))
     patchFeatured({ text: "", summary: "", caption: "", image: "" });
