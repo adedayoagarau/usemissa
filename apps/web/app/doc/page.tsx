@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { isWritingEntryId, type WritingEntrySummary } from "@/lib/writing";
 import { getWritingRepository } from "@/lib/writing-repository";
+import { plannerIncluded } from "@/lib/writing-plan-access";
 import type { WritingProject } from "@/lib/writing-projects";
 import { WritingRoomLoader } from "@/components/missa/writing-room-loader";
 
@@ -41,11 +42,13 @@ export default async function WritePage({
   let entries: WritingEntrySummary[] = [];
   let projects: WritingProject[] = [];
   let listFailed = false;
+  let planner = false;
   if (repository) {
     try {
-      [entries, projects] = await Promise.all([
+      [entries, projects, planner] = await Promise.all([
         repository.list(session.account.id),
         repository.listProjects(session.account.id),
+        plannerIncluded(session.account.id),
       ]);
     } catch {
       listFailed = true;
@@ -63,6 +66,7 @@ export default async function WritePage({
       initialEntryId={entryId}
       storage={repository ? "account" : "device"}
       listFailed={listFailed}
+      planner={planner}
     />
   );
 }

@@ -22,11 +22,12 @@ import {
   type WritingSnapshot,
   type WritingSnapshotSummary,
 } from "./writing-snapshots.ts";
+import { storedCard, storedPlan, type ProjectPlan } from "./writing-cards.ts";
 
 /**
  * The only code that reads or writes creator_writing_entries,
  * creator_writing_projects and creator_writing_snapshots (migrations 0095 to
- * 0098).
+ * 0100).
  * Every query is scoped to one account. writing-boundary.test.ts fails when
  * another file names the table, so nothing else can read a creator's writing.
  */
@@ -42,6 +43,7 @@ type Row = {
   synopsis: string;
   status: string;
   call_id: string | null;
+  card: unknown;
   word_count: number;
   revision: number;
   created_at: Date;
@@ -53,15 +55,16 @@ export type WritingSaveResult =
   | { kind: "conflict"; current: WritingEntry }
   | { kind: "not-found" };
 
-const CARD_COLUMNS = "project_id,position,synopsis,status,call_id";
+const CARD_COLUMNS = "project_id,position,synopsis,status,call_id,card";
 const SUMMARY_COLUMNS = `id,title,left(regexp_replace(btrim(left(body,400)),'\\s+',' ','g'),120) as preview,${CARD_COLUMNS},word_count,revision,created_at,updated_at`;
 const ENTRY_COLUMNS = `id,title,body,document,${CARD_COLUMNS},word_count,revision,created_at,updated_at`;
-const PROJECT_COLUMNS = "id,title,template,created_at,updated_at";
+const PROJECT_COLUMNS = "id,title,template,plan,created_at,updated_at";
 
 type ProjectRow = {
   id: string;
   title: string;
   template: ProjectTemplateId;
+  plan: unknown;
   created_at: Date;
   updated_at: Date;
 };
@@ -93,6 +96,7 @@ function project(row: ProjectRow): WritingProject {
     id: row.id,
     title: row.title,
     template: row.template,
+    plan: storedPlan(row.plan),
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };
@@ -107,6 +111,7 @@ function summary(row: Row): WritingEntrySummary {
     synopsis: row.synopsis,
     status: row.status,
     callId: row.call_id ?? null,
+    card: storedCard(row.card),
     preview: writingPreview(row.preview ?? row.body ?? ""),
     wordCount: row.word_count,
     revision: row.revision,
@@ -309,6 +314,20 @@ export class WritingRepository extends CreatorRepositoryBase {
       : { kind: "taken" };
   }
 
+  /** Replaces a project's plan: its plotlines. Never touches its pieces. */
+  async setProjectPlan(
+    accountId: string,
+    id: string,
+    plan: ProjectPlan,
+  ): Promise<WritingProject | null> {
+    const result = await this.query<ProjectRow>(
+      `update creator_writing_projects set plan=$3::jsonb, updated_at=now()
+       where account_id=$1 and id=$2 returning ${PROJECT_COLUMNS}`,
+      [accountId, id, JSON.stringify(plan)],
+    );
+    return result.rows[0] ? project(result.rows[0]) : null;
+  }
+
   async renameProject(
     accountId: string,
     id: string,
@@ -397,7 +416,8 @@ export class WritingRepository extends CreatorRepositoryBase {
            else e.position end,
          synopsis = coalesce($5, e.synopsis),
          status = coalesce($6, e.status),
-         call_id = case when $7 then $8::text else e.call_id end
+         call_id = case when $7 then $8::text else e.call_id end,
+         card = case when $9 then $10::jsonb else e.card end
        where e.account_id=$1 and e.id=$2
        returning ${SUMMARY_COLUMNS}`,
       [
@@ -409,6 +429,8 @@ export class WritingRepository extends CreatorRepositoryBase {
         change.status ?? null,
         change.callId !== undefined,
         change.callId ?? null,
+        change.card !== undefined,
+        JSON.stringify(change.card ?? {}),
       ],
     );
     return result.rows[0] ? summary(result.rows[0]) : null;

@@ -21,6 +21,7 @@ export const CREATOR_PLAN_LIMITS = {
     openingAlerts: false,
     capacityPlanning: false,
     seasonPlan: false,
+    writingPlanner: false,
   },
   plus: {
     activeTrackedLimit: null,
@@ -32,6 +33,7 @@ export const CREATOR_PLAN_LIMITS = {
     openingAlerts: true,
     capacityPlanning: false,
     seasonPlan: false,
+    writingPlanner: true,
   },
   pro: {
     activeTrackedLimit: null,
@@ -43,6 +45,7 @@ export const CREATOR_PLAN_LIMITS = {
     openingAlerts: true,
     capacityPlanning: true,
     seasonPlan: true,
+    writingPlanner: true,
   },
 } as const satisfies Record<CreatorPlan, CreatorPlanLimits>;
 
@@ -69,6 +72,8 @@ export type CreatorPlanLimits = {
   capacityPlanning: boolean;
   /** The full season view; every plan sees this week's actions. */
   seasonPlan: boolean;
+  /** The writing room's planner: cards, corkboard, plotlines, story bible, timeline. */
+  writingPlanner: boolean;
 };
 
 export type CreatorFeature = Exclude<keyof CreatorPlanLimits, "activeTrackedLimit">;

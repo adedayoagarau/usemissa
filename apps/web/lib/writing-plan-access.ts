@@ -1,0 +1,24 @@
+import "server-only";
+import {
+  creatorFeatures,
+  creatorPlan,
+  creatorPoolFor,
+} from "@missa/radar-adapters";
+
+/**
+ * Whether the account's plan includes the writing room's planner: cards,
+ * plotlines and the corkboard, later the story bible and timeline. Plus and
+ * Pro include it; Free does not. Without a database, nothing is included.
+ */
+export async function plannerIncluded(accountId: string): Promise<boolean> {
+  if (!process.env.DATABASE_URL) return false;
+  try {
+    const plan = await creatorPlan(
+      creatorPoolFor(process.env.DATABASE_URL),
+      accountId,
+    );
+    return creatorFeatures(plan).writingPlanner;
+  } catch {
+    return false;
+  }
+}

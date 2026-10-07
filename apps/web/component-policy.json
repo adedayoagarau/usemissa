@@ -292,7 +292,7 @@
     "composition.writing-room": {
       "semantic": "WritingRoom",
       "implementation": "components/missa/writing-room.tsx",
-      "composition": ["WritingPages", "WritingFormatBar", "WritingFormatSheet", "WritingLibrary", "WritingSnapshots", "WritingFind", "WritingCall", "WritingWordCount", "Button", "ButtonGroup", "DropdownMenu", "Popover", "Dialog", "Alert", "AlertDialog", "Sonner"],
+      "composition": ["WritingPages", "WritingFormatBar", "WritingFormatSheet", "WritingLibrary", "WritingSnapshots", "WritingFind", "WritingCall", "WritingWordCount", "WritingPlanner", "UpgradeHint", "Button", "ButtonGroup", "DropdownMenu", "Popover", "Dialog", "Alert", "AlertDialog", "Sonner"],
       "appearance": "full-page-printed-pages-with-controls-that-fade-while-the-timer-runs",
       "boundary": "Rich text on printed pages the creator writes. Kept on the device until the account confirms it, and never overwritten by another device: refused text becomes a separate entry. No AI, suggestions, rewriting or analysis; only apps/web/lib/writing-repository.ts reads the text (enforced by lib/writing-boundary.test.ts). No WebMCP tools on /doc (or the old /write address, which redirects there)."
     },
@@ -1471,6 +1471,12 @@
       "implementation": "components/missa/writing-call.tsx",
       "motion": "never",
       "boundary": "Ties the open piece to a call in the creator's tracker (call_id on creator_writing_entries, migration 0099, kept only through apps/web/lib/writing-repository.ts). Shows the call, its links and the creator's checklist, and runs the word, page, materials and anonymous-review checks of lib/writing-call.ts in the browser on the piece's own text; the text is never sent for them. Reuses PreSubmitCheckList for the checks. The footer shows words against the call's limit."
+    },
+    "WritingPlanner": {
+      "base": "Dialog",
+      "implementation": "components/missa/writing-planner.tsx",
+      "motion": "never",
+      "boundary": "A project's planner, part of Plus (creatorFeatures().writingPlanner): Tabs for a corkboard of index cards (Item, in binder order or in lanes by plotline, status or point of view) and an outline Table with words against targets and a TableFooter total. Cards are edited in a Dialog of Field, Input, Textarea, NativeSelect and Checkbox; plotlines in a Dialog with HueTile markers. Cards hold the writer's notes, never the text (lib/writing-cards.ts, migration 0100). Free accounts keep WritingOutline with one UpgradeHint."
     },
     "WritingWordCount": {
       "base": "Dialog",

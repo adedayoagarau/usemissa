@@ -9,6 +9,11 @@ import {
   type WritingDocument,
 } from "./writing-document.ts";
 import { isWritingEntryId, WRITING_TITLE_MAX } from "./writing.ts";
+import {
+  parseCard,
+  type PieceCard,
+  type ProjectPlan,
+} from "./writing-cards.ts";
 
 /**
  * Projects in the writing room: pieces gathered into one body of work, in an
@@ -90,6 +95,8 @@ export type WritingProject = {
   id: string;
   title: string;
   template: ProjectTemplateId;
+  /** The planner's plotlines for this project. */
+  plan: ProjectPlan;
   createdAt: string;
   updatedAt: string;
 };
@@ -149,6 +156,8 @@ export type PieceChange = {
   status?: PieceStatus;
   /** The call the piece is written for; null to clear it. */
   callId?: string | null;
+  /** The planner's index card, replaced whole. */
+  card?: PieceCard;
 };
 
 export function isCallId(value: unknown): value is string {
@@ -163,8 +172,15 @@ export function parsePieceChange(
   const synopsis = field(value, "synopsis");
   const status = field(value, "status");
   const callId = field(value, "callId");
+  const card = field(value, "card");
+  if (card !== undefined) {
+    const parsed = parseCard(card);
+    if ("error" in parsed) return parsed;
+    change.card = parsed;
+  }
   if (callId !== undefined) {
-    if (callId !== null && !isCallId(callId)) return { error: "Call not found." };
+    if (callId !== null && !isCallId(callId))
+      return { error: "Call not found." };
     change.callId = callId;
   }
   if (projectId !== undefined) {

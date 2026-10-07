@@ -66,6 +66,11 @@ import {
 import { WritingSnapshots } from "@/components/missa/writing-snapshots";
 import { WritingFind } from "@/components/missa/writing-find";
 import { WritingWordCount } from "@/components/missa/writing-word-count";
+import {
+  WritingPlanner,
+  type CardChange,
+} from "@/components/missa/writing-planner";
+import type { ProjectPlan } from "@/lib/writing-cards";
 import { useWritingCall, WritingCall } from "@/components/missa/writing-call";
 import {
   CompileDialog,
@@ -133,6 +138,8 @@ export type WritingRoomProps = {
   initialEntryId?: string;
   storage: "account" | "device";
   listFailed: boolean;
+  /** The account's plan includes the planner: cards, plotlines, corkboard (Plus). */
+  planner: boolean;
 };
 
 type Current = {
@@ -236,7 +243,9 @@ function readPrefs(): Prefs {
       smartPunctuation: field("smartPunctuation") === true,
       quiet: field("quiet") === true,
       focus:
-        field("focus") === "paragraph" || field("focus") === "sentence"
+        field("focus") === "paragraph" ||
+        field("focus") === "sentence" ||
+        field("focus") === "dialogue"
           ? (field("focus") as FocusMode)
           : "off",
       typewriter: field("typewriter") === true,
@@ -335,6 +344,7 @@ export function WritingRoom({
   initialEntryId,
   storage,
   listFailed,
+  planner,
 }: WritingRoomProps) {
   const [sync] = useState(
     () =>
@@ -1005,6 +1015,58 @@ export function WritingRoom({
     );
   }
 
+  /** Saves a piece's whole index card (Plus): synopsis, status and the planner's fields. */
+  async function saveCard(id: string, change: CardChange) {
+    const before = entries;
+    setEntries((list) =>
+      list.map((item) => (item.id === id ? { ...item, ...change } : item)),
+    );
+    const result = await requestJson(
+      `/api/me/writing/${encodeURIComponent(id)}`,
+      { method: "PATCH", body: JSON.stringify(change) },
+    );
+    const entry = result.data.entry as WritingEntrySummary | undefined;
+    if (result.ok && entry) {
+      setEntries((list) =>
+        list.map((item) => (item.id === id ? { ...item, ...entry } : item)),
+      );
+      return;
+    }
+    setEntries(before);
+    toast.error(
+      errorOf(
+        result.data,
+        "Couldn’t save the card. Check your connection and try again.",
+      ),
+    );
+  }
+
+  /** Saves a project's plotlines (Plus). */
+  async function savePlan(id: string, plan: ProjectPlan) {
+    const before = projects;
+    setProjects((list) =>
+      list.map((item) => (item.id === id ? { ...item, plan } : item)),
+    );
+    const result = await requestJson(
+      `/api/me/writing/projects/${encodeURIComponent(id)}`,
+      { method: "PATCH", body: JSON.stringify({ plan }) },
+    );
+    const project = result.data.project as WritingProject | undefined;
+    if (result.ok && project) {
+      setProjects((list) =>
+        list.map((item) => (item.id === id ? project : item)),
+      );
+      return;
+    }
+    setProjects(before);
+    toast.error(
+      errorOf(
+        result.data,
+        "Couldn’t save the plotlines. Check your connection and try again.",
+      ),
+    );
+  }
+
   async function changeCard(
     id: string,
     card: { synopsis?: string; status?: PieceStatus },
@@ -1298,6 +1360,7 @@ export function WritingRoom({
                 position: Number.MAX_SAFE_INTEGER,
                 synopsis: "",
                 status: "",
+                card: {},
                 local: true,
                 open: false,
               },
@@ -1316,6 +1379,7 @@ export function WritingRoom({
         position: item.position,
         synopsis: item.synopsis,
         status: item.status,
+        card: item.card,
         local: syncState.pending.includes(item.id) && !sync.saved(item.id),
         open: false,
       })),
@@ -1338,6 +1402,7 @@ export function WritingRoom({
         position: Number.MAX_SAFE_INTEGER,
         synopsis: "",
         status: "",
+        card: {},
         local: true,
       });
     return list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -1939,7 +2004,9 @@ export function WritingRoom({
                   onValueChange={(value) =>
                     updatePrefs({
                       focus:
-                        value === "paragraph" || value === "sentence"
+                        value === "paragraph" ||
+                        value === "sentence" ||
+                        value === "dialogue"
                           ? value
                           : "off",
                     })
@@ -1953,6 +2020,9 @@ export function WritingRoom({
                   </DropdownMenuRadioItem>
                   <DropdownMenuRadioItem value="sentence" closeOnClick>
                     This sentence
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="dialogue" closeOnClick>
+                    Dialogue
                   </DropdownMenuRadioItem>
                 </DropdownMenuRadioGroup>
               </DropdownMenuGroup>
@@ -2125,16 +2195,31 @@ export function WritingRoom({
         onCreate={(title, template) => void createProject(title, template)}
       />
 
-      <WritingOutline
-        open={outlineProject !== null}
-        onOpenChange={(open) => {
-          if (!open) setOutlineProject(null);
-        }}
-        project={projects.find((project) => project.id === outlineProject)}
-        pieces={pieces}
-        onCard={(id, card) => void changeCard(id, card)}
-        onOpenPiece={openEntry}
-      />
+      {planner ? (
+        <WritingPlanner
+          open={outlineProject !== null}
+          onOpenChange={(open) => {
+            if (!open) setOutlineProject(null);
+          }}
+          project={projects.find((project) => project.id === outlineProject)}
+          pieces={pieces}
+          onSaveCard={(id, change) => void saveCard(id, change)}
+          onSavePlan={(id, plan) => void savePlan(id, plan)}
+          onOpenPiece={openEntry}
+        />
+      ) : (
+        <WritingOutline
+          open={outlineProject !== null}
+          onOpenChange={(open) => {
+            if (!open) setOutlineProject(null);
+          }}
+          project={projects.find((project) => project.id === outlineProject)}
+          pieces={pieces}
+          onCard={(id, card) => void changeCard(id, card)}
+          onOpenPiece={openEntry}
+          planHint
+        />
+      )}
 
       <CompileDialog
         key={compileState.projectId ?? "compile-closed"}

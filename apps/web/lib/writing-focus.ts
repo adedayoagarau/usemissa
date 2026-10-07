@@ -9,9 +9,12 @@ import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
  * browser already has (Intl.Segmenter); nothing reads what the words mean.
  * Dimmed text keeps the muted text color, which stays readable (WCAG AA),
  * and the mode is one click to turn off.
+ *
+ * Dialogue keeps what is inside quotation marks clear and dims the rest, on
+ * every page. It goes by the marks alone: “ ”, " ", ‘ ’ and « ».
  */
 
-export type FocusMode = "off" | "paragraph" | "sentence";
+export type FocusMode = "off" | "paragraph" | "sentence" | "dialogue";
 
 let mode: FocusMode = "off";
 
@@ -43,6 +46,44 @@ export function sentenceAt(text: string, offset: number): [number, number] {
     if (offset < end || (offset === end && end === text.length)) break;
   }
   return found;
+}
+
+const QUOTED = /“[^“”]*”?|"[^"]*"?|«[^«»]*»?|‘[^‘’]*’(?!\p{L})/gu;
+
+/** The quoted stretches of a paragraph's text, as [start, end) pairs. */
+export function quotedRanges(text: string): [number, number][] {
+  return [...text.matchAll(QUOTED)].map((match) => [
+    match.index,
+    match.index + match[0].length,
+  ]);
+}
+
+function dialogueDecorations(doc: ProseMirrorNode): DecorationSet {
+  const found: Decoration[] = [];
+  doc.descendants((node, pos) => {
+    if (!node.isTextblock) return true;
+    // One character for every position, so offsets match the document.
+    const text = node.textBetween(0, node.content.size, undefined, "\ufffc");
+    const start = pos + 1;
+    let from = 0;
+    for (const [quoteStart, quoteEnd] of quotedRanges(text)) {
+      if (quoteStart > from)
+        found.push(
+          Decoration.inline(start + from, start + quoteStart, {
+            class: FOCUS_DIM_CLASS,
+          }),
+        );
+      from = quoteEnd;
+    }
+    if (from < text.length)
+      found.push(
+        Decoration.inline(start + from, start + text.length, {
+          class: FOCUS_DIM_CLASS,
+        }),
+      );
+    return false;
+  });
+  return DecorationSet.create(doc, found);
 }
 
 function decorations(doc: ProseMirrorNode, head: number): DecorationSet {
@@ -88,6 +129,8 @@ export const FocusDim = Extension.create({
         },
         props: {
           decorations(state) {
+            // Dialogue shows on every page, whichever is in hand.
+            if (mode === "dialogue") return dialogueDecorations(state.doc);
             if (mode === "off" || !focusKey.getState(state))
               return DecorationSet.empty;
             return decorations(state.doc, state.selection.head);

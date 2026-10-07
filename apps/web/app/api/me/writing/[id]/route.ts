@@ -3,7 +3,7 @@ import { getSessionAccount } from "@/lib/auth";
 import { isWritingEntryId, parseWritingSaveRequest } from "@/lib/writing";
 import { getWritingRepository } from "@/lib/writing-repository";
 import { parsePieceChange } from "@/lib/writing-projects";
-import { smallJson } from "../_shared";
+import { PLANNER_LOCKED, plannerIncluded, smallJson } from "../_shared";
 
 const headers = { "Cache-Control": "private, no-store" };
 // The longest entry in UTF-8, plus room for the JSON around it.
@@ -121,6 +121,9 @@ export async function PATCH(request: Request, context: Context) {
   if ("response" in prepared) return prepared.response;
   const parsed = parsePieceChange(await smallJson(request));
   if ("error" in parsed) return json({ error: parsed.error }, 400);
+  // The planner's cards are part of Plus; synopsis and status stay free.
+  if (parsed.card !== undefined && !(await plannerIncluded(prepared.accountId)))
+    return json(PLANNER_LOCKED, 403);
   try {
     const result = await prepared.repository.changePiece(
       prepared.accountId,

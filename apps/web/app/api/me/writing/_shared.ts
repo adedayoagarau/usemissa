@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+export { plannerIncluded } from "@/lib/writing-plan-access";
 import { getSessionAccount } from "@/lib/auth";
 import {
   getWritingRepository,
@@ -42,3 +43,8 @@ export async function smallJson(request: Request): Promise<unknown> {
     return undefined;
   return request.json().catch(() => undefined);
 }
+
+export const PLANNER_LOCKED = {
+  error: "Cards, plotlines and the corkboard are part of Plus.",
+  locked: "writingPlanner",
+};
