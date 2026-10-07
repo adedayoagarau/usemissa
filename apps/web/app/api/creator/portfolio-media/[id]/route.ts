@@ -1,5 +1,6 @@
 import { getSessionAccount } from "@/lib/auth";
 import { getCreatorProfileRepository } from "@/lib/creatorRepositories";
+import { mediaResponseHeaders } from "@/lib/portfolio-media-delivery";
 export const dynamic = "force-dynamic";
 export async function GET(
   request: Request,
@@ -12,13 +13,14 @@ export async function GET(
   if (!repo) return new Response(null, { status: 503 });
   const media = await repo.portfolioMedia(id, session?.account.id);
   if (!media) return new Response(null, { status: 404 });
+  // Pictures and sound play inline. Documents, and anything unexpected, are
+  // always a download (see portfolio-media-delivery.ts).
   return new Response(new Uint8Array(media.bytes), {
-    headers: {
-      "Content-Type": media.content_type,
-      "Cache-Control": "private, no-store",
-      "X-Content-Type-Options": "nosniff",
-      "Content-Length": String(media.bytes.length),
-    },
+    headers: mediaResponseHeaders(
+      media.content_type,
+      media.bytes.length,
+      new URL(request.url).searchParams.get("name"),
+    ),
   });
 }
 

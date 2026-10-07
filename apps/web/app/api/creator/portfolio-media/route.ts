@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { getSessionAccount } from "@/lib/auth";
 import { getCreatorProfileRepository } from "@/lib/creatorRepositories";
-import { fileTypeFromBuffer } from "file-type";
 import { portfolioRequestBody } from "@/lib/portfolio-request";
+import {
+  UNSUPPORTED_MEDIA_MESSAGE,
+  sniffUpload,
+} from "@/lib/portfolio-media-delivery";
+import { bookingTypeFromContentType } from "@/lib/portfolio-booking-files";
 export async function POST(request: Request) {
   const session = await getSessionAccount(request.headers.get("cookie"));
   if (!session)
@@ -28,33 +32,24 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     const bytes = Buffer.from(await file.arrayBuffer());
-    const type = await fileTypeFromBuffer(bytes);
-    if (
-      !type ||
-      ![
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/gif",
-        "audio/mpeg",
-        "audio/wav",
-        "audio/ogg",
-        "audio/flac",
-        "audio/mp4",
-        "audio/x-m4a",
-      ].includes(type.mime)
-    )
+    // The type is read from the file itself; the name and the type the
+    // browser sent are never consulted.
+    const contentType = await sniffUpload(bytes);
+    if (!contentType)
       return NextResponse.json(
-        {
-          error:
-            "Choose a JPG, PNG, WebP, GIF, MP3, WAV, Ogg, FLAC or M4A file.",
-        },
+        { error: UNSUPPORTED_MEDIA_MESSAGE },
         { status: 415 },
       );
     const id = crypto.randomUUID();
-    await repo.addPortfolioMedia(session.account.id, id, type.mime, bytes);
+    await repo.addPortfolioMedia(session.account.id, id, contentType, bytes);
+    const url = `/api/creator/portfolio-media/${id}`;
+    // A document answers with what the server found, so the studio shows the
+    // same type and size a visitor will see.
+    const document = bookingTypeFromContentType(contentType);
     return NextResponse.json(
-      { url: `/api/creator/portfolio-media/${id}` },
+      document
+        ? { url, kind: "document", type: document, bytes: bytes.length }
+        : { url },
       { status: 201 },
     );
   } catch (error) {
