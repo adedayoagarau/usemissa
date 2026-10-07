@@ -1,18 +1,20 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowRight } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
+import { getEngine } from '@/lib/engine';
 import { getRelationalWorkspace, getWorkspaceEngine, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 import { organizationCapabilityProjection } from '@/lib/organizationProduct';
-import { decisionSummary, reviewLane } from '@/lib/organizationWorkflow';
-import { Mail } from 'lucide-react';
-import { buttonVariants } from '@/components/ui/button';
-import { RecordDecisionDialog } from '@/components/organization-submission-actions';
+import { reviewLane } from '@/lib/organizationWorkflow';
+import type { WorkOutcome } from '@/lib/organizationActions';
+import { Button } from '@/components/ui/button';
+import { DecisionsWorkspace, type DecisionRow } from '@/components/decisions-workspace';
 import styles from '../workflow.module.css';
 
+const OUTCOME_FILTERS = ['accepted', 'declined', 'waitlisted', 'undecided'];
 
-export default async function OrganizationDecisionsPage({ params, searchParams }: { params: Promise<{ organizationId: string }>; searchParams: Promise<{ q?: string; outcome?: string; selected?: string }> }) {
+export default async function OrganizationDecisionsPage({ params, searchParams }: { params: Promise<{ organizationId: string }>; searchParams: Promise<{ q?: string; opportunity?: string; outcome?: string }> }) {
   const { organizationId } = await params;
   const query = await searchParams;
   const session = await getSessionAccountFromToken((await cookies()).get(SESSION_COOKIE)?.value);
@@ -23,45 +25,64 @@ export default async function OrganizationDecisionsPage({ params, searchParams }
   if (!projection.destinations.includes('decisions')) notFound();
   if (membership.role !== 'owner' && membership.role !== 'admin') return <main id="organization-main" className={styles.main}><header className={styles.header}><div><p className={styles.eyebrow}>Decision evidence</p><h1>Decisions</h1><p>Per-Work outcomes and review evidence need a server-enforced Program projection.</p></div><span className={styles.role}>{projection.label}</span></header><section className={styles.limited}><h2>Scoped decision projection unavailable</h2><p>The Organization-wide decision desk is withheld until this role’s Team and Program scope is enforced by the server.</p></section></main>;
 
-  if (workspaceRelationalAuthorityEnabled()) {
-    const relational = await getRelationalWorkspace();
-    const submissions = await relational.submissionsForOrganization(organizationId);
-    const packets = submissions.map((submission) => {
-      const outcomes = new Map(submission.decisions.map((decision) => [decision.workId, decision.outcome]));
-      const decided = submission.works.filter((work) => outcomes.has(work.id)).length;
-      const accepted = submission.works.filter((work) => outcomes.get(work.id) === 'accepted').length;
-      const summary = decided === 0 ? 'No decisions' : decided < submission.works.length ? 'Partially decided' : accepted === submission.works.length ? 'Accepted' : accepted > 0 ? 'Partially accepted' : submission.decisions.every((decision) => decision.outcome === 'waitlisted') ? 'Waitlisted' : 'Declined';
-      return { submission, outcomes, summary };
-    });
-    const selected = packets.find((packet) => packet.submission.id === query.selected) ?? packets[0];
-    const allWorks = submissions.flatMap((submission) => submission.works);
-    const allDecisions = submissions.flatMap((submission) => submission.decisions);
-    return <main id="organization-main" className={styles.main}><header className={styles.header}><div><p className={styles.eyebrow}>Decision evidence</p><h1>Decisions</h1><p>Per-Work outcomes from the relational projection. Saving a decision never sends a message.</p></div><span className={styles.role}>{projection.label}</span></header><dl className={styles.summary}><div><dt>Works</dt><dd>{allWorks.length}</dd></div><div><dt>Decided</dt><dd>{allDecisions.length}</dd></div><div><dt>Accepted</dt><dd>{allDecisions.filter((item) => item.outcome === 'accepted').length}</dd></div><div><dt>Undecided</dt><dd>{allWorks.length - allDecisions.length}</dd></div></dl>{packets.length && selected ? <div className={styles.layout}><section><header className={styles.sectionHeader}><div><p className={styles.eyebrow}>Submission packets</p><h2>Decision preparation</h2></div><span>{packets.length} {packets.length === 1 ? 'packet' : 'packets'}</span></header><div className={styles.list}>{packets.map((packet) => <article className={styles.row} key={packet.submission.id}><div><h3>{packet.submission.works.map((work) => work.title).join(', ') || 'Untitled Work'}</h3><p>{packet.submission.openCallTitle} · {packet.submission.works.length} {packet.submission.works.length === 1 ? 'Work' : 'Works'}</p><span className={styles.outcome}>{packet.summary}</span></div><Link aria-current={packet.submission.id === selected.submission.id ? 'true' : undefined} href={`/organization/${encodeURIComponent(organizationId)}/decisions?selected=${encodeURIComponent(packet.submission.id)}`}>{packet.submission.id === selected.submission.id ? 'Selected' : 'Open'}<ArrowRight aria-hidden="true" /></Link></article>)}</div></section><aside className={styles.selected} aria-labelledby="selected-decision-packet"><p className={styles.eyebrow}>Selected packet</p><h2 id="selected-decision-packet">{selected.submission.openCallTitle}</h2><p>{selected.submission.works.length} {selected.submission.works.length === 1 ? 'Work' : 'Works'} · {selected.summary}</p><section className={styles.evidence}>{selected.submission.works.map((work) => <article key={work.id}><h3>{work.title}</h3><span className={styles.outcome}>{selected.outcomes.get(work.id) ?? 'No decision'}</span><div className={styles.evidenceActions}><RecordDecisionDialog organizationId={organizationId} work={{ id: work.id, title: work.title }} current={selected.outcomes.get(work.id)} /></div></article>)}</section><div className={styles.boundary}><h3>Recording is not communicating</h3><p>Each Work keeps its own outcome. Decision letters are not available in this workspace yet, and delivery stays a separate step.</p></div></aside></div> : <section className={styles.empty}><h2>No decision packets yet</h2><p>Decision preparation begins from received Work and valid review evidence.</p></section>}</main>;
-  }
-
-  const workspace = await getWorkspaceEngine();
-  const submissions = workspace.submissionsForOrganization(organizationId).map((submission) => {
-    const works = workspace.worksForSubmission(submission.id);
-    const assignments = workspace.reviewAssignmentsForSubmission(submission.id);
-    const decisions = workspace.decisionsForSubmission(organizationId, submission.id);
-    return { submission, works, assignments, decisions, review: reviewLane(assignments), summary: decisionSummary(works, decisions) };
+  const relational = workspaceRelationalAuthorityEnabled();
+  const relationalWorkspace = relational ? await getRelationalWorkspace() : undefined;
+  const workspace = relational ? undefined : await getWorkspaceEngine();
+  const radar = await getEngine();
+  const submissions = relationalWorkspace
+    ? await relationalWorkspace.submissionsForOrganization(organizationId)
+    : workspace!.submissionsForOrganization(organizationId);
+  const rows: Array<DecisionRow & { haystack: string }> = submissions.flatMap((submission) => {
+    const works = 'works' in submission ? submission.works : workspace!.worksForSubmission(submission.id);
+    const assignments = 'assignments' in submission ? submission.assignments : workspace!.reviewAssignmentsForSubmission(submission.id);
+    const decisions = 'decisions' in submission ? submission.decisions : workspace!.decisionsForSubmission(organizationId, submission.id);
+    const outcomes = new Map(decisions.map((decision) => [decision.workId, decision.outcome as WorkOutcome]));
+    const account = radar.store.accounts.get(submission.submitterAccountId);
+    const profile = account?.userId ? radar.store.users.get(account.userId) : undefined;
+    const submitter = profile?.displayName || account?.displayName || account?.email || 'Submitter';
+    const review = reviewLane(assignments);
+    // Search matches the whole submission, so a piece is never shown apart from its siblings.
+    const haystack = `${submitter} ${submission.openCallTitle} ${works.map((work) => work.title).join(' ')}`.toLocaleLowerCase('en');
+    return works.map((work) => ({
+      id: work.id,
+      title: work.title || 'Untitled Work',
+      submissionId: submission.id,
+      submitter,
+      openCallId: submission.openCallId,
+      opportunityTitle: submission.openCallTitle,
+      review,
+      outcome: outcomes.get(work.id),
+      siblings: works.filter((other) => other.id !== work.id).map((other) => ({ id: other.id, title: other.title || 'Untitled Work', outcome: outcomes.get(other.id) })),
+      haystack,
+    }));
   });
+  const opportunities = [...new Map(rows.map((row) => [row.openCallId, row.opportunityTitle])).entries()].map(([id, title]) => ({ id, title }));
   const normalizedQuery = query.q?.trim().toLocaleLowerCase('en') ?? '';
-  const validOutcome = ['accepted', 'declined', 'waitlisted', 'undecided'].includes(query.outcome ?? '') ? query.outcome : '';
-  const packets = submissions.filter((packet) => {
-    if (normalizedQuery && !`${packet.submission.openCallTitle} ${packet.works.map((work) => work.title).join(' ')}`.toLocaleLowerCase('en').includes(normalizedQuery)) return false;
-    if (!validOutcome) return true;
-    const outcomeByWork = new Map(packet.decisions.map((decision) => [decision.workId, decision.outcome]));
-    return packet.works.some((work) => validOutcome === 'undecided' ? !outcomeByWork.has(work.id) : outcomeByWork.get(work.id) === validOutcome);
-  });
-  const selected = packets.find((packet) => packet.submission.id === query.selected) ?? packets[0];
-  const selectedOutcomes = new Map(selected?.decisions.map((decision) => [decision.workId, decision.outcome]) ?? []);
-  const allWorks = submissions.flatMap((packet) => packet.works);
-  const allDecisions = submissions.flatMap((packet) => packet.decisions);
-  const base = `/organization/${encodeURIComponent(organizationId)}/decisions`;
-  function selectedHref(submissionId: string) { const params = new URLSearchParams(); if (query.q) params.set('q', query.q); if (validOutcome) params.set('outcome', validOutcome); params.set('selected', submissionId); return `${base}?${params}`; }
-  const hasFilters = Boolean(normalizedQuery || validOutcome);
-  return <main id="organization-main" className={styles.main}><header className={styles.header}><div><p className={styles.eyebrow}>Evidence desk</p><h1>Decisions</h1><p>Record an outcome for each piece. Letters to submitters are drafted, approved and sent separately from Messages; recording a decision never sends one.</p></div><div className={styles.headerActions}><span className={styles.role}>{projection.label}</span><Link className={buttonVariants({ variant: 'outline', size: 'sm' })} href={`/organization/${encodeURIComponent(organizationId)}/messages`}><Mail aria-hidden="true" />Draft decision letters</Link></div></header><dl className={styles.summary}><div><dt>Works</dt><dd>{allWorks.length}</dd></div><div><dt>Decided</dt><dd>{allDecisions.length}</dd></div><div><dt>Accepted</dt><dd>{allDecisions.filter((item) => item.outcome === 'accepted').length}</dd></div><div><dt>Undecided</dt><dd>{allWorks.length - allDecisions.length}</dd></div></dl><form className={styles.filters} role="search"><label><span>Search</span><input name="q" defaultValue={query.q ?? ''} placeholder="Work or Opportunity" /></label><label><span>Work outcome</span><select name="outcome" defaultValue={validOutcome}><option value="">All outcomes</option><option value="undecided">No decision</option><option value="accepted">Accepted</option><option value="declined">Declined</option><option value="waitlisted">Waitlisted</option></select></label><button type="submit">Apply</button>{hasFilters ? <Link href={base}>Clear</Link> : null}</form>
-    {packets.length && selected ? <div className={styles.layout}><section><header className={styles.sectionHeader}><div><p className={styles.eyebrow}>Submission packets</p><h2>Decision preparation</h2></div><span>{packets.length} {packets.length === 1 ? 'packet' : 'packets'}</span></header><div className={styles.list}>{packets.map((packet) => <article className={styles.row} key={packet.submission.id}><div><h3>{packet.works.map((work) => work.title).join(', ') || 'Untitled Work'}</h3><p>{packet.submission.openCallTitle} · {packet.works.length} {packet.works.length === 1 ? 'Work' : 'Works'}</p><span className={styles.outcome}>{packet.summary}</span></div><Link aria-current={packet.submission.id === selected.submission.id ? 'true' : undefined} href={selectedHref(packet.submission.id)}>{packet.submission.id === selected.submission.id ? 'Selected' : 'Open'}<ArrowRight aria-hidden="true" /></Link></article>)}</div></section><aside className={styles.selected} aria-labelledby="selected-decision-packet"><p className={styles.eyebrow}>Selected packet</p><h2 id="selected-decision-packet">{selected.submission.openCallTitle}</h2><p>{selected.works.length} {selected.works.length === 1 ? 'Work' : 'Works'} · {selected.review}</p><dl className={styles.facts}><div><dt>Packet summary</dt><dd>{selected.summary}</dd></div><div><dt>Letters</dt><dd>Drafted and sent from Messages</dd></div></dl><section className={styles.evidence}>{selected.works.map((work) => { const outcome = selectedOutcomes.get(work.id); return <article key={work.id}><h3>{work.title}</h3><p>Review: {selected.review}</p><span className={styles.outcome}>{outcome ?? 'No decision'}</span><div className={styles.evidenceActions}><RecordDecisionDialog organizationId={organizationId} work={{ id: work.id, title: work.title }} current={outcome} reviewSummary={selected.review} /></div></article>; })}</section><div className={styles.boundary}><h3>What recording a decision does</h3><p>The submitter sees the outcome in their Missa Tracker and gets an in-app notice. No email is sent until a decision letter is approved and sent from Messages, and changing a decision later does not correct a letter already sent. Draft decisions and approval steps are not available yet.</p></div></aside></div> : <section className={styles.empty}><h2>{submissions.length ? 'No decision packets match these filters' : 'No Submissions are ready for decision work'}</h2><p>{submissions.length ? 'Clear the filters to return to all packets.' : 'Decision preparation begins from received Work and valid review evidence.'}</p></section>}
-  </main>;
+  const outcome = OUTCOME_FILTERS.includes(query.outcome ?? '') ? query.outcome : undefined;
+  const opportunity = opportunities.some((item) => item.id === query.opportunity) ? query.opportunity : undefined;
+  const view = rows.filter((row) => {
+    if (normalizedQuery && !row.haystack.includes(normalizedQuery)) return false;
+    if (opportunity && row.openCallId !== opportunity) return false;
+    if (outcome) return outcome === 'undecided' ? !row.outcome : row.outcome === outcome;
+    return true;
+  }).map(({ haystack: _haystack, ...row }) => row);
+
+  return (
+    <main id="organization-main" className={styles.main}>
+      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
+        <div className="grid gap-1">
+          <h1 className="font-heading text-3xl font-medium tracking-tight text-foreground">Decisions</h1>
+          <p className="text-sm text-muted-foreground">Record an outcome for each piece. Recording a decision never sends a letter.</p>
+        </div>
+        <Button variant="outline" size="sm" render={<Link href={`/organization/${encodeURIComponent(organizationId)}/messages`} />}><Mail aria-hidden="true" />Draft decision letters</Button>
+      </header>
+      <div className="grid gap-8 pt-6">
+        <DecisionsWorkspace organizationId={organizationId} rows={view} total={rows.length} opportunities={opportunities} filters={{ q: query.q, opportunity, outcome }} />
+        <section aria-labelledby="decision-consequence" className="grid max-w-2xl gap-1 border-t border-border pt-4">
+          <h2 id="decision-consequence" className="text-sm font-semibold text-foreground">What recording a decision does</h2>
+          <p className="text-sm text-muted-foreground">The submitter sees the outcome in their Missa Tracker and gets an in-app notice. No email goes out until a decision letter is approved and sent from Messages, and changing a decision later does not correct a letter already sent.</p>
+        </section>
+      </div>
+    </main>
+  );
 }

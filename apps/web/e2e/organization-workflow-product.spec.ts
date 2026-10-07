@@ -69,10 +69,11 @@ test('Decision desk records per Work through an explicit dialog', async ({ page,
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/organization/${fixture.organizationId}/decisions?q=${encodeURIComponent(fixture.firstWork)}`);
   await expect(page.getByRole('heading', { name: 'Decisions', level: 1 })).toBeVisible();
-  await expect(page.getByRole('heading', { name: fixture.firstWork, exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: fixture.secondWork, exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: fixture.firstWork, exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: fixture.secondWork, exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'What recording a decision does' })).toBeVisible();
-  await expect(page.locator('#organization-main').getByRole('button', { name: /Accept|Decline|Waitlist|Finalize/u })).toHaveCount(0);
+  // Section headers read "Accepted 1"; no button records an outcome in one click.
+  await expect(page.locator('#organization-main').getByRole('button', { name: /^(Accept|Decline|Waitlist|Finalize)( |$)/u })).toHaveCount(0);
   await expect(page.getByRole('button', { name: `Change decision for ${fixture.firstWork}` })).toBeVisible();
   await expect(page.getByRole('button', { name: `Record decision for ${fixture.secondWork}` })).toBeVisible();
   const accessibility = await new AxeBuilder({ page }).analyze();

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { TaxonomyBrowsePicker } from '@/components/taxonomy-browse-picker';
 import { captureProductEvent } from '@/components/analytics-provider';
+import { useConfirm } from '@/components/missa/confirm-dialog';
 
 type WorkAssignment = {
   termId: string;
@@ -29,6 +30,7 @@ function assignmentsFor(termIds: string[]): WorkAssignment[] {
 }
 
 export function LibraryClient() {
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [tab, setTab] = useState<Tab>('works');
   const [library, setLibrary] = useState<Library>(empty);
   const [busy, setBusy] = useState(false);
@@ -116,7 +118,7 @@ export function LibraryClient() {
   }
 
   async function remove(path: string, success: string) {
-    if (!window.confirm('Delete this Library item? This cannot be undone.')) return;
+    if (!(await confirm({ title: 'Delete this Library item?', description: 'This cannot be undone.', confirmLabel: 'Delete', destructive: true }))) return;
     await request(path, { method: 'DELETE' }, success);
   }
 
@@ -147,7 +149,7 @@ export function LibraryClient() {
     ['answers', 'Saved Answers', library.savedAnswers.length],
   ];
 
-  return <section className="mt-8 space-y-5" aria-label="Library contents">
+  return <section className="mt-8 space-y-5" aria-label="Library contents">{confirmDialog}
     <div className="flex flex-wrap gap-2 border-b border-border pb-2" role="tablist" aria-label="Library sections">
       {tabs.map(([value, label, count]) => <button key={value} type="button" role="tab" aria-selected={tab === value} className={`min-h-11 rounded-lg px-3 text-sm ${tab === value ? 'bg-accent font-medium text-primary' : 'text-muted-foreground hover:bg-muted'}`} onClick={() => setTab(value)}>{label} <span className="ml-1 font-mono text-xs">{count}</span></button>)}
     </div>

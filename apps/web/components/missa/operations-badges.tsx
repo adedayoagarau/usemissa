@@ -144,3 +144,19 @@ export function SettingsStateBadge({ state }: { state: keyof typeof settingsStat
     </Badge>
   );
 }
+
+const deliveryPlanCopy: Record<string, { label: string; variant: BadgeVariant }> = {
+  "Ready to set up": { label: "Needs setup", variant: "accent" },
+  Active: { label: "Active", variant: "information" },
+  Complete: { label: "Complete", variant: "success" },
+};
+
+/** Where an accepted Work's delivery task stands, from deliveryPlanState. Complete in Missa proves no external handoff. */
+export function DeliveryPlanBadge({ state, overdue = false }: { state: string; overdue?: boolean }) {
+  const copy = overdue ? { label: "Overdue", variant: "destructive" as const } : deliveryPlanCopy[state] ?? { label: state, variant: "secondary" as const };
+  return (
+    <Badge variant={copy.variant} size="compact">
+      {copy.label}
+    </Badge>
+  );
+}

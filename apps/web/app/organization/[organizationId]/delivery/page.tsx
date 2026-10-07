@@ -1,22 +1,16 @@
-import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowRight, ShieldCheck } from 'lucide-react';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
 import { deliveryConsequenceRank, deliveryPlanState } from '@/lib/organizationOutcome';
 import { organizationCapabilityProjection } from '@/lib/organizationProduct';
 import { getWorkspaceEngine } from '@/lib/workspaceEngine';
-import { DeliveryTaskActions } from '@/components/organization-submission-actions';
+import { DeliveryWorkspace, type DeliveryRow } from '@/components/delivery-workspace';
 import styles from '../outcome-desk.module.css';
 
-type Query = { q?: string; state?: string; selected?: string };
+type Query = { q?: string; state?: string };
 
-function dueLabel(value: string | undefined, today: string): string {
-  if (!value) return 'No due date';
-  const formatted = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${value}T00:00:00Z`));
-  return value < today ? `${formatted} · overdue` : formatted;
-}
+const STATES = ['Ready to set up', 'Active', 'Complete'];
 
 export default async function OrganizationDeliveryPage({ params, searchParams }: { params: Promise<{ organizationId: string }>; searchParams: Promise<Query> }) {
   const { organizationId } = await params;
@@ -41,36 +35,37 @@ export default async function OrganizationDeliveryPage({ params, searchParams }:
     const account = submission ? radar.store.accounts.get(submission.submitterAccountId) : undefined;
     const profile = account?.userId ? radar.store.users.get(account.userId) : undefined;
     const task = taskByWork.get(work.id);
-    const state = deliveryPlanState(task);
-    return [{
+    const row: DeliveryRow = {
       id: work.id,
-      work: work.title,
+      title: work.title || 'Untitled Work',
       submitter: profile?.displayName || account?.displayName || account?.email || 'Submitter unavailable',
-      opportunity: submission?.openCallTitle ?? 'Opportunity unavailable',
-      decisionAt: decision.decidedAt,
-      task,
-      state,
-      next: !task ? 'Set up an accepted-Work plan' : task.status === 'pending' ? 'Review the recorded obligation' : 'Review completion evidence',
-      rank: deliveryConsequenceRank({ task, today }),
-    }];
-  }).sort((a, b) => a.rank - b.rank || (a.task?.dueDate ?? '9999').localeCompare(b.task?.dueDate ?? '9999') || a.work.localeCompare(b.work));
+      submitterIdentity: work.submissionId,
+      opportunityTitle: submission?.openCallTitle ?? 'Opportunity unavailable',
+      decidedAt: decision.decidedAt,
+      state: deliveryPlanState(task),
+      overdue: task?.status === 'pending' && Boolean(task.dueDate && task.dueDate < today),
+      dueDate: task?.dueDate,
+      completedAt: task?.completedAt,
+      task: task ? { id: task.id, status: task.status } : undefined,
+    };
+    return [{ row, rank: deliveryConsequenceRank({ task, today }) }];
+  }).sort((a, b) => a.rank - b.rank || (a.row.dueDate ?? '9999').localeCompare(b.row.dueDate ?? '9999') || a.row.title.localeCompare(b.row.title)).map((record) => record.row);
   const normalizedQuery = query.q?.trim().toLocaleLowerCase('en') ?? '';
+  const state = STATES.includes(query.state ?? '') ? query.state : undefined;
   const visible = records.filter((record) => {
-    if (query.state && record.state !== query.state) return false;
-    return !normalizedQuery || `${record.work} ${record.submitter} ${record.opportunity}`.toLocaleLowerCase('en').includes(normalizedQuery);
+    if (state && record.state !== state) return false;
+    return !normalizedQuery || `${record.title} ${record.submitter} ${record.opportunityTitle}`.toLocaleLowerCase('en').includes(normalizedQuery);
   });
-  const selected = visible.find((record) => record.id === query.selected) ?? visible[0];
-  const base = `/organization/${encodeURIComponent(organizationId)}/delivery`;
-  function selectedHref(id: string) { const next = new URLSearchParams(); if (query.q) next.set('q', query.q); if (query.state) next.set('state', query.state); next.set('selected', id); return `${base}?${next.toString()}`; }
-  const overdue = records.filter((record) => record.task?.status === 'pending' && record.task.dueDate && record.task.dueDate < today).length;
-  const active = records.filter((record) => record.state === 'Active').length;
-  const ready = records.filter((record) => record.state === 'Ready to set up').length;
 
-  return <main id="organization-main" className={styles.main}><header className={styles.header}><div><p className={styles.eyebrow}>Outcome desk</p><h1>Delivery</h1><p>Coordinate the next obligation for accepted Work. A completed Missa task does not itself prove payment, signature, publication, asset receipt, or external handoff.</p></div><span className={styles.role}>{projection.label}</span></header>
-    <dl className={styles.summary}><div><dt>Accepted Works</dt><dd>{records.length}</dd></div><div><dt>Need setup</dt><dd>{ready}</dd></div><div><dt>Active</dt><dd>{active}</dd></div><div><dt>Overdue</dt><dd>{overdue}</dd></div></dl>
-    <form className={styles.filters} role="search"><label><span>Search accepted Work</span><input name="q" defaultValue={query.q ?? ''} placeholder="Work, submitter, or Opportunity" /></label><label><span>Plan state</span><select name="state" defaultValue={query.state ?? ''}><option value="">All states</option><option>Ready to set up</option><option>Active</option><option>Complete</option></select></label><button type="submit">Apply</button>{query.q || query.state ? <Link className={styles.clear} href={base}>Clear</Link> : null}</form>
-    {visible.length && selected ? <div className={styles.desk}><section className={styles.queuePanel} aria-label="Accepted Work queue"><header className={styles.queueHeader}><div><p className={styles.eyebrow}>Consequence-first queue</p><h2>Accepted Works</h2></div><span>{visible.length} {visible.length === 1 ? 'Work' : 'Works'}</span></header><ol className={styles.queue}>{visible.map((record) => <li key={record.id}><Link aria-current={record.id === selected.id ? 'true' : undefined} href={selectedHref(record.id)}><div><h3>{record.work}</h3><p>{record.submitter} · {record.opportunity}</p><div className={styles.queueMeta}><span className={styles.state}>{record.state}</span><span className={styles.attention}>{record.task?.dueDate ? dueLabel(record.task.dueDate, today) : 'No due date'}</span></div></div><span className={styles.open}>{record.id === selected.id ? 'Selected' : 'Open'}<ArrowRight aria-hidden="true" /></span></Link></li>)}</ol></section>
-      <article className={styles.dossier} aria-labelledby="selected-delivery-title"><header className={styles.dossierHeader}><div><p className={styles.eyebrow}>Selected accepted Work</p><h2 id="selected-delivery-title">{selected.work}</h2><p>{selected.submitter} · {selected.opportunity}</p></div><span className={styles.state}>{selected.state}</span></header><dl className={styles.factStrip}><div><dt>Decision</dt><dd>Accepted · {new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(new Date(selected.decisionAt))}</dd></div><div><dt>Due</dt><dd>{dueLabel(selected.task?.dueDate, today)}</dd></div><div><dt>External proof</dt><dd>Not represented</dd></div></dl><div className={styles.dossierBody}><div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Accepted-Work plan</p><h3>Recorded obligations</h3></div><span>{selected.task ? '1 task' : 'No plan'}</span></div><aside className={styles.boundary}><ShieldCheck aria-hidden="true" /><div><strong>Fulfillment boundary</strong><p>Missa records one delivery task per accepted Work, with an optional due date and a pending or complete state. Owner, obligation type, dependencies, evidence, agreements, materials, and payment are not represented yet, so marking a task complete proves none of them.</p></div></aside>{selected.task ? <ul className={styles.taskList}><li><div><strong>Delivery task</strong><span>{selected.next}</span><span>{selected.task.completedAt ? `Marked complete ${new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(selected.task.completedAt))}` : dueLabel(selected.task.dueDate, today)}</span></div><span className={styles.state}>{selected.task.status === 'complete' ? 'Complete in Missa' : 'Not complete'}</span></li></ul> : <section className={styles.workSummary}><h3>Delivery plan not created</h3><p>This accepted Work is ready for setup. Set up a delivery task to track its next obligation and due date.</p></section>}<div className={styles.deskActions}><DeliveryTaskActions key={`${selected.id}-${selected.task?.status ?? 'none'}`} organizationId={organizationId} work={{ id: selected.id, title: selected.work }} task={selected.task ? { id: selected.task.id, status: selected.task.status } : undefined} /></div></div></article></div>
-      : <section className={styles.empty}><h2>{records.length ? 'No accepted Work matches these filters' : 'No accepted Work is ready for Delivery'}</h2><p>{records.length ? 'Clear the filters to return to all accepted work.' : 'Delivery starts only once a piece is accepted. Declined, waitlisted and undecided pieces do not appear here.'}</p>{records.length ? <Link href={base}>Clear filters</Link> : <Link href={`/organization/${encodeURIComponent(organizationId)}/decisions`}>Review Decisions</Link>}</section>}
-  </main>;
+  return (
+    <main id="organization-main" className={styles.main}>
+      <header className="grid gap-1 border-b border-border pb-5">
+        <h1 className="font-heading text-3xl font-medium tracking-tight text-foreground">Delivery</h1>
+        <p className="text-sm text-muted-foreground">What each accepted piece needs next, overdue first. A task marked complete here does not prove payment, signature or publication.</p>
+      </header>
+      <div className="pt-6">
+        <DeliveryWorkspace organizationId={organizationId} rows={visible} total={records.length} filters={{ q: query.q, state }} />
+      </div>
+    </main>
+  );
 }

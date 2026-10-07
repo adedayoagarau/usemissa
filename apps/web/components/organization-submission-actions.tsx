@@ -10,6 +10,7 @@ import { Field, FieldDescription, FieldLabel, FieldLegend, FieldSet } from '@/co
 import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { DatePickerField } from '@/components/missa/date-picker-field';
 import { OrganizationActionError, PendingLabel, useOrganizationAction } from '@/components/organization-action-kit';
 import { reviewerAlreadyAssigned, WORK_OUTCOME_CONSEQUENCE, WORK_OUTCOME_LABELS, type WorkOutcome } from '@/lib/organizationActions';
 import { organizationMutation } from '@/lib/organizationMutation';
@@ -168,7 +169,7 @@ export function DeliveryTaskActions({ organizationId, work, task }: { organizati
   if (task) {
     const next = task.status === 'complete' ? 'pending' : 'complete';
     return (
-      <div className="grid justify-items-start gap-2">
+      <div className="grid justify-items-end gap-2">
         <Button
           type="button"
           size="sm"
@@ -210,8 +211,8 @@ export function DeliveryTaskActions({ organizationId, work, task }: { organizati
             <DialogDescription>Track the next obligation for “{work.title}”, such as a contract, final files, or payment. Missa records the task; it does not contact the submitter.</DialogDescription>
           </DialogHeader>
           <Field>
-            <FieldLabel htmlFor={`due-${work.id}`}>Due date <span className="font-normal text-muted-foreground">(optional)</span></FieldLabel>
-            <Input id={`due-${work.id}`} type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
+            <FieldLabel id={`due-${work.id}-label`}>Due date <span className="font-normal text-muted-foreground">(optional)</span></FieldLabel>
+            <DatePickerField id={`due-${work.id}`} aria-labelledby={`due-${work.id}-label due-${work.id}`} value={dueDate || undefined} onChange={(value) => setDueDate(value ?? '')} placeholder="No due date" />
           </Field>
           <OrganizationActionError message={setup.error} />
           <DialogFooter>

@@ -5,6 +5,7 @@ import { Copy, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sp } from "@/components/missa/spelling";
+import { useConfirm } from "@/components/missa/confirm-dialog";
 
 type ForwardingView = {
   configured: boolean;
@@ -16,6 +17,7 @@ type ForwardingView = {
   retentionDays: number;
 };
 export function EmailForwardingCard() {
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [view, setView] = useState<ForwardingView>();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string>();
@@ -88,9 +90,12 @@ export function EmailForwardingCard() {
   }
   async function remove() {
     if (
-      !window.confirm(
-        "Delete this forwarding address? Pending email updates can also be deleted.",
-      )
+      !(await confirm({
+        title: "Delete this forwarding address?",
+        description: "Pending email updates can also be deleted.",
+        confirmLabel: "Delete address",
+        destructive: true,
+      }))
     )
       return;
     await mutate("/api/me/email-forwarding", {
@@ -104,6 +109,7 @@ export function EmailForwardingCard() {
   }
   return (
     <Card id="email-sync">
+      {confirmDialog}
       <CardHeader>
         <CardTitle>Email Sync</CardTitle>
         <p className="text-sm text-muted-foreground">
@@ -142,11 +148,13 @@ export function EmailForwardingCard() {
                 <Button
                   variant="outline"
                   disabled={busy}
-                  onClick={() => {
+                  onClick={async () => {
                     if (
-                      window.confirm(
-                        "Rotate this address? The old address stops working immediately.",
-                      )
+                      await confirm({
+                        title: "Rotate this address?",
+                        description: "The old address stops working immediately.",
+                        confirmLabel: "Rotate address",
+                      })
                     )
                       void mutate("/api/me/email-forwarding/rotate", {
                         body: JSON.stringify({ confirmation: true }),
