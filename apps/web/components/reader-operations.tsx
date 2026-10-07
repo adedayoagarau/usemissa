@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { BellRing, Check, ChevronDown, ChevronRight, Download, Ellipsis, FileText, Globe, ListChecks, Plus, RefreshCw, Trophy } from 'lucide-react';
+import { BellRing, Check, ChevronDown, Download, Ellipsis, FileText, Globe, ListChecks, Plus, RefreshCw, Trophy } from 'lucide-react';
 import type { DistributionPlan } from '@missa/workspace-engine';
 import type { RankedSubmissionRow, RoundOperationsView, RoundReaderRow } from '@/lib/readerOperationsData';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -17,11 +17,13 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { CalibrationBadge, WorkDecisionBadge } from '@/components/missa/operations-badges';
 import { CountBadge } from '@/components/missa/count-badge';
+import { DetailFields } from '@/components/missa/detail-fields';
+import { ListGroup } from '@/components/missa/list-group';
 import { HueTile } from '@/components/missa/hue-tile';
 import { PersonAvatar } from '@/components/missa/person-avatar';
 import { SegmentedChoice } from '@/components/missa/segmented-choice';
@@ -338,25 +340,6 @@ export function ReaderOperations({ organizationId, initial, canManage, stageLabe
   );
 }
 
-/** A collapsible section of a grouped list: a header row with a count, then its rows. */
-function ListGroup({ title, count, columns, defaultOpen = true, children }: { title: string; count: number; columns: number; defaultOpen?: boolean; children: React.ReactNode }) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <TableBody>
-      <TableRow variant="static">
-        <TableCell colSpan={columns} className="px-1 pt-4 pb-1.5">
-          <Button type="button" variant="disclosure" size="sm" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
-            {open ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
-            {title}
-            <span className="font-mono text-xs font-normal text-muted-foreground tabular-nums">{count}</span>
-          </Button>
-        </TableCell>
-      </TableRow>
-      {open ? children : null}
-    </TableBody>
-  );
-}
-
 function DecisionSummary({ works }: { works: RankedSubmissionRow['works'] }) {
   const decided = works.filter((work) => work.outcome);
   if (!decided.length) return <span className="text-sm text-muted-foreground">Not decided</span>;
@@ -366,20 +349,6 @@ function DecisionSummary({ works }: { works: RankedSubmissionRow['works'] }) {
       {outcomes.map((outcome) => <WorkDecisionBadge key={outcome} outcome={outcome} />)}
       {decided.length < works.length ? <span className="text-xs text-muted-foreground">{works.length - decided.length} open</span> : null}
     </div>
-  );
-}
-
-/** Field rows in a detail pane: a muted name and its value on one line. */
-function DetailFields({ fields }: { fields: Array<[string, React.ReactNode]> }) {
-  return (
-    <dl className="grid grid-cols-[8rem_minmax(0,1fr)] gap-x-4 gap-y-3 text-sm">
-      {fields.map(([name, value]) => (
-        <div key={name} className="contents">
-          <dt className="text-muted-foreground">{name}</dt>
-          <dd className="min-w-0 text-foreground">{value}</dd>
-        </div>
-      ))}
-    </dl>
   );
 }
 

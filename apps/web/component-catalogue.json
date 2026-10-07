@@ -17,6 +17,7 @@
     ],
     "variants": {
       "AvatarFallback": ["organization", "hue-red", "hue-orange", "hue-amber", "hue-yellow", "hue-lime", "hue-green", "hue-teal", "hue-blue", "hue-indigo", "hue-purple", "hue-magenta", "hue-pink"],
+      "AvatarGroup": ["tight"],
       "Badge": ["compact", "information", "success", "accent", "hue-red", "hue-orange", "hue-amber", "hue-yellow", "hue-lime", "hue-green", "hue-teal", "hue-blue", "hue-indigo", "hue-purple", "hue-magenta", "hue-pink"],
       "Button": ["account", "accentOutline", "choice", "field", "rowTitle", "inline", "disclosure"],
       "Card": ["empty"],
