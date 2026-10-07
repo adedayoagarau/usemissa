@@ -3,8 +3,9 @@
  * Pure data and functions, shared by the browser and the server.
  *
  * A page's content is ProseMirror JSON (the editor's own format). Every
- * space, tab and line break is kept as typed. Only "flow" pages exist now; the
- * page kind leaves room for free-canvas pages later.
+ * space, tab and line break is kept as typed. A "flow" page holds text that
+ * runs from the top margin down; a "canvas" page holds text boxes, each placed
+ * where the writer puts it, for concrete and visual poetry.
  */
 
 export type JsonNode = {
@@ -47,11 +48,28 @@ export type PageFormat = {
   textSize?: number;
 };
 
+/** A box of text on a canvas page, placed in millimetres from the page's top left corner. */
+export type CanvasBlock = {
+  id: string;
+  x: number;
+  y: number;
+  /** In millimetres; the text wraps inside it. */
+  width: number;
+  /** In degrees, clockwise. */
+  rotation: number;
+  content: JsonNode;
+};
+
+/**
+ * One page. A flow page keeps its text in `content`; a canvas page keeps it
+ * in `blocks` and leaves `content` empty.
+ */
 export type FlowPage = {
   id: string;
-  kind: "flow";
+  kind: "flow" | "canvas";
   format: PageFormat;
   content: JsonNode;
+  blocks?: CanvasBlock[];
   /**
    * The page holds text that flowed on from the page before it. Text moves
    * back and forth between such pages as it is written; a page the writer
@@ -79,6 +97,70 @@ export const MARGIN_PRESETS = {
 } as const;
 
 export const WRITING_DOCUMENT_MAX = 2_000_000;
+export const CANVAS_BLOCKS_MAX = 200;
+const BLOCK_ID = /^block_[0-9a-z]{6,40}$/;
+
+export function newBlockId(): string {
+  return `block_${crypto.randomUUID().replaceAll("-", "").slice(0, 20)}`;
+}
+
+const EMPTY_DOC: JsonNode = { type: "doc", content: [{ type: "paragraph" }] };
+
+/** The order a reader meets a canvas page's boxes: top to bottom, then left to right. */
+export function readingOrder(blocks: CanvasBlock[]): CanvasBlock[] {
+  return [...blocks].sort((a, b) =>
+    Math.abs(a.y - b.y) < 2 ? a.x - b.x : a.y - b.y,
+  );
+}
+
+/** Turns a page into a canvas: its text becomes one box inside its margins. */
+export function toCanvasPage(page: FlowPage, pageSize: PageSizeId): FlowPage {
+  if (page.kind === "canvas") return page;
+  const size = PAGE_SIZES[pageSize];
+  const { margins } = page.format;
+  return {
+    id: page.id,
+    kind: "canvas",
+    format: page.format,
+    content: EMPTY_DOC,
+    blocks: [
+      {
+        id: newBlockId(),
+        x: margins.left,
+        y: margins.top,
+        width: Math.max(20, size.width - margins.left - margins.right),
+        rotation: 0,
+        content: page.content,
+      },
+    ],
+  };
+}
+
+/** Turns a canvas page back into flowing text, its boxes in reading order. */
+export function toFlowPage(page: FlowPage): FlowPage {
+  if (page.kind === "flow") return page;
+  const content = readingOrder(page.blocks ?? []).flatMap(
+    (block) => block.content.content ?? [],
+  );
+  return {
+    id: page.id,
+    kind: "flow",
+    format: page.format,
+    content: {
+      type: "doc",
+      content: content.length ? content : [{ type: "paragraph" }],
+    },
+  };
+}
+
+/** A new text box on a canvas page. */
+export function newCanvasBlock(
+  x: number,
+  y: number,
+  width: number,
+): CanvasBlock {
+  return { id: newBlockId(), x, y, width, rotation: 0, content: EMPTY_DOC };
+}
 export const WRITING_PAGES_MAX = 500;
 const PAGE_ID = /^page_[0-9a-z]{6,40}$/;
 
@@ -161,7 +243,11 @@ export function documentText(document: WritingDocument): string {
     .map(
       (page, index) =>
         (index === 0 ? "" : page.continues ? "\n" : "\n\n") +
-        nodeText(page.content),
+        (page.kind === "canvas"
+          ? readingOrder(page.blocks ?? [])
+              .map((block) => nodeText(block.content))
+              .join("\n")
+          : nodeText(page.content)),
     )
     .join("");
 }
@@ -242,7 +328,12 @@ export function parseWritingDocument(value: unknown): WritingDocument | null {
   }
   const ids = new Set<string>();
   for (const page of document.pages) {
-    if (!page || typeof page !== "object" || page.kind !== "flow") return null;
+    if (
+      !page ||
+      typeof page !== "object" ||
+      (page.kind !== "flow" && page.kind !== "canvas")
+    )
+      return null;
     if (page.continues !== undefined && typeof page.continues !== "boolean")
       return null;
     if (
@@ -254,6 +345,29 @@ export function parseWritingDocument(value: unknown): WritingDocument | null {
     ids.add(page.id);
     if (!validFormat(page.format)) return null;
     if (!validNode(page.content) || page.content.type !== "doc") return null;
+    if (page.kind === "canvas") {
+      if (page.continues) return null;
+      if (!Array.isArray(page.blocks) || page.blocks.length > CANVAS_BLOCKS_MAX)
+        return null;
+      const blockIds = new Set<string>();
+      for (const block of page.blocks) {
+        if (
+          !block ||
+          typeof block !== "object" ||
+          typeof block.id !== "string" ||
+          !BLOCK_ID.test(block.id) ||
+          blockIds.has(block.id) ||
+          !finite(block.x, -100, 500) ||
+          !finite(block.y, -100, 500) ||
+          !finite(block.width, 5, 500) ||
+          !finite(block.rotation, -360, 360) ||
+          !validNode(block.content) ||
+          block.content.type !== "doc"
+        )
+          return null;
+        blockIds.add(block.id);
+      }
+    } else if (page.blocks !== undefined) return null;
   }
   return document;
 }

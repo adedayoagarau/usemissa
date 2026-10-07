@@ -89,6 +89,9 @@ import {
 import {
   documentText,
   emptyPage,
+  newCanvasBlock,
+  toCanvasPage,
+  toFlowPage,
   newDocument,
   PAGE_SIZES,
   parseWritingDocument,
@@ -406,6 +409,7 @@ export function WritingRoom({
     0,
     current.doc.pages.findIndex((page) => page.id === active?.pageId),
   );
+  const activePage = current.doc.pages[activeIndex];
   const inAccount = sync.saved(current.id);
   const pending = syncState.pending.includes(current.id);
   const running = timer.endsAt !== null;
@@ -587,6 +591,59 @@ export function WritingRoom({
     (pageId: string, editor: Editor) => setActive({ pageId, editor }),
     [],
   );
+
+  /** Switches the open page between flowing text and a free canvas. Its words come along. */
+  function setLayout(kind: "flow" | "canvas") {
+    const page = current.doc.pages[activeIndex];
+    if (!page || page.kind === kind) return;
+    const pages = current.doc.pages.map((item, index) => {
+      if (index === activeIndex)
+        return kind === "canvas"
+          ? toCanvasPage(item, current.doc.pageSize)
+          : toFlowPage(item);
+      // Text no longer flows on from a canvas page.
+      if (index === activeIndex + 1 && item.continues)
+        return { ...item, continues: false };
+      return item;
+    });
+    setActive(null);
+    change({ doc: { ...current.doc, pages } });
+    setView("page");
+    toast.success(
+      kind === "canvas"
+        ? "This page is a free canvas. Its text is in one box you can move."
+        : "This page is flowing text again, its boxes in reading order.",
+    );
+  }
+
+  function addTextBox() {
+    const page = current.doc.pages[activeIndex];
+    if (!page || page.kind !== "canvas") return;
+    const { margins } = page.format;
+    const offset = ((page.blocks?.length ?? 0) % 8) * 8;
+    const block = newCanvasBlock(
+      margins.left + offset,
+      margins.top + offset,
+      80,
+    );
+    change({
+      doc: {
+        ...current.doc,
+        pages: current.doc.pages.map((item) =>
+          item.id === page.id
+            ? { ...item, blocks: [...(item.blocks ?? []), block] }
+            : item,
+        ),
+      },
+    });
+    let tries = 0;
+    const focus = () => {
+      const editor = editors.get(`${page.id}/${block.id}`);
+      if (editor) editor.commands.focus("start");
+      else if (tries++ < 30) requestAnimationFrame(focus);
+    };
+    requestAnimationFrame(focus);
+  }
 
   function addPage() {
     const pages = [...current.doc.pages];
@@ -1174,11 +1231,7 @@ export function WritingRoom({
         </div>
         <div className={compiled ? "hidden" : "flex justify-center"}>
           <WritingFormatBar
-            editor={
-              active && editors.get(active.pageId) === active.editor
-                ? active.editor
-                : null
-            }
+            editor={active && !active.editor.isDestroyed ? active.editor : null}
             onOpenFormat={() => setFormatOpen(true)}
           />
         </div>
@@ -1507,6 +1560,39 @@ export function WritingRoom({
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
+                <DropdownMenuLabel>This page’s layout</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={activePage?.kind ?? "flow"}
+                  onValueChange={(value) =>
+                    setLayout(value === "canvas" ? "canvas" : "flow")
+                  }
+                >
+                  <DropdownMenuRadioItem
+                    value="flow"
+                    closeOnClick
+                    disabled={current.state !== "ready"}
+                  >
+                    Flowing text
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem
+                    value="canvas"
+                    closeOnClick
+                    disabled={current.state !== "ready"}
+                  >
+                    Free canvas
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+                {activePage?.kind === "canvas" ? (
+                  <DropdownMenuItem
+                    disabled={current.state !== "ready"}
+                    onClick={addTextBox}
+                  >
+                    Add a text box
+                  </DropdownMenuItem>
+                ) : null}
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
                 <DropdownMenuLabel>View</DropdownMenuLabel>
                 <DropdownMenuRadioGroup
                   value={view}
@@ -1693,7 +1779,7 @@ export function WritingRoom({
 
       {/* Printing draws each page on its own sheet of the chosen paper. */}
       <style>{`@page { size: ${PAGE_SIZES[(compiled?.doc ?? current.doc).pageSize].width}mm ${PAGE_SIZES[(compiled?.doc ?? current.doc).pageSize].height}mm; margin: 0; }
-@media print { [data-slot="writing-page"] { zoom: 1 !important; break-after: page; } }`}</style>
+@media print { [data-slot="writing-page"] { zoom: 1 !important; break-after: page; } section:last-of-type > [data-slot="writing-page"] { break-after: auto; } [data-sonner-toaster] { display: none !important; } }`}</style>
     </div>
   );
 }

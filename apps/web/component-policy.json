@@ -1174,7 +1174,7 @@
       "base": "tiptap",
       "implementation": "components/missa/writing-pages.tsx",
       "motion": "never",
-      "boundary": "Printed pages (A4, US Letter, A5, chapbook) drawn at paper size, or a paperless draft view on small screens. Each page is a Tiptap (ProseMirror, MIT core only; no Tiptap AI or cloud packages) editor with its own alignment, line and letter spacing, margins, typeface and size; spaces, tabs and line breaks are kept as typed. Tab writes a tab; Escape then Tab leaves the page. The caret marks focus. Gap recorded: Textarea and the 20 local Studio textarea variants are plain-text form fields; none offers rich text, pages or per-page format, so this is the documented editor exception to 'Contenteditable without editor requirements'."
+      "boundary": "Printed pages (A4, US Letter, A5, chapbook) drawn at paper size, or a paperless draft view on small screens. Text flows from page to page as it is written; pages the writer adds stay apart. Any page can be a free canvas (components/missa/writing-canvas.tsx) of text boxes placed in millimetres, moved by a drag handle or by arrow keys on the focused handle, and printed exactly. Each page is a Tiptap (ProseMirror, MIT core only; no Tiptap AI or cloud packages) editor with its own alignment, line and letter spacing, margins, typeface and size; spaces, tabs and line breaks are kept as typed. Tab writes a tab; Escape then Tab leaves the page. The caret marks focus. Gap recorded: Textarea and the 20 local Studio textarea variants are plain-text form fields; none offers rich text, pages or per-page format, so this is the documented editor exception to 'Contenteditable without editor requirements'."
     }
   },
   "productCompositions": {

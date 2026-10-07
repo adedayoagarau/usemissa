@@ -270,7 +270,10 @@ export function compileProject(
       };
       pages.push(
         unique(
-          index === 0 && options.pieceTitles && piece.title.trim()
+          index === 0 &&
+            kept.kind === "flow" &&
+            options.pieceTitles &&
+            piece.title.trim()
             ? headingPage(kept, piece.title.trim())
             : kept,
         ),
