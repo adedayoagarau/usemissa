@@ -191,7 +191,7 @@ export function ReminderEmailVignette({ call }: { call: VignetteCall }) {
           {call.typeLabel} · Closes {shortDate(call.date)}
         </span>
       </span>
-      <span className={styles.emailButton}>View Opportunity</span>{/* missa-language-allow: mirrors the button in emails/deadline-moments.ts */}
+      <span className={styles.emailButton}>View opportunity</span>
     </div>
   );
 }
