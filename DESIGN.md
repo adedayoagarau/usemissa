@@ -238,6 +238,26 @@ The organization product covers organization setup, open calls, submissions, rev
 5. Prefer borders and spacing over tinted card backgrounds.
 6. Large Forest or Lichen background sections are exceptional editorial treatments, not routine product surfaces.
 
+### Categorical colour (2026-10-07)
+
+The product uses colour the way task tools such as Asana do: to tell people
+and labels apart at a glance. Twelve hues (red, orange, amber, yellow, lime,
+green, teal, blue, indigo, purple, magenta, pink) each have three tokens in
+`app/globals.css`:
+
+| Token             | Use                                                    |
+| ----------------- | ------------------------------------------------------ |
+| `--hue-{name}`    | Fills that carry ink text: a person's avatar, a dot    |
+| `--hue-{name}-subtle` | Label pill backgrounds                             |
+| `--hue-{name}-ink`    | Text on the subtle background (AA contrast)        |
+
+1. Categorical colour identifies; it never states status. Accepted, overdue and
+   failed keep their semantic roles above.
+2. A person keeps one colour everywhere: `PersonAvatar` derives it from their
+   identity.
+3. Labels use `LabelPill`; feature code never picks a hue class directly.
+4. Forest remains the only action colour.
+
 ## 4. Typography
 
 Missa uses an editorial family, an interface family, and a narrowly scoped data
@@ -421,6 +441,35 @@ Missa uses sober rectangular geometry:
 Primary buttons are not pills. Cards are not floating bubbles.
 
 Depth is mostly created by white surfaces, neutral surface changes, hairline borders, and clear spacing. Use the subtle shadow only where a white object would otherwise disappear. Reserve the overlay shadow for dialogs, popovers, command menus, and sheets.
+
+### Overlay and control anatomy (2026-10-07)
+
+The shared primitives are drawn to the standard of mature task tools, with
+Asana as the reference. Changing them changes every surface, so feature code
+does not restyle them:
+
+- **Menus and selects:** white surface, hairline border, `shadow-menu`,
+  6px vertical padding, full-width 32px rows, muted 16px icons, muted hover,
+  quiet group labels, keyboard hints as key chips, a Forest check for the
+  selected option. The select trigger always shows the option's label.
+- **Popovers:** the menu surface with 16px padding and a semibold title.
+  `flush` removes padding for content that brings its own, such as a calendar.
+- **Dialogs and alert dialogs:** 12px radius, `shadow-dialog`, a ruled header
+  with an Instrument Sans 18px semibold title, 24px body padding, and a ruled
+  white footer with actions at the end. The scrim is a plain 40% dim, no blur.
+- **Sheets:** the dialog shadow and title, 24px header padding, ruled footer.
+- **Buttons:** 8px radius. Outline buttons carry a stronger border and a
+  hairline control shadow; ghost buttons mute their icons; destructive is an
+  outlined red, filled only on hover.
+- **Fields:** inputs, textareas, native selects and select triggers share one
+  style: 8px radius, strong border, darker on hover, a soft Forest focus ring.
+  Dates use `DatePickerField` (calendar popover) instead of the browser's
+  date input.
+- **Tables:** 12px muted column headings, 12px horizontal cell padding, a
+  warm row hover and a Forest-tinted selected row. `variant="grid"` adds
+  column dividers for dense list views.
+- **Tabs (line):** a full-width rule with a 2px underline on the active tab.
+- **Progress:** a 6px rounded track; one bar even when a caller composes its own.
 
 ## 8. Component Construction Contract
 

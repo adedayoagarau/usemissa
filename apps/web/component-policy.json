@@ -989,6 +989,24 @@
       "implementation": "components/missa/deadline-badges.tsx",
       "boundary": "Background process state (syncing, synced, waiting, not synced). A failed state is always paired with a recovery action."
     },
+    "PersonAvatar": {
+      "base": "Avatar",
+      "motion": "never",
+      "implementation": "components/missa/person-avatar.tsx",
+      "boundary": "A person's initials on one of twelve categorical hues derived from their identity, so a person keeps one colour on every surface. The colour identifies; it never states status."
+    },
+    "LabelPill": {
+      "base": "Badge",
+      "motion": "never",
+      "implementation": "components/missa/label-pill.tsx",
+      "boundary": "A categorical label (criterion, category, opportunity) in one of twelve hues. Never used for status, which keeps its semantic badges."
+    },
+    "DatePickerField": {
+      "base": "Popover",
+      "motion": "never",
+      "implementation": "components/missa/date-picker-field.tsx",
+      "boundary": "Chooses an ISO calendar date from a calendar popover in place of the browser's date input; optional Clear. The trigger is a field-style Button showing the formatted date or a placeholder."
+    },
     "CalibrationBadge": {
       "base": "Badge",
       "motion": "never",
