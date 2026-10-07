@@ -11,6 +11,10 @@ import {
   portfolioDraft,
   portfolioRevision,
 } from "@/lib/creator-portfolio-draft";
+import {
+  bookingTypeOfFile,
+  rememberUploadedDocument,
+} from "@/lib/portfolio-booking-files";
 
 export type StudioOutcome = {
   outcomeId: string;
@@ -194,18 +198,31 @@ export function useProfileDraft(
   }, [state]);
 
   const upload = useCallback(
-    async (file: File, kind: "image" | "audio"): Promise<string> => {
+    async (
+      file: File,
+      kind: "image" | "audio" | "document",
+    ): Promise<string> => {
       if (file.size > 20 * 1024 * 1024)
         throw new Error("Choose a file smaller than 20 MB.");
       const ok =
         kind === "audio"
           ? file.type.startsWith("audio/")
-          : IMAGE_TYPES.includes(file.type);
+          : kind === "document"
+            ? Boolean(bookingTypeOfFile(file))
+            : IMAGE_TYPES.includes(file.type);
       if (!ok)
         throw new Error(
           kind === "audio"
             ? "Choose an audio file (MP3, WAV, OGG, FLAC or M4A)."
-            : "Choose a JPG, PNG, WebP or GIF image.",
+            : kind === "document"
+              ? "Choose a PDF or ZIP file."
+              : "Choose a JPG, PNG, WebP or GIF image.",
+        );
+      // Documents are stored with the account and read back by the server;
+      // a device-only preview has nowhere to keep them.
+      if (kind === "document" && !isAccount)
+        throw new Error(
+          "Sign in to add files. They are stored with your account.",
         );
       setUploading((count) => count + 1);
       try {
@@ -224,6 +241,11 @@ export function useProfileDraft(
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Upload failed. Try again.");
+        if (data.kind === "document")
+          rememberUploadedDocument(data.url, {
+            type: data.type,
+            bytes: data.bytes,
+          });
         return data.url as string;
       } finally {
         setUploading((count) => count - 1);

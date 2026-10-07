@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
-import { Check, Mail, Plus, Send } from "lucide-react";
+import Link from "next/link";
+import { Check, Mail, Plus, Send, UserPlus } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
@@ -55,6 +56,8 @@ type Viewer = {
   isOwner: boolean;
   following: boolean;
   inquiries: boolean;
+  /** Signed in and not the owner: may credit this creator on their own profile. */
+  canCredit?: boolean;
   senderName: string;
   senderEmail: string;
   organizations: { id: string; name: string }[];
@@ -233,6 +236,16 @@ export function ProfileConnect({
           <Send aria-hidden="true" />
           Invite to apply
         </Button>
+      )}
+      {live && handle && viewer?.canCredit && (
+        // Opens your own studio with this creator already on a new row.
+        <Link
+          href={`/profile/portfolio?credit=${encodeURIComponent(handle)}`}
+          className={buttonVariants({ variant: "ghost" })}
+        >
+          <UserPlus aria-hidden="true" />
+          Credit as collaborator
+        </Link>
       )}
       <span role="status" className={styles.notice}>
         {notice}

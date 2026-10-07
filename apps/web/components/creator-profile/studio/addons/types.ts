@@ -4,11 +4,16 @@ import type {
   PortfolioData,
 } from "@/lib/creator-portfolio-schema";
 import type { EditorProps } from "../studio-editors";
+import type { StudioFacts } from "./studio-facts";
 
 /** What an add-on's editor receives from the studio. */
 export type AddonEditorProps = EditorProps & {
   /** True when the draft lives in an account rather than on this device. */
   isAccount: boolean;
+  /** What the server says about credits and files; absent in isolated tests. */
+  facts?: StudioFacts;
+  /** Collaborators: the handle whose row to show open when the editor first appears. */
+  creditHandle?: string | null;
 };
 
 export type AddonEditorDefinition = {
