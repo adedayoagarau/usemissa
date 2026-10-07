@@ -30,6 +30,14 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { PortfolioHandleField } from "@/components/portfolio-handle-field";
 import { PublicCreatorProfile } from "@/components/creator-profile/public-profile";
+import {
+  VIEW_AS,
+  type ViewAs,
+} from "@/components/creator-profile/profile-connect";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 import {
   activeModules,
@@ -77,6 +85,13 @@ import {
 import styles from "./profile-studio.module.css";
 
 type Action = "publish" | "rename" | "unpublish" | "import" | null;
+
+const VIEW_AS_LABELS: Record<ViewAs, string> = {
+  visitor: "A visitor",
+  creator: "Another creator",
+  organization: "An organization",
+  owner: "You",
+};
 
 function moduleCount(draft: PortfolioData, id: PortfolioModule) {
   if (isAddonModule(id)) return ADDON_EDITORS[id].count(draft);
@@ -150,6 +165,7 @@ export function ProfileStudio({
     creditKey ? "editor" : "index",
   );
   const [device, setDevice] = useState<"desktop" | "phone">("desktop");
+  const [viewAs, setViewAs] = useState<ViewAs>("visitor");
   const [mobilePreview, setMobilePreview] = useState(false);
   const [action, setAction] = useState<Action>(null);
   const [handle, setHandle] = useState("");
@@ -681,6 +697,19 @@ export function ProfileStudio({
         <section className={styles.preview} aria-label="Live preview">
           <div className={styles.previewBar}>
             <span>Preview · what visitors will see</span>
+            <label className={styles.viewAs}>
+              <span>View as</span>
+              <NativeSelect
+                value={viewAs}
+                onChange={(event) => setViewAs(event.target.value as ViewAs)}
+              >
+                {VIEW_AS.map((who) => (
+                  <NativeSelectOption key={who} value={who}>
+                    {VIEW_AS_LABELS[who]}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            </label>
             <div
               role="group"
               aria-label="Preview size"
@@ -711,6 +740,7 @@ export function ProfileStudio({
               portfolio={projection}
               handle={address}
               mode="preview"
+              viewAs={viewAs}
             />
           </ScaledFrame>
         </section>
@@ -726,6 +756,7 @@ export function ProfileStudio({
             portfolio={projection}
             handle={address}
             mode="preview"
+            viewAs={viewAs}
           />
         </DialogContent>
       </Dialog>

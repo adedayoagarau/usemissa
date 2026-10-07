@@ -1,6 +1,6 @@
 ---
 title: Public creator profile — redesign concepts
-status: implemented in part (see "What was built")
+status: implemented (see "What was built")
 date: "2026-10-03"
 related:
   - ./missa-public-creator-portfolio-contract-2026-09-01.md
@@ -176,5 +176,13 @@ ordering and visibility, suggestions and publishing.
 Since built: the inquiry inbox, Follow, Invite to apply, Confirmed
 re-verification on every read, and retiring the Paper theme.
 
-Not built yet: Editions and Booking kit add-ons, Collaborators, view
-analytics, and notifying followers when a creator publishes.
+Built on 7 October 2026 (see [add-ons, work pages and share kit](public-profile-addons-build-2026-10-07.md)):
+Editions, Shows and performances, Collaborators, Booking kit, Services,
+Teaching and Support as switch-on add-ons; plates and series, Screening,
+chapters and transcripts, and Case study; the work page; the story image, event
+card with a QR code and email signature; the Default theme; drag to reorder; and
+View as in the studio preview.
+
+Not built: checkout or prices on Editions, view analytics, notifying followers
+when a creator publishes, saving a creator to an organization shortlist, custom
+domains, and server-generated PDFs.

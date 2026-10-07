@@ -1,5 +1,6 @@
 "use client";
-import { ArrowUpRight } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
@@ -38,7 +39,10 @@ export function WorkDialog({
   onClose,
   player,
   creator,
+  pageHref,
 }: {
+  /** Where the work's own page lives; absent in previews and samples. */
+  pageHref?: string;
   work: PortfolioWork | null;
   /** A visitor pressed play on the card, so the film begins at once. */
   autoplay?: boolean;
@@ -108,6 +112,15 @@ export function WorkDialog({
               <div className={cn(styles.reading, "font-heading")}>
                 {work.text}
               </div>
+            )}
+            {pageHref && (
+              <Link
+                className={buttonVariants({ variant: "outline" })}
+                href={pageHref}
+              >
+                Open the page
+                <ArrowRight aria-hidden="true" />
+              </Link>
             )}
             {href && (
               <a

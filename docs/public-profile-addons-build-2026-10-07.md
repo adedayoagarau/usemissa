@@ -1,6 +1,6 @@
 ---
 title: Public profile — add-ons, work pages and share kit (build spec)
-status: in progress
+status: built; see public-creator-profile-design.md for the shipped behaviour
 date: "2026-10-07"
 related:
   - ./public-profile-redesign-concepts-2026-10-03.md

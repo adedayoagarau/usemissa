@@ -15,7 +15,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { AvailabilityChip } from "@/components/missa/availability-chip";
 import { ProvenanceBadge } from "@/components/missa/provenance-badge";
-import { ProfileConnect } from "./profile-connect";
+import { ProfileConnect, type ViewAs } from "./profile-connect";
 import { cn } from "@/lib/utils";
 import {
   activeModules,
@@ -36,6 +36,7 @@ import {
   upcomingEvents,
   workFormats,
 } from "@/lib/creator-profile";
+import { isThinWorkPage, workHref } from "@/lib/creator-work-page";
 import "@/components/design-system/creator-palette.css";
 import styles from "./public-profile.module.css";
 import { ADDON_SECTIONS } from "./sections";
@@ -78,7 +79,10 @@ export function PublicCreatorProfile({
   workLimit,
   today,
   theme,
+  viewAs,
 }: {
+  /** Preview only: which kind of viewer's actions to show. */
+  viewAs?: ViewAs;
   portfolio: PortfolioData;
   handle?: string;
   mode?: ProfileMode;
@@ -105,6 +109,12 @@ export function PublicCreatorProfile({
   const player = useAudioPlayer();
   const viewer = useWorkViewer();
   const address = handle || portfolio.handle;
+  // A work's own page exists only on the live profile, and only when the work
+  // has something to read, see or hear beyond a title.
+  const pageHref = (work: PortfolioWork | null) =>
+    work && mode === "page" && !sample && address && !isThinWorkPage(work)
+      ? workHref(address, work, portfolio.works)
+      : undefined;
   const contactHref = portfolio.contact.email
     ? `mailto:${portfolio.contact.email}`
     : undefined;
@@ -166,6 +176,7 @@ export function PublicCreatorProfile({
           hasRecord={portfolio.record.length > 0}
           sample={sample}
           mode={mode}
+          viewAs={viewAs}
           onOpen={viewer.open}
           player={player}
         />
@@ -289,7 +300,12 @@ export function PublicCreatorProfile({
         </footer>
       )}
       {player.current && mode !== "embedded" && <MiniPlayer player={player} />}
-      <WorkDialog {...viewer.dialogProps} player={player} creator={name} />
+      <WorkDialog
+        {...viewer.dialogProps}
+        player={player}
+        creator={name}
+        pageHref={pageHref(viewer.dialogProps.work)}
+      />
     </div>
   );
 }
@@ -335,9 +351,11 @@ function IdentityHeader({
   hasRecord,
   sample,
   mode,
+  viewAs,
   onOpen,
   player,
 }: {
+  viewAs?: ViewAs;
   portfolio: PortfolioData;
   name: string;
   address: string;
@@ -440,6 +458,7 @@ function IdentityHeader({
             contactHref={sample ? undefined : contactHref}
             live={mode === "page" && !sample}
             sample={sample}
+            viewAs={viewAs}
           />
         )}
         {hasRecord && address && !sample && (

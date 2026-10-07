@@ -1,60 +1,54 @@
 "use client";
-import { useRef, useState } from "react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import styles from "./work-page.module.css";
+import { createContext, useContext, type ReactNode } from "react";
+import {
+  AudioPanel,
+  MiniPlayer,
+  useAudioPlayer,
+  type Player,
+} from "../work-media";
+
+const PagePlayer = createContext<{ player: Player; cover: string } | null>(
+  null,
+);
 
 /**
- * The recording on a work page: the browser's own audio control plus a plain
- * message and Try again when the file won't play. It stands in for the profile's
- * shared player, whose play, pause and time display replace it when the two
- * pages are joined; the page around it does not change.
+ * One player for the whole work page, the same one the profile uses: a
+ * recording started here keeps playing in the mini player as the visitor
+ * scrolls, and starting another stops the first.
  */
+export function WorkPagePlayer({
+  cover,
+  children,
+}: {
+  /** The work's picture, shown in the mini player. */
+  cover: string;
+  children: ReactNode;
+}) {
+  const player = useAudioPlayer();
+  return (
+    <PagePlayer.Provider value={{ player, cover }}>
+      {children}
+      {player.current && <MiniPlayer player={player} />}
+    </PagePlayer.Provider>
+  );
+}
+
+/** The recording on a work page: the shared listening block. */
 export function RecordingPlayer({
   src,
   title,
+  id,
 }: {
   src: string;
   title: string;
+  id?: string;
 }) {
-  const audio = useRef<HTMLAudioElement>(null);
-  const [failed, setFailed] = useState(false);
+  const page = useContext(PagePlayer);
+  if (!page) return null;
   return (
-    <div className={styles.player}>
-      <audio
-        ref={(element) => {
-          audio.current = element;
-          // The file can fail before the page has hydrated, so the event is missed.
-          if (element?.error) setFailed(true);
-        }}
-        controls
-        preload="none"
-        src={src}
-        aria-label={`Recording: ${title}`}
-        onError={() => setFailed(true)}
-        onPlay={() => setFailed(false)}
-      >
-        Your browser can’t play this recording.
-      </audio>
-      {failed && (
-        <Alert className={styles.playerNote}>
-          <AlertDescription>
-            Couldn’t play this recording. Nothing was lost.
-          </AlertDescription>
-          <Button
-            type="button"
-            variant="outline"
-            className="mt-2 w-fit"
-            onClick={() => {
-              setFailed(false);
-              audio.current?.load();
-              void audio.current?.play().catch(() => setFailed(true));
-            }}
-          >
-            Try again
-          </Button>
-        </Alert>
-      )}
-    </div>
+    <AudioPanel
+      track={{ id: id ?? src, title, audio: src, image: page.cover }}
+      player={page.player}
+    />
   );
 }

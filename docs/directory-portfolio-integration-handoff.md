@@ -32,6 +32,7 @@ Updated September 4, 2026. Backend-worker handoff reconciled with the current ch
 | List the inviter's open calls, or invite a creator to one (organization owners and managers) | `GET`, `POST /api/profiles/[handle]/invitations` |
 | Read the creator's messages, invitations, followers and following | `GET /api/me/profile-inbox` |
 | Mark a message or invitation read, archived or declined | `PATCH /api/me/profile-inbox` |
+| Whether each credited creator has credited you back (`?handles=a,b`; authenticated, rate limited) | `GET /api/creator/portfolio-collaborators` |
 
 **Correction to the supplied handoff:** `POST /api/me/handles/publish` is retired and returns 409 directing the owner to Public profile settings. It does not reserve a handle or publish a portfolio. Existing handle reservation, invite and rename rules remain authoritative.
 
@@ -42,7 +43,9 @@ Updated September 4, 2026. Backend-worker handoff reconciled with the current ch
 - Private account saves await server confirmation and use revisions; stale writes surface a conflict rather than overwrite another revision. IndexedDB holds a local recovery copy. It is **not automatic offline synchronization or conflict merging**; failed server writes must not show account-save success.
 - `/design-system/creator-profile-settings` and `/design-system/creator-profile-v2` remain device-local previews. Importing a preview into an account is explicit and browser-local.
 - Track record provenance is server-derived on every draft save and publish. An entry is **Confirmed** only when its `outcomeId` matches an accepted decision on a submission by the same account; the server then writes the title and organization from that decision. **Linked** means the creator matched a directory organization. Everything else is **Added by** the creator. A published snapshot keeps the decision id privately; every public read re-verifies it, so a withdrawn decision stops showing as Confirmed without a republish.
-- Portrait, shelf-cover, work-image and audio uploads use the media endpoint. Current storage is owned PostgreSQL media, with 20 MB/file and 100 MB/account limits, not a CDN pipeline. Serving requires ownership or inclusion in a published snapshot.
+- Collaborator confirmation and booking-file facts are server-derived on every write and read; a client value for either is discarded. A credit is Confirmed only when the other creator's published snapshot credits this creator back. Booking files are PDF or ZIP uploads served only as downloads.
+- Work pages are served at `/@<handle>/<slug>`, the story image at `/@<handle>/story.png`, and a printable event card at `/@<handle>/events/<eventId>`. `GET /api/profiles/[handle]/viewer` also returns `canCredit`.
+- Portrait, shelf-cover, work-image, audio and booking-file uploads use the media endpoint. Current storage is owned PostgreSQL media, with 20 MB/file and 100 MB/account limits, not a CDN pipeline. Serving requires ownership or inclusion in a published snapshot.
 
 ## Source map and verification
 

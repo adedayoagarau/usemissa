@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 import Link from "next/link";
-import { Check, Mail, Plus, Send, UserPlus } from "lucide-react";
+import { Check, Mail, Pencil, Plus, Send, UserPlus } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,6 +32,10 @@ export const INQUIRY_TOPIC_OPTIONS = [
   { value: "collaboration", label: "A collaboration" },
   { value: "other", label: "Something else" },
 ] as const;
+
+/** Who the profile is being looked at as, in the studio's preview. */
+export const VIEW_AS = ["visitor", "creator", "organization", "owner"] as const;
+export type ViewAs = (typeof VIEW_AS)[number];
 
 /** A request from another part of the profile to open the message form. */
 export type InquiryRequest = {
@@ -96,7 +100,10 @@ export function ProfileConnect({
   contactHref,
   live,
   sample,
+  viewAs,
 }: {
+  /** Preview only: show the actions this kind of viewer would see. */
+  viewAs?: ViewAs;
   handle?: string;
   name: string;
   inquiries: boolean;
@@ -139,9 +146,16 @@ export function ProfileConnect({
     };
   }, [handle, live]);
 
-  const isOwner = viewer?.isOwner ?? false;
+  // On the live page the viewer comes from the server; in a preview the studio
+  // says who to show, and nothing is sent.
+  const previewing = !live ? viewAs : undefined;
+  const isOwner = viewer?.isOwner ?? previewing === "owner";
   const canWrite = inquiries && (viewer?.inquiries ?? true) && !isOwner;
-  const canInvite = (viewer?.organizations.length ?? 0) > 0;
+  const canInvite =
+    (viewer?.organizations.length ?? 0) > 0 || previewing === "organization";
+  const canCredit = live
+    ? Boolean(handle && viewer?.canCredit)
+    : previewing === "creator";
 
   useEffect(() => {
     const open = (event: Event) => {
@@ -231,22 +245,45 @@ export function ProfileConnect({
           {following ? "Following" : "Follow"}
         </Button>
       )}
+      {isOwner && <ConnectOwnerAction live={live} onNotice={setNotice} />}
       {canInvite && (
-        <Button variant="outline" onClick={() => setInviting(true)}>
+        <Button
+          variant="outline"
+          onClick={() =>
+            live
+              ? setInviting(true)
+              : setNotice(
+                  "Organizations see their own open calls here. Nothing is sent from a preview.",
+                )
+          }
+        >
           <Send aria-hidden="true" />
           Invite to apply
         </Button>
       )}
-      {live && handle && viewer?.canCredit && (
-        // Opens your own studio with this creator already on a new row.
-        <Link
-          href={`/profile/portfolio?credit=${encodeURIComponent(handle)}`}
-          className={buttonVariants({ variant: "ghost" })}
-        >
-          <UserPlus aria-hidden="true" />
-          Credit as collaborator
-        </Link>
-      )}
+      {canCredit &&
+        (live && handle ? (
+          // Opens your own studio with this creator already on a new row.
+          <Link
+            href={`/profile/portfolio?credit=${encodeURIComponent(handle)}`}
+            className={buttonVariants({ variant: "ghost" })}
+          >
+            <UserPlus aria-hidden="true" />
+            Credit as collaborator
+          </Link>
+        ) : (
+          <Button
+            variant="ghost"
+            onClick={() =>
+              setNotice(
+                "Signed-in creators can credit you from here. Both of you confirm before it shows.",
+              )
+            }
+          >
+            <UserPlus aria-hidden="true" />
+            Credit as collaborator
+          </Button>
+        ))}
       <span role="status" className={styles.notice}>
         {notice}
       </span>
@@ -261,7 +298,7 @@ export function ProfileConnect({
         key={preset.key}
         preset={preset}
       />
-      {canInvite && handle && (
+      {canInvite && handle && live && (
         <InviteDialog
           open={inviting}
           onOpenChange={setInviting}
@@ -270,6 +307,33 @@ export function ProfileConnect({
         />
       )}
     </>
+  );
+}
+
+/** The owner's own view of the page: a way back to the studio. */
+function ConnectOwnerAction({
+  live,
+  onNotice,
+}: {
+  live: boolean;
+  onNotice: (text: string) => void;
+}) {
+  return live ? (
+    <Link
+      href="/profile/portfolio"
+      className={buttonVariants({ variant: "outline" })}
+    >
+      <Pencil aria-hidden="true" />
+      Edit profile
+    </Link>
+  ) : (
+    <Button
+      variant="outline"
+      onClick={() => onNotice("You’re already editing your profile.")}
+    >
+      <Pencil aria-hidden="true" />
+      Edit profile
+    </Button>
   );
 }
 

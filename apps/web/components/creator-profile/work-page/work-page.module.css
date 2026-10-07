@@ -17,6 +17,10 @@
     var(--foreground) 4%,
     var(--creator-canvas)
   );
+  /* The listening block and mini player come from the profile and read these. */
+  --profile-line: var(--page-line);
+  --profile-muted: var(--page-muted);
+  --profile-subtle: var(--page-subtle);
   --page-gutter: clamp(16px, 4vw, 56px);
   /* The site header stays at the top of the screen; anchors and the contents list clear it. */
   --page-header: 72px;

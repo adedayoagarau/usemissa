@@ -35,6 +35,7 @@ import { initials } from "@/lib/creator-profile";
 import "@/components/design-system/creator-palette.css";
 import styles from "./work-page.module.css";
 import { Recording, WorkParts } from "./work-parts";
+import { WorkPagePlayer } from "./recording-player";
 import { PlateImage } from "./plate-image";
 import { WorkContents } from "./work-contents";
 import { RightsLine, WorkPageActions } from "./work-page-actions";
@@ -180,213 +181,215 @@ export function CreatorWorkPage({
       data-creator-theme={theme ?? portfolio.theme}
       data-lens={portfolio.lens}
     >
-      {sample && (
-        <p className={styles.sampleNote}>Fictional creator · design study</p>
-      )}
-      <div className={styles.container}>
-        <div className={styles.bar}>
-          <Breadcrumb className={styles.crumbs}>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink render={<Link href={profileHref} />}>
-                  <span className={styles.crumbMark}>
-                    {portfolio.photo ? (
-                      <img src={portfolio.photo} alt="" />
-                    ) : (
-                      <span
-                        aria-hidden="true"
-                        className={cn(styles.monogram, "font-heading")}
-                      >
-                        {initials(name).slice(0, 1)}
-                      </span>
+      <WorkPagePlayer cover={work.image}>
+        {sample && (
+          <p className={styles.sampleNote}>Fictional creator · design study</p>
+        )}
+        <div className={styles.container}>
+          <div className={styles.bar}>
+            <Breadcrumb className={styles.crumbs}>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink render={<Link href={profileHref} />}>
+                    <span className={styles.crumbMark}>
+                      {portfolio.photo ? (
+                        <img src={portfolio.photo} alt="" />
+                      ) : (
+                        <span
+                          aria-hidden="true"
+                          className={cn(styles.monogram, "font-heading")}
+                        >
+                          {initials(name).slice(0, 1)}
+                        </span>
+                      )}
+                      {name}
+                    </span>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbLink
+                    render={<Link href={`${profileHref}#profile-work`} />}
+                  >
+                    Work
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{work.title}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+            <WorkPageActions
+              title={work.title}
+              name={name}
+              handle={handle}
+              inquiries={portfolio.inquiries}
+              contactHref={contactHref}
+              sample={sample}
+            />
+          </div>
+
+          <main id="main-content">
+            <header className={styles.head}>
+              {(work.kind.trim() || counts) && (
+                <div>
+                  {work.kind.trim() && (
+                    <p className={styles.kind}>{work.kind.trim()}</p>
+                  )}
+                  {counts && (
+                    <p className={cn(styles.counts, "font-mono")}>{counts}</p>
+                  )}
+                </div>
+              )}
+              <h1
+                className={cn(styles.title, "font-heading")}
+                data-long={work.title.length > LONG_TITLE ? "" : undefined}
+              >
+                {work.title}
+              </h1>
+              {work.summary.trim() && (
+                <p className={cn(styles.standfirst, "font-heading")}>
+                  {work.summary.trim()}
+                </p>
+              )}
+              {facts.length > 0 && (
+                <dl className={styles.facts}>
+                  {facts.map((fact) => (
+                    <div key={fact.label} className={styles.fact}>
+                      <dt>{fact.label}</dt>
+                      <dd>{fact.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+            </header>
+
+            {work.image && (
+              <figure className={styles.cover}>
+                <div className={styles.coverFrame}>
+                  <PlateImage src={work.image} alt={work.caption} eager />
+                </div>
+              </figure>
+            )}
+
+            {hasBody ? (
+              <div className={styles.body} data-solo={many ? undefined : ""}>
+                {many && <WorkContents items={contents} />}
+                {parts.length > 0 ? (
+                  <WorkParts parts={parts} />
+                ) : (
+                  <div className={styles.parts}>
+                    {showsOwnText && (
+                      <div className={cn(styles.reading, "font-heading")}>
+                        {stanzas(work.text).map((block, at) => (
+                          <p key={at}>{block}</p>
+                        ))}
+                      </div>
                     )}
-                    {name}
-                  </span>
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbLink
-                  render={<Link href={`${profileHref}#profile-work`} />}
-                >
-                  Work
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>{work.title}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-          <WorkPageActions
-            title={work.title}
-            name={name}
-            handle={handle}
-            inquiries={portfolio.inquiries}
-            contactHref={contactHref}
-            sample={sample}
-          />
-        </div>
-
-        <main id="main-content">
-          <header className={styles.head}>
-            {(work.kind.trim() || counts) && (
-              <div>
-                {work.kind.trim() && (
-                  <p className={styles.kind}>{work.kind.trim()}</p>
-                )}
-                {counts && (
-                  <p className={cn(styles.counts, "font-mono")}>{counts}</p>
-                )}
-              </div>
-            )}
-            <h1
-              className={cn(styles.title, "font-heading")}
-              data-long={work.title.length > LONG_TITLE ? "" : undefined}
-            >
-              {work.title}
-            </h1>
-            {work.summary.trim() && (
-              <p className={cn(styles.standfirst, "font-heading")}>
-                {work.summary.trim()}
-              </p>
-            )}
-            {facts.length > 0 && (
-              <dl className={styles.facts}>
-                {facts.map((fact) => (
-                  <div key={fact.label} className={styles.fact}>
-                    <dt>{fact.label}</dt>
-                    <dd>{fact.value}</dd>
+                    {showsOwnAudio && (
+                      <Recording
+                        label="Recording"
+                        title="Listen"
+                        src={work.audio}
+                      />
+                    )}
                   </div>
-                ))}
-              </dl>
-            )}
-          </header>
-
-          {work.image && (
-            <figure className={styles.cover}>
-              <div className={styles.coverFrame}>
-                <PlateImage src={work.image} alt={work.caption} eager />
+                )}
+                {link && (
+                  <ExternalLink
+                    href={link}
+                    className={cn(
+                      buttonVariants({ variant: "outline" }),
+                      "w-fit no-underline",
+                    )}
+                  >
+                    Open on {hostname(link)}
+                    <ArrowUpRight aria-hidden="true" />
+                  </ExternalLink>
+                )}
               </div>
-            </figure>
-          )}
+            ) : (
+              !work.image &&
+              !hasContext && (
+                <p className={styles.empty}>
+                  {first} hasn’t added anything to this page yet.
+                </p>
+              )
+            )}
 
-          {hasBody ? (
-            <div className={styles.body} data-solo={many ? undefined : ""}>
-              {many && <WorkContents items={contents} />}
-              {parts.length > 0 ? (
-                <WorkParts parts={parts} />
-              ) : (
-                <div className={styles.parts}>
-                  {showsOwnText && (
-                    <div className={cn(styles.reading, "font-heading")}>
-                      {stanzas(work.text).map((block, at) => (
+            {hasContext && (
+              <section
+                className={styles.context}
+                data-solo={record ? undefined : ""}
+                aria-label="About this work"
+              >
+                <div className={styles.contextMain}>
+                  <h2 className={cn(styles.sectionTitle, "font-heading")}>
+                    {about.length > 0 ? "About this work" : "Credits"}
+                  </h2>
+                  {about.length > 0 && (
+                    <div className={styles.about}>
+                      {about.map((block, at) => (
                         <p key={at}>{block}</p>
                       ))}
                     </div>
                   )}
-                  {showsOwnAudio && (
-                    <Recording
-                      label="Recording"
-                      title="Listen"
-                      src={work.audio}
-                    />
+                  {credits.length > 0 && (
+                    <>
+                      {about.length > 0 && (
+                        <h3 className={styles.creditsTitle}>Credits</h3>
+                      )}
+                      <dl className={styles.credits}>
+                        {credits.map((credit, at) => {
+                          const href = safeHref(credit.url);
+                          return (
+                            <div key={at} className={styles.creditRow}>
+                              <dt>{credit.role.trim() || "Credit"}</dt>
+                              <dd>
+                                {href ? (
+                                  <ExternalLink href={href}>
+                                    {credit.name}
+                                  </ExternalLink>
+                                ) : (
+                                  credit.name
+                                )}
+                              </dd>
+                            </div>
+                          );
+                        })}
+                      </dl>
+                    </>
                   )}
                 </div>
-              )}
-              {link && (
-                <ExternalLink
-                  href={link}
-                  className={cn(
-                    buttonVariants({ variant: "outline" }),
-                    "w-fit no-underline",
-                  )}
-                >
-                  Open on {hostname(link)}
-                  <ArrowUpRight aria-hidden="true" />
-                </ExternalLink>
-              )}
-            </div>
-          ) : (
-            !work.image &&
-            !hasContext && (
-              <p className={styles.empty}>
-                {first} hasn’t added anything to this page yet.
-              </p>
-            )
-          )}
+                {record && <PublisherCard entry={record} creator={first} />}
+              </section>
+            )}
 
-          {hasContext && (
-            <section
-              className={styles.context}
-              data-solo={record ? undefined : ""}
-              aria-label="About this work"
-            >
-              <div className={styles.contextMain}>
-                <h2 className={cn(styles.sectionTitle, "font-heading")}>
-                  {about.length > 0 ? "About this work" : "Credits"}
-                </h2>
-                {about.length > 0 && (
-                  <div className={styles.about}>
-                    {about.map((block, at) => (
-                      <p key={at}>{block}</p>
-                    ))}
-                  </div>
+            {(previous || next) && (
+              <nav aria-label="More work" className={styles.neighbours}>
+                {previous && previousHref && (
+                  <Neighbour
+                    direction="previous"
+                    work={previous}
+                    href={previousHref}
+                  />
                 )}
-                {credits.length > 0 && (
-                  <>
-                    {about.length > 0 && (
-                      <h3 className={styles.creditsTitle}>Credits</h3>
-                    )}
-                    <dl className={styles.credits}>
-                      {credits.map((credit, at) => {
-                        const href = safeHref(credit.url);
-                        return (
-                          <div key={at} className={styles.creditRow}>
-                            <dt>{credit.role.trim() || "Credit"}</dt>
-                            <dd>
-                              {href ? (
-                                <ExternalLink href={href}>
-                                  {credit.name}
-                                </ExternalLink>
-                              ) : (
-                                credit.name
-                              )}
-                            </dd>
-                          </div>
-                        );
-                      })}
-                    </dl>
-                  </>
+                {next && nextHref && (
+                  <Neighbour direction="next" work={next} href={nextHref} />
                 )}
-              </div>
-              {record && <PublisherCard entry={record} creator={first} />}
-            </section>
-          )}
+              </nav>
+            )}
 
-          {(previous || next) && (
-            <nav aria-label="More work" className={styles.neighbours}>
-              {previous && previousHref && (
-                <Neighbour
-                  direction="previous"
-                  work={previous}
-                  href={previousHref}
-                />
-              )}
-              {next && nextHref && (
-                <Neighbour direction="next" work={next} href={nextHref} />
-              )}
-            </nav>
-          )}
-
-          <RightsLine
-            notice={rights.notice}
-            ask={rights.ask}
-            title={work.title}
-            address={workAddressText(handle, slug)}
-          />
-        </main>
-      </div>
+            <RightsLine
+              notice={rights.notice}
+              ask={rights.ask}
+              title={work.title}
+              address={workAddressText(handle, slug)}
+            />
+          </main>
+        </div>
+      </WorkPagePlayer>
     </div>
   );
 }
