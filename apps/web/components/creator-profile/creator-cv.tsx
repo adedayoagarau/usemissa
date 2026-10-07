@@ -7,6 +7,7 @@ import {
   type PortfolioRecordItem,
 } from "@/lib/creator-portfolio-schema";
 import styles from "./creator-cv.module.css";
+import { Sp } from "@/components/missa/spelling";
 
 const GROUPS: Record<PortfolioRecordItem["kind"], string> = {
   publication: "Publications",
@@ -150,7 +151,7 @@ export function CreatorCv({
         <footer className={styles.footer}>
           Generated from usemissa.com/@{resolved.handleKey} on {generated}.
           {anyConfirmed &&
-            " Entries marked Confirmed were recorded by the organization on Missa."}
+            <Sp>{" Entries marked Confirmed were recorded by the organization on Missa."}</Sp>}
         </footer>
       </article>
     </main>

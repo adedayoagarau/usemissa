@@ -52,7 +52,7 @@ export function responseClock(input: ResponseClockInput): ResponseClock {
   const observed = input.observed && input.observed.sampleSize >= MIN_OBSERVED_SAMPLE ? input.observed : undefined;
   const typical = observed?.p90Days;
   const waited = `Waiting ${waitedDays} ${waitedDays === 1 ? "day" : "days"}`;
-  const observedBasis = observed ? `Observed from ${observed.sampleSize} Missa creators` : undefined;
+  const observedBasis = observed ? `From ${observed.sampleSize} people tracking it on Missa` : undefined;
 
   if (stated !== undefined && waitedDays > stated) {
     if (input.repliesNotGuaranteed) {

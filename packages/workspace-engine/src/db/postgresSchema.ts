@@ -143,6 +143,46 @@ create table if not exists decisions (
   decided_at timestamptz not null
 );
 
+create table if not exists workspace_communication_batches (
+  id text primary key,
+  organization_id text not null,
+  data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+create index if not exists workspace_communication_batches_org_idx on workspace_communication_batches (organization_id);
+
+create table if not exists workspace_submitter_questions (
+  id text primary key,
+  organization_id text not null,
+  data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+create index if not exists workspace_submitter_questions_org_idx on workspace_submitter_questions (organization_id);
+
+create table if not exists workspace_round_rubrics (
+  id text primary key,
+  organization_id text not null,
+  data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+create index if not exists workspace_round_rubrics_org_idx on workspace_round_rubrics (organization_id);
+
+create table if not exists workspace_criterion_scores (
+  id text primary key,
+  organization_id text not null,
+  data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+create index if not exists workspace_criterion_scores_org_idx on workspace_criterion_scores (organization_id);
+
+create table if not exists workspace_submission_revisions (
+  id text primary key,
+  organization_id text not null,
+  data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+create index if not exists workspace_submission_revisions_org_idx on workspace_submission_revisions (organization_id);
+
 create table if not exists workspace_audit_log (
   id text primary key,
   at timestamptz not null,
@@ -175,6 +215,9 @@ create table if not exists review_assignments (
   reviewer_account_id text not null,
   completed_at timestamptz
 );
+alter table review_assignments add column if not exists expires_at timestamptz;
+alter table review_assignments add column if not exists recused_at timestamptz;
+alter table review_assignments add column if not exists recusal_reason text;
 
 create table if not exists review_recommendations (
   review_assignment_id text primary key references review_assignments(id),

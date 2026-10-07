@@ -1,12 +1,12 @@
 # Missa
 
-> Missa helps creators and organizations find, prepare for, and track creative opportunities. The public catalogue, directory and rankings are open now.
+> Missa is a free site where artists and writers find open calls, grants, residencies, magazines and prizes, see the fee, who can apply and the official page for each, and get reminded before they close. Organizations can post calls and take submissions through Missa. The public catalog, directory and rankings are open to everyone.
 
 ## Public pages
 
-- [Browse opportunities](https://www.usemissa.com/opportunities): open calls, grants, residencies, fellowships, contests, prizes, exhibitions and festivals.
+- [Browse open calls](https://www.usemissa.com/opportunities): open calls, grants, residencies, fellowships, contests, prizes, exhibitions and festivals.
 - [Directory](https://www.usemissa.com/directory): residencies, literary journals, small presses, grant foundations and arts organizations.
-- [Manuscript matcher](https://www.usemissa.com/discover/match): fit scores for a manuscript across indexed literary magazines.
+- [Manuscript matcher](https://www.usemissa.com/discover/match): literary magazines that publish work like yours.
 - [Magazine rankings](https://www.usemissa.com/rankings/magazines): the 2026 Missa literary magazine index.
 - [Residency rankings](https://www.usemissa.com/rankings/residencies): artist residencies and fellowships ranked on funding, facilities and evidence.
 - [How Missa works](https://www.usemissa.com/methodology): how Missa separates facts, scores and official sources.
@@ -15,10 +15,10 @@
 
 ## What Missa helps with
 
-- Find grants, residencies, fellowships, contests, magazines, commissions, awards, and open calls that fit your work.
-- Compare deadlines, fees, eligibility, locations, required materials, opportunity types, and official sources.
-- Save opportunities, keep deadlines in view, and keep preparation notes together.
-- Follow the official source when an opportunity is hosted on another website.
+- Find open calls, grants, residencies, fellowships, contests, magazines, commissions and awards for the work you make.
+- Check the deadline, fee, who can apply, location, what to send and the organizer's own page.
+- Save calls, get reminded two weeks, a week, three days and a day before they close, and keep track of what you sent.
+- Bring an existing submissions spreadsheet into the Tracker.
 
 ## Evidence and trust
 

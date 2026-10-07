@@ -247,7 +247,7 @@ export function HomepageClose({ showcase }: { showcase: Showcase }) {
               Create an account
             </Link>
             <Link href="/opportunities" className={styles.closeLink}>
-              Browse opportunities <ArrowUpRight aria-hidden="true" size={18} />
+              Browse open calls <ArrowUpRight aria-hidden="true" size={18} />
             </Link>
           </div>
         </div>

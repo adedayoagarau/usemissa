@@ -58,9 +58,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const raw = searchParams ? await searchParams : {};
   return pageMetadata({
-    title: "Missa — Opportunities for every creator",
+    title: "Missa: open calls, grants and residencies",
     description:
-      "Find open calls, grants, residencies and places to share your work.",
+      "Open calls, grants, residencies and magazines, each with its fee, who can apply and the organizer's page. Save the ones you want and get reminded before they close.",
     path: "/",
     noIndex: hasFilters(raw),
   });

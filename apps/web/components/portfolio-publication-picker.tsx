@@ -8,6 +8,7 @@ import {
   ComboboxItem,
 } from "./ui/combobox";
 import { Button } from "./ui/button";
+import { Sp } from "@/components/missa/spelling";
 export type PortfolioOrganization = {
   id: string;
   name: string;
@@ -60,7 +61,7 @@ export function PortfolioPublicationPicker({
   const loading = query.length >= 2 && !organization && result.query !== query;
   return (
     <div className="grid gap-2">
-      <label htmlFor={id}>Publication or organization</label>
+      <label htmlFor={id}><Sp>Publication or organization</Sp></label>
       <Combobox
         items={items}
         value={organization ?? null}

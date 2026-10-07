@@ -6,7 +6,7 @@ import { contactMailto } from "@/lib/legalContact";
 
 export const metadata: Metadata = {
   title: "Page not found",
-  description: "This Missa page does not exist.",
+  description: "This Missa page doesn’t exist.",
   robots: { index: false, follow: true },
 };
 
@@ -21,16 +21,15 @@ export default function NotFound() {
           Error 404
         </p>
         <h1 className="mt-3 font-heading text-4xl font-medium tracking-tight sm:text-5xl">
-          This page isn&apos;t here.
+          This page closed early.
         </h1>
         <p className="mt-4 max-w-prose text-base leading-7 text-muted-foreground">
-          The link may be out of date, or the page may have moved. The source
-          of every Opportunity on Missa stays with the Opportunity itself, so
-          nothing here changes where you apply.
+          Plenty of calls haven&apos;t. The link may be out of date, or the
+          page may have moved.
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <Button nativeButton={false} render={<Link href="/opportunities" />}>
-            Browse opportunities
+            Browse open calls
           </Button>
           <Button
             nativeButton={false}

@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
+import { SpellingProvider } from "@/components/missa/spelling";
 import { Toaster } from "@/components/ui/sonner";
 import { AnalyticsProvider } from "@/components/analytics-provider";
 import { SiteBeacon } from "@/components/site-beacon";
@@ -48,7 +49,7 @@ const fragmentMono = localFont({
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
   title: {
-    default: `${SITE_NAME} — Submission opportunities tailored for you`,
+    default: `${SITE_NAME} — Find the call. Make the deadline.`,
     template: `%s | ${SITE_NAME}`,
   },
   description: DEFAULT_DESCRIPTION,
@@ -62,7 +63,7 @@ export const metadata: Metadata = {
         width: 1200,
         height: 630,
         type: "image/png",
-        alt: "Missa, creative opportunities with their source and limits kept visible.",
+        alt: "Missa. Find the call. Make the deadline.",
       },
     ],
   },
@@ -109,7 +110,9 @@ export default function RootLayout({
           </Suspense>
           <SiteBeacon />
           <CookieConsent />
-          <AnalyticsProvider>{children}</AnalyticsProvider>
+          <SpellingProvider>
+            <AnalyticsProvider>{children}</AnalyticsProvider>
+          </SpellingProvider>
           <ShortlistSync />
           <Toaster />
         </ThemeProvider>

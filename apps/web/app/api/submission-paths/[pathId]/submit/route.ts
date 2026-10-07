@@ -73,7 +73,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
       accountId: session.account.id,
       email: session.account.email,
       ...(organizationId ? { organizationId } : {}),
-      organizationName: organizationName || 'The organisation',
+      organizationName: organizationName || 'The organizer',
       callTitle: openCall.title,
       givenName: session.account.displayName,
       submittedAt: new Date(),

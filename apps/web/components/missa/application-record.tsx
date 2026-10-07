@@ -277,7 +277,11 @@ export function useApplicationRecord({
         note,
         ...(emailCandidateId ? { emailCandidateId } : {}),
       },
-      `${STATUS_LABELS[nextStatus]} recorded`,
+      nextStatus === "submitted"
+        ? "Marked as sent. Go make something while they read."
+        : nextStatus === "accepted"
+          ? "Accepted! Read it three times? Everyone does."
+          : `${STATUS_LABELS[nextStatus]} recorded`,
     );
   }
 

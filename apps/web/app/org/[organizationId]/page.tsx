@@ -15,6 +15,8 @@ import { JsonLd, absoluteUrl, pageMetadata } from '@/lib/seo';
 import { getRelationalWorkspace, getWorkspaceEngine, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 import { MissaSiteHeader } from '@/components/missa-site-header';
 import styles from './public-organization.module.css';
+import { resolveOrganizationCustomization } from '@/lib/organizationCustomization';
+import '@/components/design-system/organization-palette.css';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,11 +29,11 @@ export async function generateMetadata({ params }: { params: Promise<{ organizat
     }
     const organization = (await getEngine()).store.organizations.get(organizationId);
     if (organization) {
-      return pageMetadata({ title: `${organization.name} opportunities`, description: `Published Opportunities from ${organization.name} on Missa.`, path: `/org/${organizationId}` });
+      return pageMetadata({ title: `${organization.name} opportunities`, description: `Calls published by ${organization.name} on Missa.`, path: `/org/${organizationId}` });
     }
     return pageMetadata({ title: 'Organization not found', description: 'This public Missa Organization page is not available.', path: `/org/${organizationId}`, noIndex: true });
   } catch {
-    return pageMetadata({ title: 'Organization opportunities', description: 'Published Opportunities on Missa.', path: `/org/${organizationId}`, noIndex: true });
+    return pageMetadata({ title: 'Organization opportunities', description: 'Calls published on Missa.', path: `/org/${organizationId}`, noIndex: true });
   }
 }
 
@@ -98,33 +100,40 @@ export default async function PublicOrganizationPage({ params }: { params: Promi
   const practiceLabels = publicPracticeLabels(linked);
   const session = await getSessionAccountFromToken((await cookies()).get(SESSION_COOKIE)?.value);
   const headerSession = session ? { email: session.account.email, hasOrganization: session.memberships.length > 0 } : null;
-  const monogram = organizationMonogram(organization.name);
+  const appearance = resolveOrganizationCustomization(organization);
+  const publicName = portal?.configuration.name ?? appearance.displayName;
+  const monogram = organizationMonogram(publicName);
+  const logo = [portal?.configuration.brand.logoUrl, appearance.logoUrl].map((url) => safePublicMedia(url)).find((url) => url?.startsWith('https://'));
+  const logoAlt = portal?.configuration.brand.logoAlt || `${publicName} logo`;
 
   return <>
     <MissaSiteHeader session={headerSession} current="Organization" />
-    <main id="main-content" className={styles.main}>
+    <main id="main-content" className={styles.main} data-org-accent={appearance.accent !== 'forest' ? appearance.accent : undefined}>
       <JsonLd data={{ '@context': 'https://schema.org', '@type': 'Organization', name: organization.name, url: absoluteUrl(`/org/${organizationId}`), subjectOf: { '@type': 'ItemList', itemListElement: openCalls.map((call, index) => ({ '@type': 'ListItem', position: index + 1, name: call.title, url: absoluteUrl(`/org/${organizationId}/${call.id}`) })) } }} />
       <JsonLd data={{ '@context': 'https://schema.org', '@type': 'ItemList', name: `${organization.name} published Opportunities`, numberOfItems: openCalls.length, itemListElement: openCalls.map((call, index) => ({ '@type': 'ListItem', position: index + 1, name: call.title, url: absoluteUrl(`/org/${organizationId}/${call.id}`) })) }} />
       <header className={styles.identity}>
-        <span className={styles.logo} aria-hidden="true">{monogram || <Building2 />}</span>
-        <div><p className={styles.eyebrow}>Public Organization profile</p><h1>{portal?.configuration.name ?? organization.name}</h1><p>{portal?.configuration.introduction ?? 'Published Opportunities from this Organization. Public profile details are currently limited, so confirm each Opportunity through its linked guidelines or source.'}</p></div>
+        {logo ? <span className={styles.logo}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- organization-supplied https logo from an unknown host */}
+          <img src={logo} alt={logoAlt} className={styles.logoImage} />
+        </span> : <span className={styles.logo} aria-hidden="true">{monogram || <Building2 />}</span>}
+        <div><p className={styles.eyebrow}>Public organization profile</p><h1>{publicName}</h1><p>{portal?.configuration.introduction ?? 'Calls published by this organization. Profile details are limited for now, so check each call against its linked guidelines or official page.'}</p></div>
       </header>
-      <aside className={styles.identityBoundary}><Info aria-hidden="true" /><div><strong>{portal ? 'Organization submission portal' : 'Limited public profile'}</strong><p>{portal ? `Application information is published in ${portal.configuration.timeZone}. Confirm each Opportunity's dates and requirements before submitting.` : 'Missa currently has the Organization name and published hosted Opportunities. A verified internal domain flag is not shown as a public endorsement, and no private or operational records appear here.'}</p></div></aside>
+      <aside className={styles.identityBoundary}><Info aria-hidden="true" /><div><strong>{portal ? 'Organization submission portal' : 'Limited public profile'}</strong><p>{portal ? `Application information is published in ${portal.configuration.timeZone}. Check each call's dates and requirements before you submit.` : 'So far Missa has the organization name and its published hosted calls. An internal domain check is not shown as an endorsement, and no private or internal records appear here.'}</p></div></aside>
       <section className={styles.opportunities} aria-labelledby="published-opportunities-title">
-        <header className={styles.sectionHeader}><div><p className={styles.eyebrow}>Current choices</p><h2 id="published-opportunities-title">Published Opportunities</h2><p>{rows.length} currently published {rows.length === 1 ? 'Opportunity' : 'Opportunities'}</p></div></header>
+        <header className={styles.sectionHeader}><div><p className={styles.eyebrow}>Current choices</p><h2 id="published-opportunities-title">Published calls</h2><p>{rows.length} currently published {rows.length === 1 ? 'call' : 'calls'}</p></div></header>
         {rows.length ? <div className={styles.grid}>{rows.map(({ call, opportunity, hasHostedForm, image }) => <article className={styles.card} key={call.id}>
           <div className={styles.media}>{image ? <>
             {/* eslint-disable-next-line @next/next/no-img-element -- approved remote source media cannot use a fixed Next host allowlist */}
             <img src={image} alt={opportunity?.identityAssetAlt ?? ''} />
           </> : <span aria-hidden="true"><ImageIcon /><small>Media not provided</small></span>}</div>
-          <div className={styles.cardBody}><div className={styles.cardMeta}><span>{hasHostedForm ? 'Hosted application' : 'Published details'}</span>{opportunity?.type ? <span>{opportunity.type.replaceAll('-', ' ')}</span> : null}</div><h3>{call.title}</h3>{opportunity?.content?.summary ? <p className={styles.summary}>{opportunity.content.summary}</p> : <p className={styles.summary}>Read the published details, guidelines, deadline, and application route before preparing your Work.</p>}<dl className={styles.facts}><div><dt><CalendarDays aria-hidden="true" />Deadline</dt><dd>{publicDeadlineLabel(opportunity)}</dd></div><div><dt><CircleDollarSign aria-hidden="true" />Fee</dt><dd>{publicFeeLabel(opportunity)}</dd></div></dl><Link href={`/org/${encodeURIComponent(organizationId)}/${encodeURIComponent(call.id)}`}>Open Opportunity <ArrowRight aria-hidden="true" /></Link></div>
+          <div className={styles.cardBody}><div className={styles.cardMeta}><span>{hasHostedForm ? 'Hosted application' : 'Published details'}</span>{opportunity?.type ? <span>{opportunity.type.replaceAll('-', ' ')}</span> : null}</div><h3>{call.title}</h3>{opportunity?.content?.summary ? <p className={styles.summary}>{opportunity.content.summary}</p> : <p className={styles.summary}>Read the details, guidelines, deadline and how to apply before you prepare your work.</p>}<dl className={styles.facts}><div><dt><CalendarDays aria-hidden="true" />Deadline</dt><dd>{publicDeadlineLabel(opportunity)}</dd></div><div><dt><CircleDollarSign aria-hidden="true" />Fee</dt><dd>{publicFeeLabel(opportunity)}</dd></div></dl><Link href={`/org/${encodeURIComponent(organizationId)}/${encodeURIComponent(call.id)}`}>View call <ArrowRight aria-hidden="true" /></Link></div>
         </article>)}</div> : <div className={styles.empty}><Building2 aria-hidden="true" /><h3>No published Opportunities</h3><p>This Organization does not currently have a published hosted Opportunity on Missa. No historical activity or future opening is inferred.</p><Link href="/opportunities">Browse all Opportunities</Link></div>}
       </section>
       <div className={styles.supporting}>
         <section><p className={styles.eyebrow}>About</p><h2>Organization information</h2>{portal ? <><p>Questions about an application can be sent to <a href={`mailto:${portal.configuration.supportEmail}`}>{portal.configuration.supportEmail}</a>.</p><small><a href={portal.configuration.privacyPolicyUrl}>Privacy</a> · <a href={portal.configuration.termsUrl}>Terms</a>{portal.configuration.accessibilityContactUrl ? <> · <a href={portal.configuration.accessibilityContactUrl}>Accessibility</a></> : null}</small></> : <><p>This Organization has not added an allowlisted public biography, official website, location, language, contact policy, logo, or public Program description yet.</p><small>Private domains are not converted into a public website link.</small></>}</section>
-        <section><p className={styles.eyebrow}>Derived from Opportunities shown</p><h2>Opportunities have included</h2>{practiceLabels.length ? <ul className={styles.labels}>{practiceLabels.map((label) => <li key={label}>{label}</li>)}</ul> : <p>No canonical field labels are available for the published Opportunities shown.</p>}<small>These labels describe the Opportunities above. They do not define, rate, or endorse the Organization.</small></section>
+        <section><p className={styles.eyebrow}>Based on the calls shown</p><h2>Calls have included</h2>{practiceLabels.length ? <ul className={styles.labels}>{practiceLabels.map((label) => <li key={label}>{label}</li>)}</ul> : <p>No discipline labels are available for the calls shown.</p>}<small>These labels describe the calls above. They do not define, rate or endorse the organization.</small></section>
       </div>
-      <footer className={styles.footer}><p>Public Organization profile · Confirm application details before submitting.</p><Link href="/opportunities">Browse Opportunities</Link></footer>
+      <footer className={styles.footer}><p>Public organization profile · Check application details before you submit.</p><Link href="/opportunities">Browse open calls</Link></footer>
     </main>
   </>;
 }

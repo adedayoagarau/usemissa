@@ -15,7 +15,7 @@ for (const width of [1440, 390])
     await page.goto("/design-system/discovery-journey/home");
     await expect(
       page.getByRole("heading", {
-        name: "Opportunities and grants for every creator",
+        name: "Find the call. Make the deadline.",
       }),
     ).toBeVisible();
     const plate = width === 390 ? "feature-studio" : "grants";

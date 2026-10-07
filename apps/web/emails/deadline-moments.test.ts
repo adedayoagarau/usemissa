@@ -66,7 +66,7 @@ test('a response check-in counts days since submitting and never offers to conta
   assert.equal(rendered.subject, '91 days since you submitted to Poets House');
   assert.ok(rendered.html.includes('says it replies within 60 days'));
   assert.ok(rendered.html.includes('Log a response'));
-  assert.ok(rendered.html.includes('Missa never contacts an organisation for you'));
+  assert.ok(rendered.html.includes('Missa never contacts an organization for you'));
 });
 
 test('deadline-moment letters escape call text and keep Forest text light in Gmail dark mode', () => {
@@ -143,7 +143,7 @@ test('quiet, follow-up, suggestion and carry notices stay calm and never use the
     assert.doesNotMatch(rendered.text, /urgent|overdue|hurry|last chance/i, kind);
   }
   assert.equal(render('gone-quiet', { noticeTitle: null }).subject, 'Still working on Poetry Fellowship 2027?');
-  assert.ok(render('time-to-query', { noticeTitle: null, noticeBody: null }).html.includes('Missa never contacts an organisation for you'));
+  assert.ok(render('time-to-query', { noticeTitle: null, noticeBody: null }).html.includes('Missa never contacts an organization for you'));
   assert.ok(render('obligations-suggested', { noticeTitle: null }).text.startsWith('Congratulations, Tola.'));
 });
 

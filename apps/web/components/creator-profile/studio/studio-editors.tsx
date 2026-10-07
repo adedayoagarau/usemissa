@@ -531,7 +531,7 @@ export function BasicsEditor({ draft, update, upload, onError }: EditorProps) {
         </ul>
         <div className={styles.inline}>
           <Input
-            aria-label="Add a practice"
+            aria-label="Add what you make"
             placeholder="Add your own"
             value={practice}
             maxLength={80}
@@ -1082,7 +1082,7 @@ export function ShelfEditor({ draft, update, upload, onError }: EditorProps) {
                   book: "Book",
                   chapbook: "Chapbook",
                   record: "Record or album",
-                  catalogue: "Catalogue",
+                  catalogue: "Catalog",
                   other: "Other edition",
                 }[value],
               }))}

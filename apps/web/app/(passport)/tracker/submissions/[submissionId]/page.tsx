@@ -8,6 +8,13 @@ import { getRelationalWorkspace, getWorkspaceEngine, workspaceRelationalAuthorit
 import type { Decision, OpenCall, SubmissionField, SubmissionPath, Work } from '@missa/workspace-engine';
 import { WithdrawSubmissionButton } from '@/components/withdraw-submission-button';
 import styles from './submission-detail.module.css';
+import { communicationTemplate, submissionStatusTimeline, type SubmissionStage } from '@missa/workspace-engine';
+import { SubmissionStatusTimeline } from '@/components/submission-status-timeline';
+import { resolveOrganizationCustomization } from '@/lib/organizationCustomization';
+import { SubmitterQuestionsPanel, type OwnQuestion } from '@/components/submitter-questions';
+import { submitterOwnQuestion } from '@/lib/submitterQuestionsData';
+import { EditSubmissionDialog } from '@/components/edit-submission-dialog';
+import { submissionEditsAllowed } from '@/lib/submissionEdits';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +65,14 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
   let organizationName: string | undefined;
   let works: ReceiptWork[];
   let decisions: ReceiptDecision[];
+  let organizationId: string | undefined;
+  let openCallId: string | undefined;
+  let hasActiveReview = false;
+  let stageEvents: Array<{ stage: SubmissionStage; at: string }> = [];
+  let letters: Array<{ id: string; subject: string; kindLabel: string; at: string }> = [];
+  let questions: OwnQuestion[] | undefined;
+  let editability: { editable: boolean; reason?: string } | undefined;
+  let revisionCount = 0;
 
   if (workspaceRelationalAuthorityEnabled()) {
     const detail = await (await getRelationalWorkspace()).submissionForOwner(session.account.id, submissionId);
@@ -66,8 +81,11 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
     path = detail.path;
     call = { title: detail.openCallTitle, ...(detail.radarOpportunityId ? { radarOpportunityId: detail.radarOpportunityId } : {}) };
     organizationName = radar.store.organizations.get(detail.organizationId)?.name;
+    organizationId = detail.organizationId;
+    openCallId = detail.openCallId;
     works = detail.works;
     decisions = detail.decisions;
+    hasActiveReview = detail.status === 'in-review';
   } else {
     const workspace = await getWorkspaceEngine();
     const found = workspace.store.submissions.get(submissionId);
@@ -83,9 +101,35 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
     organizationName = entity ? radar.store.organizations.get(entity.organizationId)?.name ?? entity.name : undefined;
     works = workspace.worksForSubmission(found.id);
     decisions = workspace.decisionsForSubmission(entity?.organizationId ?? '', found.id);
+    organizationId = entity?.organizationId;
+    openCallId = foundCall.id;
+    hasActiveReview = found.status === 'in-review' || workspace.reviewAssignmentsForSubmission(found.id).some((assignment) => !(assignment as { recusedAt?: string }).recusedAt);
+    stageEvents = workspace.stageEventsForSubmission(found.id).map((event) => ({ stage: event.stage, at: event.at }));
+    letters = [...workspace.store.communicationBatches.values()].flatMap((batch) => {
+      const recipient = batch.recipients.find((item) => item.submissionId === found.id && item.status === 'sent');
+      return recipient ? [{ id: batch.id, subject: communicationTemplate(batch.kind).label, kindLabel: batch.stage ? 'Stage announcement' : 'Letter', at: recipient.sentAt ?? batch.updatedAt }] : [];
+    }).sort((a, b) => a.at.localeCompare(b.at));
+    questions = workspace.submitterQuestionsForSubmission(found.id).map(submitterOwnQuestion);
+    editability = workspace.submissionEditability(found.id, session.account.id, { allowedByOrganization: submissionEditsAllowed(entity ? radar.store.organizations.get(entity.organizationId) : undefined, foundCall.id) });
+    revisionCount = workspace.revisionsForSubmission(found.id).length;
   }
 
   const organization = organizationName;
+  const organizationRecord = organizationId ? radar.store.organizations.get(organizationId) : undefined;
+  const customization = organizationRecord ? resolveOrganizationCustomization(organizationRecord) : undefined;
+  const timeline = submissionStatusTimeline({
+    status: submission.status,
+    submittedAt: submission.submittedAt,
+    hasActiveReview,
+    stageEvents,
+    decisions,
+    works,
+    transparency: customization?.statusTransparency ?? 'stages',
+    declaredStages: customization?.declaredStages,
+    stageLabels: customization?.stageLabels,
+    organizationName: customization?.displayName ?? organization,
+    expectedDecisionBy: openCallId ? organizationRecord?.customization?.decisionDates?.[openCallId] : undefined,
+  });
   const fields = new Map((path.fields ?? []).map((field: SubmissionField) => [field.id, field]));
   const answers = Object.entries(submission.answers ?? {});
   const paymentLabel = submission.paymentStatus
@@ -105,7 +149,7 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
           <span>{organization ?? 'Organization not listed'} · submitted {formatDate(submission.submittedAt)}</span>
         </div>
         <div className={styles.headerActions}>
-          {call.radarOpportunityId ? <Link href={`/opportunities/${call.radarOpportunityId}`}>View Opportunity<ArrowUpRight aria-hidden="true" /></Link> : null}
+          {call.radarOpportunityId ? <Link href={`/opportunities/${call.radarOpportunityId}`}>View call<ArrowUpRight aria-hidden="true" /></Link> : null}
           {call.guidelineUrl && safeFileHref(call.guidelineUrl) ? <a href={call.guidelineUrl} target="_blank" rel="noreferrer">Guidelines<ArrowUpRight aria-hidden="true" /></a> : null}
         </div>
       </header>
@@ -116,6 +160,8 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
         <dl><div><dt>Receipt</dt><dd>{submission.id}</dd></div>{submission.category ? <div><dt>Category</dt><dd>{submission.category}</dd></div> : null}</dl>
       </section>
 
+      <SubmissionStatusTimeline timeline={timeline} organizationName={customization?.displayName ?? organization} />
+
       <div className={styles.layout}>
         <div className={styles.mainColumn}>
           <section className={styles.section} aria-labelledby="submitted-works-title">
@@ -123,7 +169,7 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
             {works.length ? <div className={styles.works}>{works.map((work) => {
               const decision = decisions.find((item) => item.workId === work.id);
               const files = Array.from(new Set([...(work.fileUrls ?? []), ...(work.fileUrl ? [work.fileUrl] : [])]));
-              return <article key={work.id}><span className={styles.workIcon}><FileText aria-hidden="true" /></span><div><h3>{work.title}</h3><p>Submitted Work {work.order + 1}</p>{files.length ? <ul>{files.map((file) => { const href = safeFileHref(file); return <li key={file}>{href ? <a href={href} target="_blank" rel="noreferrer">{fileLabel(file)}<ArrowUpRight aria-hidden="true" /></a> : <span>File unavailable</span>}</li>; })}</ul> : <span className={styles.unavailable}>No file was attached to this Work.</span>}</div><strong data-outcome={decision?.outcome}>{decision ? statusLabel(decision.outcome) : 'No decision'}</strong></article>;
+              return <article key={work.id}><span className={styles.workIcon}><FileText aria-hidden="true" /></span><div><h3>{work.title}</h3><p>Submitted piece {work.order + 1}</p>{files.length ? <ul>{files.map((file) => { const href = safeFileHref(file); return <li key={file}>{href ? <a href={href} target="_blank" rel="noreferrer">{fileLabel(file)}<ArrowUpRight aria-hidden="true" /></a> : <span>File unavailable</span>}</li>; })}</ul> : <span className={styles.unavailable}>No file was attached to this piece.</span>}</div><strong data-outcome={decision?.outcome}>{decision ? statusLabel(decision.outcome) : 'No decision'}</strong></article>;
             })}</div> : <p className={styles.emptyText}>No submitted Work was recorded with this receipt.</p>}
           </section>
 
@@ -136,10 +182,18 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
             })}</dl> : <p className={styles.emptyText}>No saved answers are attached to this receipt.</p>}
           </section>
 
+          {questions ? (
+            <section className={styles.section} aria-labelledby="submission-questions-title">
+              <header><div><p>Ask the organization</p><h2 id="submission-questions-title">Questions</h2></div><span>{questions.length}</span></header>
+              <SubmitterQuestionsPanel submissionId={submission.id} organizationName={customization?.displayName ?? organization ?? 'The organization'} questions={questions} canAsk={submission.status !== 'withdrawn'} />
+            </section>
+          ) : null}
+
           <section className={styles.section} aria-labelledby="submission-history-title">
             <header><div><p>Recorded events</p><h2 id="submission-history-title">History</h2></div></header>
             <ol className={styles.history}>
               <li><span><ReceiptText aria-hidden="true" /></span><div><strong>Submission received by Missa</strong><time>{formatDate(submission.submittedAt)}</time></div></li>
+              {letters.map((letter) => <li key={letter.id}><span><ReceiptText aria-hidden="true" /></span><div><strong>{letter.kindLabel} · {letter.subject}</strong><time>{formatDate(letter.at)}</time></div></li>)}
               {decisions.sort((a, b) => a.decidedAt.localeCompare(b.decidedAt)).map((decision) => {
                 const work = works.find((candidate) => candidate.id === decision.workId);
                 return <li key={decision.id}><span><Landmark aria-hidden="true" /></span><div><strong>{work?.title ?? 'Submitted Work'} · {statusLabel(decision.outcome)}</strong><time>{formatDate(decision.decidedAt)}</time></div></li>;
@@ -150,7 +204,8 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
 
         <aside className={styles.sideColumn}>
           <section aria-labelledby="submission-summary-title"><p>Receipt summary</p><h2 id="submission-summary-title">Submission</h2><dl><div><dt>Status</dt><dd>{statusLabel(submission.status)}</dd></div><div><dt>Submitted</dt><dd>{formatDate(submission.submittedAt)}</dd></div><div><dt>Works</dt><dd>{works.length}</dd></div><div><dt>Decisions</dt><dd>{decisions.length}</dd></div></dl></section>
-          <section aria-labelledby="payment-record-title"><p>Separate record</p><h2 id="payment-record-title">Payment</h2><strong>{paymentLabel}</strong>{submission.feeCents ? <span>{new Intl.NumberFormat('en', { style: 'currency', currency: 'USD' }).format(submission.feeCents / 100)}</span> : null}<small>Payment state does not change the Submission or Work decision.</small></section>
+          <section aria-labelledby="payment-record-title"><p>Separate record</p><h2 id="payment-record-title">Payment</h2><strong>{paymentLabel}</strong>{submission.feeCents ? <span>{new Intl.NumberFormat('en', { style: 'currency', currency: 'USD' }).format(submission.feeCents / 100)}</span> : null}<small>Payment doesn’t change the decision on the submission or its pieces.</small></section>
+          {editability && submission.status === 'submitted' ? <section aria-labelledby="edit-submission-title"><p>Before reading starts</p><h2 id="edit-submission-title">Change</h2><span>{editability.editable ? 'Fix a title, replace a file or update an answer. The organization sees what changed.' : editability.reason}</span>{revisionCount ? <small>{revisionCount === 1 ? 'Changed once since sending.' : `Changed ${revisionCount} times since sending.`}</small> : null}{editability.editable ? <EditSubmissionDialog submissionId={submission.id} organizationName={customization?.displayName ?? organization ?? 'The organization'} /> : null}</section> : null}
           {['submitted', 'in-review'].includes(submission.status) ? <section aria-labelledby="withdraw-submission-title"><p>Submission action</p><h2 id="withdraw-submission-title">Withdraw</h2><span>Withdrawal applies to this complete Missa-hosted submission.</span><WithdrawSubmissionButton submissionId={submission.id} /></section> : null}
         </aside>
       </div>

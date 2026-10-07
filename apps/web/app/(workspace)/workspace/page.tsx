@@ -11,6 +11,7 @@ import { OrganizationSeats } from '@/components/organization-seats';
 import { OrganizationBilling } from '@/components/organization-billing';
 import { OpenCallControls } from '@/components/open-call-controls';
 import { loginRedirectForCurrentRequest } from '@/lib/serverAuthRedirect';
+import { Sp } from "@/components/missa/spelling";
 
 export default async function WorkspacePage({ searchParams }: { searchParams: Promise<{ organizationId?: string }> }) {
   const cookieStore = await cookies();
@@ -52,7 +53,7 @@ export default async function WorkspacePage({ searchParams }: { searchParams: Pr
       <main className="mx-auto max-w-3xl px-6 py-8">
         <h1 className="font-heading text-3xl font-medium text-foreground">
           {org?.name ?? organizationId}
-          {org?.verified && <span className="ml-2 align-middle font-sans text-xs font-normal text-muted-foreground">Verified organization</span>}
+          {org?.verified && <span className="ml-2 align-middle font-sans text-xs font-normal text-muted-foreground"><Sp>Verified organization</Sp></span>}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Public organization page: <Link href={`/org/${organizationId}`}>View page</Link>
@@ -102,7 +103,7 @@ export default async function WorkspacePage({ searchParams }: { searchParams: Pr
               </div>
             </div>
           ))}
-          {entities.length === 0 && <p className="text-muted-foreground">Create your first team to begin a program.</p>}
+          {entities.length === 0 && <p className="text-muted-foreground"><Sp>Create your first team to begin a program.</Sp></p>}
         </div>
       </main>
     );

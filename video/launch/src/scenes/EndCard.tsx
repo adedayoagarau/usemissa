@@ -4,7 +4,7 @@ import { LineReveal, Wordmark, mix, progress, useLayout, useSeconds } from "../c
 import { cue, scenes } from "../timing";
 import { color, ease, font } from "../tokens";
 
-/** "Missa. Opportunities for every creator." + call to action. */
+/** "Missa. Find the call. Make the deadline." + call to action. */
 export const EndCard: React.FC<{ from?: number }> = ({ from }) => {
   const start = from ?? scenes.end.from;
   const t = useSeconds(start);
@@ -15,8 +15,12 @@ export const EndCard: React.FC<{ from?: number }> = ({ from }) => {
   const lift = progress(t, cue("tagline") - 0.25, 0.6, ease.standard);
   const cta = progress(t, cue("end") + 0.2, 0.6);
 
-  const words = ["Opportunities", "for", "every", "creator."];
-  const wordAt = (i: number) => mix(cue("tagline") - 0.08, cue("end") - 0.45, i / (words.length - 1));
+  // Each half of the line reveals word by word as it is spoken.
+  const words = ["Find", "the", "call.", "Make", "the", "deadline."];
+  const wordAt = (i: number) =>
+    i < 3
+      ? mix(cue("tagline") - 0.08, cue("deadline") - 0.4, i / 2)
+      : mix(cue("deadline") - 0.08, cue("end") - 0.45, (i - 3) / 2);
 
   return (
     <AbsoluteFill style={{ backgroundColor: color.sky, overflow: "hidden" }}>
@@ -47,15 +51,15 @@ export const EndCard: React.FC<{ from?: number }> = ({ from }) => {
           }}
         >
           {words.map((w, i) => (
-            <React.Fragment key={w}>
+            <React.Fragment key={i}>
               <LineReveal
                 t={t}
                 enter={wordAt(i)}
-                style={i >= 2 ? { color: color.citron, fontStyle: "italic" } : undefined}
+                style={i >= 3 ? { color: color.citron, fontStyle: "italic" } : undefined}
               >
                 {w}
               </LineReveal>
-              {i === 0 && shape !== "wide" ? <br /> : " "}
+              {i === 2 && shape !== "wide" ? <br /> : " "}
             </React.Fragment>
           ))}
         </div>
@@ -74,7 +78,7 @@ export const EndCard: React.FC<{ from?: number }> = ({ from }) => {
               fontSize: 32 * u,
             }}
           >
-            Browse opportunities
+            Browse open calls
             <svg width={30 * u} height={30 * u} viewBox="0 0 24 24" fill="none">
               <path d="M5 12h14M13 6l6 6-6 6" stroke={color.forestDeep} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
             </svg>

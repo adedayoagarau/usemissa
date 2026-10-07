@@ -22,6 +22,7 @@ import { categorySearch } from "@/lib/homepage-opportunity-categories";
 import { selectHomepageCalls, type HomepageCall } from "@/lib/homepageCalls";
 import "@/components/design-system/homepage-continuation-tokens.css";
 import "@/components/design-system/homepage-marketing-palette.css";
+import { useSp } from "@/components/missa/spelling";
 import styles from "./homepage-continuation.module.css";
 import { contactMailto } from "@/lib/legalContact";
 import { useSignedIn } from "@/lib/browserSession";
@@ -68,27 +69,27 @@ const PROFILE_KINDS: Record<string, { label: string; path: string }> = {
 const QUESTIONS = [
   {
     q: "Is my portfolio public?",
-    a: "Your draft stays private until you publish it.",
+    a: "Only when you say so. Drafts stay private until you publish.",
   },
   {
     q: "Do I need an account?",
-    a: "No. Browse opportunities and read the details without an account. Create one to build a portfolio and save calls.",
+    a: "Not to browse. You need one to save calls, get reminders and build a portfolio. It's free.",
   },
   {
     q: "Can I search more than one discipline?",
-    a: "Yes. You can select several disciplines and change them at any time.",
+    a: "Yes. Pick as many as you like and change them any time. Poets who paint are welcome.",
   },
   {
-    q: "Are all applications free?",
-    a: "Some organizers charge a fee. Use the no-fee filter to find opportunities without an application fee.",
+    q: "Are all calls free to enter?",
+    a: "No. Some organizers charge a fee, and every call shows it. Use the free-to-enter filter to see only free ones.",
   },
   {
     q: "Where do I apply?",
-    a: "Open an opportunity and follow the application link. Each organizer sets its own requirements and handles submissions.",
+    a: "Usually on the organizer's own page. Every call links straight to it, and a few you can submit through Missa.",
   },
   {
     q: "How do I check whether I’m eligible?",
-    a: "Read the eligibility rules and submission guidelines on the opportunity page. Check the organizer’s website for any missing details.",
+    a: "Start with who can apply on the call, then read the organizer’s guidelines. If we couldn’t confirm a detail, the call says so.",
   },
 ];
 function ActionLink({
@@ -124,6 +125,7 @@ export function HomepageContinuation({
   initialOrganizations?: Profile[] | null;
 }) {
   const signedIn = useSignedIn(serverSignedIn);
+  const sp = useSp();
   const sectionRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const [opportunities, setOpportunities] = useState<Opportunity[] | null>(
@@ -248,20 +250,20 @@ export function HomepageContinuation({
         </div>
         {catalogueError ? (
           <div className={styles.resourceState} role="status">
-            <h3>We couldn’t load the opportunities.</h3>
-            <p>Try again, or open the opportunities page.</p>
+            <h3>We couldn’t load the calls.</h3>
+            <p>Try again, or open the full list.</p>
             <Button variant="outline" onClick={retry}>
               Try again
             </Button>
             <Link href="/opportunities">
-              Browse opportunities <ArrowUpRight size={16} aria-hidden="true" />
+              Browse open calls <ArrowUpRight size={16} aria-hidden="true" />
             </Link>
           </div>
         ) : !opportunities ? (
           <div
             className={styles.opportunityGrid}
             role="status"
-            aria-label="Loading opportunities"
+            aria-label="Loading calls"
             aria-busy="true"
           >
             {[0, 1, 2].map((index) => (
@@ -270,8 +272,8 @@ export function HomepageContinuation({
           </div>
         ) : opportunities.length === 0 ? (
           <div className={styles.resourceState}>
-            <h3>No open opportunities to show.</h3>
-            <ActionLink href="/opportunities">Browse opportunities</ActionLink>
+            <h3>No open calls to show right now.</h3>
+            <ActionLink href="/opportunities">Browse open calls</ActionLink>
           </div>
         ) : (
           <div className={styles.opportunityGrid}>
@@ -307,16 +309,15 @@ export function HomepageContinuation({
       >
         <div className={styles.sectionHeading}>
           <div>
-            <h2 id="places-heading">The organizations behind the calls</h2>
+            <h2 id="places-heading">{sp("The organizations behind the calls")}</h2>
           </div>
           <Link className={styles.textLink} href="/directory">
-            Browse the organization directory <ArrowUpRight size={18} />
+            {sp("Browse the organization directory")} <ArrowUpRight size={18} />
           </Link>
         </div>
         {directoryError ? (
           <p className={styles.directoryFallback}>
-            We couldn’t load these organizations. You can still browse the
-            directory.
+            {sp("We couldn’t load these organizations. You can still browse the directory.")}
           </p>
         ) : !profiles ? (
           <div className={styles.organizationGrid} aria-busy="true">
@@ -352,8 +353,10 @@ export function HomepageContinuation({
                   </div>
                   <div className={styles.featuredOrganizationCopy}>
                     <span className={styles.organizationKind}>
-                      {PROFILE_KINDS[featuredProfile.kind]?.label ||
-                        "Organization"}
+                      {sp(
+                        PROFILE_KINDS[featuredProfile.kind]?.label ||
+                          "Organization",
+                      )}
                       {featuredProfile.city && ` · ${featuredProfile.city}`}
                     </span>
                     <h3 className="font-heading">{featuredProfile.name}</h3>
@@ -396,7 +399,7 @@ export function HomepageContinuation({
                     </Avatar>
                     <div>
                       <span className={styles.organizationKind}>
-                        {kind?.label || "Organization"}
+                        {sp(kind?.label || "Organization")}
                       </span>
                       <h3 className="font-heading">{profile.name}</h3>
                     </div>
@@ -436,7 +439,7 @@ export function HomepageContinuation({
                   {q}
                 </AccordionTrigger>
                 <AccordionContent className={styles.faqContent}>
-                  <p>{a}</p>
+                  <p>{sp(a)}</p>
                 </AccordionContent>
               </AccordionItem>
             ))}
@@ -448,17 +451,17 @@ export function HomepageContinuation({
         className={styles.invitation}
         aria-labelledby="invitation-heading"
       >
-        <h2 id="invitation-heading">Save calls and share your work.</h2>
+        <h2 id="invitation-heading">Save a call. We&rsquo;ll remind you before it closes.</h2>
         <div className={styles.invitationActions}>
           <ActionLink
             href={signedIn ? "/profile/portfolio" : "/signup"}
             inverse
           >
-            {signedIn ? "Open your portfolio" : "Create an account"}
+            {signedIn ? "Open your portfolio" : "Get Missa free"}
           </ActionLink>
           {layout === "full" && (
             <Link href="/opportunities">
-              Browse opportunities <ArrowUpRight size={17} aria-hidden="true" />
+              Browse open calls <ArrowUpRight size={17} aria-hidden="true" />
             </Link>
           )}
         </div>
@@ -468,6 +471,7 @@ export function HomepageContinuation({
 }
 
 export function HomepageFooter() {
+  const sp = useSp();
   return (
     <div className={`missa-homepage-continuation ${styles.root}`}>
       <footer className={styles.footerScene}>
@@ -505,7 +509,7 @@ export function HomepageFooter() {
                 <Link href={`/opportunities?${categorySearch(["festival"])}`}>
                   Festivals
                 </Link>
-                <Link href="/directory">Organization directory</Link>
+                <Link href="/directory">{sp("Organization directory")}</Link>
               </div>
               <div>
                 <span>Your work</span>
@@ -521,12 +525,13 @@ export function HomepageFooter() {
               <div>
                 <span>Account</span>
                 <Link href="/login">Log in</Link>
-                <Link href="/signup">Create an account</Link>
+                <Link href="/signup">Get Missa free</Link>
               </div>
             </nav>
           </div>
           <div className={styles.footerBottom}>
             <span>© {new Date().getFullYear()} Missa</span>
+            <span>The illustrations on this page are made with AI.</span>
             <Link href="/privacy">Privacy</Link>
             <Link href="/terms">Terms</Link>
           </div>
@@ -534,7 +539,7 @@ export function HomepageFooter() {
         <div className={styles.footerPainting}>
           <Image
             src="/media/home/generated/missa-coastal-village.webp"
-            alt="Watercolour painting of a coastal village with artists’ studios, green hills, blue water and small boats"
+            alt="Illustration of a coastal village with artists’ studios, green hills, blue water and small boats, made with AI"
             fill
             sizes="100vw"
           />

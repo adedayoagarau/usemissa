@@ -47,13 +47,13 @@ test('Submission queue and dossier preserve independent lifecycle lanes and mult
   await expect(page.getByText('No decision', { exact: true })).toBeVisible();
 });
 
-test('Review operations show evidence without unsafe assignment controls', async ({ page, baseURL }) => {
+test('Review operations show reader evidence and distribution safeguards', async ({ page, baseURL }) => {
   const fixture = await workflowFixture(page, baseURL);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/organization/${fixture.organizationId}/reviews`);
   await expect(page.getByRole('heading', { name: 'Reviews', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: fixture.roundName })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Assignment controls held back' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'How distribution stays safe' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Assign reviewer/u })).toHaveCount(0);
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);
@@ -61,15 +61,17 @@ test('Review operations show evidence without unsafe assignment controls', async
   await page.screenshot({ path: 'outputs/organization-reviews-product-mobile.png', fullPage: true });
 });
 
-test('Decision desk stays per Work and has no immediate-final mutation', async ({ page, baseURL }) => {
+test('Decision desk records per Work through an explicit dialog', async ({ page, baseURL }) => {
   const fixture = await workflowFixture(page, baseURL);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(`/organization/${fixture.organizationId}/decisions`);
+  await page.goto(`/organization/${fixture.organizationId}/decisions?q=${encodeURIComponent(fixture.firstWork)}`);
   await expect(page.getByRole('heading', { name: 'Decisions', level: 1 })).toBeVisible();
-  await expect(page.getByRole('heading', { name: fixture.firstWork })).toBeVisible();
-  await expect(page.getByRole('heading', { name: fixture.secondWork })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Decision controls held back' })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Accept|Decline|Waitlist|Finalize/u })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: fixture.firstWork, exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: fixture.secondWork, exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'What recording a decision does' })).toBeVisible();
+  await expect(page.locator('#organization-main').getByRole('button', { name: /Accept|Decline|Waitlist|Finalize/u })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: `Change decision for ${fixture.firstWork}` })).toBeVisible();
+  await expect(page.getByRole('button', { name: `Record decision for ${fixture.secondWork}` })).toBeVisible();
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();

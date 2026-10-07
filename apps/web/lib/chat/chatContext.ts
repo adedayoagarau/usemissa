@@ -186,7 +186,7 @@ export function buildOpportunityAssistantPayload(plan: OpportunitySearchPlan, pa
   const publicClarifications = plan.clarifications.map(({ phrase, options }) => ({ phrase, options: options.map(({ facet, label }) => ({ facet, label })) }));
   if (publicClarifications.length) {
     const clarification = publicClarifications[0]!;
-    const options = clarification.options.map((option) => `${option.label} (${option.facet.replaceAll('-', ' ')})`).join(' or ');
+    const options = clarification.options.map((option) => `${option.label} (${option.facet.replaceAll('-', ' ')})`).join(' or '); // missa-language-allow: option.facet is a property name, not copy
     return {
       intent: 'opportunity-search',
       answer: `“${clarification.phrase}” can mean more than one field category in Missa. Do you mean ${options}?`,

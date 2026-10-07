@@ -77,36 +77,36 @@ const deadlineOptions: Record<string, string> = {
 };
 
 const feeOptions: Record<string, string> = {
-  "no-fee": "Free to enter (No fee)",
-  "has-fee": "Has entry fee",
+  "no-fee": "Free to enter",
+  "has-fee": "Has an entry fee",
 };
 
 const collections = [
-  { href: "/discover/match", label: "✨ Where Should I Submit?" },
+  { href: "/discover/match", label: "Where should this piece go?" },
   { href: "/discover/queer-lgbtq-opportunities", label: "Queer & LGBTQ+" },
-  { href: "/discover/bipoc-opportunities", label: "BIPOC Creators" },
+  { href: "/discover/bipoc-opportunities", label: "BIPOC artists and writers" },
   {
     href: "/discover/women-nonbinary-opportunities",
-    label: "Women & Non-Binary",
+    label: "Women and non-binary",
   },
   {
     href: "/discover/disabled-neurodivergent-opportunities",
-    label: "Disabled & Neurodivergent",
+    label: "Disabled and neurodivergent",
   },
-  { href: "/discover/emerging-writers-artists", label: "Emerging & Debut" },
-  { href: "/discover/jobs-for-creators", label: "Creative Jobs" },
+  { href: "/discover/emerging-writers-artists", label: "Emerging and debut" },
+  { href: "/discover/jobs-for-creators", label: "Creative jobs" },
   { href: "/opportunities?discipline=poetry", label: "Poetry" },
   { href: "/opportunities?discipline=fiction", label: "Fiction" },
   { href: "/opportunities?type=grant", label: "Grants" },
   { href: "/opportunities?type=residency", label: "Residencies" },
-  { href: "/opportunities?discipline=visual-arts", label: "Visual Arts" },
-  { href: "/opportunities?fee=no-fee", label: "Free to Enter" },
+  { href: "/opportunities?discipline=visual-arts", label: "Visual arts" },
+  { href: "/opportunities?fee=no-fee", label: "Free to enter" },
 ] as const;
 
 const emptyStateCollections = [
   { href: "/opportunities?discipline=poetry", label: "Poetry" },
   { href: "/opportunities?type=grant", label: "Grants" },
-  { href: "/opportunities?fee=no-fee", label: "Free to Enter" },
+  { href: "/opportunities?fee=no-fee", label: "Free to enter" },
 ] as const;
 
 export interface ActiveFiltersState {

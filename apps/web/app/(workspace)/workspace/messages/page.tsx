@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getWorkspacePageAccess } from '@/lib/workspacePage';
+import { Sp } from "@/components/missa/spelling";
 
 export default async function WorkspaceMessagesPage({ searchParams }: { searchParams: Promise<{ organizationId?: string }> }) {
   const access = await getWorkspacePageAccess(searchParams, 'workspace/messages', 'messages.read');
@@ -7,7 +8,7 @@ export default async function WorkspaceMessagesPage({ searchParams }: { searchPa
     return (
       <main className="mx-auto max-w-2xl px-6 py-12">
         <h1 className="font-heading text-3xl font-medium text-foreground">Messages</h1>
-        <p className="mt-2 text-muted-foreground">Join an organization to view communication activity.</p>
+        <p className="mt-2 text-muted-foreground"><Sp>Join an organization to view communication activity.</Sp></p>
       </main>
     );
   const alerts = [...access.radar.store.alerts.values()].filter((alert) => alert.audience === 'organization' && alert.organizationId === access.organizationId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -17,11 +18,11 @@ export default async function WorkspaceMessagesPage({ searchParams }: { searchPa
       <header>
         <p className="text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">{access.organizationName}</p>
         <h1 className="mt-2 font-heading text-3xl font-medium tracking-tight text-foreground">Messages</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">See organization updates and decision-email activity. This view records when a batch was created; it does not display message text, recipients, or delivery-provider details.</p>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground"><Sp>See organization updates and decision-email activity. This view records when a batch was created; it does not display message text, recipients, or delivery-provider details.</Sp></p>
       </header>
       <section className="mt-6 grid gap-3 sm:grid-cols-3">
         <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Organization updates</p>
+          <p className="text-xs text-muted-foreground"><Sp>Organization updates</Sp></p>
           <p className="mt-2 font-mono text-2xl text-foreground">{alerts.length}</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
@@ -54,8 +55,8 @@ export default async function WorkspaceMessagesPage({ searchParams }: { searchPa
         </div>
         <div className="rounded-xl border border-border bg-card">
           <div className="border-b border-border px-4 py-4">
-            <h2 className="font-heading text-xl font-medium text-foreground">Organization updates</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Updates created for your organization.</p>
+            <h2 className="font-heading text-xl font-medium text-foreground"><Sp>Organization updates</Sp></h2>
+            <p className="mt-1 text-xs text-muted-foreground"><Sp>Updates created for your organization.</Sp></p>
           </div>
           <ul className="divide-y divide-border">
             {alerts.map((alert) => (
@@ -66,7 +67,7 @@ export default async function WorkspaceMessagesPage({ searchParams }: { searchPa
                 </p>
               </li>
             ))}
-            {alerts.length === 0 && <li className="px-4 py-8 text-sm text-muted-foreground">No organization updates yet. New updates will appear here when they are created.</li>}
+            {alerts.length === 0 && <li className="px-4 py-8 text-sm text-muted-foreground"><Sp>No organization updates yet. New updates will appear here when they are created.</Sp></li>}
           </ul>
         </div>
       </section>

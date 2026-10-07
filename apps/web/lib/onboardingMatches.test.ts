@@ -18,7 +18,7 @@ test("kinds of work widen the match with any-term taxonomy", () => {
   assert.ok(terms.includes("taxterm_pf-dance-and-choreography"));
 });
 
-test("a chosen refinement narrows only its own practice", () => {
+test("a chosen refinement narrows only its own discipline", () => {
   const params = onboardingMatchParams({
     practices: ["Writing", "Visual arts"],
     refinements: ["Poetry"],

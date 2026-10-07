@@ -19,8 +19,8 @@ export const ORGANIZATION_SETTINGS_SECTIONS: Array<{
 }> = [
   { id: 'general', label: 'General', description: 'Current Organization identity', implementation: 'current' },
   { id: 'structure', label: 'Structure', description: 'Teams, Programs, and Opportunities', implementation: 'current' },
-  { id: 'brand', label: 'Brand', description: 'Logo and public identity', implementation: 'unavailable' },
-  { id: 'communications', label: 'Communications', description: 'Sender and reply-to identity', implementation: 'unavailable' },
+  { id: 'brand', label: 'Brand & appearance', description: 'Accent, logo, stage words, submitter visibility', implementation: 'current' },
+  { id: 'communications', label: 'Communications', description: 'Sender, reply-to, sign-off, approvals', implementation: 'current' },
   { id: 'security', label: 'Security', description: 'Sign-in, provisioning, and recovery', implementation: 'unavailable' },
   { id: 'integrations', label: 'Integrations', description: 'Connections, keys, and webhooks', implementation: 'unavailable' },
   { id: 'data', label: 'Data governance', description: 'Retention, export, and legal hold', implementation: 'unavailable' },

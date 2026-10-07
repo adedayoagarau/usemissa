@@ -154,7 +154,9 @@ export function ApplicationReminders({
       request.current = null;
       await load();
       setDialog(null);
-      toast.success(item ? "Reminder updated" : "Reminder set");
+      toast.success(
+        item ? "Reminder updated" : "Reminder set. We’ll do the remembering.",
+      );
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "The reminder could not be saved.",

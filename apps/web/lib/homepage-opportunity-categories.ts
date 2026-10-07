@@ -21,7 +21,7 @@ export const HOMEPAGE_CATEGORIES = [
     title: "Prizes",
     types: ["award", "contest"],
     image: "opportunity-architecture",
-    description: "Awards and competitions for artists.",
+    description: "Awards and contests, with the entry fee up front.",
   },
   {
     title: "Exhibitions",

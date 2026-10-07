@@ -42,7 +42,7 @@ test('Opportunity detail exposes the horizontal builder without unsafe publicati
   await expect(page.getByRole('heading', { name: 'Opening and deadline' })).toBeVisible();
   await page.getByRole('button', { name: 'Review and publish' }).click();
   await expect(page.getByRole('heading', { name: 'Review and publish' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Publish Opportunity' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Publish call' })).toBeDisabled();
 });
 
 test('Program ledger remains composed on a phone and foreign records reveal nothing', async ({ page }) => {

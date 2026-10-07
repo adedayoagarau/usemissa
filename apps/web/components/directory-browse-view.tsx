@@ -22,6 +22,7 @@ import {
   PaginationPrevious,
 } from "./ui/pagination";
 import styles from "./directory-browse-view.module.css";
+import { Sp } from "@/components/missa/spelling";
 
 export function DirectoryBrowseView({
   items,
@@ -103,8 +104,8 @@ export function DirectoryBrowseView({
     <main id="main-content" className={styles.main}>
       <header className={styles.intro}>
         <p className={styles.eyebrow}>Directory</p>
-        <h1 className="font-sans">{title}</h1>
-        <p>{description}</p>
+        <h1 className="font-sans"><Sp>{title}</Sp></h1>
+        <p><Sp>{description}</Sp></p>
       </header>
       <nav aria-label="Directory categories" className={styles.categories}>
         {categories.map(([kind, label]) => (
@@ -113,13 +114,13 @@ export function DirectoryBrowseView({
             href={href(1, kind, query, activeWindow, activeSort, activeCountry)}
             aria-current={(activeKind ?? "") === kind ? "page" : undefined}
           >
-            {label}
+            <Sp>{label}</Sp>
           </Link>
         ))}
       </nav>
       <div className={styles.searchGroup}>
         <label className={styles.searchLabel} htmlFor="directory-search">
-          Search organizations
+          <Sp>Search organizations</Sp>
         </label>
         <form
           action={basePath}
@@ -274,7 +275,7 @@ export function DirectoryBrowseView({
                     href={getSemanticUrlForProfile(item.kind, item.slug)}
                     className={styles.profileLink}
                   >
-                    {item.name.trim() || "Organization profile"}
+                    {item.name.trim() || <Sp>Organization profile</Sp>}
                   </Link>
                 </h2>
                 {(item.city || item.country) && (
@@ -316,7 +317,7 @@ export function DirectoryBrowseView({
                 ? "We couldn’t load the directory"
                 : page > 1 && total > 0
                   ? "You’ve reached the end"
-                  : "No organizations found"}
+                  : <Sp>No organizations found</Sp>}
             </h2>
             <EmptyDescription>
               {loadFailed
@@ -329,7 +330,7 @@ export function DirectoryBrowseView({
             nativeButton={false}
             render={<Link href={loadFailed ? href(page) : href(1, "", "")} />}
           >
-            {loadFailed ? "Try again" : "Browse all organizations"}
+            {loadFailed ? "Try again" : <Sp>Browse all organizations</Sp>}
           </Button>
         </Empty>
       )}

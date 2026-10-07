@@ -83,7 +83,7 @@ export async function POST(
           { status: 404 },
         );
       return NextResponse.json(
-        { error: "We could not follow that Organization." },
+        { error: "We couldn't follow that organization. Try again." },
         { status: 500 },
       );
     }

@@ -91,7 +91,7 @@ test('a signed-in creator keeps their private opportunity state and can open the
   await expect(accountMenu).toBeVisible();
   await accountMenu.click();
   await expect(page.getByRole('menuitem', { name: /Profile/ })).toBeVisible();
-  await expect(page.getByRole('menuitem', { name: /My applications/ })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /Tracker/ })).toBeVisible();
   await expect(page.getByRole('menuitem', { name: /Log out/ })).toBeVisible();
 
   await page.goto('/opportunities');

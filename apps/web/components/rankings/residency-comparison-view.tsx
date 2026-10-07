@@ -15,6 +15,7 @@ import {
 } from "@/lib/residencyFacts";
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
 import { Button } from "@/components/ui/button";
+import { Sp } from "@/components/missa/spelling";
 
 interface ResidencyComparisonViewProps {
   allResidencies: ResidencyRankingRow[];
@@ -295,7 +296,7 @@ export function ResidencyComparisonView({
                       rel="noreferrer noopener"
                       className="inline-flex min-h-11 items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring"
                     >
-                      <span>Program website</span>
+                      <span><Sp>Program website</Sp></span>
                       <ExternalLink className="h-3 w-3" />
                     </a>
                   )}

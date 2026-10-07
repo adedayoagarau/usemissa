@@ -269,7 +269,7 @@ export function HomepageStudio({
             <h1 id="homepage-title" className={`font-heading ${styles.title}`}>
               Opportunities for
               <br />
-              <em>every creator.</em>
+              <em>whatever you make.</em>
             </h1>
             <div className={styles.introAside}>
               <p>
@@ -548,7 +548,7 @@ export function HomepageStudio({
       </main>
       <footer className={styles.footer}>
         <MissaWordmark size="compact" />
-        <p>Opportunities for every creator.</p>
+        <p>Opportunities for whatever you make.</p>
         <nav aria-label="Footer">
           <Link href="/about">About</Link>
           <Link href="/methodology">Methodology</Link>

@@ -33,6 +33,7 @@ import {
 } from "@/lib/residencyFacts";
 // Values come from the ranking module itself: the package root also exports Node-only code.
 import { RESIDENCY_PILLAR_MAX } from "@missa/radar-engine/dist/src/ranking/residencyRankingEngine.js";
+import { Sp } from "@/components/missa/spelling";
 
 type Detail = ResidencyRankingRow & { reviews: ResidencyReviewRow[] };
 
@@ -133,7 +134,7 @@ function Section({
 }) {
   return (
     <section className="space-y-3">
-      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      <h3 className="text-sm font-semibold text-foreground"><Sp>{title}</Sp></h3>
       {children}
     </section>
   );
@@ -404,8 +405,10 @@ export function ResidencyIntelligenceDrawer({
             </p>
           )}
           <SheetDescription>
-            What Missa has on record for this program, with the source for each
-            fact. Check the program’s own guidelines before you apply.
+            <Sp>
+              What Missa has on record for this program, with the source for
+              each fact. Check the program’s own guidelines before you apply.
+            </Sp>
           </SheetDescription>
         </SheetHeader>
 
@@ -431,8 +434,10 @@ export function ResidencyIntelligenceDrawer({
           {loaded && <Reviews reviews={detail?.reviews ?? []} />}
           {loaded && !row && (
             <p className="text-sm text-muted-foreground">
-              This program is not in the residency index yet: no directory
-              describes it in enough detail to compare.
+              <Sp>
+                This program is not in the residency index yet: no directory
+                describes it in enough detail to compare.
+              </Sp>
             </p>
           )}
         </div>
@@ -448,7 +453,7 @@ export function ResidencyIntelligenceDrawer({
               />
             }
           >
-            Program profile
+            <Sp>Program profile</Sp>
           </Button>
           <Button
             variant="ghost"

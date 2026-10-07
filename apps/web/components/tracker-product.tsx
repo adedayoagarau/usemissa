@@ -102,6 +102,8 @@ export type TrackerHostedSubmission = {
   radarOpportunityId?: string;
   works: Array<{ id: string; title: string; outcome?: string }>;
   paymentStatus?: string;
+  /** One line from the organization-controlled status timeline, e.g. "Shortlist since 4 Mar 2026". */
+  stageSummary?: string;
 };
 
 export type TrackerProductView = TrackerView;
@@ -273,7 +275,7 @@ function SearchZero({
     <section className={styles.empty} aria-labelledby="tracker-zero-title">
       <Search aria-hidden="true" />
       <h2 id="tracker-zero-title">No Tracker items match “{query}”</h2>
-      <p>Try an Organization, Opportunity, Work, or type name.</p>
+      <p>Try a call, organization, piece or type.</p>
       <button type="button" className={styles.quietButton} onClick={onClear}>
         Clear search
       </button>
@@ -304,7 +306,7 @@ function HostedSubmissionCard({
           <h3>{submission.title}</h3>
           <span>{submission.organizationName}</span>
         </div>
-        <strong>{submission.status.replaceAll("-", " ")}</strong>
+        <strong>{submission.stageSummary ?? submission.status.replaceAll("-", " ")}</strong>
       </div>
       <dl className={styles.submissionFacts}>
         <div>
@@ -1524,11 +1526,11 @@ export function TrackerProduct({
               <FolderKanban aria-hidden="true" />
               <h2>Nothing saved right now</h2>
               <p>
-                Opportunities you save stay here until you record a
-                submission.
+                Your open tabs can finally rest. Calls you save stay here until
+                you send something.
               </p>
               <Link href="/opportunities" className={styles.primaryLink}>
-                Browse Opportunities
+                Browse open calls
               </Link>
             </section>
           )}

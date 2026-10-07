@@ -180,7 +180,7 @@ export function SavedSearches({ userId, profiles }: { userId: string; profiles: 
             </DialogContent>
           </Dialog>
         </div>
-        {profiles.length === 0 ? <div className="rounded-lg border border-dashed border-border bg-muted/40 p-5"><p className="font-medium text-foreground">No saved searches yet</p><p className="mt-1 text-sm leading-6 text-muted-foreground">Create one here, or begin from the filters on Opportunities. No current matches means only that Missa has no matching published records right now.</p><Link href="/opportunities" className={cn(buttonVariants({ variant: 'outline' }), 'mt-4')}>Open Opportunities</Link></div> : <div className="space-y-2">
+        {profiles.length === 0 ? <div className="rounded-lg border border-dashed border-border bg-muted/40 p-5"><p className="font-medium text-foreground">No saved searches yet</p><p className="mt-1 text-sm leading-6 text-muted-foreground">Create one here, or start from the filters on Opportunities. No matches just means nothing on Missa fits yet.</p><Link href="/opportunities" className={cn(buttonVariants({ variant: 'outline' }), 'mt-4')}>Browse open calls</Link></div> : <div className="space-y-2">
           {profiles.map((p) => (
             <div key={p.id} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm">
               <span className="min-w-0">

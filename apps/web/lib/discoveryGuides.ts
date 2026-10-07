@@ -3,7 +3,7 @@ import type { OpportunityRepositoryQuery } from '@missa/radar-engine';
 // Keep this aligned with meaningful edits to public discovery copy. Bing uses
 // accurate lastmod values to prioritize recrawls; it ignores cosmetic sitemap
 // fields such as priority and changefreq.
-export const discoveryContentLastModified = new Date('2026-08-07T00:00:00.000Z');
+export const discoveryContentLastModified = new Date('2026-10-07T00:00:00.000Z');
 export const discoveryContentLastModifiedLabel = new Intl.DateTimeFormat('en-US', {
   dateStyle: 'long',
   timeZone: 'UTC',
@@ -47,9 +47,9 @@ export const discoveryGuides: DiscoveryGuide[] = [
     slug: 'no-fee-submission-opportunities',
     title: 'No-fee submission opportunities',
     description: 'Browse currently open opportunities where the source record says no submission fee is disclosed.',
-    answer: 'A no-fee label means the published Opportunity states that the submission fee is zero. Always open the official source before applying because fees and eligibility can change.',
+    answer: 'A no-fee label means the published call says the submission fee is zero. Always open the official source before you apply, because fees and eligibility can change.',
     faqs: [
-      { question: 'What does no-fee mean on Missa?', answer: 'It means the published Opportunity states that the submission fee is zero. Confirm the Organization’s own guidelines before applying because fees and windows can change.' },
+      { question: 'What does no-fee mean on Missa?', answer: 'It means the published call says the submission fee is zero. Check the organizer’s own guidelines before you apply, because fees and windows can change.' },
       { question: 'Are no-fee opportunities automatically a good fit?', answer: 'No. Compare the opportunity’s eligibility, accepted work, deadline, rights, and required materials with your field before preparing a submission.' },
     ],
     query: { ...baseQuery, feeStatus: 'no-fee' },
@@ -114,8 +114,8 @@ export const discoveryGuides: DiscoveryGuide[] = [
 export const discoveryCollections: DiscoveryCollection[] = [
   {
     slug: 'contests',
-    title: 'Contests for creators',
-    description: 'Open contests, prizes, and calls for entries with deadlines and source details in view.',
+    title: 'Contests for artists and writers',
+    description: 'Contests and calls for entries open now, with the deadline and entry fee for each and a link to the organizer’s page.',
     answer: 'Compare the closing date, fee, eligibility, prize information, and official submission path before entering a contest. The organizer’s page remains the authority.',
     audience: 'Creators looking for prizes, calls for entries, and time-bound competitions.',
     checklist: ['Closing date and time zone', 'Entry fee and prize information', 'Eligibility and accepted formats', 'Official submission path'],
@@ -125,7 +125,7 @@ export const discoveryCollections: DiscoveryCollection[] = [
   {
     slug: 'magazines',
     title: 'Magazine submissions',
-    description: 'Find open magazine calls and review reading periods, fees, formats, and source links.',
+    description: 'Magazines open for submissions now. Check the reading period, fee and accepted formats, with a link to each magazine’s guidelines.',
     answer: 'For magazine submissions, check the current reading period, accepted formats, simultaneous-submission rules, fee, rights, and response expectations on the publication’s own guidelines.',
     audience: 'Writers, poets, artists, and editors comparing publications and reading periods.',
     checklist: ['Reading period or rolling status', 'Accepted formats and genres', 'Fee, rights, and simultaneous-submission rules', 'Official guidelines and response expectations'],
@@ -135,7 +135,7 @@ export const discoveryCollections: DiscoveryCollection[] = [
   {
     slug: 'poetry',
     title: 'Poetry opportunities',
-    description: 'Browse current poetry-related submission opportunities and open calls for writers.',
+    description: 'Open calls for poets, from magazines and contests to grants and residencies, with the deadline and fee for each.',
     answer: 'A poetry opportunity can be a magazine call, contest, grant, or residency. Start with the source-linked deadline and requirements, then confirm the publication or organizer’s current guidelines before sending work.',
     audience: 'Poets looking across magazines, contests, grants, and residencies rather than one opportunity type.',
     checklist: ['Opportunity type and fit', 'Deadline or reading period', 'Accepted work and length limits', 'Fee, rights, and official requirements'],
@@ -144,8 +144,8 @@ export const discoveryCollections: DiscoveryCollection[] = [
   },
   {
     slug: 'grants',
-    title: 'Grants for creators',
-    description: 'Open grants for creative work, with eligibility, deadline, and source context kept together.',
+    title: 'Grants for artists and writers',
+    description: 'Grants open now for artists and writers, with who can apply, the deadline and the funder’s own page for each.',
     answer: 'Before preparing a grant application, confirm the funder’s geography, career-stage rules, budget limits, project fit, and reporting expectations on the official source.',
     audience: 'Creators seeking project or professional-development funding.',
     checklist: ['Geography and career-stage eligibility', 'Project fit and eligible costs', 'Budget and reporting rules', 'Deadline and official application instructions'],
@@ -154,8 +154,8 @@ export const discoveryCollections: DiscoveryCollection[] = [
   },
   {
     slug: 'residencies',
-    title: 'Residencies for creators',
-    description: 'Browse open residencies with location, deadline, fee, and official source context.',
+    title: 'Residencies for artists and writers',
+    description: 'Residencies open now, with the location, deadline and fee for each and a link to the organizer’s page.',
     answer: 'Residencies vary in what they offer: time, space, money, mentorship, or community. Compare location, duration, costs, eligibility, and required materials before applying.',
     audience: 'Creators comparing places, time, community, and support for developing new work.',
     checklist: ['Location, duration, and what is provided', 'Eligibility and required materials', 'Costs, travel, and accessibility', 'Deadline and official program details'],
@@ -164,8 +164,8 @@ export const discoveryCollections: DiscoveryCollection[] = [
   },
   {
     slug: 'fellowships',
-    title: 'Fellowships for creators',
-    description: 'Find open fellowships and review the requirements and source evidence before preparing an application.',
+    title: 'Fellowships for artists and writers',
+    description: 'Fellowships open now. See what each one offers and asks for, with a link to the organizer’s page, before you apply.',
     answer: 'A fellowship may support a project, a body of work, a period of research, or professional development. Confirm what the award includes, who can apply, and what the recipient must deliver.',
     audience: 'Creators, researchers, and practitioners looking for structured support beyond a single submission.',
     checklist: ['What the fellowship provides', 'Eligibility and selection criteria', 'Required materials and timeline', 'Recipient obligations and official source'],
@@ -174,8 +174,8 @@ export const discoveryCollections: DiscoveryCollection[] = [
   },
   {
     slug: 'queer-lgbtq-opportunities',
-    title: 'Opportunities for Queer & LGBTQ+ Creators',
-    description: 'Grants, residencies, fellowships, and open calls centering LGBTQIA+ writers, artists, and creators.',
+    title: 'Opportunities for queer and LGBTQ+ artists and writers',
+    description: 'Grants, residencies, fellowships and open calls that mention queer artists and writers. Check each organizer’s page for who can apply.',
     answer: 'Identity-centered calls provide focused platforms, funding, and community for LGBTQIA+ creators. Compare guidelines, deadlines, rights, and eligibility requirements directly on the organizer’s official source before applying.',
     audience: 'LGBTQIA+ writers, poets, visual artists, and performers seeking dedicated or explicitly inclusive open calls.',
     checklist: ['Eligible identities and community guidelines', 'Deadline and official submission path', 'Funding, stipend, or prize terms', 'Rights, licensing, and publication policies'],
@@ -184,8 +184,8 @@ export const discoveryCollections: DiscoveryCollection[] = [
   },
   {
     slug: 'bipoc-opportunities',
-    title: 'Opportunities for BIPOC Writers & Artists',
-    description: 'Open fellowships, grants, literary calls, and artist residencies centering Black, Indigenous, and creators of color.',
+    title: 'Opportunities for BIPOC artists and writers',
+    description: 'Fellowships, grants, magazines and residencies that mention BIPOC artists and writers. Check each organizer’s page for who can apply.',
     answer: 'Dedicated calls for Black, Indigenous, and creators of color offer vital financial support, mentorship, and creative platforms. Confirm the funder or publication’s stated eligibility and submission requirements on the official source.',
     audience: 'Black, Indigenous, and creators of color seeking fellowships, funding, dedicated reading periods, and residencies.',
     checklist: ['Stated demographic and career-stage eligibility', 'Project proposal or manuscript specifications', 'Application fee waivers or free submission categories', 'Timeline, selection criteria, and funder guidelines'],
@@ -194,8 +194,8 @@ export const discoveryCollections: DiscoveryCollection[] = [
   },
   {
     slug: 'women-nonbinary-opportunities',
-    title: 'Opportunities for Women & Non-Binary Creators',
-    description: 'Submissions, prizes, grants, and residencies centering women, non-binary, and gender-marginalized creators.',
+    title: 'Opportunities for women and non-binary artists and writers',
+    description: 'Prizes, grants, residencies and open calls that mention women. Check each organizer’s page for who can apply, including non-binary artists and writers.',
     answer: 'Explore opportunities designed to amplify women and non-binary writers and artists. Check accepted disciplines, deadlines, and submission materials before applying.',
     audience: 'Women, non-binary, and gender-expansive artists, writers, filmmakers, and poets.',
     checklist: ['Eligibility criteria and accepted disciplines', 'Submission windows and deadlines', 'Required materials (samples, CV, artist statement)', 'Application fees and fee assistance options'],
@@ -204,8 +204,8 @@ export const discoveryCollections: DiscoveryCollection[] = [
   },
   {
     slug: 'disabled-neurodivergent-opportunities',
-    title: 'Opportunities for Disabled & Neurodivergent Creatives',
-    description: 'Accessible residencies, emergency funds, grants, and open calls prioritizing disabled, chronically ill, and neurodivergent practitioners.',
+    title: 'Opportunities for disabled and neurodivergent artists and writers',
+    description: 'Residencies, grants and open calls that mention disability. Check each organizer’s page for access details and who can apply.',
     answer: 'Find creative opportunities that prioritize physical, sensory, and cognitive accessibility. Verify accommodation provisions, access statements, and application assistance on the official source.',
     audience: 'Disabled, d/Deaf, chronically ill, and neurodivergent artists and writers seeking accessible, supportive opportunities.',
     checklist: ['Accessibility provisions and accommodations', 'Remote vs in-person participation options', 'Application format flexibility', 'Deadline, eligibility, and grant or stipend terms'],
@@ -214,9 +214,9 @@ export const discoveryCollections: DiscoveryCollection[] = [
   },
   {
     slug: 'emerging-writers-artists',
-    title: 'Opportunities for Emerging Writers & Debut Artists',
-    description: 'First-book prizes, debut publications, emerging artist fellowships, and mentorship-centered residencies.',
-    answer: 'Emerging creator opportunities cater to practitioners at early stages of public recognition or publishing history. Confirm definition of emerging (e.g. fewer than two books or under 5 years in practice) before applying.',
+    title: 'Opportunities for emerging artists and writers',
+    description: 'Calls that mention emerging artists and writers, such as first-book prizes, debut calls, fellowships and residencies. Check how each organizer defines emerging.',
+    answer: 'Calls for emerging artists and writers are for people early in their career or publishing history. Check how each organizer defines emerging (for example, fewer than two books, or under five years of making work) before you apply.',
     audience: 'Debut authors, early-career visual artists, emerging performers, and recent graduates.',
     checklist: ['Definition of "emerging" or career-stage requirements', 'Accepted genres and portfolio limits', 'Mentorship, exhibition, or publication deliverables', 'Official guidelines and deadline date'],
     relatedGuideSlug: 'find-submission-opportunities',
@@ -224,8 +224,8 @@ export const discoveryCollections: DiscoveryCollection[] = [
   },
   {
     slug: 'jobs-for-creators',
-    title: 'Jobs for Creators & Arts Professionals',
-    description: 'Find paid editorial roles, curatorial positions, publishing internships, and academic faculty openings.',
+    title: 'Jobs for artists, writers and arts workers',
+    description: 'Editing, curating, publishing and teaching jobs open now, from internships to faculty posts, with a link to each employer’s page.',
     answer: 'Creative and cultural jobs offer structured compensation, institutional backing, and professional growth for practitioners. Always confirm the salary transparency, benefits, eligibility criteria, and application procedure directly on the hiring institution’s official careers page.',
     audience: 'Writers, editors, curators, arts administrators, and educators looking for full-time, part-time, or contract positions.',
     checklist: ['Role responsibilities, schedule, and location (remote/onsite)', 'Compensation, salary bands, or stipend rates', 'Eligibility, required portfolio, and submission materials', 'Application closing date and official careers portal'],

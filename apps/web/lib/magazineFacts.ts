@@ -202,7 +202,7 @@ export type MagazineSort = "rank" | "honours" | "fee" | "pay" | "replies";
 
 export const MAGAZINE_SORT_LABELS: Record<MagazineSort, string> = {
   rank: "Missa rank",
-  honours: "Most honoured",
+  honours: "Most honored",
   fee: "Lowest fee",
   pay: "Best pay",
   replies: "Fastest replies",

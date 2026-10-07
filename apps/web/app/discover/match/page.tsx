@@ -14,9 +14,9 @@ import { getManuscriptMatchEngine } from "@/lib/manuscriptMatchEngine";
 export const revalidate = 300;
 
 export const metadata: Metadata = pageMetadata({
-  title: "Manuscript Strategy & Submission Matcher | Missa",
+  title: "Manuscript matcher: where should this piece go? | Missa",
   description:
-    "Match your short story, essay, or poetry packet against the Missa magazine index with taste DNA comps, debut friendliness ratings, and payment details.",
+    "Describe your story, essay or poems and get a list of literary magazines that publish work like yours, with what each one pays and charges.",
   path: "/discover/match",
 });
 
@@ -36,9 +36,9 @@ export default async function ManuscriptMatchPage() {
             Where should this piece go?
           </h1>
           <p className={styles.lede}>
-            Describe your story, essay, or poems. Missa checks each
-            magazine&apos;s recorded rules, scores fit, odds, payoff and cost,
-            and builds a submission plan you can send today.
+            Describe your story, essay or poems. Missa checks each
+            magazine&apos;s recorded rules, scores fit, openness, payoff and
+            cost, and gives you a plan you can start sending today.
           </p>
           <p className={styles.headerLink}>
             <Link href="/discover/prizes">

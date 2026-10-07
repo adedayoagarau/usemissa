@@ -1,8 +1,9 @@
 /**
  * Voiceover sync map for "Talent's your department".
  *
- * Measured from the waveform of `public/audio/voiceover-script1-lyan.mp3`
- * (ElevenLabs eleven_v4, voice "Lyan", take 2 of 4) with
+ * Measured from the waveform of `public/audio/voiceover-lyan-find-the-call.mp3`
+ * (ElevenLabs eleven_v4, voice "Lyan", take 2 of 4, with the closing line
+ * re-recorded as its own take and spliced in at "Missa.") with
  * `node scripts/measure-vo.mjs <file> 0.04 0.3` (phrases) and `0.1 0.05`
  * (words inside phrases). Times are seconds inside the audio file; VO_OFFSET
  * shifts them onto the video timeline. Swap the voiceover → re-measure these.
@@ -11,7 +12,7 @@ export const FPS = 30;
 export const VO_OFFSET = 0.6;
 export const DURATION_SECONDS = 33;
 
-export const VOICEOVER_FILE = "audio/voiceover-script1-lyan.mp3";
+export const VOICEOVER_FILE = "audio/voiceover-lyan-find-the-call.mp3";
 
 const vo = {
   open: 0.15, // "Some people will tell you the art world runs on talent."
@@ -32,9 +33,10 @@ const vo = {
   closes: 21.25, // "before every one of them closes."
   department: 23.4, // "Talent's your department."
   ours: 25.1, // "Deadlines are ours."
-  name: 26.9, // "Missa."
-  tagline: 27.75, // "Opportunities for every creator."
-  end: 29.7,
+  name: 26.85, // "Missa."
+  tagline: 27.7, // "Find the call."
+  deadline: 28.8, // "Make the deadline."
+  end: 29.9,
 } as const;
 
 export type Cue = keyof typeof vo;

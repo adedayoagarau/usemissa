@@ -1,12 +1,15 @@
 import { letterText, renderLetter, type LetterProps } from "./components/letter";
 import { siteUrl } from "../lib/siteUrl";
 import { sendMail, type SendMailReport } from "../lib/mail-service";
+import { sp, type Spelling } from "../lib/spelling";
 
 export interface WelcomeEmailProps {
   accountId: string;
   email: string;
   givenName?: string;
   displayName?: string;
+  /** UK readers get UK spelling (lib/spelling.ts). */
+  spelling?: Spelling;
 }
 
 /** The first letter after sign-up: what Missa is, and three ways to make it yours. */
@@ -20,13 +23,13 @@ export function renderWelcomeEmail(props: WelcomeEmailProps): {
   const url = (path: string) => new URL(path, `${siteUrl()}/`).toString();
   const letter: LetterProps = {
     subject,
-    preheader: "Open calls, grants and residencies in one place, checked against each organisation's official page.",
+    preheader: sp("Every call links to the organizer's own page. Here's how to make Missa yours.", props.spelling),
     from: { kind: "missa" },
     headline: name ? `Welcome to Missa, ${name}.` : "Welcome to Missa.",
     blocks: [
       {
         kind: "paragraph",
-        text: "Missa keeps open calls, grants and residencies in one place, checked against each organisation's official page. Three things make it yours.",
+        text: sp("Missa lists open calls, grants and residencies, each linked to the organizer's own page. Three things make it yours.", props.spelling),
       },
       {
         kind: "steps",
@@ -39,11 +42,11 @@ export function renderWelcomeEmail(props: WelcomeEmailProps): {
           {
             title: "Save a call to your Tracker",
             line: "Saved calls show their deadline, what to send and where you are.",
-            link: { label: "Browse Opportunities", url: url("/opportunities") },
+            link: { label: "Browse open calls", url: url("/opportunities") },
           },
           {
             title: "Keep reminder emails on",
-            line: "Missa emails the reminders you set, in your own timezone.",
+            line: "Missa emails the reminders you set, in your own time zone.",
             link: { label: "Check your settings", url: url("/inbox") },
           },
         ],

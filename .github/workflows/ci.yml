@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          # check:language diffs against HEAD^1, the PR's base.
+          fetch-depth: 2
 
       - uses: actions/setup-node@v5
         with:
@@ -30,7 +33,7 @@ jobs:
         run: npm run typecheck
 
       - name: Check customer-facing Missa language
-        run: npm run check:language
+        run: npm run test:language && npm run check:language
 
       - name: Check Missa design-system policy
         run: npm run check:design-system
