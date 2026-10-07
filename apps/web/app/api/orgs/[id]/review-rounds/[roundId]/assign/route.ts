@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { readerConflict, recordReviewerConflict, WORKSPACE_DECISION_SCOPES, type ConflictReason, type DistributionReader, type DistributionSubmission, type WorkspaceCommandResult } from '@missa/workspace-engine';
 import { persistOrganizationMutation, requireOrganizationAccess } from '@/lib/organizationAccess';
 import { recordDecisionsAfterResponse, workspaceDecisionContext } from '@/lib/jevDecisions';
-import { compatibilityDistributionInputs, relationalAssignmentInputs } from '@/lib/readerOperationsData';
+import { compatibilityDistributionInputs, relationalAssignmentInputs, roundDueDateFor } from '@/lib/readerOperationsData';
 import { getRelationalWorkspace, workspaceCommandEnvelope, workspaceMutationError, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string; roundId: string }> }) {
@@ -65,7 +65,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   try {
     const assignment = engine.assignReviewer(roundId, body.submissionId, body.reviewerAccountId);
     // New reads inherit the round's due date, as distributed and reassigned reads do.
-    const dueDate = engine.roundDueDate(roundId);
+    const dueDate = roundDueDateFor(engine, result.access.radar.store.organizations.get(id), roundId);
     if (dueDate) assignment.expiresAt = dueDate;
     await persistOrganizationMutation(result.access, {
       action: 'review-assignment.create',

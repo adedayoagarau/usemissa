@@ -13,6 +13,7 @@ import { POST as previewLetter } from './communications/[batchId]/preview/route'
 import { POST as sendLetter } from './communications/[batchId]/send/route';
 import { GET as getCustomization, PATCH as patchCustomization } from './customization/route';
 import { PATCH as patchRound } from './review-rounds/[roundId]/route';
+import { POST as assignRead } from './review-rounds/[roundId]/assign/route';
 import { POST as reassign } from './review-rounds/[roundId]/reassign/route';
 import { POST as promote } from './review-rounds/[roundId]/promote/route';
 import { POST as declareConflict } from '../../reviewer/assignments/[assignmentId]/conflict/route';
@@ -583,4 +584,25 @@ test('submitters change their own submission until reading starts, and the organ
   const locked = await patch(submitter, { works: [{ workId: work.id, title: 'Too late' }] });
   assert.equal(locked.status, 409);
   assert.match((await locked.json() as { error: string }).error, /Reading has started/);
+});
+
+test('a due date set before any read is assigned is kept and applied to later reads', async () => {
+  const { data, workspace, round } = await freshRound();
+  const owner = data.accounts.get('owner')!;
+  const roundParams = { params: Promise.resolve({ id: data.organizationId, roundId: round.id }) };
+  const saved = await (await patchRound(requestAs(owner, '/round', { method: 'PATCH', body: JSON.stringify({ dueAt: '2030-03-01' }) }), roundParams)).json() as { assignments: number };
+  assert.equal(saved.assignments, 0, 'no open reads yet');
+  // A reader on another email domain, so the conflict rules allow the read.
+  const radar = await getEngine();
+  const outsideEmail = 'due-date-reader@independent-readers.test';
+  const outside = [...radar.store.accounts.values()].find((account) => account.email === outsideEmail) ?? radar.signUp(outsideEmail, 'due-date-reader-password', 'Due Date Reader').account;
+  if (!radar.store.memberships.some((membership) => membership.accountId === outside.id && membership.organizationId === data.organizationId)) {
+    radar.store.memberships.push({ accountId: outside.id, organizationId: data.organizationId, role: 'reviewer', grantedAt: new Date().toISOString() });
+  }
+  const assigned = await assignRead(requestAs(owner, '/assign', json({ submissionId: data.unassigned.id, reviewerAccountId: outside.id })), roundParams);
+  assert.equal(assigned.status, 201, await assigned.clone().text());
+  const assignment = await assigned.json() as { id: string };
+  assert.equal(workspace.store.reviewAssignments.get(assignment.id)!.expiresAt, '2030-03-01T23:59:59.000Z');
+  const view = await (await getReaderOperations(requestAs(owner, `/reader-operations?roundId=${round.id}`), { params: Promise.resolve({ id: data.organizationId }) })).json() as { round: { dueAt?: string } };
+  assert.equal(view.round.dueAt, '2030-03-01T23:59:59.000Z');
 });

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { planDistribution, workspaceRequestHash, type DistributionReader, type DistributionSubmission } from '@missa/workspace-engine';
 import { persistOrganizationMutation, requireOrganizationAccess } from '@/lib/organizationAccess';
-import { compatibilityDistributionInputs } from '@/lib/readerOperationsData';
+import { compatibilityDistributionInputs, roundDueDateFor } from '@/lib/readerOperationsData';
 import { getRelationalWorkspace, workspaceCommandEnvelope, workspaceMutationError, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
 const headers = { 'Cache-Control': 'private, no-store' };
@@ -41,7 +41,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const plan = planDistribution({ submissions: inputs.submissions, readers: inputs.readers, readersPerSubmission, policy });
   if (dryRun) return NextResponse.json({ dryRun: true, plan }, { headers });
 
-  const applied = result.access.workspace.applyDistribution(roundId, plan.assignments, result.access.session.account.id, { expiresAt: result.access.workspace.roundDueDate(roundId) });
+  const applied = result.access.workspace.applyDistribution(roundId, plan.assignments, result.access.session.account.id, { expiresAt: roundDueDateFor(result.access.workspace, result.access.radar.store.organizations.get(id), roundId) });
   await persistOrganizationMutation(result.access, {
     action: 'review-assignment.distributed',
     targetType: 'review_round',

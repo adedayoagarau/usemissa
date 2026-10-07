@@ -131,7 +131,7 @@ export function compatibilityRoundOperationsView(input: { radar: Radar; workspac
     authority: 'compatibility',
     scoresAvailable: true,
     generatedAt: now,
-    round: { id: round.id, name: round.name, openCallId: openCall.id, openCallTitle: openCall.title, dueAt: workspace.roundDueDate(round.id), expectedDecisionBy: radar.store.organizations.get(organizationId)?.customization?.decisionDates?.[openCall.id], brief: radar.store.organizations.get(organizationId)?.customization?.roundBriefs?.[round.id]?.text, ...(rubric ? { rubric: { version: rubric.version, criteria: rubric.criteria } } : {}), publishedResults: radar.store.organizations.get(organizationId)?.customization?.publishedResults?.[openCall.id] },
+    round: { id: round.id, name: round.name, openCallId: openCall.id, openCallTitle: openCall.title, dueAt: roundDueDateFor(workspace, radar.store.organizations.get(organizationId), round.id), expectedDecisionBy: radar.store.organizations.get(organizationId)?.customization?.decisionDates?.[openCall.id], brief: radar.store.organizations.get(organizationId)?.customization?.roundBriefs?.[round.id]?.text, ...(rubric ? { rubric: { version: rubric.version, criteria: rubric.criteria } } : {}), publishedResults: radar.store.organizations.get(organizationId)?.customization?.publishedResults?.[openCall.id] },
     totals: {
       submissions: submissions.length,
       eligibleSubmissions: submissions.filter((submission) => submission.status !== 'withdrawn').length,
@@ -227,6 +227,15 @@ export function compatibilityDistributionInputs(input: { radar: Radar; workspace
     return distributionReader(radar, accountId, open, input.capacity);
   });
   return { submissions, readers };
+}
+
+/**
+ * The date a round asks readers to finish by. Open reads carry it; the
+ * organization record keeps it too, so a date set before any read is assigned
+ * is not lost and later assignments pick it up.
+ */
+export function roundDueDateFor(workspace: Pick<WorkspaceEngine, 'roundDueDate'>, organization: { customization?: { roundDueDates?: Record<string, string> } } | undefined, roundId: string): string | undefined {
+  return workspace.roundDueDate(roundId) ?? organization?.customization?.roundDueDates?.[roundId];
 }
 
 /**
