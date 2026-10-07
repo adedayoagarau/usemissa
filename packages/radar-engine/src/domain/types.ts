@@ -388,6 +388,8 @@ export interface OrganizationCustomization {
   eligibilityRules?: Record<string, { maxWorks?: number; allowedCategories?: string[]; requireFiles?: boolean; maxSubmissionsPerSubmitter?: number; /** When true, submitters cannot change a submission after sending it. */ lockAfterSubmit?: boolean }>;
   /** Per review round: what readers must read and acknowledge before scoring. */
   roundBriefs?: Record<string, { text: string; updatedAt: string }>;
+  /** Per review round: the date readers are asked to finish by, kept even before any read is assigned. */
+  roundDueDates?: Record<string, string>;
   /** Per opportunity: what the organization chose to publish on its public results page. */
   publishedResults?: Record<string, { stages: OrganizationSubmissionStage[]; includeWinners: boolean; introduction?: string; publishedAt: string }>;
   communications?: {

@@ -203,7 +203,7 @@ function Composer({ base, openCalls, templates, stageLabels, onCreated }: { base
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
         <Field>
           <FieldLabel htmlFor="compose-opportunity">Opportunity</FieldLabel>
-          <NativeSelect className="w-full"><select id="compose-opportunity" value={openCallId} onChange={(event) => setOpenCallId(event.target.value)}>{openCalls.map((call) => <NativeSelectOption key={call.id} value={call.id}>{call.title}</NativeSelectOption>)}{openCalls.length === 0 ? <NativeSelectOption value="">No opportunities yet</NativeSelectOption> : null}</select></NativeSelect>
+          <NativeSelect className="w-full" id="compose-opportunity" value={openCallId} onChange={(event) => setOpenCallId(event.target.value)}>{openCalls.map((call) => <NativeSelectOption key={call.id} value={call.id}>{call.title}</NativeSelectOption>)}{openCalls.length === 0 ? <NativeSelectOption value="">No opportunities yet</NativeSelectOption> : null}</NativeSelect>
         </Field>
       </div>
       <fieldset className="rounded-lg border border-border">
@@ -405,7 +405,7 @@ function PreviewDialog({ base, batchId, open, onOpenChange, draftSubject, draftB
           <DialogDescription>{total > (previews?.length ?? 0) ? `Showing the first ${previews?.length} of ${total} recipients.` : 'Rendered with the live merge values for each recipient.'}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-wrap items-center gap-3">
-          <NativeSelect className="min-w-64"><select aria-label="Recipient to preview" value={index} onChange={(event) => setIndex(Number(event.target.value))}>{options.map((option) => <NativeSelectOption key={option.position} value={option.position}>{option.label}</NativeSelectOption>)}</select></NativeSelect>
+          <NativeSelect className="min-w-64" aria-label="Recipient to preview" value={index} onChange={(event) => setIndex(Number(event.target.value))}>{options.map((option) => <NativeSelectOption key={option.position} value={option.position}>{option.label}</NativeSelectOption>)}</NativeSelect>
           <Tabs value={mode} onValueChange={(value) => setMode(value as 'html' | 'text')}><TabsList aria-label="Preview format"><TabsTrigger value="html">Email</TabsTrigger><TabsTrigger value="text">Plain text</TabsTrigger></TabsList></Tabs>
         </div>
         {current ? (

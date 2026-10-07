@@ -186,7 +186,7 @@ export function PromoteDialog({ base, roundId, organizationId, scored }: { base:
             <Field><FieldLabel htmlFor="promote-top">How many</FieldLabel><Input id="promote-top" type="number" min={1} max={scored || 1} value={top} onChange={(event) => setTop(Math.max(1, Number(event.target.value) || 1))} className="w-24" /><FieldDescription>{scored} scored so far.</FieldDescription></Field>
             <Field className="sm:col-span-2">
               <FieldLabel htmlFor="promote-letter">Draft a letter for them</FieldLabel>
-              <NativeSelect className="w-full"><select id="promote-letter" value={letterKind} onChange={(event) => setLetterKind(event.target.value as typeof letterKind)}><NativeSelectOption value="">No letter</NativeSelectOption><NativeSelectOption value="longlist">Longlist letter</NativeSelectOption><NativeSelectOption value="shortlist">Shortlist letter</NativeSelectOption><NativeSelectOption value="finalists">Finalists letter</NativeSelectOption></select></NativeSelect>
+              <NativeSelect className="w-full" id="promote-letter" value={letterKind} onChange={(event) => setLetterKind(event.target.value as typeof letterKind)}><NativeSelectOption value="">No letter</NativeSelectOption><NativeSelectOption value="longlist">Longlist letter</NativeSelectOption><NativeSelectOption value="shortlist">Shortlist letter</NativeSelectOption><NativeSelectOption value="finalists">Finalists letter</NativeSelectOption></NativeSelect>
             </Field>
           </div>
           {preview ? (
@@ -230,7 +230,7 @@ export function NewRoundForm({ organizationId, openCalls }: { organizationId: st
     <form onSubmit={create} className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-border p-4" aria-label="Create a review round">
       <Field className="min-w-56 flex-1">
         <FieldLabel htmlFor="new-round-opportunity">Opportunity</FieldLabel>
-        <NativeSelect className="w-full"><select id="new-round-opportunity" value={openCallId} onChange={(event) => setOpenCallId(event.target.value)}>{openCalls.map((call) => <NativeSelectOption key={call.id} value={call.id}>{call.title}</NativeSelectOption>)}</select></NativeSelect>
+        <NativeSelect className="w-full" id="new-round-opportunity" value={openCallId} onChange={(event) => setOpenCallId(event.target.value)}>{openCalls.map((call) => <NativeSelectOption key={call.id} value={call.id}>{call.title}</NativeSelectOption>)}</NativeSelect>
       </Field>
       <Field className="w-56">
         <FieldLabel htmlFor="new-round-name">Round name</FieldLabel>

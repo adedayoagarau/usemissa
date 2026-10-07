@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { recordReviewerConflict, WORKSPACE_DECISION_SCOPES } from '@missa/workspace-engine';
 import { persistOrganizationMutation, requireOrganizationAccess } from '@/lib/organizationAccess';
+import { roundDueDateFor } from '@/lib/readerOperationsData';
 import { recordDecisionsAfterResponse, workspaceDecisionContext } from '@/lib/jevDecisions';
 import { getRelationalWorkspace, workspaceCommandEnvelope, workspaceMutationError, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
@@ -43,6 +44,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const engine = result.access.workspace;
   try {
     const assignment = engine.assignReviewer(roundId, body.submissionId, body.reviewerAccountId);
+    const dueAt = roundDueDateFor(engine, result.access.radar.store.organizations.get(id), roundId);
+    if (dueAt && !assignment.expiresAt) assignment.expiresAt = dueAt;
     await persistOrganizationMutation(result.access, {
       action: 'review-assignment.create',
       targetType: 'review-assignment',
