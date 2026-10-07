@@ -39,13 +39,13 @@ test('Owners create a Team and Program, build a form, then publish and close an 
   const programDialog = page.getByRole('dialog', { name: `Add a Program to ${teamName}` });
   await programDialog.getByLabel('Program name').fill(programName);
   await programDialog.getByRole('button', { name: 'Add Program' }).click();
-  await expect(teamRow).toContainText(programName);
+  await expect(teamRow).toContainText(programName, { timeout: firstCompile });
 
   await page.goto(`/organization/${organizationId}/opportunities/new`);
   await page.getByLabel('Public title').fill(title);
   await page.getByLabel('Program').selectOption({ label: `${programName} · ${teamName}` });
   await page.getByRole('button', { name: 'Create draft' }).click();
-  await expect(page.getByRole('heading', { name: title, level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: title, level: 1 })).toBeVisible({ timeout: firstCompile });
 
   await page.getByRole('button', { name: 'Review and publish' }).click();
   await expect(page.getByText('Save the submission form so applicants have somewhere to apply.')).toBeVisible({ timeout: firstCompile });
@@ -61,18 +61,18 @@ test('Owners create a Team and Program, build a form, then publish and close an 
   await expect(page.getByText('Submission form saved.')).toBeVisible({ timeout: firstCompile });
 
   await page.getByRole('button', { name: 'Review and publish' }).click();
-  await expect(page.getByRole('heading', { name: 'Ready to publish' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Ready to publish' })).toBeVisible({ timeout: firstCompile });
   await page.getByRole('button', { name: 'Publish Opportunity' }).click();
   const publish = page.getByRole('alertdialog', { name: `Publish “${title}”?` });
   await publish.getByRole('button', { name: 'Publish now' }).click();
   await expect(page.getByText('Opportunity published. Applicants can apply now.')).toBeVisible({ timeout: firstCompile });
-  await expect(page.getByRole('heading', { name: 'Current lifecycle: published' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Current lifecycle: published' })).toBeVisible({ timeout: firstCompile });
 
   await page.getByRole('button', { name: 'Close to new submissions' }).click();
   const close = page.getByRole('alertdialog', { name: `Close “${title}”?` });
   await close.getByRole('button', { name: 'Close Opportunity' }).click();
   await expect(page.getByText('Opportunity closed to new submissions.')).toBeVisible({ timeout: firstCompile });
-  await expect(page.getByRole('heading', { name: 'Current lifecycle: closed' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Current lifecycle: closed' })).toBeVisible({ timeout: firstCompile });
 });
 
 async function submissionFixture(page: Page, baseURL: string | undefined) {
