@@ -49,7 +49,7 @@ test('Owners create a Team and Program, build a form, then publish and close an 
 
   await page.getByRole('button', { name: 'Review and publish' }).click();
   await expect(page.getByText('Save the submission form so applicants have somewhere to apply.')).toBeVisible({ timeout: firstCompile });
-  await expect(page.getByRole('button', { name: 'Publish Opportunity' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Publish call' })).toBeDisabled();
 
   await page.getByRole('button', { name: 'Submission form' }).click();
   await page.getByLabel('Categories').fill('Poetry, Fiction');
@@ -62,16 +62,16 @@ test('Owners create a Team and Program, build a form, then publish and close an 
 
   await page.getByRole('button', { name: 'Review and publish' }).click();
   await expect(page.getByRole('heading', { name: 'Ready to publish' })).toBeVisible({ timeout: firstCompile });
-  await page.getByRole('button', { name: 'Publish Opportunity' }).click();
+  await page.getByRole('button', { name: 'Publish call' }).click();
   const publish = page.getByRole('alertdialog', { name: `Publish “${title}”?` });
   await publish.getByRole('button', { name: 'Publish now' }).click();
-  await expect(page.getByText('Opportunity published. Applicants can apply now.')).toBeVisible({ timeout: firstCompile });
+  await expect(page.getByText('Call published. Applicants can apply now.')).toBeVisible({ timeout: firstCompile });
   await expect(page.getByRole('heading', { name: 'Current lifecycle: published' })).toBeVisible({ timeout: firstCompile });
 
   await page.getByRole('button', { name: 'Close to new submissions' }).click();
   const close = page.getByRole('alertdialog', { name: `Close “${title}”?` });
-  await close.getByRole('button', { name: 'Close Opportunity' }).click();
-  await expect(page.getByText('Opportunity closed to new submissions.')).toBeVisible({ timeout: firstCompile });
+  await close.getByRole('button', { name: 'Close call' }).click();
+  await expect(page.getByText('Call closed to new submissions.')).toBeVisible({ timeout: firstCompile });
   await expect(page.getByRole('heading', { name: 'Current lifecycle: closed' })).toBeVisible({ timeout: firstCompile });
 });
 
@@ -102,13 +102,13 @@ test('A Submission dossier assigns a reviewer once, records a decision, and trac
   await assign.getByLabel('New round name').fill(`First read ${fixture.suffix}`);
   await expectNoSeriousAxeViolations(page);
   await assign.getByRole('button', { name: 'Assign', exact: true }).click();
-  await expect(page.getByText(/assigned\. They see this Submission in their review queue\./u)).toBeVisible({ timeout: firstCompile });
+  await expect(page.getByText(/assigned\. They see this submission in their review queue\./u)).toBeVisible({ timeout: firstCompile });
   await expect(page.getByText('Recommendation not submitted')).toBeVisible({ timeout: firstCompile });
 
   await page.getByRole('button', { name: 'Assign reviewer' }).click();
   const again = page.getByRole('dialog', { name: 'Assign a reviewer' });
   await again.getByLabel('Reviewer').selectOption(fixture.ownerAccountId);
-  await expect(again.getByText('This person is already assigned to this Submission in that round.')).toBeVisible();
+  await expect(again.getByText('This person is already assigned to this submission in that round.')).toBeVisible();
   await expect(again.getByRole('button', { name: 'Assign', exact: true })).toBeDisabled();
   await again.getByRole('button', { name: 'Cancel' }).click();
 
@@ -160,7 +160,7 @@ test('People adds, re-roles, and removes access with confirmation', async ({ pag
   const add = page.getByRole('dialog', { name: 'Add a person' });
   await add.getByLabel('Email').fill(email);
   await add.getByLabel('Role').selectOption('reviewer');
-  await expect(add.getByText('Only the Submissions assigned to them, in their own review queue.')).toBeVisible();
+  await expect(add.getByText('Only the submissions assigned to them, in their own review queue.')).toBeVisible();
   await expectNoSeriousAxeViolations(page);
   await add.getByRole('button', { name: 'Add person' }).click();
   await expect(page.getByText('If this email belongs to a Missa account')).toBeVisible({ timeout: firstCompile });
@@ -175,7 +175,7 @@ test('People adds, re-roles, and removes access with confirmation', async ({ pag
 
   await page.getByRole('button', { name: 'Remove access' }).click();
   const remove = page.getByRole('alertdialog');
-  await expect(remove).toContainText('Their Missa account is not deleted.');
+  await expect(remove).toContainText('Their Missa account isn’t deleted.');
   await remove.getByRole('button', { name: 'Remove access' }).click();
   await expect(page.getByText('no longer has access.')).toBeVisible({ timeout: firstCompile });
   await page.goto(`/organization/${organizationId}/people?q=${encodeURIComponent(email)}`);

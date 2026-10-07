@@ -40,7 +40,7 @@ test('one-off assignment applies the distribution conflict rules', async () => {
   assert.equal(response.status, 409);
   const body = await response.json();
   assert.equal(body.reason, 'shared-email-domain');
-  assert.match(body.error, /cannot review this Submission/);
+  assert.match(body.error, /cannot review this submission/);
 });
 
 test('a reader who recused from a Submission is not assigned to it again in that round', async () => {

@@ -52,7 +52,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
   const conflict = readerConflict(reader, candidate);
   if (conflict) {
-    const error = conflict.reason === 'already-assigned' ? 'This reviewer is already assigned to this Submission in this round.' : `This person cannot review this Submission. ${conflict.detail}`;
+    const error = conflict.reason === 'already-assigned' ? 'This reviewer is already assigned to this submission in this round.' : `This person cannot review this submission. ${conflict.detail}`;
     return NextResponse.json({ error, reason: conflict.reason }, { status: 409 });
   }
   try {

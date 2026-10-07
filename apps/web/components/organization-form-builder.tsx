@@ -86,7 +86,7 @@ export function OrganizationFormBuilder({ organizationId, openCallId, saved, can
       });
       if (!result.ok) return result.error;
       if (result.data.id) setPathId(result.data.id);
-      toast.success('Submission form saved. Applicants see these questions once the Opportunity is published.');
+      toast.success('Submission form saved. Applicants see these questions once the call is published.');
       router.refresh();
     });
   }
@@ -150,7 +150,7 @@ export function OrganizationFormBuilder({ organizationId, openCallId, saved, can
 
       <FieldSet>
         <FieldLegend>Kinds of work</FieldLegend>
-        <FieldDescription>Say which kinds of work this Opportunity accepts, prefers, requires, or excludes, so applicants see the right form and your team can route Submissions consistently.</FieldDescription>
+        <FieldDescription>Say which kinds of work this call accepts, prefers, requires or excludes, so applicants see the right form and your team can route submissions consistently.</FieldDescription>
         {rules.length ? (
           <ul className="grid gap-3">
             {rules.map((item, index) => (
