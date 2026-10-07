@@ -84,6 +84,46 @@ depth 40) before saving. `body` stays the plain text of every page, used for
 the word count, previews and the plain-text download. Entries saved before
 pages existed open as one page with their text unchanged.
 
+## Snapshots, find and replace, appearance
+
+- **Snapshots** (More, Snapshots…) keep the open piece as it stands: title,
+  every page and its format, under an optional name. A snapshot can be
+  compared with the text now, line by line, with lines only in the snapshot
+  struck through and new lines marked; spaces and tabs count. Restoring keeps a
+  snapshot of the text as it is first ("Before restoring …"), so nothing is
+  lost. Up to 100 a piece; the oldest past that are let go. A snapshot is
+  deleted with its piece. The piece must be saved to the account first.
+- **Find and replace** (Ctrl/⌘+F or Ctrl/⌘+H, or More) searches every page and
+  canvas text box in reading order, marks every match and the one in hand,
+  and replaces one or all. Match case is optional. A match never reaches
+  across paragraphs. Enter finds the next, Shift+Enter the previous, Escape
+  closes the bar.
+- **Appearance** (More): Light, Dark, or Match this device. Only the writing
+  room turns dark; printing is always on white. The dark palette is Missa's
+  (`.dark` in `app/globals.css`), with every text pair at WCAG AA or better.
+
+## Free canvas
+
+Any page can switch between **Flowing text** and **Free canvas** (More, This
+page's layout). A canvas page holds text boxes placed in millimetres from the
+page's top left corner, each with its own width and turn, for concrete and
+visual poetry. It prints exactly as set.
+
+- Switching to a canvas puts the page's text in one box inside its margins.
+  Switching back joins the boxes in reading order (top to bottom, then left to
+  right), every word and space kept.
+- A box moves by dragging its handle. From the keyboard, with the handle
+  focused, arrow keys move it 1 mm (10 mm with Shift), Alt with left or right
+  narrows or widens it, and `[` and `]` turn it 15°. The box's menu turns,
+  straightens, widens, narrows, brings to front, sends to back or deletes it.
+- New boxes come from **Add a text box** in More, or by double-clicking or
+  double-tapping the paper where the box should go.
+- Text never flows into or out of a canvas page. Plain text, word counts and
+  compile read the boxes in reading order. Compile adds a piece's title only
+  to a flowing first page.
+- Positions are kept to a tenth of a millimetre and checked on the server
+  (up to 200 boxes a page).
+
 ## Projects
 
 A project gathers pieces (entries) into one body of work: a poetry
@@ -247,9 +287,10 @@ Apply the migrations once per environment, in order:
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/migrations/0095_creator_writing.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/migrations/0096_creator_writing_pages.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/migrations/0097_creator_writing_projects.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/migrations/0098_creator_writing_snapshots.sql
 ```
 
-0096 and 0097 add a table and nullable or defaulted columns only, so each can
+0096, 0097 and 0098 add tables and nullable or defaulted columns only, so each can
 run before its code ships. 0097 uses `ON DELETE SET NULL (project_id)`, which
 needs Postgres 15 or later. Without it, saves fail and text stays on the device with a retry notice.
 Without `DATABASE_URL`, the room keeps text in the browser only and says so.

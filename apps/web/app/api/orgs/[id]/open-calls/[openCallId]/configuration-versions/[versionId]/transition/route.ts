@@ -8,7 +8,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const access = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   if (!workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: 'Relational Workspace authority is required' }, { status: 503 });
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== 'object') return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   const status = configurationStatusSchema.safeParse(body.status);
   if (!status.success) return NextResponse.json({ error: 'Configuration status is invalid' }, { status: 400 });
   try {

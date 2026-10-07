@@ -267,5 +267,396 @@
     "components/work-detail-product.module.css|raw-font-family|.timeline time { display: block; margin-bottom: 3px; color: var(--muted-foreground); font-family: var(--font-mono), monospace; font-size: 9px; }",
     "lib/designTokenAuthority.test.ts|raw-color|assert.doesNotMatch(globals, /#5a3f68|#473050|#f1edf3/i);",
     "lib/designTokenAuthority.test.ts|raw-color|assert.match(globals, /--brand-accent:\\s*#285649;/i);"
-  ]
+  ],
+  "handRolledControls": {
+    "app/(admin)/admin/email-previews/email-preview-client.tsx": {
+      "<select>": 1,
+      "<button>": 4
+    },
+    "app/(admin)/admin/health/page.tsx": {
+      "<details>": 1
+    },
+    "app/(workspace)/submissions/page.tsx": {
+      "<input>": 1,
+      "<select>": 1,
+      "<button>": 1
+    },
+    "app/for-organizations/showcase.tsx": {
+      "<button>": 3,
+      "role=tablist": 1,
+      "role=tab": 1
+    },
+    "app/forgot-password/page.tsx": {
+      "<button>": 1
+    },
+    "app/journals/error.tsx": {
+      "<button>": 1
+    },
+    "app/organization/[organizationId]/decisions/page.tsx": {
+      "<input>": 1,
+      "<select>": 1,
+      "<button>": 1
+    },
+    "app/organization/[organizationId]/delivery/page.tsx": {
+      "<input>": 1,
+      "<select>": 1,
+      "<button>": 1
+    },
+    "app/organization/[organizationId]/insights/page.tsx": {
+      "<select>": 3,
+      "<button>": 1
+    },
+    "app/organization/[organizationId]/messages/page.tsx": {
+      "<input>": 1,
+      "<select>": 1,
+      "<button>": 1
+    },
+    "app/organization/[organizationId]/opportunities/page.tsx": {
+      "<input>": 1,
+      "<select>": 2,
+      "<button>": 1
+    },
+    "app/organization/[organizationId]/people/page.tsx": {
+      "<input>": 1,
+      "<select>": 1,
+      "<button>": 1
+    },
+    "app/organization/[organizationId]/settings/page.tsx": {
+      "<select>": 1,
+      "<button>": 1
+    },
+    "app/organization/[organizationId]/submissions/page.tsx": {
+      "<input>": 2,
+      "<select>": 5,
+      "<button>": 1
+    },
+    "app/reset-password/page.tsx": {
+      "<button>": 1
+    },
+    "components/admin-breakdown-tabs.tsx": {
+      "<button>": 1,
+      "role=tablist": 1,
+      "role=tab": 1,
+      "role=tabpanel": 1
+    },
+    "components/admin-chart-notes.tsx": {
+      "<button>": 1
+    },
+    "components/admin-command-palette.tsx": {
+      "<button>": 1
+    },
+    "components/admin-metric-chart.tsx": {
+      "<button>": 1,
+      "role=tablist": 1,
+      "role=tab": 1,
+      "role=tabpanel": 1
+    },
+    "components/admin-time-series.tsx": {
+      "<details>": 1
+    },
+    "components/app-nav.tsx": {
+      "<select>": 1,
+      "<button>": 1
+    },
+    "components/auth-form.tsx": {
+      "<button>": 8
+    },
+    "components/calendar-workspace.tsx": {
+      "<button>": 41,
+      "<input>": 7,
+      "<textarea>": 1,
+      "role=button": 4,
+      "role=menu": 1,
+      "role=menuitem": 7,
+      "role=dialog": 4
+    },
+    "components/chat/ask-missa.tsx": {
+      "<button>": 2
+    },
+    "components/communications-manager.tsx": {
+      "<button>": 1
+    },
+    "components/content-issue-report-dialog.tsx": {
+      "<select>": 1
+    },
+    "components/creator-onboarding-parts.tsx": {
+      "<button>": 1
+    },
+    "components/creator-onboarding.tsx": {
+      "<button>": 3
+    },
+    "components/creator-profile/profile-connect.tsx": {
+      "<input>": 1
+    },
+    "components/creator-profile/public-profile.tsx": {
+      "<button>": 9,
+      "role=progressbar": 1
+    },
+    "components/creator-profile/studio/profile-studio.tsx": {
+      "<button>": 3
+    },
+    "components/creator-profile/studio/studio-editors.tsx": {
+      "<button>": 7,
+      "role=radiogroup": 3,
+      "role=radio": 3
+    },
+    "components/creator-shell.tsx": {
+      "<button>": 3
+    },
+    "components/creator-workspace-preview.tsx": {
+      "<button>": 4,
+      "<input>": 1
+    },
+    "components/email-review-queue.tsx": {
+      "<button>": 2,
+      "<select>": 2
+    },
+    "components/explained-score.tsx": {
+      "<button>": 1
+    },
+    "components/final-video.tsx": {
+      "<button>": 1
+    },
+    "components/form-builder.tsx": {
+      "<select>": 2,
+      "<input>": 1
+    },
+    "components/hero-video.tsx": {
+      "<button>": 1
+    },
+    "components/inbox-product.tsx": {
+      "<button>": 1
+    },
+    "components/ingestion-v2-workbench.tsx": {
+      "<button>": 5,
+      "<select>": 3,
+      "<input>": 1
+    },
+    "components/institution-directory-view.tsx": {
+      "<input>": 1,
+      "<button>": 1
+    },
+    "components/library-client.tsx": {
+      "<button>": 1,
+      "role=tablist": 1,
+      "role=tab": 1
+    },
+    "components/library-product.tsx": {
+      "<button>": 3,
+      "<select>": 1
+    },
+    "components/list-picker.tsx": {
+      "<button>": 1
+    },
+    "components/missa/application-reminders.tsx": {
+      "<button>": 1
+    },
+    "components/missa/applications-design-preview.tsx": {
+      "<details>": 1
+    },
+    "components/missa/following-workspace.tsx": {
+      "<button>": 2
+    },
+    "components/missa/goals-preview.tsx": {
+      "<button>": 1,
+      "<input>": 3,
+      "<details>": 1
+    },
+    "components/missa/goals-workspace.tsx": {
+      "<details>": 2,
+      "<input>": 1
+    },
+    "components/missa/homepage-morph.tsx": {
+      "role=button": 1
+    },
+    "components/missa/homepage-shortlist.tsx": {
+      "<button>": 2
+    },
+    "components/missa/writing-library.tsx": {
+      "<button>": 1
+    },
+    "components/missa/writing-room.tsx": {
+      "<input>": 1
+    },
+    "components/missa-site-header.tsx": {
+      "<button>": 1
+    },
+    "components/open-call-controls.tsx": {
+      "<input>": 2,
+      "<textarea>": 1
+    },
+    "components/opportunity-catalogue-filters.tsx": {
+      "<button>": 1,
+      "<select>": 4,
+      "<details>": 1
+    },
+    "components/opportunity-filters.tsx": {
+      "<select>": 4,
+      "<input>": 2
+    },
+    "components/opportunity-results.tsx": {
+      "<button>": 1
+    },
+    "components/opportunity-search.tsx": {
+      "<input>": 1,
+      "<button>": 1
+    },
+    "components/organization-chooser.tsx": {
+      "<input>": 1,
+      "<button>": 1
+    },
+    "components/organization-opportunity-create.tsx": {
+      "<select>": 2
+    },
+    "components/organization-opportunity-editor.tsx": {
+      "<button>": 1,
+      "<input>": 11,
+      "<textarea>": 3,
+      "<select>": 3
+    },
+    "components/organization-product-shell.tsx": {
+      "<button>": 3,
+      "<select>": 1,
+      "<input>": 1,
+      "role=dialog": 1
+    },
+    "components/organization-review-settings.tsx": {
+      "<input>": 2
+    },
+    "components/organization-seats.tsx": {
+      "<select>": 1,
+      "<button>": 1
+    },
+    "components/platform-admin-actions.tsx": {
+      "<button>": 1
+    },
+    "components/platform-admin-activity-chart.tsx": {
+      "<details>": 1
+    },
+    "components/platform-admin-agent-controls.tsx": {
+      "<button>": 2,
+      "<select>": 2,
+      "<input>": 2,
+      "<textarea>": 1
+    },
+    "components/platform-admin-content.tsx": {
+      "<textarea>": 1,
+      "<button>": 2,
+      "<input>": 1,
+      "<select>": 2
+    },
+    "components/platform-admin-crm.tsx": {
+      "<input>": 8,
+      "<textarea>": 2,
+      "<button>": 5
+    },
+    "components/platform-admin-customers.tsx": {
+      "<input>": 1,
+      "<select>": 2
+    },
+    "components/platform-admin-data.tsx": {
+      "<button>": 1
+    },
+    "components/platform-admin-gary.tsx": {
+      "<button>": 2,
+      "<input>": 1,
+      "<select>": 1
+    },
+    "components/platform-admin-nav.tsx": {
+      "<button>": 1
+    },
+    "components/platform-admin-organizations.tsx": {
+      "<input>": 1,
+      "<select>": 1
+    },
+    "components/platform-admin-queue.tsx": {
+      "<button>": 9,
+      "<input>": 1,
+      "<select>": 2
+    },
+    "components/platform-admin-support.tsx": {
+      "<button>": 6,
+      "<textarea>": 2,
+      "<select>": 3,
+      "<input>": 4
+    },
+    "components/portal-studio.tsx": {
+      "<button>": 2
+    },
+    "components/prepare-checklist.tsx": {
+      "<button>": 1,
+      "<select>": 1
+    },
+    "components/profile-product.tsx": {
+      "<button>": 2
+    },
+    "components/rankings/magazine-comparison-view.tsx": {
+      "<input>": 1,
+      "<button>": 1
+    },
+    "components/rankings/report-response-dialog.tsx": {
+      "<select>": 2,
+      "<input>": 3,
+      "<button>": 1
+    },
+    "components/rankings/residency-comparison-view.tsx": {
+      "<input>": 1,
+      "<button>": 1
+    },
+    "components/rankings/smart-shortlist-builder.tsx": {
+      "<input>": 1,
+      "<select>": 2,
+      "<button>": 4
+    },
+    "components/rankings/submit-residency-review-dialog.tsx": {
+      "<button>": 1
+    },
+    "components/reviewer-evidence-desk.tsx": {
+      "<button>": 2
+    },
+    "components/saved-opportunities.tsx": {
+      "<input>": 1,
+      "<button>": 2
+    },
+    "components/submission-card.tsx": {
+      "<button>": 3,
+      "<select>": 1,
+      "<input>": 1
+    },
+    "components/submit-form.tsx": {
+      "<select>": 2,
+      "<progress>": 1
+    },
+    "components/taxonomy-browse-picker.tsx": {
+      "<select>": 2,
+      "<button>": 1
+    },
+    "components/tracker/tracker-response-forecaster.tsx": {
+      "<button>": 1
+    },
+    "components/tracker-import-stepper.tsx": {
+      "<select>": 1,
+      "<input>": 1,
+      "<button>": 1
+    },
+    "components/tracker-product.tsx": {
+      "<button>": 14,
+      "<select>": 3,
+      "<input>": 1
+    },
+    "components/tracker-view-switcher.tsx": {
+      "<button>": 2
+    },
+    "components/tracker-work-link.tsx": {
+      "<select>": 1
+    },
+    "components/work-detail-product.tsx": {
+      "<button>": 1,
+      "<select>": 1
+    },
+    "components/workspace-forms.tsx": {
+      "<input>": 3,
+      "<select>": 1
+    }
+  }
 }

@@ -7,6 +7,7 @@ import {
   type ReaderAssignmentRecord,
   type ReaderProgress,
   type ReaderRecommendationRecord,
+  type RelationalOrganizationSubmissionView,
   type RelationalWorkspace,
   type ScoreCalibration,
   type WorkspaceEngine,
@@ -189,6 +190,27 @@ export async function relationalRoundOperationsView(input: { radar: Radar; relat
   };
 }
 
+/** A Submission as planDistribution and readerConflict see it, from its assignments in one round. */
+function distributionSubmission(radar: Radar, submission: { id: string; submitterAccountId: string }, roundAssignments: Array<{ reviewerAccountId: string; recusedAt?: string }>): DistributionSubmission {
+  const submitter = radar.store.accounts.get(submission.submitterAccountId);
+  const profile = submitter?.userId ? radar.store.users.get(submitter.userId) : undefined;
+  return {
+    id: submission.id,
+    submitterAccountId: submission.submitterAccountId,
+    submitterName: profile?.displayName || submitter?.displayName,
+    submitterEmailDomain: submitter?.email.split('@')[1],
+    existingReviewerAccountIds: roundAssignments.filter((assignment) => !assignment.recusedAt).map((assignment) => assignment.reviewerAccountId),
+    recusedReviewerAccountIds: roundAssignments.filter((assignment) => assignment.recusedAt).map((assignment) => assignment.reviewerAccountId),
+  };
+}
+
+/** A reader as planDistribution and readerConflict see them. */
+function distributionReader(radar: Radar, accountId: string, openAssignments: number, capacity?: number): DistributionReader {
+  const account = radar.store.accounts.get(accountId);
+  const profile = account?.userId ? radar.store.users.get(account.userId) : undefined;
+  return { accountId, label: profile?.displayName || account?.displayName || account?.email || accountId, name: profile?.displayName || account?.displayName, emailDomain: account?.email.split('@')[1], openAssignments, capacity };
+}
+
 /** Inputs for planDistribution from the compatibility store: eligible submissions and the chosen reader pool. */
 export function compatibilityDistributionInputs(input: { radar: Radar; workspace: WorkspaceEngine; organizationId: string; roundId: string; readerAccountIds: string[]; submissionIds?: string[]; capacity?: number }): { submissions: DistributionSubmission[]; readers: DistributionReader[] } | undefined {
   const { radar, workspace, organizationId, roundId } = input;
@@ -198,27 +220,26 @@ export function compatibilityDistributionInputs(input: { radar: Radar; workspace
   const wanted = input.submissionIds ? new Set(input.submissionIds) : undefined;
   const submissions: DistributionSubmission[] = workspace.submissionsForOpenCall(round.openCallId)
     .filter((submission) => submission.status !== 'withdrawn' && (!wanted || wanted.has(submission.id)))
-    .map((submission) => {
-      const mine = [...workspace.store.reviewAssignments.values()].filter((assignment) => assignment.reviewRoundId === roundId && assignment.submissionId === submission.id);
-      const submitter = radar.store.accounts.get(submission.submitterAccountId);
-      const profile = submitter?.userId ? radar.store.users.get(submitter.userId) : undefined;
-      return {
-        id: submission.id,
-        submitterAccountId: submission.submitterAccountId,
-        submitterName: profile?.displayName || submitter?.displayName,
-        submitterEmailDomain: submitter?.email.split('@')[1],
-        existingReviewerAccountIds: mine.filter((assignment) => !assignment.recusedAt).map((assignment) => assignment.reviewerAccountId),
-        recusedReviewerAccountIds: mine.filter((assignment) => assignment.recusedAt).map((assignment) => assignment.reviewerAccountId),
-      };
-    });
+    .map((submission) => distributionSubmission(radar, submission, [...workspace.store.reviewAssignments.values()].filter((assignment) => assignment.reviewRoundId === roundId && assignment.submissionId === submission.id)));
   const members = new Set(radar.store.memberships.filter((membership) => membership.organizationId === organizationId).map((membership) => membership.accountId));
   const readers: DistributionReader[] = input.readerAccountIds.filter((accountId) => members.has(accountId)).map((accountId) => {
-    const account = radar.store.accounts.get(accountId);
-    const profile = account?.userId ? radar.store.users.get(account.userId) : undefined;
     const open = [...workspace.store.reviewAssignments.values()].filter((assignment) => assignment.reviewerAccountId === accountId && !assignment.completedAt && !assignment.recusedAt && scope.submission(assignment.submissionId)).length;
-    return { accountId, label: profile?.displayName || account?.displayName || account?.email || accountId, name: profile?.displayName || account?.displayName, emailDomain: account?.email.split('@')[1], openAssignments: open, capacity: input.capacity };
+    return distributionReader(radar, accountId, open, input.capacity);
   });
   return { submissions, readers };
+}
+
+/**
+ * readerConflict inputs for one assignment from the relational projection,
+ * built the same way as compatibilityDistributionInputs. Undefined when the
+ * Submission is withdrawn or belongs to another Opportunity than the round.
+ * The reader's open load is not counted: readerConflict does not use it.
+ */
+export function relationalAssignmentInputs(input: { radar: Radar; round: { id: string; openCallId: string }; submission: RelationalOrganizationSubmissionView; readerAccountId: string }): { submission: DistributionSubmission; reader: DistributionReader } | undefined {
+  const { radar, round, submission } = input;
+  if (submission.openCallId !== round.openCallId || submission.status === 'withdrawn') return undefined;
+  const roundAssignments = submission.assignments.flatMap((assignment) => (assignment.reviewRoundId === round.id && assignment.reviewerAccountId ? [{ reviewerAccountId: assignment.reviewerAccountId, recusedAt: assignment.recusedAt }] : []));
+  return { submission: distributionSubmission(radar, submission, roundAssignments), reader: distributionReader(radar, input.readerAccountId, 0) };
 }
 
 /** CSV of every assignment in the round: submission, reader, state, score, recorded time. */

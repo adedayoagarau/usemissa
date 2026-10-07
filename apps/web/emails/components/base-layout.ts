@@ -125,7 +125,7 @@ export function renderBaseEmailLayout(props: BaseEmailLayoutProps): string {
   const ctaHtml = props.callToAction
     ? `<table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin:32px 0 0;">
         <tr>
-          <td style="background-color:${c.forest600};border-radius:6px;">
+          <td bgcolor="${c.forest600}" style="background-color:${c.forest600};border-radius:6px;mso-padding-alt:13px 22px;">
             <a href="${escapeHtml(props.callToAction.url)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:13px 22px;font-family:${f.interface};font-size:15px;font-weight:600;line-height:20px;color:#ffffff;text-decoration:none;">${escapeHtml(props.callToAction.label)}</a>
           </td>
         </tr>

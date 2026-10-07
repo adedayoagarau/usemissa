@@ -23,7 +23,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Unknown opportunity for this organization' }, { status: 404 });
   }
 
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== 'object') return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   if (typeof body.name !== 'string' || !body.name.trim()) {
     return NextResponse.json({ error: 'name is required' }, { status: 400 });
   }

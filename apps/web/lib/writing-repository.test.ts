@@ -5,6 +5,7 @@ import { creatorPoolFor } from "@missa/radar-adapters";
 import { newWritingEntryId } from "./writing.ts";
 import { WritingRepository } from "./writing-repository.ts";
 import { newWritingProjectId } from "./writing-projects.ts";
+import { newWritingSnapshotId } from "./writing-snapshots.ts";
 
 /**
  * Real-Postgres coverage for the writing room's storage. Skipped without
@@ -24,7 +25,7 @@ const q = async <T extends Record<string, unknown>>(
 before(async () => {
   if (!databaseUrl) return;
   const schema = await q<{ ready: boolean }>(
-    `select to_regclass('public.creator_writing_projects') is not null as ready`,
+    `select to_regclass('public.creator_writing_snapshots') is not null as ready`,
   );
   ready = Boolean(schema[0]?.ready);
 });
@@ -43,7 +44,7 @@ after(async () => {
 function dbTest(name: string, body: () => Promise<void>) {
   test(name, { skip: !databaseUrl }, async (t) => {
     if (!ready) {
-      t.skip("migrations 0095 to 0097 are not applied to this database");
+      t.skip("migrations 0095 to 0098 are not applied to this database");
       return;
     }
     await body();
@@ -445,3 +446,80 @@ dbTest("deleting a project keeps its pieces as loose pieces", async () => {
   assert.ok(list.every((entry) => entry.projectId === null));
   assert.equal(await repository().deleteProject(owner, project), false);
 });
+
+dbTest(
+  "snapshots keep a piece as it stood, only for its own account",
+  async () => {
+    const owner = await account();
+    const id = newWritingEntryId();
+    await repository().save(owner, id, {
+      title: "Harmattan",
+      body: "first draft",
+      document: null,
+      baseRevision: 0,
+    });
+    const snapshotId = newWritingSnapshotId();
+    const request = {
+      id: snapshotId,
+      name: "Before the edit",
+      title: "Harmattan",
+      body: "first draft",
+      document: null,
+    };
+    const kept = await repository().createSnapshot(owner, id, request);
+    assert.equal(kept?.name, "Before the edit");
+    assert.equal(kept?.wordCount, 2);
+    // A retry returns the same snapshot.
+    assert.equal(
+      (await repository().createSnapshot(owner, id, request))?.id,
+      snapshotId,
+    );
+    await repository().save(owner, id, {
+      title: "Harmattan",
+      body: "second draft, longer",
+      document: null,
+      baseRevision: 1,
+    });
+    const stored = await repository().getSnapshot(owner, id, snapshotId);
+    assert.equal(
+      stored?.body,
+      "first draft",
+      "later saves never change a snapshot",
+    );
+    assert.deepEqual(
+      (await repository().listSnapshots(owner, id)).map((item) => item.id),
+      [snapshotId],
+    );
+
+    const stranger = await account();
+    assert.equal(
+      await repository().getSnapshot(stranger, id, snapshotId),
+      null,
+    );
+    assert.equal(
+      await repository().createSnapshot(stranger, id, {
+        ...request,
+        id: newWritingSnapshotId(),
+      }),
+      null,
+      "a snapshot needs the piece to be in the account",
+    );
+    assert.equal(
+      await repository().deleteSnapshot(stranger, id, snapshotId),
+      false,
+    );
+    assert.ok(await repository().deleteSnapshot(owner, id, snapshotId));
+
+    // Deleting the piece deletes its snapshots.
+    await repository().createSnapshot(owner, id, {
+      ...request,
+      id: newWritingSnapshotId(),
+    });
+    await repository().delete(owner, id);
+    const left = await q(
+      `select count(*)::int as n from creator_writing_snapshots where entry_id=$1`,
+      [id],
+    );
+    assert.equal(left[0]?.n, 0);
+  },
+);

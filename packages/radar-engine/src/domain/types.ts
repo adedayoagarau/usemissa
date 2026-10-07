@@ -676,6 +676,12 @@ export interface Account {
   createdAt: IsoDateTime;
   /** Enterprise provisioning identifiers; private and never in public projections. */
   externalId?: string;
+  /**
+   * The Organization whose SCIM provisioning created this account. Only that
+   * Organization may change the account's sign-in state, externalId, or
+   * display name, and only while the account belongs to no other Organization.
+   */
+  provisionedByOrganizationId?: string;
   displayName?: string;
   /** Private signup identity fields. Public surfaces continue to use displayName. */
   givenName?: string;

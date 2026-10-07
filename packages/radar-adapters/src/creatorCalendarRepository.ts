@@ -1255,9 +1255,25 @@ async function insertDeadlineNotice(
 export const PROVIDER_MIRROR_PURPOSES = ["plan-step", "stage", "tier-close", "forecast"] as const;
 export type ProviderMirrorPurpose = (typeof PROVIDER_MIRROR_PURPOSES)[number];
 
+/**
+ * Rows the Calendar keeps for the creator from other sources: the official
+ * deadline comes from the call, the personal target from the Tracker item.
+ * Clients read them but never create, edit or delete them here.
+ */
+const TRACKER_OWNED_PURPOSES = ["official-deadline", "personal-target"] as const;
+
+/** Types of time a creator can create, edit or delete as a personal event. */
+const PERSONAL_EVENT_PURPOSES = ["personal", "preparation", "attendance", "unavailable"] as const;
+
 function assertPersonalEvent(purpose: string) {
   if ((PROVIDER_MIRROR_PURPOSES as readonly string[]).includes(purpose))
     throw new CreatorCalendarError("This date comes from your plan or the call. Change it in the Tracker.");
+  if ((TRACKER_OWNED_PURPOSES as readonly string[]).includes(purpose))
+    throw new CreatorCalendarError(
+      purpose === "official-deadline"
+        ? "The official deadline comes from the call. It moves when the source changes."
+        : "Your personal target is set on the Tracker item. Change it there.",
+    );
 }
 
 /** Queues provider sync for one event on each of the account's active connections. */
@@ -1311,10 +1327,7 @@ function calendarInput(input: {
       ? input.color
       : "ink";
   const purpose = input.purpose ?? "personal";
-  if (
-    typeof purpose !== "string" ||
-    !["personal", "preparation", "attendance", "unavailable", "official-deadline", "personal-target"].includes(purpose)
-  )
+  if (typeof purpose !== "string" || !(PERSONAL_EVENT_PURPOSES as readonly string[]).includes(purpose))
     throw new CreatorCalendarError("Choose a type of time.");
   return {
     opportunityId: text(input.opportunityId, 200),

@@ -61,6 +61,8 @@ import {
   WritingFormatBar,
   WritingFormatSheet,
 } from "@/components/missa/writing-format";
+import { WritingSnapshots } from "@/components/missa/writing-snapshots";
+import { WritingFind } from "@/components/missa/writing-find";
 import {
   CompileDialog,
   NewProjectDialog,
@@ -89,6 +91,9 @@ import {
 import {
   documentText,
   emptyPage,
+  newCanvasBlock,
+  toCanvasPage,
+  toFlowPage,
   newDocument,
   PAGE_SIZES,
   parseWritingDocument,
@@ -143,6 +148,8 @@ type Prefs = {
   spellcheck: boolean;
   minutes: number;
   view: PagesView | null;
+  /** The room's colors: light, dark, or whatever the device uses. */
+  appearance: "light" | "dark" | "device";
 };
 
 const PREFS_KEY = "missa.write.prefs.v1";
@@ -151,6 +158,7 @@ const DEFAULT_PREFS: Prefs = {
   spellcheck: false,
   minutes: 15,
   view: null,
+  appearance: "light",
 };
 const TIMER_LENGTHS = [5, 10, 15, 20, 25, 30, 45, 60];
 
@@ -196,7 +204,10 @@ function readPrefs(): Prefs {
       raw && typeof raw === "object" ? Reflect.get(raw, name) : undefined;
     const minutes = field("minutes");
     const view = field("view");
+    const appearance = field("appearance");
     return {
+      appearance:
+        appearance === "dark" || appearance === "device" ? appearance : "light",
       typeface: storedWritingTypeface(field("typeface")),
       view: view === "page" || view === "draft" ? view : null,
       spellcheck: field("spellcheck") === true,
@@ -346,6 +357,8 @@ export function WritingRoom({
     error: string;
   }>({ open: false, busy: false, error: "" });
   const [outlineProject, setOutlineProject] = useState<string | null>(null);
+  const [snapshotsOpen, setSnapshotsOpen] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
   const [compileState, setCompileState] = useState<{
     projectId: string | null;
     busy: boolean;
@@ -406,6 +419,7 @@ export function WritingRoom({
     0,
     current.doc.pages.findIndex((page) => page.id === active?.pageId),
   );
+  const activePage = current.doc.pages[activeIndex];
   const inAccount = sync.saved(current.id);
   const pending = syncState.pending.includes(current.id);
   const running = timer.endsAt !== null;
@@ -559,6 +573,38 @@ export function WritingRoom({
     return () => clearInterval(interval);
   }, [timer.endsAt]);
 
+  // The room's own appearance. Only /doc turns dark, and printing is always on white.
+  useEffect(() => {
+    const root = document.documentElement;
+    const query = window.matchMedia("(prefers-color-scheme: dark)");
+    let printing = false;
+    const apply = () => {
+      const dark =
+        !printing &&
+        (prefs.appearance === "dark" ||
+          (prefs.appearance === "device" && query.matches));
+      root.classList.toggle("dark", dark);
+    };
+    const beforePrint = () => {
+      printing = true;
+      apply();
+    };
+    const afterPrint = () => {
+      printing = false;
+      apply();
+    };
+    apply();
+    query.addEventListener("change", apply);
+    window.addEventListener("beforeprint", beforePrint);
+    window.addEventListener("afterprint", afterPrint);
+    return () => {
+      query.removeEventListener("change", apply);
+      window.removeEventListener("beforeprint", beforePrint);
+      window.removeEventListener("afterprint", afterPrint);
+      root.classList.remove("dark");
+    };
+  }, [prefs.appearance]);
+
   function updatePrefs(change: Partial<Prefs>) {
     setPrefs((value) => {
       const next = { ...value, ...change };
@@ -587,6 +633,59 @@ export function WritingRoom({
     (pageId: string, editor: Editor) => setActive({ pageId, editor }),
     [],
   );
+
+  /** Switches the open page between flowing text and a free canvas. Its words come along. */
+  function setLayout(kind: "flow" | "canvas") {
+    const page = current.doc.pages[activeIndex];
+    if (!page || page.kind === kind) return;
+    const pages = current.doc.pages.map((item, index) => {
+      if (index === activeIndex)
+        return kind === "canvas"
+          ? toCanvasPage(item, current.doc.pageSize)
+          : toFlowPage(item);
+      // Text no longer flows on from a canvas page.
+      if (index === activeIndex + 1 && item.continues)
+        return { ...item, continues: false };
+      return item;
+    });
+    setActive(null);
+    change({ doc: { ...current.doc, pages } });
+    setView("page");
+    toast.success(
+      kind === "canvas"
+        ? "This page is a free canvas. Its text is in one box you can move."
+        : "This page is flowing text again, its boxes in reading order.",
+    );
+  }
+
+  function addTextBox() {
+    const page = current.doc.pages[activeIndex];
+    if (!page || page.kind !== "canvas") return;
+    const { margins } = page.format;
+    const offset = ((page.blocks?.length ?? 0) % 8) * 8;
+    const block = newCanvasBlock(
+      margins.left + offset,
+      margins.top + offset,
+      80,
+    );
+    change({
+      doc: {
+        ...current.doc,
+        pages: current.doc.pages.map((item) =>
+          item.id === page.id
+            ? { ...item, blocks: [...(item.blocks ?? []), block] }
+            : item,
+        ),
+      },
+    });
+    let tries = 0;
+    const focus = () => {
+      const editor = editors.get(`${page.id}/${block.id}`);
+      if (editor) editor.commands.focus("start");
+      else if (tries++ < 30) requestAnimationFrame(focus);
+    };
+    requestAnimationFrame(focus);
+  }
 
   function addPage() {
     const pages = [...current.doc.pages];
@@ -1030,7 +1129,12 @@ export function WritingRoom({
             ? "This entry was deleted on another device. What you wrote here is saved as a new entry."
             : "";
   const hideChrome =
-    running && !sheetOpen && !deleteOpen && !formatOpen && !pageDeleteOpen;
+    running &&
+    !sheetOpen &&
+    !deleteOpen &&
+    !formatOpen &&
+    !pageDeleteOpen &&
+    !snapshotsOpen;
   const timerLabel = running
     ? "Pause timer"
     : remaining === 0
@@ -1174,11 +1278,7 @@ export function WritingRoom({
         </div>
         <div className={compiled ? "hidden" : "flex justify-center"}>
           <WritingFormatBar
-            editor={
-              active && editors.get(active.pageId) === active.editor
-                ? active.editor
-                : null
-            }
+            editor={active && !active.editor.isDestroyed ? active.editor : null}
             onOpenFormat={() => setFormatOpen(true)}
           />
         </div>
@@ -1194,9 +1294,31 @@ export function WritingRoom({
             event.preventDefault();
             sync.flush();
           }
+          // Find and replace reaches every page and text box, which the browser's own find can't change.
+          if (
+            (event.metaKey || event.ctrlKey) &&
+            !event.altKey &&
+            ["f", "h"].includes(event.key.toLowerCase())
+          ) {
+            event.preventDefault();
+            setFindOpen(true);
+          }
         }}
       >
         <h1 className="sr-only">Write</h1>
+        {findOpen && !compiled ? (
+          <WritingFind
+            // A fresh bar each time it opens, with the field in focus.
+            key={current.mount}
+            document={current.doc}
+            editors={editors}
+            readOnly={current.state !== "ready"}
+            onClose={() => {
+              setFindOpen(false);
+              setFocusTick((tick) => tick + 1);
+            }}
+          />
+        ) : null}
         <WritingNotices
           notice={notice}
           rejection={rejection}
@@ -1507,6 +1629,39 @@ export function WritingRoom({
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
+                <DropdownMenuLabel>This page’s layout</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={activePage?.kind ?? "flow"}
+                  onValueChange={(value) =>
+                    setLayout(value === "canvas" ? "canvas" : "flow")
+                  }
+                >
+                  <DropdownMenuRadioItem
+                    value="flow"
+                    closeOnClick
+                    disabled={current.state !== "ready"}
+                  >
+                    Flowing text
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem
+                    value="canvas"
+                    closeOnClick
+                    disabled={current.state !== "ready"}
+                  >
+                    Free canvas
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+                {activePage?.kind === "canvas" ? (
+                  <DropdownMenuItem
+                    disabled={current.state !== "ready"}
+                    onClick={addTextBox}
+                  >
+                    Add a text box
+                  </DropdownMenuItem>
+                ) : null}
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
                 <DropdownMenuLabel>View</DropdownMenuLabel>
                 <DropdownMenuRadioGroup
                   value={view}
@@ -1525,6 +1680,40 @@ export function WritingRoom({
                 </DropdownMenuRadioGroup>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Appearance</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={prefs.appearance}
+                  onValueChange={(value) =>
+                    updatePrefs({
+                      appearance:
+                        value === "dark" || value === "device"
+                          ? value
+                          : "light",
+                    })
+                  }
+                >
+                  <DropdownMenuRadioItem value="light" closeOnClick>
+                    Light
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="dark" closeOnClick>
+                    Dark
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="device" closeOnClick>
+                    Match this device
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setFindOpen(true)}>
+                Find and replace
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={deviceOnly || current.state !== "ready"}
+                onClick={() => setSnapshotsOpen(true)}
+              >
+                Snapshots…
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={printPages}>
                 Print or save as PDF
               </DropdownMenuItem>
@@ -1587,6 +1776,22 @@ export function WritingRoom({
         onOutline={setOutlineProject}
         onDownloadAll={() => void downloadAll()}
         exportError={exportError}
+      />
+
+      <WritingSnapshots
+        open={snapshotsOpen}
+        onOpenChange={setSnapshotsOpen}
+        onClosed={() => setFocusTick((tick) => tick + 1)}
+        entryId={current.id}
+        content={contentOf(current)}
+        onRestore={(content) => {
+          setActive(null);
+          setCurrent((value) =>
+            opened(value.id, content, prefs.typeface, "ready", value.projectId),
+          );
+          sync.edit(current.id, content, current.projectId);
+          setFocusTick((tick) => tick + 1);
+        }}
       />
 
       <NewProjectDialog
@@ -1693,7 +1898,7 @@ export function WritingRoom({
 
       {/* Printing draws each page on its own sheet of the chosen paper. */}
       <style>{`@page { size: ${PAGE_SIZES[(compiled?.doc ?? current.doc).pageSize].width}mm ${PAGE_SIZES[(compiled?.doc ?? current.doc).pageSize].height}mm; margin: 0; }
-@media print { [data-slot="writing-page"] { zoom: 1 !important; break-after: page; } }`}</style>
+@media print { [data-slot="writing-page"] { zoom: 1 !important; break-after: page; } section:last-of-type > [data-slot="writing-page"] { break-after: auto; } [data-sonner-toaster] { display: none !important; } }`}</style>
     </div>
   );
 }

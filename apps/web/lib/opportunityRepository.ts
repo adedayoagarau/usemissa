@@ -178,7 +178,7 @@ function excludedByPrivatePreferences(engine: Awaited<ReturnType<typeof getEngin
   return (user.taxonomyPreferences ?? []).some((preference) => preference.preference === 'exclude' && taxonomyDescendantIds(preference.termId).some((termId) => assignedTermIds.has(termId)));
 }
 
-function matchesQuery(item: OpportunityBrowseProjection, query: OpportunityRepositoryQuery): boolean {
+export function matchesQuery(item: OpportunityBrowseProjection, query: OpportunityRepositoryQuery): boolean {
   if (query.ids && !query.ids.includes(item.id)) return false;
   if (query.query) {
     const taxonomyLabels = (item.taxonomy?.termIds ?? [])
@@ -186,6 +186,12 @@ function matchesQuery(item: OpportunityBrowseProjection, query: OpportunityRepos
       .join(" ");
     const haystack = `${item.title} ${item.organizationName ?? ""} ${item.genres.join(" ")} ${taxonomyLabels}`.toLowerCase();
     if (!haystack.includes(query.query.toLowerCase())) return false;
+  }
+  if (query.mentionsAny?.length) {
+    // Taxonomy labels are left out so 'emerging' cannot match the label for
+    // interdisciplinary and hybrid work.
+    const ownText = `${item.title} ${item.organizationName ?? ""} ${item.genres.join(" ")}`.toLowerCase();
+    if (!query.mentionsAny.some((term) => ownText.includes(term.toLowerCase()))) return false;
   }
   const categoryTypes = query.category ? CATEGORY_TYPES[query.category] ?? [] : [];
   if (categoryTypes.length && !categoryTypes.includes(item.type)) return false;

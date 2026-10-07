@@ -201,7 +201,7 @@
     "composition.writing-room": {
       "semantic": "WritingRoom",
       "implementation": "components/missa/writing-room.tsx",
-      "composition": ["WritingPages", "WritingFormatBar", "WritingFormatSheet", "WritingLibrary", "Button", "ButtonGroup", "DropdownMenu", "Popover", "Dialog", "Alert", "AlertDialog", "Sonner"],
+      "composition": ["WritingPages", "WritingFormatBar", "WritingFormatSheet", "WritingLibrary", "WritingSnapshots", "WritingFind", "Button", "ButtonGroup", "DropdownMenu", "Popover", "Dialog", "Alert", "AlertDialog", "Sonner"],
       "appearance": "full-page-printed-pages-with-controls-that-fade-while-the-timer-runs",
       "boundary": "Rich text on printed pages the creator writes. Kept on the device until the account confirms it, and never overwritten by another device: refused text becomes a separate entry. No AI, suggestions, rewriting or analysis; only apps/web/lib/writing-repository.ts reads the text (enforced by lib/writing-boundary.test.ts). No WebMCP tools on /doc (or the old /write address, which redirects there)."
     },
@@ -1201,6 +1201,18 @@
       "motion": "never",
       "boundary": "One calm line naming what a plan adds and a link to /plan. Says what the creator gets, never what they lose; no alarm colour, no modal."
     },
+    "WritingSnapshots": {
+      "base": "Sheet",
+      "implementation": "components/missa/writing-snapshots.tsx",
+      "motion": "never",
+      "boundary": "Snapshots of the open piece: take one under an optional name, compare it line by line with the text now (struck-through and marked lines with screen-reader prefixes), restore it after keeping the current text as a snapshot, or delete it. Read and written only through apps/web/lib/writing-repository.ts (creator_writing_snapshots, migration 0098)."
+    },
+    "WritingFind": {
+      "base": "Input",
+      "implementation": "components/missa/writing-find.tsx",
+      "motion": "never",
+      "boundary": "A search landmark under the header that finds and replaces across every page and canvas text box in reading order, marking matches with warning tokens. Ctrl/Cmd+F or H opens it; Enter, Shift+Enter and Escape move and close."
+    },
     "WritingLibrary": {
       "base": "Sheet",
       "implementation": "components/missa/writing-library.tsx",
@@ -1211,7 +1223,7 @@
       "base": "tiptap",
       "implementation": "components/missa/writing-pages.tsx",
       "motion": "never",
-      "boundary": "Printed pages (A4, US Letter, A5, chapbook) drawn at paper size, or a paperless draft view on small screens. Each page is a Tiptap (ProseMirror, MIT core only; no Tiptap AI or cloud packages) editor with its own alignment, line and letter spacing, margins, typeface and size; spaces, tabs and line breaks are kept as typed. Tab writes a tab; Escape then Tab leaves the page. The caret marks focus. Gap recorded: Textarea and the 20 local Studio textarea variants are plain-text form fields; none offers rich text, pages or per-page format, so this is the documented editor exception to 'Contenteditable without editor requirements'."
+      "boundary": "Printed pages (A4, US Letter, A5, chapbook) drawn at paper size, or a paperless draft view on small screens. Text flows from page to page as it is written; pages the writer adds stay apart. Any page can be a free canvas (components/missa/writing-canvas.tsx) of text boxes placed in millimetres, moved by a drag handle or by arrow keys on the focused handle, and printed exactly. Each page is a Tiptap (ProseMirror, MIT core only; no Tiptap AI or cloud packages) editor with its own alignment, line and letter spacing, margins, typeface and size; spaces, tabs and line breaks are kept as typed. Tab writes a tab; Escape then Tab leaves the page. The caret marks focus. Gap recorded: Textarea and the 20 local Studio textarea variants are plain-text form fields; none offers rich text, pages or per-page format, so this is the documented editor exception to 'Contenteditable without editor requirements'."
     }
   },
   "productCompositions": {

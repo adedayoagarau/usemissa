@@ -119,7 +119,7 @@ test("product excerpts are labelled as examples and the page passes axe", async 
   page,
 }) => {
   await page.goto("/");
-  const proof = page.getByRole("region", { name: "Everything after you find the call." });
+  const proof = page.getByRole("region", { name: "After you find an open call." });
   await proof.scrollIntoViewIfNeeded();
   await expect(proof.getByRole("article", { name: "Keep track." })).toBeVisible();
   await expect(page.getByText("Example, built from calls open today")).toBeVisible();

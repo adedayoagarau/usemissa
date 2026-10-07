@@ -5,6 +5,7 @@ import {
   ORGANIZATION_ROLE_FORBIDDEN,
   requireOrganizationAccess,
 } from '@/lib/organizationAccess';
+import { getRelationalWorkspace, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
 /** Story 7.1: "clicking a Submission shows its Works and uploaded files." (missa-language-allow: quoted story in a code comment, not UI copy)
  *
@@ -21,6 +22,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const ownAssignments = fullDossier ? [] : callerReviewAssignmentsForSubmission(result.access, submissionId);
   // Deny before the lookup so a non-holder cannot probe which Submissions exist.
   if (!fullDossier && ownAssignments.length === 0) return NextResponse.json({ error: ORGANIZATION_ROLE_FORBIDDEN }, { status: 403 });
+
+  if (workspaceRelationalAuthorityEnabled()) {
+    // Only `submissions.read` holders get here: assignment-scoped access fails closed above.
+    const workspace = await getRelationalWorkspace();
+    const submission = (await workspace.submissionsForOrganization(id)).find((candidate) => candidate.id === submissionId);
+    if (!submission) return NextResponse.json({ error: 'Unknown submission for this organization' }, { status: 404 });
+    const reviewAssignments = await workspace.reviewAssignmentsForSubmission(id, submissionId);
+    // The relational projection cannot read delivery tasks yet, so they are left out rather than reported as none.
+    return NextResponse.json({ submission, works: submission.works, reviewAssignments, decisions: submission.decisions }, { headers: { 'Cache-Control': 'private, no-store' } });
+  }
 
   const engine = result.access.workspace;
   const scopedSubmission = result.access.scope.submission(submissionId);
