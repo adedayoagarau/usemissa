@@ -97,12 +97,20 @@ function AvatarBadge({ className, ...props }: React.ComponentProps<"span">) {
   );
 }
 
-function AvatarGroup({ className, ...props }: React.ComponentProps<"div">) {
+function AvatarGroup({
+  className,
+  spacing = "default",
+  ...props
+}: React.ComponentProps<"div"> & {
+  /** `tight` overlaps less, so initials on small avatars stay readable. */
+  spacing?: "default" | "tight"
+}) {
   return (
     <div
       data-slot="avatar-group"
       className={cn(
-        "group/avatar-group flex -space-x-2 *:data-[slot=avatar]:ring-2 *:data-[slot=avatar]:ring-background",
+        "group/avatar-group flex *:data-[slot=avatar]:ring-2 *:data-[slot=avatar]:ring-background",
+        spacing === "tight" ? "-space-x-1" : "-space-x-2",
         className,
       )}
       {...props}

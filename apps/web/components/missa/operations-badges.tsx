@@ -84,3 +84,20 @@ export function WorkDecisionBadge({ outcome }: { outcome: string }) {
     </Badge>
   );
 }
+
+const deliveryStateCopy: Record<string, { label: string; variant: BadgeVariant }> = {
+  Delivered: { label: "Delivered", variant: "success" },
+  Accepted: { label: "Accepted by provider", variant: "information" },
+  "In progress": { label: "In progress", variant: "secondary" },
+  "Needs attention": { label: "Needs attention", variant: "warning" },
+};
+
+/** A recorded provider delivery state, from organizationMessageState. Accepted is not delivered. */
+export function DeliveryStateBadge({ state }: { state: string }) {
+  const copy = deliveryStateCopy[state] ?? { label: state, variant: "secondary" as const };
+  return (
+    <Badge variant={copy.variant} size="compact">
+      {copy.label}
+    </Badge>
+  );
+}

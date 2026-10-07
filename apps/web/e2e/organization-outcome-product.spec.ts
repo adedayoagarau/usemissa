@@ -12,9 +12,11 @@ test('Messages keeps letters and reports the delivery ledger unavailable without
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/organization/${organizationId}/messages`);
   await expect(page.getByRole('heading', { name: 'Messages', level: 1 })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Letters to submitters' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Provider delivery ledger unavailable' })).toBeVisible();
-  await expect(page.getByText('Missa cannot read the authoritative delivery ledger, so it does not infer a healthy empty queue from compatibility audit entries.')).toBeVisible();
+  await page.getByRole('tab', { name: /Letters/ }).click();
+  await expect(page.getByRole('button', { name: 'New letter' })).toBeVisible();
+  await page.getByRole('tab', { name: /Delivery record/ }).click();
+  await expect(page.getByText('Delivery record unavailable')).toBeVisible();
+  await expect(page.getByText('Missa cannot read the delivery ledger here, so it shows nothing rather than guess.', { exact: false })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);
