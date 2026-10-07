@@ -1,7 +1,11 @@
 // Rules behind `npm run check:language`. The messaging rules come from
 // docs/missa-messaging.md; the taxonomy rules predate it.
 
-export const productRoots = ['apps/web/app', 'apps/web/components', 'apps/web/lib'];
+export const productRoots = ['apps/web/app', 'apps/web/components', 'apps/web/lib', 'apps/web/content'];
+
+// Long-form copy (guide articles and their metadata) is read whole, not as
+// quoted strings in code.
+export const proseFile = /^apps\/web\/content\/.*\.md$/u;
 
 // Messaging rules skip internal and vendor surfaces. Taxonomy rules apply to
 // every product file, as they always have.
@@ -61,7 +65,8 @@ export function customerTextFragments(line) {
 // Every rule a line breaks, at most once per rule.
 export function lineViolations(line, file = '') {
   if (line.includes(allowMarker) || /^\s*(?:import|export\s+\*|export\s+\{[^}]*\}\s+from)\b/u.test(line)) return [];
-  const fragments = customerTextFragments(line);
+  // In prose every line is copy; link targets are not.
+  const fragments = proseFile.test(file) ? [line.replace(/\]\([^)]*\)/gu, ']')] : customerTextFragments(line);
   if (!fragments.length) return [];
   const internal = isInternalPath(file);
   return rules.filter(

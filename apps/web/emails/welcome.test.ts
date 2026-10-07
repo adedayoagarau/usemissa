@@ -12,7 +12,7 @@ test("renderWelcomeEmail is personal, concise, and uses complete sentences", () 
   assert.equal(rendered.subject, "Welcome to Missa");
   assert.ok(rendered.html.includes("Welcome to Missa, Adedayo."));
   assert.ok(rendered.html.includes("Three things make it yours."));
-  for (const step of ["Choose what you make", "Save a call to your Tracker", "Keep reminder emails on"]) {
+  for (const step of ["Choose what you make", "Save a call to your Tracker", "Watch your Inbox"]) {
     assert.ok(rendered.html.includes(step), step);
   }
   assert.ok(rendered.html.includes("Browse open calls"));

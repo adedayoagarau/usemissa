@@ -19,6 +19,8 @@
     "check:language:all": "node scripts/check-missa-language.mjs --all",
     "check:language:report": "node scripts/check-missa-language.mjs --report",
     "test:language": "node --test scripts/tests/check-missa-language.test.mjs",
+    "guides:build": "node scripts/build-guide-articles.mjs",
+    "guides:check": "node scripts/build-guide-articles.mjs --check",
   "check:design-system": "node scripts/check-design-system.mjs",
   "check:creator-migration-boundary": "node scripts/verify-creator-migration-boundary.mjs",
     "check:public-media": "node scripts/check-public-media-sidecars.mjs",

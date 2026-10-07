@@ -104,4 +104,10 @@ test("project requests are checked", () => {
   assert.ok("error" in parsePieceChange({ status: "done" }));
   assert.ok("error" in parsePieceChange({ synopsis: "x".repeat(1001) }));
   assert.ok("error" in parsePieceChange({ projectId: "project_x" }));
+  assert.deepEqual(parsePieceChange({ callId: "opp_poetry-prize_2027" }), {
+    callId: "opp_poetry-prize_2027",
+  });
+  assert.deepEqual(parsePieceChange({ callId: null }), { callId: null });
+  assert.ok("error" in parsePieceChange({ callId: "not/a/call" }));
+  assert.ok("error" in parsePieceChange({ callId: "x".repeat(201) }));
 });

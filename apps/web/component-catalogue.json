@@ -1690,6 +1690,12 @@
     "source": "Installed Button and next/link, following the CookieConsent permission-question composition",
     "tokens": "--border, --card, --card-foreground, --muted-foreground, --foreground, --destructive, --radius-lg"
   },
+  "reminderChannels": {
+    "implementation": "apps/web/components/missa/reminder-channels.tsx",
+    "routes": ["(passport)/tracker item sheet", "onboarding completion"],
+    "source": "Installed Button, UpgradeHint and TextRemindersSettings (PhoneInput, InputOTP, Switch)",
+    "tokens": "--muted-foreground, --primary, --border"
+  },
   "planProduct": {
     "implementation": "apps/web/components/missa/plan-product.tsx",
     "routes": ["(passport)/plan"],

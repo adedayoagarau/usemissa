@@ -158,6 +158,8 @@ export type WritingEntrySummary = {
   /** The writer's index card for the piece. */
   synopsis: string;
   status: string;
+  /** The call (an opportunity the writer tracks) this piece is written for. */
+  callId: string | null;
   preview: string;
   wordCount: number;
   revision: number;

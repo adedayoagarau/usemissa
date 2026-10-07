@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
-import type { Value as PhoneValue } from "react-phone-number-input";
+import { isValidPhoneNumber, type Country, type Value as PhoneValue } from "react-phone-number-input";
 import type { CreatorNotificationPreferences } from "@missa/radar-adapters";
 import { Button } from "@/components/ui/button";
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
@@ -21,6 +21,18 @@ type Props = {
   onPreferencesChange: (next: Preferences) => void;
 };
 
+const noSubscription = () => () => undefined;
+
+/** The visitor's country from their browser language (en-NG → NG), so the number field opens on the right flag. Empty on the server. */
+function browserCountry(): Country | undefined {
+  try {
+    const region = new Intl.Locale(navigator.language).maximize().region;
+    return region && /^[A-Z]{2}$/.test(region) ? (region as Country) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 type SmsCall = { path: string; method: "POST" | "PATCH" | "DELETE"; body?: unknown };
 
 async function call<T>({ path, method, body }: SmsCall): Promise<T> {
@@ -35,8 +47,8 @@ async function call<T>({ path, method, body }: SmsCall): Promise<T> {
 }
 
 /**
- * Text (SMS) deadline reminders inside notification settings. Free creators
- * see what Plus adds; Plus creators add a number, confirm it with a six-digit
+ * Text (SMS) deadline reminders, in notification settings and inline where a
+ * reminder is set. Free creators see what Plus adds; Plus creators add a number, confirm it with a six-digit
  * code, then switch texts on or off, change the number or remove it. Every
  * change is saved at once through /api/me/sms and handed back to the panel.
  */
@@ -50,6 +62,7 @@ export function TextRemindersSettings({ preferences, onPreferencesChange }: Prop
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const entering = step ?? (verified ? null : "number");
+  const country = useSyncExternalStore(noSubscription, browserCountry, () => undefined);
 
   async function run(label: string, work: () => Promise<void>) {
     setBusy(label);
@@ -66,6 +79,7 @@ export function TextRemindersSettings({ preferences, onPreferencesChange }: Prop
 
   const sendCode = () =>
     run("send", async () => {
+      if (!phone || !isValidPhoneNumber(phone)) throw new Error("Check the number. Include the country code and every digit.");
       const result = await call<{ phone: string; expiresInMinutes: number }>({ path: "/api/me/sms/start", method: "POST", body: { phone } });
       setSentTo(result.phone);
       setCode("");
@@ -104,7 +118,7 @@ export function TextRemindersSettings({ preferences, onPreferencesChange }: Prop
   );
   const promise = (
     <p className={styles.body}>
-      Get a text when a call you track is about to close, its deadline moves or it closes early. Email and in-app reminders stay free.
+      Get a text when a call you track is about to close, its deadline moves or it closes early.
     </p>
   );
   const terms = <p className={styles.terms}>Reply STOP to end. Msg &amp; data rates may apply.</p>;
@@ -120,7 +134,7 @@ export function TextRemindersSettings({ preferences, onPreferencesChange }: Prop
     return (
       <section className={styles.root} aria-labelledby="text-reminders-title">
         {heading}
-        <p className={styles.body}>Text reminders are not available yet. Email and in-app reminders work now.</p>
+        <p className={styles.body}>Text reminders are not available yet. Your Inbox reminders work now.</p>
       </section>
     );
   }
@@ -193,6 +207,7 @@ export function TextRemindersSettings({ preferences, onPreferencesChange }: Prop
             <PhoneInput
               id="sms-phone"
               international
+              defaultCountry={country}
               value={phone}
               onChange={(value) => setPhone(value || undefined)}
               autoComplete="tel"
@@ -200,7 +215,7 @@ export function TextRemindersSettings({ preferences, onPreferencesChange }: Prop
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? "sms-phone-help sms-phone-error" : "sms-phone-help"}
             />
-            <FieldDescription id="sms-phone-help">Include the country code. We text a six-digit code to confirm the number is yours.</FieldDescription>
+            <FieldDescription id="sms-phone-help">Pick your country, then type the number. We text a six-digit code to confirm it is yours.</FieldDescription>
             {error ? <FieldError id="sms-phone-error">{error}</FieldError> : null}
           </Field>
           <div className={styles.actions}>

@@ -1,4 +1,5 @@
 import type { Pool } from "pg";
+import { EMAIL_REMINDER_PLANS } from "./creatorEntitlements.js";
 
 /** Notices about a saved application's own deadlines, sent when reminders are on. */
 export const CREATOR_REMINDER_NOTICE_KINDS = [
@@ -94,7 +95,9 @@ const PRE_SUBMISSION = "'interested','saved','preparing','draft-started','ready-
  * from deadline reconciliation; plan changes and suggestions from the planning
  * engine; and opening alerts from the cycle tick. The account must have email
  * on, plus reminders on for reminder kinds or "Organizations you follow" on for
- * opening kinds. A deadline notice needs a deadline still ahead; the
+ * opening kinds, and a plan that includes reminder email (Plus or Pro; Free
+ * keeps these notices in the Inbox). When a plan lapses the account simply
+ * stops matching. A deadline notice needs a deadline still ahead; the
  * deadline-day alarm, tier endings and gone-quiet nudges need the application
  * still unsent. No ledger effect may exist for the notice other than a failed
  * one (failed sends retry). Bounded to recent notices so old backlog never
@@ -102,6 +105,9 @@ const PRE_SUBMISSION = "'interested','saved','preparing','draft-started','ready-
  * notices stay in the Inbox only.
  */
 export async function pendingCreatorReminderEmails(pool: Pool, limit = 100): Promise<PendingCreatorReminderEmail[]> {
+  // Before migration 0080 nobody has a plan, so everyone is on Free.
+  const ready = await pool.query<{ plans: boolean }>("select to_regclass('public.creator_plans') is not null as plans");
+  if (!ready.rows[0]?.plans) return [];
   const result = await pool.query<{
     alert_id: string;
     kind: CreatorNoticeEmailKind;
@@ -155,6 +161,7 @@ export async function pendingCreatorReminderEmails(pool: Pool, limit = 100): Pro
         and p.email_enabled
         and (case when a.kind in (${sqlList(CREATOR_OPENING_NOTICE_KINDS)}) then p.follow_enabled else p.reminder_enabled end)
         and coalesce(acc.email,'')<>'' and coalesce((acc.data->>'active')::boolean,true)
+        and coalesce((select cp.plan from creator_plans cp where cp.account_id=a.account_id and (cp.expires_at is null or cp.expires_at>now())),'free') = any($2::text[])
         and (
           (a.kind='deadline-reminder' and a.reminder_id is not null
             and o.deadline_date is not null and o.deadline_date >= current_date)
@@ -172,7 +179,7 @@ export async function pendingCreatorReminderEmails(pool: Pool, limit = 100): Pro
         )
       order by a.created_at
       limit $1`,
-    [limit],
+    [limit, EMAIL_REMINDER_PLANS],
   );
   return result.rows.map((row) => ({
     alertId: row.alert_id,

@@ -41,6 +41,7 @@ type Row = {
   position: number;
   synopsis: string;
   status: string;
+  call_id: string | null;
   word_count: number;
   revision: number;
   created_at: Date;
@@ -52,7 +53,7 @@ export type WritingSaveResult =
   | { kind: "conflict"; current: WritingEntry }
   | { kind: "not-found" };
 
-const CARD_COLUMNS = "project_id,position,synopsis,status";
+const CARD_COLUMNS = "project_id,position,synopsis,status,call_id";
 const SUMMARY_COLUMNS = `id,title,left(regexp_replace(btrim(left(body,400)),'\\s+',' ','g'),120) as preview,${CARD_COLUMNS},word_count,revision,created_at,updated_at`;
 const ENTRY_COLUMNS = `id,title,body,document,${CARD_COLUMNS},word_count,revision,created_at,updated_at`;
 const PROJECT_COLUMNS = "id,title,template,created_at,updated_at";
@@ -105,6 +106,7 @@ function summary(row: Row): WritingEntrySummary {
     position: row.position,
     synopsis: row.synopsis,
     status: row.status,
+    callId: row.call_id ?? null,
     preview: writingPreview(row.preview ?? row.body ?? ""),
     wordCount: row.word_count,
     revision: row.revision,
@@ -394,7 +396,8 @@ export class WritingRepository extends CreatorRepositoryBase {
            when $3 and $4::text is null then 0
            else e.position end,
          synopsis = coalesce($5, e.synopsis),
-         status = coalesce($6, e.status)
+         status = coalesce($6, e.status),
+         call_id = case when $7 then $8::text else e.call_id end
        where e.account_id=$1 and e.id=$2
        returning ${SUMMARY_COLUMNS}`,
       [
@@ -404,6 +407,8 @@ export class WritingRepository extends CreatorRepositoryBase {
         change.projectId ?? null,
         change.synopsis ?? null,
         change.status ?? null,
+        change.callId !== undefined,
+        change.callId ?? null,
       ],
     );
     return result.rows[0] ? summary(result.rows[0]) : null;

@@ -16,7 +16,7 @@ test(
   async (t) => {
     const pool = new Pool({ connectionString: databaseUrl, max: 2 });
     const schema = await pool.query<{ ready: boolean }>(
-      "select to_regclass('public.platform_message_effects') is not null and to_regclass('public.creator_application_reminders') is not null as ready",
+      "select to_regclass('public.platform_message_effects') is not null and to_regclass('public.creator_application_reminders') is not null and to_regclass('public.creator_plans') is not null as ready",
     );
     if (!schema.rows[0]!.ready) {
       await pool.end();
@@ -29,6 +29,7 @@ test(
     const passed = `${prefix}-passed`;
     const optedIn = `${prefix}-in`;
     const optedOut = `${prefix}-out`;
+    const free = `${prefix}-free`;
     const mine = async () =>
       (await pendingCreatorReminderEmails(pool, 1000)).filter((row) => row.accountId.startsWith(prefix));
     const notice = async (account: string, opportunity: string) => {
@@ -56,22 +57,26 @@ test(
            ($2,$2,'Passed fixture',$3,'open','reviewable','grant','exact',current_date-1)`,
         [upcoming, passed, source],
       );
-      for (const account of [optedIn, optedOut]) {
+      for (const account of [optedIn, optedOut, free]) {
         await pool.query("insert into radar_accounts(id,email,data) values($1,$2,'{}'::jsonb)", [
           account,
           `${account}@example.invalid`,
         ]);
         await pool.query("insert into notification_preferences(account_id,email_enabled) values($1,$2)", [
           account,
-          account === optedIn,
+          account !== optedOut,
         ]);
       }
+      // Reminder email comes with Plus; Free has no plan row.
+      for (const account of [optedIn, optedOut])
+        await pool.query("insert into creator_plans(account_id,plan,source) values($1,'plus','grant')", [account]);
       const due = await notice(optedIn, upcoming);
       await notice(optedIn, passed);
       await notice(optedOut, upcoming);
+      await notice(free, upcoming);
 
       const first = await mine();
-      assert.deepEqual(first.map((row) => row.alertId), [due]);
+      assert.deepEqual(first.map((row) => row.alertId), [due], "Free keeps reminders in the Inbox");
       assert.equal(first[0]!.idempotencyKey, creatorReminderEmailKey(due));
       assert.equal(first[0]!.email, `${optedIn}@example.invalid`);
 
@@ -87,9 +92,17 @@ test(
       assert.equal((await mine()).length, 1);
       await effect("accepted");
       assert.equal((await mine()).length, 0);
+
+      // A lapsed plan stops reminder email; a plan that is current starts it.
+      await effect("failed");
+      assert.deepEqual((await mine()).map((row) => row.alertId), [due]);
+      await pool.query("update creator_plans set expires_at=now()-interval '1 day' where account_id=$1", [optedIn]);
+      assert.equal((await mine()).length, 0, "a lapsed plan stops reminder email");
+      await pool.query("update creator_plans set plan='pro',expires_at=null where account_id=$1", [optedIn]);
+      assert.deepEqual((await mine()).map((row) => row.alertId), [due], "Pro includes reminder email");
     } finally {
       await pool.query("delete from platform_message_effects where id=$1", [`${prefix}-effect`]);
-      await pool.query("delete from radar_accounts where id=any($1)", [[optedIn, optedOut]]);
+      await pool.query("delete from radar_accounts where id=any($1)", [[optedIn, optedOut, free]]);
       await pool.query("delete from opportunities where source_id=$1", [source]);
       await pool.query("delete from opportunity_sources where id=$1", [source]);
       await pool.end();
@@ -103,7 +116,7 @@ test(
   async (t) => {
     const pool = new Pool({ connectionString: databaseUrl, max: 2 });
     const schema = await pool.query<{ ready: boolean }>(
-      "select to_regclass('public.platform_message_effects') is not null and to_regclass('public.creator_application_reminders') is not null and to_regclass('public.creator_calendar_events') is not null as ready",
+      "select to_regclass('public.platform_message_effects') is not null and to_regclass('public.creator_application_reminders') is not null and to_regclass('public.creator_calendar_events') is not null and to_regclass('public.creator_plans') is not null as ready",
     );
     if (!schema.rows[0]!.ready) {
       await pool.end();
@@ -144,6 +157,7 @@ test(
       );
       await pool.query("insert into radar_accounts(id,email,data) values($1,$2,'{}'::jsonb)", [account, `${account}@example.invalid`]);
       await pool.query("insert into notification_preferences(account_id,email_enabled) values($1,true)", [account]);
+      await pool.query("insert into creator_plans(account_id,plan,source) values($1,'plus','grant')", [account]);
       await pool.query(
         `insert into creator_calendar_events(id,account_id,title,start_at,end_at,opportunity_id,purpose,source_deadline_date,previous_source_deadline_date)
          values($1,$2,'Notice fixture',current_date+14,current_date+15,$3,'official-deadline',current_date+14,current_date+7)`,

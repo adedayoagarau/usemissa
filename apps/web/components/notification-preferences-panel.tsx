@@ -310,6 +310,7 @@ export function NotificationPreferencesPanel({
       smsPhoneVerifiedAt: next.smsPhoneVerifiedAt,
       smsOptedOut: next.smsOptedOut,
       smsPlanEligible: next.smsPlanEligible,
+      emailPlanEligible: next.emailPlanEligible,
       smsProviderState: next.smsProviderState,
       revision: next.revision,
     });
@@ -361,9 +362,15 @@ export function NotificationPreferencesPanel({
     }
   }
 
+  // Free keeps reminders in the Inbox; email still carries The Sunday List and account mail.
+  const remindersByEmail = value.emailPlanEligible !== false;
   const where = [
     ["inAppEnabled", "In app", "Your Missa Inbox"],
-    ["emailEnabled", "Email", "Sent to your sign-in email"],
+    [
+      "emailEnabled",
+      "Email",
+      remindersByEmail ? "Sent to your sign-in email" : "The Sunday List and account mail, sent to your sign-in email",
+    ],
   ] as const;
   const what = [
     [
@@ -401,6 +408,11 @@ export function NotificationPreferencesPanel({
             onChange={(checked) => toggle(field, checked)}
           />
         ))}
+        {remindersByEmail ? null : (
+          <div className="pt-3">
+            <UpgradeHint plan="Plus" benefit="Deadline reminders and changes by email and text." />
+          </div>
+        )}
       </section>
       <section
         aria-labelledby="notification-what-title"

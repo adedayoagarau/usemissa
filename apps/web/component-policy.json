@@ -292,7 +292,7 @@
     "composition.writing-room": {
       "semantic": "WritingRoom",
       "implementation": "components/missa/writing-room.tsx",
-      "composition": ["WritingPages", "WritingFormatBar", "WritingFormatSheet", "WritingLibrary", "WritingSnapshots", "WritingFind", "Button", "ButtonGroup", "DropdownMenu", "Popover", "Dialog", "Alert", "AlertDialog", "Sonner"],
+      "composition": ["WritingPages", "WritingFormatBar", "WritingFormatSheet", "WritingLibrary", "WritingSnapshots", "WritingFind", "WritingCall", "Button", "ButtonGroup", "DropdownMenu", "Popover", "Dialog", "Alert", "AlertDialog", "Sonner"],
       "appearance": "full-page-printed-pages-with-controls-that-fade-while-the-timer-runs",
       "boundary": "Rich text on printed pages the creator writes. Kept on the device until the account confirms it, and never overwritten by another device: refused text becomes a separate entry. No AI, suggestions, rewriting or analysis; only apps/web/lib/writing-repository.ts reads the text (enforced by lib/writing-boundary.test.ts). No WebMCP tools on /doc (or the old /write address, which redirects there)."
     },
@@ -519,7 +519,13 @@
     "composition.collection-cover": {
       "semantic": "DiscoveryCollectionPage",
       "appearance": "editorial-collection-palette",
-      "composition": ["EditorialTypography", "DecorativeSvg", "Link"]
+      "composition": ["EditorialTypography", "EditorialMotif", "Link"]
+    },
+    "composition.guide-article": {
+      "semantic": "GuideArticle",
+      "implementation": "apps/web/components/missa/guide-article.tsx",
+      "appearance": "editorial-collection-palette",
+      "composition": ["EditorialTypography", "EditorialMotif", "GuideToc", "Alert", "Table", "GuideChecklist", "Accordion", "Collapsible", "PersonAvatar", "FeeBadge", "Button"]
     },
     "composition.manuscript-match": {
       "semantic": "ManuscriptMatchWizard",
@@ -925,7 +931,7 @@
       "semantic": "EmailChoicePrompt",
       "implementation": "apps/web/components/missa/email-choice-prompt.tsx",
       "composition": ["Button", "Link"],
-      "boundary": "One-time email question in the creator workspace for accounts created before reminder emails and the weekly digest were on by default. Shown only while notification_preferences.email_choice_at is null; accepting turns on email, reminders and the weekly digest, declining changes nothing, and either answer stops the question."
+      "boundary": "One-time email question in the creator workspace for accounts created before reminder emails and the weekly digest were on by default. Shown only while notification_preferences.email_choice_at is null; accepting turns on email, reminders and the weekly digest, declining changes nothing, and either answer stops the question. On Free, which keeps reminders in the Inbox, the question and its confirmation are only about the weekly digest."
     },
     "composition.homepage-workspace": {
       "semantic": "HomepageWorkspace",
@@ -1334,6 +1340,24 @@
       "motion": "never",
       "boundary": "Before you submit: required materials, word limit against saved text, page limit, anonymous-review name check across titles, file names, and saved text, and file types. Each row is Passed, Needs attention, or Check manually with the status written beside its icon; anything Missa cannot read (file contents, page counts, document properties, unrecorded file types) is Check manually, never Passed."
     },
+    "EditorialMotif": {
+      "base": "custom",
+      "motion": "never",
+      "implementation": "components/missa/editorial-motif.tsx",
+      "boundary": "Decorative cover motif (orbit, burst, steps, frame) in currentColor for discovery collection and guide covers. Always inside an aria-hidden cover."
+    },
+    "GuideChecklist": {
+      "base": "Checkbox",
+      "motion": "never",
+      "implementation": "components/missa/guide-checklist.tsx",
+      "boundary": "A checklist inside a guide article. Ticks stay in this browser and Copy list puts the items on the clipboard. Not an application record."
+    },
+    "GuideToc": {
+      "base": "Collapsible",
+      "motion": "never",
+      "implementation": "components/missa/guide-toc.tsx",
+      "boundary": "On this page for a guide: a sticky rail marking the current section with aria-current=location on wide screens, a closed Collapsible on narrow ones."
+    },
     "GoalSubmissionProgress": {
       "base": "Progress",
       "implementation": "components/missa/goal-submission-progress.tsx",
@@ -1370,7 +1394,14 @@
       "implementation": "components/missa/text-reminders-settings.tsx",
       "motion": "never",
       "composition": ["Field", "PhoneInput", "InputOTP", "Switch", "Button"],
-      "boundary": "Plus-only text (SMS) reminder settings inside notification preferences: Free creators see what Plus adds and a link to /plan; Plus creators add a number with PhoneInput, confirm it with a six-digit InputOTP code, then use one Switch to turn texts on or off, change or remove the number. Every change saves immediately through /api/me/sms; the plan is plain text, not a Badge. Always states 'Reply STOP to end. Msg & data rates may apply.' Status uses role=status; only failures use role=alert."
+      "boundary": "Plus-only text (SMS) reminder settings, in notification preferences and inline in ReminderChannels: Free creators see what Plus adds and a link to /plan; Plus creators add a number with PhoneInput (opened on the country of the browser language, checked with isValidPhoneNumber before a code is sent), confirm it with a six-digit InputOTP code, then use one Switch to turn texts on or off, change or remove the number. Every change saves immediately through /api/me/sms; the plan is plain text, not a Badge. Always states 'Reply STOP to end. Msg & data rates may apply.' Status uses role=status; only failures use role=alert."
+    },
+    "ReminderChannels": {
+      "base": "Button",
+      "implementation": "components/missa/reminder-channels.tsx",
+      "motion": "never",
+      "composition": ["Button", "UpgradeHint", "TextRemindersSettings"],
+      "boundary": "Where this creator's reminders go, shown where a reminder is set (Tracker item Reminders) and on the last onboarding screen. Free sees the Inbox and an UpgradeHint for email and text, and is never asked for a phone number, so no verification text is sent for a plan that cannot receive one. Plus and Pro see every channel that is on and a Button that opens TextRemindersSettings in place (aria-expanded, aria-controls). Until /api/me/notification-preferences answers, it says only what is true for every plan. Composition over Button because the installed Collapsible adds a second trigger pattern for a single inline form."
     },
     "CookieConsent": {
       "base": "Button",
@@ -1434,6 +1465,12 @@
       "implementation": "components/missa/writing-snapshots.tsx",
       "motion": "never",
       "boundary": "Snapshots of the open piece: take one under an optional name, compare it line by line with the text now (struck-through and marked lines with screen-reader prefixes), restore it after keeping the current text as a snapshot, or delete it. Read and written only through apps/web/lib/writing-repository.ts (creator_writing_snapshots, migration 0098)."
+    },
+    "WritingCall": {
+      "base": "Sheet",
+      "implementation": "components/missa/writing-call.tsx",
+      "motion": "never",
+      "boundary": "Ties the open piece to a call in the creator's tracker (call_id on creator_writing_entries, migration 0099, kept only through apps/web/lib/writing-repository.ts). Shows the call, its links and the creator's checklist, and runs the word, page, materials and anonymous-review checks of lib/writing-call.ts in the browser on the piece's own text; the text is never sent for them. Reuses PreSubmitCheckList for the checks. The footer shows words against the call's limit."
     },
     "WritingFind": {
       "base": "Input",
@@ -1532,6 +1569,7 @@
     "EventCard": ["EditorialTypography", "PrintStyles", "QrCodeSvg"],
     "CreatorWorkPage": ["Breadcrumb", "Button", "Collapsible", "Item", "Alert", "ProvenanceBadge", "ProfileConnect"],
     "WorkPageFields": ["Collapsible", "Button", "Input", "Textarea", "NativeSelect", "ItemList", "MediaField"],
+    "GuideArticle": ["EditorialMotif", "GuideToc", "Alert", "Table", "GuideChecklist", "Accordion", "Collapsible", "PersonAvatar", "FeeBadge", "Button"],
     "WritingRoom": ["WritingPages", "WritingFormatBar", "WritingFormatSheet", "WritingLibrary", "Button", "DropdownMenu", "Popover", "Dialog", "AlertDialog", "Alert"]
   },
   "motion": {

@@ -5,12 +5,15 @@ export type CreatorPlan = "free" | "plus" | "pro";
 /**
  * What each creator plan allows. This is the one place limits live; product
  * code asks for an entitlement instead of checking plan names. Discovery,
- * Opportunity pages, official sources and email reminders are never limited.
- * Text (SMS) reminders cost Missa per message, so they come with Plus.
+ * Opportunity pages, official sources and in-app reminders are never limited.
+ * Reminder email and text (SMS) reminders cost Missa per message, so they come
+ * with Plus. Free reminders stay in the Inbox, the calendar feed and The
+ * Sunday List.
  */
 export const CREATOR_PLAN_LIMITS = {
   free: {
     activeTrackedLimit: 10,
+    emailReminders: false,
     smsReminders: false,
     startByPlanning: false,
     deadlineDayAlarm: false,
@@ -21,6 +24,7 @@ export const CREATOR_PLAN_LIMITS = {
   },
   plus: {
     activeTrackedLimit: null,
+    emailReminders: true,
     smsReminders: true,
     startByPlanning: true,
     deadlineDayAlarm: true,
@@ -31,6 +35,7 @@ export const CREATOR_PLAN_LIMITS = {
   },
   pro: {
     activeTrackedLimit: null,
+    emailReminders: true,
     smsReminders: true,
     startByPlanning: true,
     deadlineDayAlarm: true,
@@ -49,6 +54,8 @@ export const CREATOR_PLAN_LIMITS = {
  */
 export type CreatorPlanLimits = {
   activeTrackedLimit: number | null;
+  /** Tracker notices by email: deadline reminders, moved deadlines, early closures and the rest. */
+  emailReminders: boolean;
   smsReminders: boolean;
   /** Start-by dates and lead-time sub-deadlines that move with the deadline. */
   startByPlanning: boolean;
@@ -77,6 +84,13 @@ export function plansIncluding(feature: CreatorFeature): CreatorPlan[] {
 }
 
 export const FREE_ACTIVE_TRACKED_LIMIT = CREATOR_PLAN_LIMITS.free.activeTrackedLimit;
+
+/** Plans that include reminder email, for SQL that filters recipients by plan. */
+export const EMAIL_REMINDER_PLANS = plansIncluding("emailReminders");
+
+export function planIncludesEmailReminders(plan: CreatorPlan): boolean {
+  return CREATOR_PLAN_LIMITS[plan].emailReminders;
+}
 
 /** Plans that include text reminders, for SQL that filters recipients by plan. */
 export const SMS_REMINDER_PLANS = (Object.keys(CREATOR_PLAN_LIMITS) as CreatorPlan[]).filter(

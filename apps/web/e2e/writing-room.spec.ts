@@ -1,15 +1,17 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import pg from "pg";
 
-// Relational only: entries are saved to the account in Postgres (migrations 0095 to 0097).
+// Relational only: entries are saved to the account in Postgres (migrations 0095 to 0099).
 
 const pageText = (page: Page, index = 0) =>
   page.locator('[data-slot="writing-page-text"]').nth(index);
 
 async function signIn(page: Page) {
+  const email = `write-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`;
   const signup = await page.request.post("/api/auth/signup", {
     data: {
-      email: `write-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`,
+      email,
       password: "correct-horse-battery",
       givenName: "Adaeze",
       familyName: "Writer",
@@ -28,6 +30,7 @@ async function signIn(page: Page) {
       sameSite: "Lax",
     },
   ]);
+  return email;
 }
 
 test("signed-out visitors are sent to sign in and back", async ({ page }) => {
@@ -563,4 +566,108 @@ test("snapshots keep a version to compare and restore; find replaces across page
   ).toEqual([]);
   await page.reload();
   await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+});
+
+test("a piece is written for a call: its limit counted and its blind reading checked", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const email = await signIn(page);
+
+  // A call in the tracker, read blind, with an eight-word limit. The database
+  // is touched only for the listing and its tracker row, which a test listing
+  // can't reach through the public tracker API.
+  const run = `${Date.now().toString(36)}${Math.random().toString(16).slice(2, 6)}`;
+  const opportunityId = `night-river-${run}`;
+  const client = new pg.Client({
+    connectionString: process.env.DATABASE_URL,
+  });
+  await client.connect();
+  try {
+    await client.query(
+      `insert into radar_organizations(id,data) values ($1, jsonb_build_object('id',$1::text,'name','The Night River Review'))`,
+      [`org-${run}`],
+    );
+    await client.query(
+      `insert into opportunity_sources(id,organization_id,name,url,kind) values ($1,$2,'E2E source','https://example.com/calls','website')`,
+      [`src-${run}`, `org-${run}`],
+    );
+    // The publication gate checks source evidence this fixture doesn't need.
+    await client.query("set session_replication_role = replica");
+    await client.query(
+      `insert into opportunities(id,slug,title,organization_id,source_id,status,publication_state,type,deadline_date) values
+       ($1,$1,'Night River Prize',$2,$3,'open','published','open-call',current_date + 40)`,
+      [opportunityId, `org-${run}`, `src-${run}`],
+    );
+    await client.query("set session_replication_role = origin");
+    await client.query(
+      `insert into opportunity_call_profiles(opportunity_id,word_limit_max,confidence,eligibility_summary,source_url) values ($1,8,'confirmed','Poems are read blind.','https://example.com/calls')`,
+      [opportunityId],
+    );
+    await client.query(
+      `insert into tracked_opportunities(id,account_id,opportunity_id,status,revision)
+       select $1, id, $2, 'interested', 1 from radar_accounts where lower(email)=lower($3)`,
+      [`tracked-${run}`, opportunityId, email],
+    );
+  } finally {
+    await client.end();
+  }
+
+  await page.goto("/doc");
+  const writing = pageText(page);
+  await expect(writing).toBeFocused();
+  await writing.pressSequentially("Adaeze Writer walks out into the rain.");
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitem", { name: "Write for a call…" }).click();
+  const sheet = page.getByRole("dialog", { name: "For a call" });
+  await sheet
+    .getByRole("button", { name: "Write for Night River Prize" })
+    .click();
+  await expect(
+    sheet.getByRole("heading", { name: "Night River Prize" }),
+  ).toBeVisible();
+  const words = sheet.getByRole("listitem").filter({ hasText: "Word limit" });
+  await expect(words).toContainText("Passed");
+  await expect(words).toContainText("This piece has 7 words.");
+  const blind = sheet
+    .getByRole("listitem")
+    .filter({ hasText: "Anonymous review" });
+  await expect(blind).toContainText("Needs attention");
+  await expect(blind).toContainText("your name is in the text");
+  await expect(
+    (
+      await new AxeBuilder({ page })
+        .include('[data-slot="sheet-content"]')
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await page.keyboard.press("Escape");
+
+  // The footer counts against the limit as the piece grows past it.
+  await expect(page.getByText("7 / 8 words")).toBeVisible();
+  await writing.click();
+  await page.keyboard.press("Control+Home");
+  await page.keyboard.press("Shift+End");
+  await page.keyboard.type("She walks out into the rain and on into the dark.");
+  await expect(page.getByText("11 / 8 words")).toBeVisible();
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+  // The link is kept with the piece; the name is gone, so the check passes.
+  await page.reload();
+  await expect(page.getByText("11 / 8 words")).toBeVisible();
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitem", { name: "For a call…" }).click();
+  await expect(words).toContainText("Needs attention");
+  await expect(words).toContainText("11 words, 3 over");
+  await expect(blind).toContainText("Passed");
+
+  // Untying the piece brings back the plain count.
+  await sheet.getByRole("button", { name: "Write without a call" }).click();
+  await expect(
+    sheet.getByRole("button", { name: "Write for Night River Prize" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByText("11 words", { exact: true })).toBeVisible();
 });

@@ -55,10 +55,7 @@ export function PreSubmitCheck({
   const attention =
     checks?.filter((check) => check.status === "attention").length ?? 0;
   return (
-    <section
-      aria-labelledby="sheet-presubmit-title"
-      className="space-y-4"
-    >
+    <section aria-labelledby="sheet-presubmit-title" className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-2">
           <SheetSectionHeading id="sheet-presubmit-title" eyebrow="Check">
@@ -90,41 +87,46 @@ export function PreSubmitCheck({
           <Skeleton className="h-20 w-full" />
         </div>
       ) : (
-        <ul className="divide-y divide-border">
-          {checks.map((check) => {
-            const status = STATUS[check.status];
-            const Icon = status.icon;
-            return (
-              <li key={check.id} className="flex gap-3 py-3">
-                <Icon
-                  className={`mt-0.5 size-5 shrink-0 ${status.tone}`}
-                  aria-hidden="true"
-                />
-                <div className="min-w-0 flex-1 space-y-1">
-                  <p className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
-                    <span className="font-medium">{check.label}</span>
-                    <span className={`text-xs font-medium ${status.tone}`}>
-                      {status.label}
-                    </span>
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {check.detail}
-                  </p>
-                  {check.items?.length ? (
-                    <ul className="list-disc space-y-0.5 ps-5 text-sm">
-                      {check.items.map((item) => (
-                        <li key={item} className="break-words">
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        <PreSubmitCheckList checks={checks} />
       )}
     </section>
+  );
+}
+
+/** The checks themselves, each status spelled out beside its icon. */
+export function PreSubmitCheckList({ checks }: { checks: Check[] }) {
+  return (
+    <ul className="divide-y divide-border">
+      {checks.map((check) => {
+        const status = STATUS[check.status];
+        const Icon = status.icon;
+        return (
+          <li key={check.id} className="flex gap-3 py-3">
+            <Icon
+              className={`mt-0.5 size-5 shrink-0 ${status.tone}`}
+              aria-hidden="true"
+            />
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
+                <span className="font-medium">{check.label}</span>
+                <span className={`text-xs font-medium ${status.tone}`}>
+                  {status.label}
+                </span>
+              </p>
+              <p className="text-sm text-muted-foreground">{check.detail}</p>
+              {check.items?.length ? (
+                <ul className="list-disc space-y-0.5 ps-5 text-sm">
+                  {check.items.map((item) => (
+                    <li key={item} className="break-words">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

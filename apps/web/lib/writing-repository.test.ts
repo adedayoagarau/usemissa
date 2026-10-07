@@ -389,6 +389,31 @@ dbTest(
       "card changes leave the text's revision alone",
     );
 
+    const forCall = await repository().changePiece(owner, first, {
+      callId: "opp_poetry-prize",
+    });
+    assert.ok(forCall && forCall !== "no-project");
+    assert.equal(forCall.callId, "opp_poetry-prize");
+    assert.equal(forCall.synopsis, "About the light", "other cards stay");
+    assert.equal(forCall.revision, 1, "a call link leaves the text alone");
+    const resaved = await repository().save(owner, first, {
+      title: "first poem",
+      body: "first poem, again",
+      document: null,
+      baseRevision: 1,
+      projectId: project,
+    });
+    assert.equal(
+      resaved.kind === "saved" && resaved.entry.callId,
+      "opp_poetry-prize",
+      "saving the text keeps the call",
+    );
+    const unlinked = await repository().changePiece(owner, first, {
+      callId: null,
+    });
+    assert.ok(unlinked && unlinked !== "no-project");
+    assert.equal(unlinked.callId, null);
+
     const loose = await repository().changePiece(owner, second, {
       projectId: null,
     });
