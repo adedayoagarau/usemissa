@@ -12,7 +12,7 @@ export const WORK_OUTCOME_LABELS: Record<WorkOutcome, string> = { accepted: 'Acc
 
 /** What a recorded Work decision does outside Missa's Organization record. */
 export const WORK_OUTCOME_CONSEQUENCE =
-  'The submitter sees this outcome in their Missa Tracker and gets an in-app notice. No email is sent; send decision emails separately from Decisions.';
+  'The submitter sees this outcome in their Missa Tracker and gets an in-app notice. No email is sent; send a decision letter from Messages.';
 
 /**
  * Publication readiness for the compatibility workspace, where an Opportunity
@@ -45,22 +45,4 @@ export function grantableRoles(actorRole: OrgRole, currentRole?: OrgRole): OrgRo
   const roles: OrgRole[] = actorRole === 'owner' ? ['owner', ...GRANTABLE_ROLE_ORDER] : [...GRANTABLE_ROLE_ORDER];
   if (currentRole && !roles.includes(currentRole)) roles.push(currentRole);
   return roles;
-}
-
-/** The standard decision-letter wording. The send route treats this exact text as "no editorial note". */
-export const DEFAULT_DECISION_EMAIL_SUBJECT = 'Your Missa submission update';
-export const DEFAULT_DECISION_EMAIL_BODY = 'Hello,\n\n{{workTitle}} was {{outcome}}.\n\nThank you.';
-
-/** Decision emails send at most this many Works per request. */
-export const DECISION_EMAIL_BATCH_LIMIT = 100;
-
-export function decisionEmailRequest(input: { workIds: readonly string[]; subject: string; note: string; sendDespiteLetterCheck?: boolean }) {
-  const subject = input.subject.trim() || DEFAULT_DECISION_EMAIL_SUBJECT;
-  const note = input.note.trim();
-  return {
-    workIds: [...new Set(input.workIds)].slice(0, DECISION_EMAIL_BATCH_LIMIT),
-    subject,
-    body: note || DEFAULT_DECISION_EMAIL_BODY,
-    ...(input.sendDespiteLetterCheck ? { sendDespiteLetterCheck: true } : {}),
-  };
 }

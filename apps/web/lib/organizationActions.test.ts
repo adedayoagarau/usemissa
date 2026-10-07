@@ -2,9 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   compatibilityPublishReadiness,
-  decisionEmailRequest,
-  DEFAULT_DECISION_EMAIL_BODY,
-  DEFAULT_DECISION_EMAIL_SUBJECT,
   grantableRoles,
   reviewerAlreadyAssigned,
 } from './organizationActions';
@@ -32,14 +29,6 @@ test('only an Owner is offered the Owner role, and legacy roles stay selectable 
   assert.equal(grantableRoles('admin').includes('owner'), false);
   assert.equal(grantableRoles('admin').includes('member'), false);
   assert.equal(grantableRoles('admin', 'member').at(-1), 'member');
-});
-
-test('decision emails without a note use the standard wording the send route recognizes', () => {
-  assert.deepEqual(decisionEmailRequest({ workIds: ['w1', 'w1', 'w2'], subject: '  ', note: ' ' }), { workIds: ['w1', 'w2'], subject: DEFAULT_DECISION_EMAIL_SUBJECT, body: DEFAULT_DECISION_EMAIL_BODY });
-  const custom = decisionEmailRequest({ workIds: ['w1'], subject: 'Spring decisions', note: 'Thank you for {{workTitle}}.', sendDespiteLetterCheck: true });
-  assert.equal(custom.body, 'Thank you for {{workTitle}}.');
-  assert.equal(custom.sendDespiteLetterCheck, true);
-  assert.equal(decisionEmailRequest({ workIds: Array.from({ length: 140 }, (_, index) => `w${index}`), subject: '', note: '' }).workIds.length, 100);
 });
 
 test('failed requests explain themselves in plain language', () => {

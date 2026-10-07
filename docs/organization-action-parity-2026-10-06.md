@@ -27,20 +27,21 @@ Every control below calls an existing route that works in the compatibility work
 | Close an Opportunity | Opportunity editor → Review and publish (destructive AlertDialog) | `DELETE open-calls/[id]` |
 | Link a claimed Missa listing when creating a draft | New Opportunity | `POST open-calls` (`radarOpportunityId`) |
 | Add a person, change a role, remove access | People access dossier (Dialog / AlertDialog). Server owner and last-admin safeguards apply | `POST members`, `PATCH/DELETE members/[accountId]` |
-| Assign a reviewer in an existing or new round | Submission dossier → Reviews | `POST review-rounds`, `POST review-rounds/[id]/assign` |
+| Assign one reviewer in an existing or new round. Use Reviews → distribute to spread a round across many readers | Submission dossier → Reviews | `POST review-rounds`, `POST review-rounds/[id]/assign` |
 | Record or change a Work's outcome | Submission dossier → Decisions, and the Decisions desk (RadioGroup dialog with the consequence stated) | `POST works/[id]/decision` |
 | Set up a delivery task (with an optional due date), and mark it complete or reopen it | Submission dossier → Delivery, and the Delivery desk | `POST works/[id]/delivery-tasks`, `PATCH delivery-tasks/[id]` |
 | Export Submissions | Submissions header (CSV in compatibility mode, JSON in relational mode) | `GET insights/export`, `GET submissions/export` |
 
-Some actions existed in code but had no screen. One of them now has a screen:
+Decision letters are drafted, approved and sent from Messages, through the communications manager that the Organization admin suite (#213) added. Decisions links there. An earlier draft of this change added a direct "Email decisions" dialog on the older `decision-emails` routes. It was removed when #213 landed, because it duplicated the letters manager and would have bypassed its approval gate.
 
-| Action | Where | Route |
-| --- | --- | --- |
-| Email decisions: choose Works, add an optional note, preview every letter, then send | Decisions header | `POST decision-emails/preview`, `POST decision-emails/send` |
+Server change: the compatibility branch of `review-rounds/[roundId]/assign` now applies the same conflict-of-interest rules as round distribution, using `readerConflict`. It refuses, with 409 and a reason:
 
-The send uses one idempotency key per reviewed batch, so retrying never sends twice. If the letter check holds a letter, it is shown and needs an explicit "send anyway". The control is hidden, with an explanation, unless `RESEND_API_KEY`, `RESEND_FROM` and `DATABASE_URL` are set.
+- a duplicate assignment;
+- a reader who recused or declared a conflict;
+- self-review;
+- a reader who shares a private email domain or name with the submitter.
 
-Server change: the compatibility branch of `review-rounds/[roundId]/assign` now refuses a duplicate assignment (same reviewer, Submission and round) with 409. It also returns 400 instead of 500 for a malformed body.
+A new read inherits the round's due date. A malformed body now returns 400 instead of 500.
 
 ## What did not move, and why
 
@@ -50,7 +51,7 @@ Server change: the compatibility branch of `review-rounds/[roundId]/assign` now 
 | JSON Submission export | Shown in relational mode only | The route is relational-only. The CSV export covers production. |
 | Importing Opportunities and Submissions | Defer | Useful for migrating from Submittable, Google Forms or Airtable. But a Submission import can write a terminal status without per-Work Decisions (gate 3 of the Submissions, Reviews and Decisions contract), so that needs fixing first. |
 | Erasure requests, retention policy | Defer to the relational cutover | Relational-only (503 in production). Erasure also has no list, reject or execute route, so a screen would collect requests that never run. |
-| Reviewer groups, recusal, reassignment | Defer to the relational cutover | Relational-only (503 in production). Reassignment also skips the membership check that assignment has. |
+| Reviewer groups | Defer to the relational cutover | Relational-only (503 in production). Reader recusal, reassignment and distribution now ship on Reviews through #213. |
 | SCIM provisioning | Do not expose; fix first | One deployment-wide token for one Organization, and no token management. It can reuse and globally deactivate an account from another Organization, grant Owner, skip seat limits, and demote the last admin without a guard. |
 | Billing actions | Unchanged | Organization paid plans are switched off. |
 

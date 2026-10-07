@@ -47,13 +47,13 @@ test('Submission queue and dossier preserve independent lifecycle lanes and mult
   await expect(page.getByText('No decision', { exact: true })).toBeVisible();
 });
 
-test('Review operations show evidence and route assignment to the Submission', async ({ page, baseURL }) => {
+test('Review operations show reader evidence and distribution safeguards', async ({ page, baseURL }) => {
   const fixture = await workflowFixture(page, baseURL);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/organization/${fixture.organizationId}/reviews`);
   await expect(page.getByRole('heading', { name: 'Reviews', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: fixture.roundName })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Assign from the Submission' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'How distribution stays safe' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Assign reviewer/u })).toHaveCount(0);
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);

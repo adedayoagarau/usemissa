@@ -339,24 +339,6 @@
       ],
       "boundary": "Assign one eligible member per round (duplicates refused client and server side), record one Work outcome per dialog with its consequence stated, and set up or complete a delivery task. Recording a decision never sends email."
     },
-    "composition.organization-decision-emails": {
-      "semantic": "EmailDecisionsDialog",
-      "implementation": "apps/web/components/organization-decision-emails.tsx",
-      "composition": [
-        "Dialog",
-        "Checkbox",
-        "Field",
-        "FieldSet",
-        "Input",
-        "Textarea",
-        "Button",
-        "Alert",
-        "Spinner",
-        "Sonner"
-      ],
-      "appearance": "compose-then-review-every-letter",
-      "boundary": "Decision correspondence separate from recording. Every recipient letter is previewed before sending; one idempotency key covers a reviewed batch; held letters need an explicit send-anyway confirmation."
-    },
     "disclosure.organization-media": {
       "semantic": "InstitutionMediaGallery",
       "composition": ["Button", "Dialog", "Tabs"]

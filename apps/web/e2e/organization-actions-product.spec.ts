@@ -76,7 +76,7 @@ test('Owners create a Team and Program, build a form, then publish and close an 
 });
 
 async function submissionFixture(page: Page, baseURL: string | undefined) {
-  const { organizationId } = await ownerSession(page);
+  const { organizationId, accountId } = await ownerSession(page);
   const suffix = uniqueSuffix();
   const team = await (await page.request.post(`/api/orgs/${organizationId}/teams`, { data: { name: `Actions Team ${suffix}` } })).json() as { id: string };
   const program = await (await page.request.post(`/api/orgs/${organizationId}/teams/${team.id}/programs`, { data: { name: `Actions Program ${suffix}` } })).json() as { id: string };
@@ -87,7 +87,7 @@ async function submissionFixture(page: Page, baseURL: string | undefined) {
   expect((await submitter.post('/api/auth/signup', { data: { email: `actions-${suffix}@example.com`, password: 'correct-horse-battery', givenName: 'Actions', familyName: 'Submitter' } })).status()).toBe(201);
   const submitted = await (await submitter.post(`/api/submission-paths/${form.id}/submit`, { data: { category: 'Poetry', answers: { [form.fields[0]!.id]: 'A note.' }, works: [{ title: `Tide Tables ${suffix}` }, { title: `Salt Year ${suffix}` }] }, headers: { 'Idempotency-Key': `actions-${suffix}` } })).json() as { submission: { id: string }; works: Array<{ title: string }> };
   await submitter.dispose();
-  return { organizationId, suffix, submissionId: submitted.submission.id, firstWork: submitted.works[0]!.title, secondWork: submitted.works[1]!.title };
+  return { organizationId, ownerAccountId: accountId, suffix, submissionId: submitted.submission.id, firstWork: submitted.works[0]!.title, secondWork: submitted.works[1]!.title };
 }
 
 test('A Submission dossier assigns a reviewer once, records a decision, and tracks delivery', async ({ page, baseURL }) => {
@@ -97,6 +97,8 @@ test('A Submission dossier assigns a reviewer once, records a decision, and trac
   await page.goto(`${dossier}?section=reviews`);
   await page.getByRole('button', { name: 'Assign reviewer' }).click();
   const assign = page.getByRole('dialog', { name: 'Assign a reviewer' });
+  // Pick a reader on another email domain: sharing a private domain with the submitter is a conflict.
+  await assign.getByLabel('Reviewer').selectOption(fixture.ownerAccountId);
   await assign.getByLabel('New round name').fill(`First read ${fixture.suffix}`);
   await expectNoSeriousAxeViolations(page);
   await assign.getByRole('button', { name: 'Assign', exact: true }).click();
@@ -105,6 +107,7 @@ test('A Submission dossier assigns a reviewer once, records a decision, and trac
 
   await page.getByRole('button', { name: 'Assign reviewer' }).click();
   const again = page.getByRole('dialog', { name: 'Assign a reviewer' });
+  await again.getByLabel('Reviewer').selectOption(fixture.ownerAccountId);
   await expect(again.getByText('This person is already assigned to this Submission in that round.')).toBeVisible();
   await expect(again.getByRole('button', { name: 'Assign', exact: true })).toBeDisabled();
   await again.getByRole('button', { name: 'Cancel' }).click();
@@ -134,7 +137,7 @@ test('A Submission dossier assigns a reviewer once, records a decision, and trac
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
 
   await page.goto(`/organization/${fixture.organizationId}/decisions?q=${encodeURIComponent(fixture.firstWork)}`);
-  await expect(page.getByText('Decision emails need an email sender and message storage')).toBeVisible({ timeout: firstCompile });
+  await expect(page.getByRole('link', { name: 'Draft decision letters' })).toHaveAttribute('href', `/organization/${fixture.organizationId}/messages`, { timeout: firstCompile });
 
   await page.goto(`/organization/${fixture.organizationId}/submissions`);
   const exportLink = page.getByRole('link', { name: 'Export CSV' });

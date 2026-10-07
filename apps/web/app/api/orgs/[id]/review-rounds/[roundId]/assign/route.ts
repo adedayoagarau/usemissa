@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { recordReviewerConflict, WORKSPACE_DECISION_SCOPES } from '@missa/workspace-engine';
+import { readerConflict, recordReviewerConflict, WORKSPACE_DECISION_SCOPES } from '@missa/workspace-engine';
 import { persistOrganizationMutation, requireOrganizationAccess } from '@/lib/organizationAccess';
 import { recordDecisionsAfterResponse, workspaceDecisionContext } from '@/lib/jevDecisions';
-import { reviewerAlreadyAssigned } from '@/lib/organizationActions';
+import { compatibilityDistributionInputs } from '@/lib/readerOperationsData';
 import { getRelationalWorkspace, workspaceCommandEnvelope, workspaceMutationError, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string; roundId: string }> }) {
@@ -42,11 +42,24 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
   }
   const engine = result.access.workspace;
-  if (reviewerAlreadyAssigned(engine.reviewAssignmentsForSubmission(body.submissionId), { reviewRoundId: roundId, reviewerAccountId: body.reviewerAccountId })) {
-    return NextResponse.json({ error: 'This reviewer is already assigned to this Submission in this round.' }, { status: 409 });
+  // The same conflict-of-interest rules as round distribution: a one-off
+  // assignment never places a reader the distribution plan would refuse.
+  const inputs = compatibilityDistributionInputs({ radar: result.access.radar, workspace: engine, organizationId: id, roundId, readerAccountIds: [body.reviewerAccountId], submissionIds: [body.submissionId] });
+  const candidate = inputs?.submissions[0];
+  const reader = inputs?.readers[0];
+  if (!candidate || !reader) {
+    return NextResponse.json({ error: 'This Submission cannot be read in this round. It was withdrawn or belongs to another Opportunity.' }, { status: 409 });
+  }
+  const conflict = readerConflict(reader, candidate);
+  if (conflict) {
+    const error = conflict.reason === 'already-assigned' ? 'This reviewer is already assigned to this Submission in this round.' : `This person cannot review this Submission. ${conflict.detail}`;
+    return NextResponse.json({ error, reason: conflict.reason }, { status: 409 });
   }
   try {
     const assignment = engine.assignReviewer(roundId, body.submissionId, body.reviewerAccountId);
+    // New reads inherit the round's due date, as distributed and reassigned reads do.
+    const dueDate = engine.roundDueDate(roundId);
+    if (dueDate) assignment.expiresAt = dueDate;
     await persistOrganizationMutation(result.access, {
       action: 'review-assignment.create',
       targetType: 'review-assignment',
