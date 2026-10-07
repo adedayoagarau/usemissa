@@ -26,6 +26,57 @@ export {
 } from "./office/application.js";
 export { importGuidelines, type GuidelineImportResult } from "./guidelines.js";
 export {
+  readerProgress,
+  scoreCalibration,
+  planDistribution,
+  readerConflict,
+  PUBLIC_EMAIL_DOMAINS,
+  type ReaderProgress,
+  type ReaderProgressInput,
+  type ReaderAssignmentRecord,
+  type ReaderRecommendationRecord,
+  type ReaderIdentity,
+  type ReaderCalibration,
+  type CalibrationLabel,
+  type ScoreCalibration,
+  type ScoreCalibrationInput,
+  type DistributionInput,
+  type DistributionPlan,
+  type DistributionReader,
+  type DistributionSubmission,
+  type DistributionConflict,
+  type ConflictReason,
+} from "./readerOperations.js";
+export {
+  COMMUNICATION_TEMPLATES,
+  COMMUNICATION_MERGE_FIELDS,
+  communicationTemplate,
+  stageForCommunicationKind,
+  renderMergeFields,
+  unknownMergeFields,
+  communicationContentHash,
+  canTransitionCommunication,
+  communicationEditable,
+  defaultRecipientsFor,
+  describeOutcomes,
+  joinTitles,
+  type CommunicationTemplate,
+  type CommunicationMergeField,
+  type RecipientCandidate,
+  type RecipientSelection,
+} from "./communications.js";
+export { intakeFlags, type EligibilityRules, type IntakeFlag, type IntakeFlagCode, type IntakeSubmission } from "./intakeChecks.js";
+export {
+  submissionStatusTimeline,
+  DEFAULT_STAGE_LABELS,
+  type StatusTransparency,
+  type TimelineStep,
+  type TimelineStepId,
+  type TimelineStepState,
+  type SubmissionStatusTimeline,
+  type SubmissionStatusTimelineInput,
+} from "./submissionStatusTimeline.js";
+export {
   SUBMISSION_IMPORT_MAX_BYTES,
   SUBMISSION_IMPORT_MAX_ROWS,
   planSubmissionImport,
@@ -65,3 +116,10 @@ export { WORKSPACE_DECISION_SCOPES, mapWithConcurrency, type WorkspaceDecisionCo
 export { checkDecisionLetters, decisionLetterMismatch, recordSubmissionTriage, recordReviewerConflict, recordReviewConsistency, recordGuidelineClauses, splitGuidelineClauses, recordClaimEvidence, orderClaimReviewQueue, type DecisionLetterCheckInput, type DecisionLetterCheckResult, type RecordedFlags } from './decisionChecks.js';
 export { SUBMISSION_IMPORT_TARGETS, OPEN_CALL_IMPORT_TARGETS, IMPORT_COLUMN_IGNORE, describeImportColumns, resolveTargetIndexes, sanitizeImportColumnMapping, importTargetsFor, suggestImportColumnMapping, type ImportColumn, type ImportColumnMapping, type ImportColumnSource, type ImportColumnSuggestions, type ImportKind, type ImportTargets } from './importColumns.js';
 export { backfillWorkspaceLaunchSlice, reconcileWorkspaceLaunchSlice, writeWorkspaceParityArtifact, type WorkspaceBackfillResult, type WorkspaceParityMismatch, type WorkspaceParityReport, type WorkspaceParityReason } from './reconciliation/workspaceParity.js';
+export {
+  RUBRIC_LIMITS,
+  normalizeRubricCriteria,
+  validateCriterionScores,
+  weightedRubricScore,
+  type RubricCriterionInput,
+} from "./rubric.js";

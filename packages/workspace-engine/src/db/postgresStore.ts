@@ -13,6 +13,11 @@ import type {
   ReviewRecommendation,
   Decision,
   DeliveryTask,
+  CommunicationBatch,
+  SubmitterQuestion,
+  RoundRubric,
+  CriterionScores,
+  SubmissionRevision,
 } from '../domain/types.js';
 import { postgresSchema } from './postgresSchema.js';
 
@@ -98,6 +103,11 @@ export async function saveStoreToPostgres(store: WorkspaceStore, pool: Pool, exp
     await client.query('delete from review_rounds');
     await client.query('delete from decisions');
     await client.query('delete from delivery_tasks');
+    await client.query('delete from workspace_communication_batches');
+    await client.query('delete from workspace_submitter_questions');
+    await client.query('delete from workspace_round_rubrics');
+    await client.query('delete from workspace_criterion_scores');
+    await client.query('delete from workspace_submission_revisions');
     await client.query('delete from works');
     await client.query('delete from submissions');
     await client.query('delete from submission_drafts');
@@ -183,8 +193,8 @@ export async function saveStoreToPostgres(store: WorkspaceStore, pool: Pool, exp
 
     for (const a of store.reviewAssignments.values()) {
       await client.query(
-        'insert into review_assignments (id, review_round_id, submission_id, reviewer_account_id, completed_at) values ($1, $2, $3, $4, $5)',
-        [a.id, a.reviewRoundId, a.submissionId, a.reviewerAccountId, a.completedAt ?? null],
+        'insert into review_assignments (id, review_round_id, submission_id, reviewer_account_id, completed_at, expires_at, recused_at, recusal_reason) values ($1, $2, $3, $4, $5, $6, $7, $8)',
+        [a.id, a.reviewRoundId, a.submissionId, a.reviewerAccountId, a.completedAt ?? null, a.expiresAt ?? null, a.recusedAt ?? null, a.recusalReason ?? null],
       );
     }
 
@@ -192,6 +202,37 @@ export async function saveStoreToPostgres(store: WorkspaceStore, pool: Pool, exp
       await client.query(
         'insert into review_recommendations (review_assignment_id, score, notes, recorded_at) values ($1, $2, $3, $4)',
         [r.reviewAssignmentId, r.score ?? null, r.notes ?? null, r.recordedAt],
+      );
+    }
+
+    for (const r of store.roundRubrics.values()) {
+      await client.query(
+        'insert into workspace_round_rubrics (id, organization_id, data, updated_at) values ($1, $2, $3, $4)',
+        [r.id, r.organizationId, JSON.stringify(r), r.createdAt],
+      );
+    }
+    for (const c of store.criterionScores.values()) {
+      await client.query(
+        'insert into workspace_criterion_scores (id, organization_id, data, updated_at) values ($1, $2, $3, $4)',
+        [c.reviewAssignmentId, c.organizationId, JSON.stringify(c), c.recordedAt],
+      );
+    }
+    for (const v of store.submissionRevisions.values()) {
+      await client.query(
+        'insert into workspace_submission_revisions (id, organization_id, data, updated_at) values ($1, $2, $3, $4)',
+        [v.id, v.organizationId, JSON.stringify(v), v.at],
+      );
+    }
+    for (const question of store.submitterQuestions.values()) {
+      await client.query(
+        'insert into workspace_submitter_questions (id, organization_id, data, updated_at) values ($1, $2, $3, $4)',
+        [question.id, question.organizationId, JSON.stringify(question), question.answeredAt ?? question.askedAt],
+      );
+    }
+    for (const batch of store.communicationBatches.values()) {
+      await client.query(
+        'insert into workspace_communication_batches (id, organization_id, data, updated_at) values ($1, $2, $3, $4)',
+        [batch.id, batch.organizationId, JSON.stringify(batch), batch.updatedAt],
       );
     }
 
@@ -263,6 +304,11 @@ export async function saveStoreDeltaToPostgres(
     reviewRecommendations: mapDelta(previous.reviewRecommendations, current.reviewRecommendations),
     decisions: mapDelta(previous.decisions, current.decisions),
     deliveryTasks: mapDelta(previous.deliveryTasks, current.deliveryTasks),
+    communicationBatches: mapDelta(previous.communicationBatches ?? new Map(), current.communicationBatches ?? new Map()),
+    submitterQuestions: mapDelta(previous.submitterQuestions ?? new Map(), current.submitterQuestions ?? new Map()),
+    roundRubrics: mapDelta(previous.roundRubrics ?? new Map(), current.roundRubrics ?? new Map()),
+    criterionScores: mapDelta(previous.criterionScores ?? new Map(), current.criterionScores ?? new Map()),
+    submissionRevisions: mapDelta(previous.submissionRevisions ?? new Map(), current.submissionRevisions ?? new Map()),
   };
   const previousAuditIds = new Set(previous.auditLog.map((entry) => entry.id));
   const newAuditEntries = current.auditLog.filter((entry) => !previousAuditIds.has(entry.id));
@@ -289,6 +335,11 @@ export async function saveStoreDeltaToPostgres(
     for (const id of delta.reviewRounds.deletes) await client.query('delete from review_rounds where id = $1', [id]);
     for (const id of delta.decisions.deletes) await client.query('delete from decisions where id = $1', [id]);
     for (const id of delta.deliveryTasks.deletes) await client.query('delete from delivery_tasks where id = $1', [id]);
+    for (const id of delta.communicationBatches.deletes) await client.query('delete from workspace_communication_batches where id = $1', [id]);
+    for (const id of delta.submitterQuestions.deletes) await client.query('delete from workspace_submitter_questions where id = $1', [id]);
+    for (const id of delta.roundRubrics.deletes) await client.query('delete from workspace_round_rubrics where id = $1', [id]);
+    for (const id of delta.criterionScores.deletes) await client.query('delete from workspace_criterion_scores where id = $1', [id]);
+    for (const id of delta.submissionRevisions.deletes) await client.query('delete from workspace_submission_revisions where id = $1', [id]);
     for (const id of delta.works.deletes) await client.query('delete from works where id = $1', [id]);
     for (const id of delta.submissions.deletes) await client.query('delete from submissions where id = $1', [id]);
     for (const id of delta.submissionDrafts.deletes) await client.query('delete from submission_drafts where id = $1', [id]);
@@ -314,10 +365,19 @@ export async function saveStoreDeltaToPostgres(
       [s.id, s.openCallId, JSON.stringify(s.categories), JSON.stringify(s.fields), s.feeCents ?? null, s.createdAt],
     );
     if (taxonomyEnabled) for (const s of delta.submissionPaths.upserts) await writeTaxonomyAssignments(client, s, undefined);
-    for (const s of delta.submissions.upserts) await client.query(
+    for (const s of delta.submissions.upserts) {
+      // Update by id first: the insert below only arbitrates on the idempotency
+      // key, so an existing submission without one would hit the primary key.
+      const updated = await client.query(
+        'update submissions set submission_path_id = $2, submitter_account_id = $3, status = $4, submitted_at = $5, payment_status = $6, payment_session_id = $7, fee_cents = $8, idempotency_key = $9, answers = $10, category = $11 where id = $1',
+        [s.id, s.submissionPathId, s.submitterAccountId, s.status, s.submittedAt, s.paymentStatus ?? 'not-required', s.paymentSessionId ?? null, s.feeCents ?? null, s.idempotencyKey ?? null, s.answers ? JSON.stringify(s.answers) : null, s.category ?? null],
+      );
+      if (updated.rowCount) continue;
+      await client.query(
       'insert into submissions (id, submission_path_id, submitter_account_id, status, submitted_at, payment_status, payment_session_id, fee_cents, idempotency_key, answers, category) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) on conflict (submitter_account_id, submission_path_id, idempotency_key) where idempotency_key is not null do update set status = excluded.status, submitted_at = excluded.submitted_at, payment_status = excluded.payment_status, payment_session_id = excluded.payment_session_id, fee_cents = excluded.fee_cents, answers = excluded.answers, category = excluded.category',
       [s.id, s.submissionPathId, s.submitterAccountId, s.status, s.submittedAt, s.paymentStatus ?? 'not-required', s.paymentSessionId ?? null, s.feeCents ?? null, s.idempotencyKey ?? null, s.answers ? JSON.stringify(s.answers) : null, s.category ?? null],
-    );
+      );
+    }
     for (const w of delta.works.upserts) await client.query(
       'insert into works (id, submission_id, title, file_url, file_urls, "order") values ($1, $2, $3, $4, $5, $6) on conflict (id) do update set submission_id = excluded.submission_id, title = excluded.title, file_url = excluded.file_url, file_urls = excluded.file_urls, "order" = excluded."order"',
       [w.id, w.submissionId, w.title, w.fileUrl ?? null, w.fileUrls ? JSON.stringify(w.fileUrls) : null, w.order],
@@ -332,8 +392,8 @@ export async function saveStoreDeltaToPostgres(
       [round.id, round.openCallId, round.name, round.createdAt],
     );
     for (const assignment of delta.reviewAssignments.upserts) await client.query(
-      'insert into review_assignments (id, review_round_id, submission_id, reviewer_account_id, completed_at) values ($1, $2, $3, $4, $5) on conflict (id) do update set review_round_id = excluded.review_round_id, submission_id = excluded.submission_id, reviewer_account_id = excluded.reviewer_account_id, completed_at = excluded.completed_at',
-      [assignment.id, assignment.reviewRoundId, assignment.submissionId, assignment.reviewerAccountId, assignment.completedAt ?? null],
+      'insert into review_assignments (id, review_round_id, submission_id, reviewer_account_id, completed_at, expires_at, recused_at, recusal_reason) values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (id) do update set review_round_id = excluded.review_round_id, submission_id = excluded.submission_id, reviewer_account_id = excluded.reviewer_account_id, completed_at = excluded.completed_at, expires_at = excluded.expires_at, recused_at = excluded.recused_at, recusal_reason = excluded.recusal_reason',
+      [assignment.id, assignment.reviewRoundId, assignment.submissionId, assignment.reviewerAccountId, assignment.completedAt ?? null, assignment.expiresAt ?? null, assignment.recusedAt ?? null, assignment.recusalReason ?? null],
     );
     for (const recommendation of delta.reviewRecommendations.upserts) await client.query(
       'insert into review_recommendations (review_assignment_id, score, notes, recorded_at) values ($1, $2, $3, $4) on conflict (review_assignment_id) do update set score = excluded.score, notes = excluded.notes, recorded_at = excluded.recorded_at',
@@ -346,6 +406,26 @@ export async function saveStoreDeltaToPostgres(
     for (const task of delta.deliveryTasks.upserts) await client.query(
       'insert into delivery_tasks (id, work_id, status, due_date, completed_at) values ($1, $2, $3, $4, $5) on conflict (work_id) do update set status = excluded.status, due_date = excluded.due_date, completed_at = excluded.completed_at',
       [task.id, task.workId, task.status, task.dueDate ?? null, task.completedAt ?? null],
+    );
+    for (const r of delta.roundRubrics.upserts) await client.query(
+      'insert into workspace_round_rubrics (id, organization_id, data, updated_at) values ($1, $2, $3, $4) on conflict (id) do update set organization_id = excluded.organization_id, data = excluded.data, updated_at = excluded.updated_at',
+      [r.id, r.organizationId, JSON.stringify(r), r.createdAt],
+    );
+    for (const c of delta.criterionScores.upserts) await client.query(
+      'insert into workspace_criterion_scores (id, organization_id, data, updated_at) values ($1, $2, $3, $4) on conflict (id) do update set organization_id = excluded.organization_id, data = excluded.data, updated_at = excluded.updated_at',
+      [c.reviewAssignmentId, c.organizationId, JSON.stringify(c), c.recordedAt],
+    );
+    for (const v of delta.submissionRevisions.upserts) await client.query(
+      'insert into workspace_submission_revisions (id, organization_id, data, updated_at) values ($1, $2, $3, $4) on conflict (id) do update set organization_id = excluded.organization_id, data = excluded.data, updated_at = excluded.updated_at',
+      [v.id, v.organizationId, JSON.stringify(v), v.at],
+    );
+    for (const question of delta.submitterQuestions.upserts) await client.query(
+      'insert into workspace_submitter_questions (id, organization_id, data, updated_at) values ($1, $2, $3, $4) on conflict (id) do update set organization_id = excluded.organization_id, data = excluded.data, updated_at = excluded.updated_at',
+      [question.id, question.organizationId, JSON.stringify(question), question.answeredAt ?? question.askedAt],
+    );
+    for (const batch of delta.communicationBatches.upserts) await client.query(
+      'insert into workspace_communication_batches (id, organization_id, data, updated_at) values ($1, $2, $3, $4) on conflict (id) do update set organization_id = excluded.organization_id, data = excluded.data, updated_at = excluded.updated_at',
+      [batch.id, batch.organizationId, JSON.stringify(batch), batch.updatedAt],
     );
     for (const entry of newAuditEntries) await client.query(
       'insert into workspace_audit_log (id, at, account_id, action, target_type, target_id, detail) values ($1, $2, $3, $4, $5, $6, $7) on conflict (id) do nothing',
@@ -544,6 +624,9 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<WorkspaceStore>
     submission_id: string;
     reviewer_account_id: string;
     completed_at: Date | null;
+    expires_at?: Date | null;
+    recused_at?: Date | null;
+    recusal_reason?: string | null;
   }>('select * from review_assignments');
   for (const row of reviewAssignments.rows) {
     const assignment: ReviewAssignment = {
@@ -552,6 +635,9 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<WorkspaceStore>
       submissionId: row.submission_id,
       reviewerAccountId: row.reviewer_account_id,
       completedAt: row.completed_at?.toISOString(),
+      ...(row.expires_at ? { expiresAt: row.expires_at.toISOString() } : {}),
+      ...(row.recused_at ? { recusedAt: row.recused_at.toISOString() } : {}),
+      ...(row.recusal_reason ? { recusalReason: row.recusal_reason } : {}),
     };
     store.reviewAssignments.set(assignment.id, assignment);
   }
@@ -570,6 +656,29 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<WorkspaceStore>
       recordedAt: row.recorded_at.toISOString(),
     };
     store.reviewRecommendations.set(recommendation.reviewAssignmentId, recommendation);
+  }
+
+  if ((await pool.query<{ ready: boolean }>("select to_regclass('public.workspace_round_rubrics') is not null as ready")).rows[0]?.ready === true) {
+    const rows = await pool.query<{ id: string; data: RoundRubric }>('select id, data from workspace_round_rubrics');
+    for (const row of rows.rows) store.roundRubrics.set(row.id, row.data);
+  }
+  if ((await pool.query<{ ready: boolean }>("select to_regclass('public.workspace_criterion_scores') is not null as ready")).rows[0]?.ready === true) {
+    const rows = await pool.query<{ id: string; data: CriterionScores }>('select id, data from workspace_criterion_scores');
+    for (const row of rows.rows) store.criterionScores.set(row.id, row.data);
+  }
+  if ((await pool.query<{ ready: boolean }>("select to_regclass('public.workspace_submission_revisions') is not null as ready")).rows[0]?.ready === true) {
+    const rows = await pool.query<{ id: string; data: SubmissionRevision }>('select id, data from workspace_submission_revisions');
+    for (const row of rows.rows) store.submissionRevisions.set(row.id, row.data);
+  }
+  const questionsReady = (await pool.query<{ ready: boolean }>("select to_regclass('public.workspace_submitter_questions') is not null as ready")).rows[0]?.ready === true;
+  if (questionsReady) {
+    const questions = await pool.query<{ id: string; data: SubmitterQuestion }>('select id, data from workspace_submitter_questions');
+    for (const row of questions.rows) store.submitterQuestions.set(row.id, row.data);
+  }
+  const batchesReady = (await pool.query<{ ready: boolean }>("select to_regclass('public.workspace_communication_batches') is not null as ready")).rows[0]?.ready === true;
+  if (batchesReady) {
+    const batches = await pool.query<{ id: string; data: CommunicationBatch }>('select id, data from workspace_communication_batches');
+    for (const row of batches.rows) store.communicationBatches.set(row.id, row.data);
   }
 
   const auditLog = await pool.query<{
