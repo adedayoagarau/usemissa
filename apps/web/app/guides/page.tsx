@@ -1,17 +1,32 @@
-import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
-import { PublicSiteShell } from '@/components/public-site-shell';
-import { PublicDiscoveryEvent } from '@/components/public-discovery-event';
-import { GuideCard, GuideClosing, guideStyles as styles } from '@/components/missa/guide-article';
-import { discoveryGuides } from '@/lib/discoveryGuides';
-import { GUIDE_SECTIONS, guideArticles } from '@/lib/guideArticles';
-import { JsonLd, absoluteUrl, breadcrumbJsonLd, pageMetadata } from '@/lib/seo';
-import { sectionAnchor } from './[slug]/guide-article-page';
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { PublicSiteShell } from "@/components/public-site-shell";
+import { PublicDiscoveryEvent } from "@/components/public-discovery-event";
+import {
+  GuideCard,
+  GuideClosing,
+  GuideFeaturedCard,
+  GuideSectionHeading,
+} from "@/components/missa/guide-article";
+import { guideType } from "@/components/missa/guide-typography";
+import { buttonVariants } from "@/components/ui/button";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemTitle,
+} from "@/components/ui/item";
+import { discoveryGuides } from "@/lib/discoveryGuides";
+import { GUIDE_SECTIONS, guideArticles } from "@/lib/guideArticles";
+import { JsonLd, absoluteUrl, breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
+import { sectionAnchor } from "./[slug]/guide-article-page";
 
 export const metadata = pageMetadata({
-  title: 'Guides: finding open calls, fees, residencies and magazines',
-  description: 'Practical guides for artists and writers: where to find open calls, what fees are fair, how to apply to residencies and how to pick magazines.',
-  path: '/guides',
+  title: "Guides: finding open calls, fees, residencies and magazines",
+  description:
+    "Practical guides for artists and writers: where to find open calls, what fees are fair, how to apply to residencies and how to pick magazines.",
+  path: "/guides",
 });
 
 export default function GuidesPage() {
@@ -21,99 +36,176 @@ export default function GuidesPage() {
     articles: rest.filter((article) => article.section === section),
   })).filter((group) => group.articles.length);
   const allEntries = [
-    ...guideArticles.map((article) => ({ name: article.title, path: `/guides/${article.slug}` })),
-    ...discoveryGuides.map((guide) => ({ name: guide.title, path: `/guides/${guide.slug}` })),
+    ...guideArticles.map((article) => ({
+      name: article.title,
+      path: `/guides/${article.slug}`,
+    })),
+    ...discoveryGuides.map((guide) => ({
+      name: guide.title,
+      path: `/guides/${guide.slug}`,
+    })),
   ];
 
   return (
     <PublicSiteShell current="Guides">
-      <main id="main-content" className={styles.page} data-density="spacious">
-        <PublicDiscoveryEvent eventName="public.discovery_view" properties={{ surface: 'guides-index', resultCount: allEntries.length }} />
-        <JsonLd
-          data={{
-            '@context': 'https://schema.org',
-            '@type': 'CollectionPage',
-            name: 'Missa guides',
-            url: absoluteUrl('/guides'),
-            mainEntity: {
-              '@type': 'ItemList',
-              itemListElement: allEntries.map((entry, index) => ({
-                '@type': 'ListItem',
-                position: index + 1,
-                name: entry.name,
-                url: absoluteUrl(entry.path),
-              })),
-            },
-          }}
-        />
-        <JsonLd data={breadcrumbJsonLd([{ name: 'Missa', path: '/' }, { name: 'Guides' }])} />
+      <main
+        id="main-content"
+        className="px-gutter pb-section-major"
+        data-density="spacious"
+      >
+        <div className="mx-auto w-full max-w-6xl">
+          <PublicDiscoveryEvent
+            eventName="public.discovery_view"
+            properties={{
+              surface: "guides-index",
+              resultCount: allEntries.length,
+            }}
+          />
+          <JsonLd
+            data={{
+              "@context": "https://schema.org",
+              "@type": "CollectionPage",
+              name: "Missa guides",
+              url: absoluteUrl("/guides"),
+              mainEntity: {
+                "@type": "ItemList",
+                itemListElement: allEntries.map((entry, index) => ({
+                  "@type": "ListItem",
+                  position: index + 1,
+                  name: entry.name,
+                  url: absoluteUrl(entry.path),
+                })),
+              },
+            }}
+          />
+          <JsonLd
+            data={breadcrumbJsonLd([
+              { name: "Missa", path: "/" },
+              { name: "Guides" },
+            ])}
+          />
 
-        <header className={styles.indexHero}>
-          <p className={styles.sectionEyebrow}>Guides</p>
-          <h1 className="font-heading">Before you send the work.</h1>
-          <p>
-            Making the work is half the job. These guides cover the other half: where calls turn up, what a fee should get you, how residencies choose, and how to keep track of it all.
-          </p>
-        </header>
-
-        <nav aria-label="Guide topics">
-          <ul className={styles.sectionNav}>
-            {GUIDE_SECTIONS.map((section) => (
-              <li key={section}>
-                <a href={`#${sectionAnchor(section)}`}>{section}</a>
-              </li>
-            ))}
-            <li>
-              <a href="#quick-guides">Quick guides</a>
-            </li>
-          </ul>
-        </nav>
-
-        {featured ? (
-          <div id={sections.some((group) => group.section === featured.section) ? undefined : sectionAnchor(featured.section)} className={styles.indexSection}>
-            <GuideCard article={featured} headingLevel="h2" featured />
-          </div>
-        ) : null}
-
-        {GUIDE_SECTIONS.map((section) => {
-          const group = sections.find((candidate) => candidate.section === section);
-          const inSection = group?.articles ?? [];
-          if (!inSection.length) return null;
-          return (
-            <section key={section} id={sectionAnchor(section)} className={styles.indexSection} aria-labelledby={`${sectionAnchor(section)}-heading`}>
-              <h2 id={`${sectionAnchor(section)}-heading`} className={`font-heading ${styles.sectionTitle}`}>
-                {section}
-              </h2>
-              <div className={styles.cardGrid}>
-                {inSection.map((article) => (
-                  <GuideCard key={article.slug} article={article} />
+          <header className="flex flex-col gap-group py-section">
+            <div className="flex flex-col gap-row">
+              <p className={guideType.eyebrow}>Guides</p>
+              <h1 className={guideType.display}>Before you send the work.</h1>
+              <p className={`${guideType.dek} max-w-2xl`}>
+                Making the work is half the job. These guides cover the other
+                half: where calls turn up, what a fee should get you, how
+                residencies choose, and how to keep track of it all.
+              </p>
+            </div>
+            <nav aria-label="Guide topics">
+              <ul className="flex flex-wrap gap-2">
+                {GUIDE_SECTIONS.map((section) => (
+                  <li key={section}>
+                    <a
+                      href={`#${sectionAnchor(section)}`}
+                      className={buttonVariants({
+                        variant: "outline",
+                        size: "sm",
+                      })}
+                    >
+                      {section}
+                    </a>
+                  </li>
                 ))}
-              </div>
-            </section>
-          );
-        })}
+                <li>
+                  <a
+                    href="#quick-guides"
+                    className={buttonVariants({
+                      variant: "outline",
+                      size: "sm",
+                    })}
+                  >
+                    Quick guides
+                  </a>
+                </li>
+              </ul>
+            </nav>
+          </header>
 
-        <section id="quick-guides" className={styles.indexSection} aria-labelledby="quick-guides-heading">
-          <h2 id="quick-guides-heading" className={`font-heading ${styles.sectionTitle}`}>
-            Quick guides
-          </h2>
-          <ul className={styles.quickList}>
-            {discoveryGuides.map((guide) => (
-              <li key={guide.slug}>
-                <div>
-                  <h3>{guide.title}</h3>
-                  <p>{guide.description}</p>
-                </div>
-                <Link href={`/guides/${guide.slug}`} className={styles.moreLink}>
-                  Read <span className="sr-only">{guide.title}</span>
-                  <ArrowRight aria-hidden="true" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
+          {featured ? (
+            <div
+              id={
+                sections.some((group) => group.section === featured.section)
+                  ? undefined
+                  : sectionAnchor(featured.section)
+              }
+              className="scroll-mt-24"
+            >
+              <GuideFeaturedCard article={featured} />
+            </div>
+          ) : null}
 
-        <GuideClosing cta={{ label: 'Browse open calls', href: '/opportunities' }} />
+          {GUIDE_SECTIONS.map((section) => {
+            const group = sections.find(
+              (candidate) => candidate.section === section,
+            );
+            const inSection = group?.articles ?? [];
+            if (!inSection.length) return null;
+            return (
+              <section
+                key={section}
+                id={sectionAnchor(section)}
+                className="mt-section scroll-mt-24"
+                aria-labelledby={`${sectionAnchor(section)}-heading`}
+              >
+                <GuideSectionHeading id={`${sectionAnchor(section)}-heading`}>
+                  {section}
+                </GuideSectionHeading>
+                <ul className="mt-group grid gap-gap sm:grid-cols-2 lg:grid-cols-3">
+                  {inSection.map((article) => (
+                    <li key={article.slug}>
+                      <GuideCard article={article} />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
+
+          <section
+            id="quick-guides"
+            className="mt-section scroll-mt-24"
+            aria-labelledby="quick-guides-heading"
+          >
+            <GuideSectionHeading
+              id="quick-guides-heading"
+              eyebrow="Short reads"
+            >
+              Quick guides
+            </GuideSectionHeading>
+            <ul className="mt-group grid gap-3 md:grid-cols-2">
+              {discoveryGuides.map((guide) => (
+                <li key={guide.slug}>
+                  <Item
+                    variant="outline"
+                    className="h-full"
+                    render={<Link href={`/guides/${guide.slug}`} />}
+                  >
+                    <ItemContent>
+                      <ItemTitle>{guide.title}</ItemTitle>
+                      <ItemDescription>{guide.description}</ItemDescription>
+                    </ItemContent>
+                    <ItemActions>
+                      <ArrowRight
+                        aria-hidden="true"
+                        className="size-4 text-muted-foreground"
+                      />
+                    </ItemActions>
+                  </Item>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <div className="pt-section-major">
+            <GuideClosing
+              cta={{ label: "Browse open calls", href: "/opportunities" }}
+            />
+          </div>
+        </div>
       </main>
     </PublicSiteShell>
   );
