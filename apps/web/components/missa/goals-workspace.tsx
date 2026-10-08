@@ -10,6 +10,7 @@ import {
   CalendarDays,
   Search,
   X,
+  Target,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,9 @@ import { RecommendationsWorkspace } from "./recommendations-workspace";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { GoalSubmissionProgress } from "./goal-submission-progress";
+import { HueTile } from "./hue-tile";
+import { PageHeader } from "./page-header";
+import { personHue } from "./person-avatar";
 
 type Target = {
   id: string;
@@ -298,30 +302,28 @@ export function GoalsWorkspace() {
       id="main-content"
       className="mx-auto max-w-7xl px-5 py-8 md:px-10 md:py-12"
     >
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-5">
-        <div className="max-w-xl">
-          <h1 className="text-3xl leading-tight font-semibold tracking-tight md:text-4xl">
-            Pick your number.
-          </h1>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Some writers aim for 100 rejections a year. Some aim for one yes.
-          </p>
-        </div>
-        <Button
-          variant={step === null ? "default" : "outline"}
-          disabled={busy}
-          onClick={() => (step === null ? start() : setStep(null))}
-        >
-          {step === null ? (
-            <>
-              <Plus aria-hidden="true" />
-              New goal
-            </>
-          ) : (
-            "Close setup"
-          )}
-        </Button>
-      </header>
+      <div className="mb-8">
+        <PageHeader
+          title="Pick your number."
+          description="Some writers aim for 100 rejections a year. Some aim for one yes."
+          actions={
+            <Button
+              variant={step === null ? "default" : "outline"}
+              disabled={busy}
+              onClick={() => (step === null ? start() : setStep(null))}
+            >
+              {step === null ? (
+                <>
+                  <Plus aria-hidden="true" />
+                  New goal
+                </>
+              ) : (
+                "Close setup"
+              )}
+            </Button>
+          }
+        />
+      </div>
       {error && (
         <div
           role="alert"
@@ -847,31 +849,24 @@ export function GoalsWorkspace() {
       ) : loading ? (
         <p role="status">Loading goals…</p>
       ) : !current ? (
-        <section className="grid overflow-hidden rounded-xl bg-primary text-primary-foreground md:grid-cols-2">
+        <section className="grid overflow-hidden rounded-xl border border-border md:grid-cols-2">
           <div className="p-8 md:p-10">
             <h2 className="max-w-sm text-3xl leading-tight font-semibold">
               Your next goal starts here.
             </h2>
-            <Button variant="secondary" className="mt-8" onClick={start}>
+            <p className="mt-3 max-w-sm text-sm text-muted-foreground">
+              Choose a number, pick a date, and Missa counts each submission
+              with you.
+            </p>
+            <Button className="mt-8" onClick={start}>
               Create your first goal <ArrowRight aria-hidden="true" />
             </Button>
           </div>
           <div
             aria-hidden="true"
-            className="grid grid-cols-4 gap-4 p-8 md:p-10"
+            className="flex items-center bg-muted/40 p-8 md:p-10"
           >
-            {Array.from({ length: 8 }, (_, i) => (
-              <span
-                key={i}
-                className={`flex aspect-square items-center justify-center rounded-full border border-primary-foreground ${i < 3 ? "bg-primary-foreground text-primary" : ""}`}
-              >
-                {i < 3 ? (
-                  <Check className="size-6" />
-                ) : (
-                  <span className="size-2 rounded-full bg-primary-foreground" />
-                )}
-              </span>
-            ))}
+            <GoalSubmissionProgress done={3} target={8} hue="teal" />
           </div>
         </section>
       ) : (
@@ -886,6 +881,16 @@ export function GoalsWorkspace() {
                   className="h-auto min-h-11 text-left whitespace-normal"
                   onClick={() => setSelected(g.id)}
                 >
+                  <HueTile
+                    identity={g.id}
+                    tone={current.id === g.id ? "solid" : "soft"}
+                    size="sm"
+                  >
+                    <Target
+                      className="size-3.5 text-current"
+                      aria-hidden="true"
+                    />
+                  </HueTile>
                   {g.title}
                 </Button>
               ))}
@@ -893,10 +898,10 @@ export function GoalsWorkspace() {
           )}
           <article
             id={`goal-${current.id}`}
-            className="grid overflow-hidden rounded-xl border border-border lg:grid-cols-2"
+            className="mb-10 grid overflow-hidden rounded-xl border border-border lg:grid-cols-[1.2fr_1fr]"
           >
-            <section className="bg-primary p-6 text-primary-foreground md:p-8">
-              <div className="mb-6 flex flex-wrap justify-between gap-3 text-sm">
+            <section className="p-6 md:p-8">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
                 <span>
                   {current.discipline
                     ? label(current.discipline)
@@ -908,17 +913,23 @@ export function GoalsWorkspace() {
                     : `By ${displayDate(current.ends_on)}`}
                 </span>
               </div>
-              <h2 className="mb-8 text-3xl leading-tight font-semibold">
+              <h2 className="mb-6 flex items-center gap-3 text-2xl leading-tight font-semibold md:text-3xl">
+                <HueTile identity={current.id}>
+                  <Target className="size-4 text-current" aria-hidden="true" />
+                </HueTile>
                 {current.title}
               </h2>
               <GoalSubmissionProgress
                 done={current.progress}
                 target={current.target}
+                hue={personHue(current.id)}
               />
             </section>
-            <section className="flex flex-col p-6 md:p-8">
-              <h3 className="text-lg font-semibold">Up next</h3>
-              <p className="mt-5 text-2xl leading-snug font-medium">
+            <section className="flex flex-col border-t border-border bg-muted/40 p-6 md:p-8 lg:border-t-0 lg:border-l">
+              <h3 className="text-sm font-medium text-muted-foreground">
+                Up next
+              </h3>
+              <p className="mt-2 text-xl leading-snug font-medium">
                 {current.next_step}
               </p>
               <Button

@@ -76,7 +76,7 @@
 .counts div:last-child { border-right: 0; }
 .counts dt { color: var(--muted-foreground); font-size: 9px; line-height: 1.4; text-transform: uppercase; }
 .counts dd { margin: 8px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: 28px; }
-.receipt > svg { width: 38px; height: 38px; color: var(--success, #34795b); stroke-width: 1.5; }
+.receipt > svg { width: 38px; height: 38px; color: var(--success); stroke-width: 1.5; }
 .noRows { padding: 36px 0; color: var(--muted-foreground); font-size: 12px; text-align: center; }
 .spinner { animation: spin 1s linear infinite; }
 

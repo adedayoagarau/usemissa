@@ -23,7 +23,7 @@
 .guidelines h2, .guidelines p { margin: 0; }
 .guidelines h2 { margin-top: 5px; font-family: var(--font-heading), Georgia, serif; font-size: 1.8rem; font-weight: 550; }
 .guidelines > p { max-width: 760px; color: var(--muted-foreground); font-size: .78rem; line-height: 1.75; white-space: pre-wrap; }
-.publicLimit, .compatibility { display: flex; gap: 11px; margin-top: 28px; padding: 15px; border: 1px solid color-mix(in srgb, var(--warning, #9c6d28) 28%, var(--border)); border-radius: 9px; background: color-mix(in srgb, var(--warning, #9c6d28) 4%, white); }
+.publicLimit, .compatibility { display: flex; gap: 11px; margin-top: 28px; padding: 15px; border: 1px solid color-mix(in srgb, var(--warning) 28%, var(--border)); border-radius: 9px; background: color-mix(in srgb, var(--warning) 4%, white); }
 .publicLimit svg, .compatibility svg { flex: 0 0 auto; width: 18px; color: var(--primary); }
 .publicLimit strong, .publicLimit p, .compatibility strong, .compatibility p { margin: 0; }
 .publicLimit strong, .compatibility strong { font-size: .74rem; }
@@ -52,7 +52,7 @@
 .ledger li[data-state='current'] { background: color-mix(in srgb, var(--primary) 7%, white); color: var(--accent-deep); }
 .ledger li[data-state='blocked'] { color: var(--foreground); }
 .ledger li > span { display: grid; width: 26px; height: 26px; place-items: center; border: 1px solid var(--border); border-radius: 999px; font-family: var(--font-mono), monospace; font-size: .6rem; }
-.ledger li[data-state='available'] > span { border-color: color-mix(in srgb, var(--success, #56705b) 45%, var(--border)); color: var(--success, #56705b); }
+.ledger li[data-state='available'] > span { border-color: color-mix(in srgb, var(--success) 45%, var(--border)); color: var(--success); }
 .ledger svg { width: 13px; }
 .ledger strong, .ledger small { display: block; }
 .ledger strong { font-size: .7rem; }

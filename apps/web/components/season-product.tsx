@@ -2,14 +2,41 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowRight, CalendarRange, CheckCircle2, Clock3, Hourglass, ListChecks, RefreshCw, Wallet } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarRange,
+  CheckCircle2,
+  Clock3,
+  Hourglass,
+  RefreshCw,
+  Wallet,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   DateConfidenceBadge,
   FeeBadge,
@@ -34,6 +61,8 @@ import {
 } from "@/lib/season-plan";
 import styles from "./season-product.module.css";
 import { Sp, useSp } from "@/components/missa/spelling";
+import { PageHeader } from "@/components/missa/page-header";
+import { EmptyStateArt } from "@/components/illustrations/missa-illustrations";
 
 /** The capacity response from GET /api/me/planning/capacity. */
 type CapacityItem = {
@@ -42,7 +71,8 @@ type CapacityItem = {
   finishOn: string;
   status: "fits" | "tight" | "does-not-fit";
   cause: string;
-  suggestion: "none" | "start-now" | "move-target" | "add-hours" | "drop-or-defer";
+  suggestion:
+    "none" | "start-now" | "move-target" | "add-hours" | "drop-or-defer";
   opportunityId: string;
   trackedOpportunityId: string;
   finishBasis: "personal-target" | "deadline";
@@ -51,8 +81,16 @@ type CapacityItem = {
 type CapacityReport =
   | { status: "locked" }
   | { status: "needs-hours" }
-  | { status: "ready"; weeklyHours: number; items: CapacityItem[]; undated: Array<{ opportunityId: string; title: string }> };
-type CapacityState = { phase: "loading" } | { phase: "error"; message: string } | { phase: "loaded"; report: CapacityReport };
+  | {
+      status: "ready";
+      weeklyHours: number;
+      items: CapacityItem[];
+      undated: Array<{ opportunityId: string; title: string }>;
+    };
+type CapacityState =
+  | { phase: "loading" }
+  | { phase: "error"; message: string }
+  | { phase: "loaded"; report: CapacityReport };
 
 const PREFERENCES_HREF = "/inbox#notification-preferences-title";
 const PRACTICE_PREFERENCES_HREF = "/profile?section=preferences";
@@ -92,9 +130,15 @@ export function SeasonProduct({
 }: SeasonProductProps) {
   const [calls, setCalls] = useState(initialCalls);
   const now = useMemo(() => new Date(`${today}T12:00:00Z`), [today]);
-  const short = useCallback((date: string) => formatShortDate(date, now), [now]);
+  const short = useCallback(
+    (date: string) => formatShortDate(date, now),
+    [now],
+  );
 
-  const actions = useMemo(() => thisWeeksThree({ calls, obligations: initialObligations, today }), [calls, initialObligations, today]);
+  const actions = useMemo(
+    () => thisWeeksThree({ calls, obligations: initialObligations, today }),
+    [calls, initialObligations, today],
+  );
   const weeks = useMemo(
     () =>
       seasonCrunchWeeks(
@@ -106,23 +150,34 @@ export function SeasonProduct({
     [calls, today, initialFeatures.seasonPlan, initialMatching],
   );
   const budget = useMemo(
-    () => feeBudget({ calls, tiersByOpportunity: new Map(Object.entries(initialTiers)), today }),
+    () =>
+      feeBudget({
+        calls,
+        tiersByOpportunity: new Map(Object.entries(initialTiers)),
+        today,
+      }),
     [calls, initialTiers, today],
   );
-  const returning = useMemo(() => comingBack(initialForecasts, today), [initialForecasts, today]);
+  const returning = useMemo(
+    () => comingBack(initialForecasts, today),
+    [initialForecasts, today],
+  );
 
   return (
     <main className={styles.page}>
-      <header className={styles.heading}>
-        <h1 className="font-heading">Season</h1>
-        <p>What to do this week, how busy the coming weeks look, what entry fees are ahead, and which calls are likely to come back.</p>
-      </header>
+      <div className={styles.heading}>
+        <PageHeader
+          title="Season"
+          description="What to do this week, how busy the coming weeks look, what entry fees are ahead, and which calls are likely to come back."
+        />
+      </div>
 
       {unavailable ? (
         <Alert className={styles.notice}>
           <AlertTitle>Your season plan could not load</AlertTitle>
           <AlertDescription>
-            Your Tracker and Calendar still have every date. Try this page again in a moment.
+            Your Tracker and Calendar still have every date. Try this page again
+            in a moment.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -133,12 +188,24 @@ export function SeasonProduct({
         weeklyHours={initialWeeklyHours}
         calls={calls}
         short={short}
-        onCallChanged={(next) => setCalls((current) => current.map((call) => (call.opportunityId === next.opportunityId ? next : call)))}
+        onCallChanged={(next) =>
+          setCalls((current) =>
+            current.map((call) =>
+              call.opportunityId === next.opportunityId ? next : call,
+            ),
+          )
+        }
       />
       <CrunchWeeks
         weeks={weeks}
         full={initialFeatures.seasonPlan}
-        matching={initialMatching ? (initialMatching.hasPreferences ? "shown" : "needs-preferences") : "unavailable"}
+        matching={
+          initialMatching
+            ? initialMatching.hasPreferences
+              ? "shown"
+              : "needs-preferences"
+            : "unavailable"
+        }
         short={short}
       />
       <FeeBudgetSection budget={budget} short={short} />
@@ -147,24 +214,48 @@ export function SeasonProduct({
   );
 }
 
-function SectionHeading({ id, title, description }: { id: string; title: string; description: string }) {
+function SectionHeading({
+  id,
+  title,
+  description,
+}: {
+  id: string;
+  title: string;
+  description: string;
+}) {
   return (
     <header className={styles.sectionHeading}>
-      <h2 id={id} className="font-heading">{title}</h2>
-      <p><Sp>{description}</Sp></p>
+      <h2 id={id} className="font-heading">
+        {title}
+      </h2>
+      <p>
+        <Sp>{description}</Sp>
+      </p>
     </header>
   );
 }
 
-function ThisWeek({ actions, short }: { actions: WeekAction[]; short: (date: string) => string }) {
+function ThisWeek({
+  actions,
+  short,
+}: {
+  actions: WeekAction[];
+  short: (date: string) => string;
+}) {
   return (
     <section className={styles.section} aria-labelledby="season-week">
-      <SectionHeading id="season-week" title="This week’s three" description="The most important things to do in the next seven days, from your deadlines and plan steps." />
+      <SectionHeading
+        id="season-week"
+        title="This week’s three"
+        description="The most important things to do in the next seven days, from your deadlines and plan steps."
+      />
       {actions.length ? (
         <ol className={styles.actions}>
           {actions.map((action, index) => (
             <li key={action.id} className={styles.action}>
-              <span className={styles.actionNumber} aria-hidden="true">{index + 1}</span>
+              <span className={styles.actionNumber} aria-hidden="true">
+                {index + 1}
+              </span>
               <div className={styles.actionCopy}>
                 <strong>{action.title}</strong>
                 <span>
@@ -179,9 +270,21 @@ function ThisWeek({ actions, short }: { actions: WeekAction[]; short: (date: str
                 </span>
               </div>
               {action.kind === "deadline" ? (
-                <UrgencyBadge label={action.daysAway <= 1 ? (action.daysAway === 0 ? "Closes today" : "Closes tomorrow") : `Closes in ${action.daysAway} days`} />
+                <UrgencyBadge
+                  label={
+                    action.daysAway <= 1
+                      ? action.daysAway === 0
+                        ? "Closes today"
+                        : "Closes tomorrow"
+                      : `Closes in ${action.daysAway} days`
+                  }
+                />
               ) : null}
-              <Button variant="ghost" className={styles.rowAction} render={<Link href={action.href} />}>
+              <Button
+                variant="ghost"
+                className={styles.rowAction}
+                render={<Link href={action.href} />}
+              >
                 Open
                 <ArrowRight aria-hidden="true" />
               </Button>
@@ -191,12 +294,23 @@ function ThisWeek({ actions, short }: { actions: WeekAction[]; short: (date: str
       ) : (
         <Empty variant="bordered">
           <EmptyHeader>
-            <EmptyMedia variant="icon"><ListChecks aria-hidden="true" /></EmptyMedia>
+            <EmptyMedia>
+              <EmptyStateArt id="spot-reminders" size="spot" />
+            </EmptyMedia>
             <EmptyTitle>Nothing due in the next seven days</EmptyTitle>
-            <EmptyDescription>Deadlines and plan steps for calls you are preparing appear here as they come up.</EmptyDescription>
+            <EmptyDescription>
+              Deadlines and plan steps for calls you are preparing appear here
+              as they come up.
+            </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button variant="outline" className={styles.rowAction} render={<Link href="/tracker" />}>Open Tracker</Button>
+            <Button
+              variant="outline"
+              className={styles.rowAction}
+              render={<Link href="/tracker" />}
+            >
+              Open Tracker
+            </Button>
           </EmptyContent>
         </Empty>
       )}
@@ -223,12 +337,21 @@ function CapacityCheck({
   const load = useCallback(async () => {
     setState({ phase: "loading" });
     try {
-      const response = await fetch("/api/me/planning/capacity", { cache: "no-store" });
+      const response = await fetch("/api/me/planning/capacity", {
+        cache: "no-store",
+      });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error ?? "Capacity could not load. Try again.");
+      if (!response.ok)
+        throw new Error(data.error ?? "Capacity could not load. Try again.");
       setState({ phase: "loaded", report: data as CapacityReport });
     } catch (error) {
-      setState({ phase: "error", message: error instanceof Error ? error.message : "Capacity could not load. Try again." });
+      setState({
+        phase: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Capacity could not load. Try again.",
+      });
     }
   }, []);
 
@@ -239,24 +362,46 @@ function CapacityCheck({
   }, [enabled, load]);
 
   async function moveTarget(item: CapacityItem, target: string) {
-    const call = calls.find((entry) => entry.opportunityId === item.opportunityId);
+    const call = calls.find(
+      (entry) => entry.opportunityId === item.opportunityId,
+    );
     if (!call) return;
     setSaving(item.id);
     try {
-      const response = await fetch(`/api/me/tracker/${encodeURIComponent(call.opportunityId)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() },
-        body: JSON.stringify({ personalTargetOn: target, expectedRevision: call.revision }),
-      });
+      const response = await fetch(
+        `/api/me/tracker/${encodeURIComponent(call.opportunityId)}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": crypto.randomUUID(),
+          },
+          body: JSON.stringify({
+            personalTargetOn: target,
+            expectedRevision: call.revision,
+          }),
+        },
+      );
       const data = await response.json().catch(() => ({}));
-      if (response.status === 409) throw new Error("This call changed in another window. Refresh the page and try again.");
-      if (!response.ok) throw new Error(data.error ?? "Your target date could not be saved.");
-      const revision = typeof data?.tracked?.revision === "number" ? data.tracked.revision : call.revision + 1;
+      if (response.status === 409)
+        throw new Error(
+          "This call changed in another window. Refresh the page and try again.",
+        );
+      if (!response.ok)
+        throw new Error(data.error ?? "Your target date could not be saved.");
+      const revision =
+        typeof data?.tracked?.revision === "number"
+          ? data.tracked.revision
+          : call.revision + 1;
       onCallChanged({ ...call, revision, personalTargetOn: target });
       toast.success(`Target moved to ${short(target)}.`);
       await load();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Your target date could not be saved.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Your target date could not be saved.",
+      );
     } finally {
       setSaving(undefined);
     }
@@ -264,11 +409,22 @@ function CapacityCheck({
 
   return (
     <section className={styles.section} aria-labelledby="season-capacity">
-      <SectionHeading id="season-capacity" title="Capacity check" description="Whether each call you are preparing fits the hours you have each week, and what to change when it does not." />
+      <SectionHeading
+        id="season-capacity"
+        title="Capacity check"
+        description="Whether each call you are preparing fits the hours you have each week, and what to change when it does not."
+      />
       {!enabled ? (
-        <UpgradeHint plan="Pro" benefit="See whether every call fits the hours you have, with a one-tap fix for each one that is tight." />
+        <UpgradeHint
+          plan="Pro"
+          benefit="See whether every call fits the hours you have, with a one-tap fix for each one that is tight."
+        />
       ) : state.phase === "loading" ? (
-        <div className={styles.skeletons} aria-busy="true" aria-label="Loading capacity">
+        <div
+          className={styles.skeletons}
+          aria-busy="true"
+          aria-label="Loading capacity"
+        >
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-16 w-full" />
         </div>
@@ -283,11 +439,16 @@ function CapacityCheck({
           </AlertDescription>
         </Alert>
       ) : state.report.status === "locked" ? (
-        <UpgradeHint plan="Pro" benefit="See whether every call fits the hours you have, with a one-tap fix for each one that is tight." />
+        <UpgradeHint
+          plan="Pro"
+          benefit="See whether every call fits the hours you have, with a one-tap fix for each one that is tight."
+        />
       ) : state.report.status === "needs-hours" ? (
         <Empty variant="bordered">
           <EmptyHeader>
-            <EmptyMedia variant="icon"><Hourglass aria-hidden="true" /></EmptyMedia>
+            <EmptyMedia variant="icon">
+              <Hourglass aria-hidden="true" />
+            </EmptyMedia>
             <EmptyTitle>How many hours a week do you have?</EmptyTitle>
             <EmptyDescription>
               {weeklyHours === null
@@ -296,48 +457,102 @@ function CapacityCheck({
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button variant="outline" className={styles.rowAction} render={<Link href={PREFERENCES_HREF} />}>Set weekly hours</Button>
+            <Button
+              variant="outline"
+              className={styles.rowAction}
+              render={<Link href={PREFERENCES_HREF} />}
+            >
+              Set weekly hours
+            </Button>
           </EmptyContent>
         </Empty>
       ) : state.report.items.length === 0 ? (
         <Empty variant="bordered">
           <EmptyHeader>
-            <EmptyMedia variant="icon"><CheckCircle2 aria-hidden="true" /></EmptyMedia>
+            <EmptyMedia variant="icon">
+              <CheckCircle2 aria-hidden="true" />
+            </EmptyMedia>
             <EmptyTitle>No dated calls in preparation</EmptyTitle>
-            <EmptyDescription>Calls you are preparing with a deadline or target date appear here with how well they fit.</EmptyDescription>
+            <EmptyDescription>
+              Calls you are preparing with a deadline or target date appear here
+              with how well they fit.
+            </EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
         <>
-          <p className={styles.meta}>Checked against {state.report.weeklyHours} hours a week.</p>
+          <p className={styles.meta}>
+            Checked against {state.report.weeklyHours} hours a week.
+          </p>
           <ul className={styles.capacityList}>
             {state.report.items.map((item) => {
-              const call = calls.find((entry) => entry.opportunityId === item.opportunityId);
-              const target = item.status === "fits" ? null : laterTarget(item.finishOn, call?.deadline);
+              const call = calls.find(
+                (entry) => entry.opportunityId === item.opportunityId,
+              );
+              const target =
+                item.status === "fits"
+                  ? null
+                  : laterTarget(item.finishOn, call?.deadline);
               return (
                 <li key={item.id} className={styles.capacityItem}>
                   <div className={styles.capacityCopy}>
                     <strong>{item.title}</strong>
                     <span>
-                      {item.finishBasis === "personal-target" ? "Your target" : "Deadline"} {short(item.finishOn)} · {item.cause}
+                      {item.finishBasis === "personal-target"
+                        ? "Your target"
+                        : "Deadline"}{" "}
+                      {short(item.finishOn)} · {item.cause}
                     </span>
-                    {item.startBy ? <span>Start by {short(item.startBy.startOn)}. {item.startBy.reason}</span> : null}
+                    {item.startBy ? (
+                      <span>
+                        Start by {short(item.startBy.startOn)}.{" "}
+                        {item.startBy.reason}
+                      </span>
+                    ) : null}
                   </div>
                   <span className={styles.capacityStatus}>
-                    {item.status === "fits" ? <CheckCircle2 aria-hidden="true" /> : <Clock3 aria-hidden="true" />}
-                    <UrgencyBadge label={CAPACITY_LABELS[item.status]} urgent={item.status !== "fits"} />
+                    {item.status === "fits" ? (
+                      <CheckCircle2 aria-hidden="true" />
+                    ) : (
+                      <Clock3 aria-hidden="true" />
+                    )}
+                    <UrgencyBadge
+                      label={CAPACITY_LABELS[item.status]}
+                      urgent={item.status !== "fits"}
+                    />
                   </span>
                   {item.status !== "fits" ? (
-                    <div className={styles.fixes} role="group" aria-label={`Fixes for ${item.title}`}>
+                    <div
+                      className={styles.fixes}
+                      role="group"
+                      aria-label={`Fixes for ${item.title}`}
+                    >
                       {target ? (
-                        <Button variant="outline" className={styles.rowAction} disabled={saving === item.id} onClick={() => void moveTarget(item, target)}>
-                          {saving === item.id ? "Saving…" : `Set target to ${short(target)}`}
+                        <Button
+                          variant="outline"
+                          className={styles.rowAction}
+                          disabled={saving === item.id}
+                          onClick={() => void moveTarget(item, target)}
+                        >
+                          {saving === item.id
+                            ? "Saving…"
+                            : `Set target to ${short(target)}`}
                         </Button>
                       ) : null}
-                      <Button variant="ghost" className={styles.rowAction} render={<Link href={trackerItemHref(item.opportunityId)} />}>
+                      <Button
+                        variant="ghost"
+                        className={styles.rowAction}
+                        render={
+                          <Link href={trackerItemHref(item.opportunityId)} />
+                        }
+                      >
                         Open in Tracker
                       </Button>
-                      <Button variant="ghost" className={styles.rowAction} render={<Link href={PREFERENCES_HREF} />}>
+                      <Button
+                        variant="ghost"
+                        className={styles.rowAction}
+                        render={<Link href={PREFERENCES_HREF} />}
+                      >
                         Adjust weekly hours
                       </Button>
                     </div>
@@ -348,7 +563,8 @@ function CapacityCheck({
           </ul>
           {state.report.undated.length ? (
             <p className={styles.meta}>
-              Not checked, because they have no date yet: {state.report.undated.map((item) => item.title).join(", ")}.
+              Not checked, because they have no date yet:{" "}
+              {state.report.undated.map((item) => item.title).join(", ")}.
             </p>
           ) : null}
         </>
@@ -385,8 +601,15 @@ function CrunchWeeks({
 }) {
   const showMatching = matching === "shown";
   const total = weeks.reduce((sum, week) => sum + week.count, 0);
-  const matchingTotal = showMatching ? weeks.reduce((sum, week) => sum + week.matchingCount, 0) : 0;
-  const max = Math.max(3, ...weeks.map((week) => Math.max(week.count, showMatching ? week.matchingCount : 0)));
+  const matchingTotal = showMatching
+    ? weeks.reduce((sum, week) => sum + week.matchingCount, 0)
+    : 0;
+  const max = Math.max(
+    3,
+    ...weeks.map((week) =>
+      Math.max(week.count, showMatching ? week.matchingCount : 0),
+    ),
+  );
   const busy = weeks.filter((week) => week.crunch);
   const summary = (week: (typeof weeks)[number], separator: string) =>
     [
@@ -405,7 +628,12 @@ function CrunchWeeks({
       {matching === "needs-preferences" ? (
         <p className={styles.meta}>
           Choose what you make to see open calls that match you here.{" "}
-          <Button variant="link" size="sm" className={styles.rowAction} render={<Link href={PRACTICE_PREFERENCES_HREF} />}>
+          <Button
+            variant="link"
+            size="sm"
+            className={styles.rowAction}
+            render={<Link href={PRACTICE_PREFERENCES_HREF} />}
+          >
             Set your preferences
           </Button>
         </p>
@@ -413,9 +641,15 @@ function CrunchWeeks({
       {total === 0 && matchingTotal === 0 ? (
         <Empty variant="bordered">
           <EmptyHeader>
-            <EmptyMedia variant="icon"><CalendarRange aria-hidden="true" /></EmptyMedia>
-            <EmptyTitle>No deadlines in the next {weeks.length} weeks</EmptyTitle>
-            <EmptyDescription>Save calls to your Tracker and their deadlines fill in here.</EmptyDescription>
+            <EmptyMedia variant="icon">
+              <CalendarRange aria-hidden="true" />
+            </EmptyMedia>
+            <EmptyTitle>
+              No deadlines in the next {weeks.length} weeks
+            </EmptyTitle>
+            <EmptyDescription>
+              Save calls to your Tracker and their deadlines fill in here.
+            </EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
@@ -428,14 +662,32 @@ function CrunchWeeks({
               ? ` ${matchingTotal} open ${matchingTotal === 1 ? "call matches" : "calls match"} you and ${matchingTotal === 1 ? "is" : "are"} not in your Tracker.`
               : ""}
           </p>
-          <div className={styles.strip} role="img" aria-label={`Deadlines per week: ${weeks.map((week) => summary(week, ", ")).join("; ")}`}>
+          <div
+            className={styles.strip}
+            role="img"
+            aria-label={`Deadlines per week: ${weeks.map((week) => summary(week, ", ")).join("; ")}`}
+          >
             {weeks.map((week, index) => (
-              <div key={week.weekStart} className={styles.bar} data-crunch={week.crunch} title={summary(week, " · ")}>
-                <span className={styles.barValue} aria-hidden="true">{week.count || ""}</span>
+              <div
+                key={week.weekStart}
+                className={styles.bar}
+                data-crunch={week.crunch}
+                title={summary(week, " · ")}
+              >
+                <span className={styles.barValue} aria-hidden="true">
+                  {week.count || ""}
+                </span>
                 <span className={styles.barTrack} aria-hidden="true">
-                  <span className={styles.barFill} style={{ height: `${(week.count / max) * 100}%` }} />
+                  <span
+                    className={styles.barFill}
+                    style={{ height: `${(week.count / max) * 100}%` }}
+                  />
                   {showMatching ? (
-                    <span className={styles.barMatching} data-empty={week.matchingCount === 0} style={{ height: `${(week.matchingCount / max) * 100}%` }} />
+                    <span
+                      className={styles.barMatching}
+                      data-empty={week.matchingCount === 0}
+                      style={{ height: `${(week.matchingCount / max) * 100}%` }}
+                    />
                   ) : null}
                 </span>
                 <span className={styles.barLabel} aria-hidden="true">
@@ -445,22 +697,48 @@ function CrunchWeeks({
             ))}
           </div>
           <p className={styles.legend}>
-            <span><i className={styles.swatch} aria-hidden="true" /> Deadlines that week, solid</span>
-            <span><i className={`${styles.swatch} ${styles.swatchBusy}`} aria-hidden="true" /> Busy week, three or more</span>
+            <span>
+              <i className={styles.swatch} aria-hidden="true" /> Deadlines that
+              week, solid
+            </span>
+            <span>
+              <i
+                className={`${styles.swatch} ${styles.swatchBusy}`}
+                aria-hidden="true"
+              />{" "}
+              Busy week, three or more
+            </span>
             {showMatching ? (
-              <span><i className={`${styles.swatch} ${styles.swatchMatching}`} aria-hidden="true" /> {MATCHING_LABEL}, striped</span>
+              <span>
+                <i
+                  className={`${styles.swatch} ${styles.swatchMatching}`}
+                  aria-hidden="true"
+                />{" "}
+                {MATCHING_LABEL}, striped
+              </span>
             ) : null}
           </p>
           <Collapsible>
-            <CollapsibleTrigger render={<Button variant="link" size="sm" className={styles.rowAction} />}>Show as a table</CollapsibleTrigger>
+            <CollapsibleTrigger
+              render={
+                <Button variant="link" size="sm" className={styles.rowAction} />
+              }
+            >
+              Show as a table
+            </CollapsibleTrigger>
             <CollapsibleContent>
               <Table>
-                <TableCaption>Deadlines per week{showMatching ? ", with open calls that match you" : ""}</TableCaption>
+                <TableCaption>
+                  Deadlines per week
+                  {showMatching ? ", with open calls that match you" : ""}
+                </TableCaption>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Week</TableHead>
                     <TableHead>Deadlines</TableHead>
-                    {showMatching ? <TableHead>{MATCHING_LABEL}</TableHead> : null}
+                    {showMatching ? (
+                      <TableHead>{MATCHING_LABEL}</TableHead>
+                    ) : null}
                     <TableHead>Busy</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -469,7 +747,9 @@ function CrunchWeeks({
                     <TableRow key={week.weekStart}>
                       <TableCell>{weekLabel(week.weekStart, short)}</TableCell>
                       <TableCell>{week.count}</TableCell>
-                      {showMatching ? <TableCell>{week.matchingCount}</TableCell> : null}
+                      {showMatching ? (
+                        <TableCell>{week.matchingCount}</TableCell>
+                      ) : null}
                       <TableCell>{week.crunch ? "Busy week" : "No"}</TableCell>
                     </TableRow>
                   ))}
@@ -480,22 +760,40 @@ function CrunchWeeks({
         </>
       )}
       {!full ? (
-        <UpgradeHint plan="Pro" benefit={`See all ${SEASON_WEEKS} weeks ahead to plan your whole season.`} />
+        <UpgradeHint
+          plan="Pro"
+          benefit={`See all ${SEASON_WEEKS} weeks ahead to plan your whole season.`}
+        />
       ) : null}
     </section>
   );
 }
 
-function FeeBudgetSection({ budget, short }: { budget: ReturnType<typeof feeBudget>; short: (date: string) => string }) {
+function FeeBudgetSection({
+  budget,
+  short,
+}: {
+  budget: ReturnType<typeof feeBudget>;
+  short: (date: string) => string;
+}) {
   return (
     <section className={styles.section} aria-labelledby="season-fees">
-      <SectionHeading id="season-fees" title="Fee budget" description="Entry fees for calls you are preparing with a deadline this month or next, at the fee that applies today." />
+      <SectionHeading
+        id="season-fees"
+        title="Fee budget"
+        description="Entry fees for calls you are preparing with a deadline this month or next, at the fee that applies today."
+      />
       {budget.lines.length === 0 ? (
         <Empty variant="bordered">
           <EmptyHeader>
-            <EmptyMedia variant="icon"><Wallet aria-hidden="true" /></EmptyMedia>
+            <EmptyMedia variant="icon">
+              <Wallet aria-hidden="true" />
+            </EmptyMedia>
             <EmptyTitle>No fees due this month or next</EmptyTitle>
-            <EmptyDescription>Calls you are preparing with a deadline in the next two months appear here with their entry fee.</EmptyDescription>
+            <EmptyDescription>
+              Calls you are preparing with a deadline in the next two months
+              appear here with their entry fee.
+            </EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
@@ -506,16 +804,22 @@ function FeeBudgetSection({ budget, short }: { budget: ReturnType<typeof feeBudg
                 <div key={total.currency} className={styles.totalGroup}>
                   <div>
                     <dt>This month</dt>
-                    <dd className="font-heading">{formatFee(total.thisMonthCents, total.currency)}</dd>
+                    <dd className="font-heading">
+                      {formatFee(total.thisMonthCents, total.currency)}
+                    </dd>
                   </div>
                   <div>
                     <dt>Next month</dt>
-                    <dd className="font-heading">{formatFee(total.nextMonthCents, total.currency)}</dd>
+                    <dd className="font-heading">
+                      {formatFee(total.nextMonthCents, total.currency)}
+                    </dd>
                   </div>
                   {total.savingsCents > 0 ? (
                     <div>
                       <dt>You can still save</dt>
-                      <dd className="font-heading">{formatFee(total.savingsCents, total.currency)}</dd>
+                      <dd className="font-heading">
+                        {formatFee(total.savingsCents, total.currency)}
+                      </dd>
                     </div>
                   ) : null}
                 </div>
@@ -524,20 +828,32 @@ function FeeBudgetSection({ budget, short }: { budget: ReturnType<typeof feeBudg
           ) : null}
           {budget.unknownCount ? (
             <p className={styles.meta}>
-              {budget.unknownCount === 1 ? "One call does not publish its fee" : `${budget.unknownCount} calls do not publish their fee`}, so the totals leave {budget.unknownCount === 1 ? "it" : "them"} out.
+              {budget.unknownCount === 1
+                ? "One call does not publish its fee"
+                : `${budget.unknownCount} calls do not publish their fee`}
+              , so the totals leave {budget.unknownCount === 1 ? "it" : "them"}{" "}
+              out.
             </p>
           ) : null}
           <ul className={styles.feeList}>
             {budget.lines.map((line) => (
               <li key={line.opportunityId} className={styles.feeItem}>
                 <div className={styles.capacityCopy}>
-                  <Link href={trackerItemHref(line.opportunityId)} className={styles.titleLink}>{line.title}</Link>
+                  <Link
+                    href={trackerItemHref(line.opportunityId)}
+                    className={styles.titleLink}
+                  >
+                    {line.title}
+                  </Link>
                   <span>
                     Deadline {short(line.deadline)}
                     {line.tierLabel ? ` · ${line.tierLabel} fee` : ""}
                   </span>
                   {line.savingsCents && line.savingsUntil ? (
-                    <span>Save {formatFee(line.savingsCents, line.currency)} by submitting by {short(line.savingsUntil)}.</span>
+                    <span>
+                      Save {formatFee(line.savingsCents, line.currency)} by
+                      submitting by {short(line.savingsUntil)}.
+                    </span>
                   ) : null}
                 </div>
                 {line.feeCents === undefined ? (
@@ -554,20 +870,41 @@ function FeeBudgetSection({ budget, short }: { budget: ReturnType<typeof feeBudg
   );
 }
 
-function ComingBack({ rows, short }: { rows: ReturnType<typeof comingBack>; short: (date: string) => string }) {
+function ComingBack({
+  rows,
+  short,
+}: {
+  rows: ReturnType<typeof comingBack>;
+  short: (date: string) => string;
+}) {
   const sp = useSp();
   return (
     <section className={styles.section} aria-labelledby="season-returning">
-      <SectionHeading id="season-returning" title="Coming back" description="Calls you track or whose organization you follow that have closed, with when Missa expects them to return. These dates are predictions from past cycles." />
+      <SectionHeading
+        id="season-returning"
+        title="Coming back"
+        description="Calls you track or whose organization you follow that have closed, with when Missa expects them to return. These dates are predictions from past cycles."
+      />
       {rows.length === 0 ? (
         <Empty variant="bordered">
           <EmptyHeader>
-            <EmptyMedia variant="icon"><RefreshCw aria-hidden="true" /></EmptyMedia>
+            <EmptyMedia variant="icon">
+              <RefreshCw aria-hidden="true" />
+            </EmptyMedia>
             <EmptyTitle>No predictions yet</EmptyTitle>
-            <EmptyDescription>When a call you follow has run for a few cycles, Missa predicts when it will return and shows it here.</EmptyDescription>
+            <EmptyDescription>
+              When a call you follow has run for a few cycles, Missa predicts
+              when it will return and shows it here.
+            </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button variant="outline" className={styles.rowAction} render={<Link href="/following" />}>See who you follow</Button>
+            <Button
+              variant="outline"
+              className={styles.rowAction}
+              render={<Link href="/following" />}
+            >
+              See who you follow
+            </Button>
           </EmptyContent>
         </Empty>
       ) : (
@@ -575,17 +912,29 @@ function ComingBack({ rows, short }: { rows: ReturnType<typeof comingBack>; shor
           {rows.map((row) => (
             <li key={row.opportunityId} className={styles.feeItem}>
               <div className={styles.capacityCopy}>
-                <Link href={`/opportunities/${encodeURIComponent(row.opportunityId)}`} className={styles.titleLink}>{row.title}</Link>
+                <Link
+                  href={`/opportunities/${encodeURIComponent(row.opportunityId)}`}
+                  className={styles.titleLink}
+                >
+                  {row.title}
+                </Link>
                 <span>
                   {row.label} {short(row.nextDate)}
-                  {row.label === "Predicted to open" && row.forecast.expectedOpenEnd && row.forecast.expectedOpenEnd !== row.nextDate
+                  {row.label === "Predicted to open" &&
+                  row.forecast.expectedOpenEnd &&
+                  row.forecast.expectedOpenEnd !== row.nextDate
                     ? ` to ${short(row.forecast.expectedOpenEnd)}`
                     : ""}
                   {" · "}
-                  {row.relation === "tracked" ? "In your Tracker" : `You follow ${row.organizationName ?? sp("this organization")}`}
+                  {row.relation === "tracked"
+                    ? "In your Tracker"
+                    : `You follow ${row.organizationName ?? sp("this organization")}`}
                 </span>
               </div>
-              <DateConfidenceBadge state="predicted" label={`Predicted from ${row.forecast.basedOnCycles} cycles`} />
+              <DateConfidenceBadge
+                state="predicted"
+                label={`Predicted from ${row.forecast.basedOnCycles} cycles`}
+              />
             </li>
           ))}
         </ul>

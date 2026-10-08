@@ -43,7 +43,7 @@
 .taskCard { display: grid; min-height: 104px; align-items: center; gap: 18px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 12px; grid-template-columns: minmax(0, 1fr) auto; }
 .taskCard + .taskCard { margin-top: 8px; }
 .taskCard[data-primary='true'] { min-height: 150px; background: color-mix(in srgb, var(--primary) 4%, white); }
-.taskCard[data-tone='attention'] { border-color: color-mix(in srgb, var(--ochre, #a2712a) 35%, var(--border)); }
+.taskCard[data-tone='attention'] { border-color: color-mix(in srgb, var(--ochre) 35%, var(--border)); }
 .taskCard p { margin: 0; color: var(--primary); font: 8px var(--font-mono), monospace; letter-spacing: .08em; text-transform: uppercase; }
 .taskCard h3 { margin: 7px 0 4px; font-family: var(--font-heading), Georgia, serif; font-size: 22px; font-weight: 600; overflow-wrap: anywhere; }
 .taskCard[data-primary='true'] h3 { font-size: 29px; }
@@ -72,7 +72,7 @@
 .importSteps > div { display: grid; min-height: 70px; align-items: center; gap: 8px; padding: 10px; border-right: 1px solid var(--border); color: var(--muted-foreground); grid-template-columns: 24px minmax(0, 1fr); }
 .importSteps > div:last-child { border: 0; }
 .importSteps > div[aria-current='step'] { background: color-mix(in srgb, var(--primary) 6%, white); color: var(--primary); }
-.importSteps > div[data-complete='true'] { color: var(--lichen, #65754b); }
+.importSteps > div[data-complete='true'] { color: var(--lichen); }
 .importSteps span { display: grid; width: 24px; height: 24px; place-content: center; border: 1px solid var(--border); border-radius: 50%; font: 8px var(--font-mono), monospace; }
 .importSteps span svg { width: 11px; }
 .importSteps strong { font-size: 8px; }
@@ -111,7 +111,7 @@
 .confirmCounts div:last-child { border: 0; }
 .confirmCounts dt { color: var(--muted-foreground); font-size: 8px; }
 .confirmCounts dd { margin: 0; font: 20px var(--font-mono), monospace; }
-.receiptMark { display: grid; width: 48px; height: 48px; place-content: center; margin-bottom: 14px; border-radius: 50%; background: color-mix(in srgb, var(--lichen, #65754b) 10%, white); color: var(--lichen, #65754b); }
+.receiptMark { display: grid; width: 48px; height: 48px; place-content: center; margin-bottom: 14px; border-radius: 50%; background: color-mix(in srgb, var(--lichen) 10%, white); color: var(--lichen); }
 .receiptMark svg { width: 24px; }
 .askHeading { align-items: start; }
 .askLayout { display: grid; min-height: 650px; border: 1px solid var(--border); border-radius: 13px; overflow: hidden; grid-template-columns: 1fr; }

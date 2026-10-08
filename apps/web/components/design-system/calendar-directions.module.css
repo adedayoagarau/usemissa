@@ -50,7 +50,7 @@
 .eventRow[data-selected='true'] { position: relative; margin-inline: -8px; padding-inline: 12px; border-radius: 10px; background: color-mix(in srgb, #fff 95%, var(--primary) 5%); }
 .eventRow[data-selected='true']::before { position: absolute; inset-block-start: 12px; inset-block-end: 12px; inset-inline-start: 4px; width: 2px; border-radius: 2px; background: var(--primary); content: ''; }
 .eventIcon { display: inline-flex; width: 38px; height: 38px; align-items: center; justify-content: center; border-radius: 9px; background: var(--muted); color: var(--primary); }
-[data-kind='estimate'] .eventIcon { color: var(--mineral-blue, #4b7083); }
+[data-kind='estimate'] .eventIcon { color: var(--mineral-blue); }
 [data-kind='submission'] .eventIcon { color: var(--ochre-deep); }
 .eventIcon svg { width: 17px; height: 17px; }
 .eventRow > button:nth-child(2) { display: grid; min-width: 0; gap: 4px; padding: 0; border: 0; background: transparent; color: inherit; text-align: start; cursor: pointer; }
@@ -94,7 +94,7 @@
 .days > button > span:first-child { font-family: var(--font-mono), monospace; font-size: 10px; }
 .dayEvents { display: flex; flex-wrap: wrap; gap: 4px; }
 .dayEvents i { width: 7px; height: 7px; border-radius: 50%; background: var(--primary); }
-.dayEvents i[data-kind='estimate'] { background: var(--mineral-blue, #4b7083); }
+.dayEvents i[data-kind='estimate'] { background: var(--mineral-blue); }
 .dayEvents i[data-kind='submission'] { background: var(--ochre-deep); }
 .dayEvents small { color: var(--muted-foreground); font-size: 8px; }
 .dayAgenda { min-width: 0; }

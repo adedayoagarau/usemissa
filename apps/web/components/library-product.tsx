@@ -9,7 +9,6 @@ import {
   FileImage,
   FileText,
   FileVideo,
-  FolderOpen,
   Plus,
   Search,
   Trash2,
@@ -42,6 +41,16 @@ import {
   LibraryMaterialSheet,
   type LibrarySelection,
 } from "@/components/missa/library-material-sheet";
+import { PageHeader } from "@/components/missa/page-header";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { EmptyStateArt } from "@/components/illustrations/missa-illustrations";
 
 export type LibraryProductView = "works" | "files" | "answers";
 export type LibraryProductSort = "updated" | "title";
@@ -413,30 +422,24 @@ export function LibraryProduct({
       className="mx-auto max-w-6xl space-y-6 pb-12"
       aria-labelledby="library-title"
     >
-      <header className="flex flex-wrap items-end justify-between gap-6">
-        <div>
-          <h1
-            id="library-title"
-            className="font-sans text-3xl font-semibold tracking-tight"
+      <PageHeader
+        titleId="library-title"
+        title="Library"
+        description="Your work, ready for its next application."
+        actions={
+          <Button
+            type="button"
+            disabled={view === "files" && !storageReady}
+            onClick={() => {
+              setError(undefined);
+              setCreateOpen(true);
+            }}
           >
-            Library
-          </h1>
-          <p className="mt-2 text-muted-foreground">
-            Your work, ready for its next application.
-          </p>
-        </div>
-        <Button
-          type="button"
-          disabled={view === "files" && !storageReady}
-          onClick={() => {
-            setError(undefined);
-            setCreateOpen(true);
-          }}
-        >
-          <Plus aria-hidden="true" />
-          {createLabel}
-        </Button>
-      </header>
+            <Plus aria-hidden="true" />
+            {createLabel}
+          </Button>
+        }
+      />
       <Tabs
         value={view}
         onValueChange={(value) => setView(value as LibraryProductView)}
@@ -694,45 +697,51 @@ export function LibraryProduct({
             </div>
           ) : null}
           {!count ? (
-            <div className="space-y-5 border-y border-border py-12">
-              <FolderOpen className="size-8 text-primary" />
-              <h2 className="font-sans text-xl font-semibold">
-                {query
-                  ? "No matching materials"
-                  : view === "works"
-                    ? "What are you working on?"
-                    : view === "files"
-                      ? "Keep your files together"
-                      : "Write it once. Make it yours each time."}
-              </h2>
-              <p className="max-w-lg text-sm text-muted-foreground">
-                {query
-                  ? "Try another title or clear your search."
-                  : view === "works"
-                    ? "Add a poem, a portfolio or a project. Link it when you prepare an application."
-                    : view === "files"
-                      ? storageReady
-                        ? "Add a writing sample, portfolio, budget or supporting document."
-                        : "Private file storage is currently unavailable. Works and reusable text are still available."
-                      : "Keep your bio, artist statement and other application text here."}
-              </p>
-              {query ? (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setQuery("");
-                    writeUrl({ q: "" });
-                  }}
-                >
-                  Clear search
-                </Button>
-              ) : view !== "files" || storageReady ? (
-                <Button onClick={() => setCreateOpen(true)}>
-                  <Plus />
-                  {createLabel}
-                </Button>
-              ) : null}
-            </div>
+            <Empty variant="bordered">
+              <EmptyHeader>
+                <EmptyMedia>
+                  <EmptyStateArt id="spot-library" size="spot" />
+                </EmptyMedia>
+                <EmptyTitle>
+                  {query
+                    ? "No matching materials"
+                    : view === "works"
+                      ? "What are you working on?"
+                      : view === "files"
+                        ? "Keep your files together"
+                        : "Write it once. Make it yours each time."}
+                </EmptyTitle>
+                <EmptyDescription>
+                  {query
+                    ? "Try another title or clear your search."
+                    : view === "works"
+                      ? "Add a poem, a portfolio or a project. Link it when you prepare an application."
+                      : view === "files"
+                        ? storageReady
+                          ? "Add a writing sample, portfolio, budget or supporting document."
+                          : "Private file storage is currently unavailable. Works and reusable text are still available."
+                        : "Keep your bio, artist statement and other application text here."}
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                {query ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setQuery("");
+                      writeUrl({ q: "" });
+                    }}
+                  >
+                    Clear search
+                  </Button>
+                ) : view !== "files" || storageReady ? (
+                  <Button onClick={() => setCreateOpen(true)}>
+                    <Plus />
+                    {createLabel}
+                  </Button>
+                ) : null}
+              </EmptyContent>
+            </Empty>
           ) : null}
         </TabsContent>
       </Tabs>

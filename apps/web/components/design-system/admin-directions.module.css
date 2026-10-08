@@ -96,7 +96,7 @@
 .severityMark svg { width: 14px; }
 .severityMark[data-severity='high'] { color: var(--destructive); }
 .severityMark[data-severity='medium'] { color: var(--ochre-deep); }
-.severityMark[data-severity='low'] { color: var(--mineral-blue, #476b7a); }
+.severityMark[data-severity='low'] { color: var(--mineral-blue); }
 .rowMain { display: grid; min-width: 0; }
 .rowMain small { color: var(--muted-foreground); font: 8px var(--font-mono), monospace; text-transform: uppercase; }
 .rowMain strong { margin-top: 4px; overflow-wrap: anywhere; font-size: 11px; }

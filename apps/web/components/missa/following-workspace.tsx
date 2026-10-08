@@ -26,6 +26,7 @@ import type {
 import { applicationDate } from "@/lib/application-workspace-types";
 import { toast } from "sonner";
 import { Sp, useSp } from "@/components/missa/spelling";
+import { PageHeader } from "@/components/missa/page-header";
 
 const label = (s: string) =>
   s
@@ -106,14 +107,10 @@ export function FollowingWorkspace() {
   }
   return (
     <main className="mx-auto max-w-6xl space-y-6 pb-12" id="main-content">
-      <header>
-        <h1 className="font-sans text-3xl font-semibold tracking-tight">
-          Following
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          <Sp>Organizations and programs you want to hear from.</Sp>
-        </p>
-      </header>
+      <PageHeader
+        title="Following"
+        description={<Sp>Organizations and programs you want to hear from.</Sp>}
+      />
       <Tabs
         value={view}
         onValueChange={(v) => {
@@ -269,12 +266,16 @@ export function FollowingWorkspace() {
                     {query || discipline
                       ? "No matches here yet"
                       : view === "following"
-                        ? sp(`Which ${kind === "program" ? "programs" : "organizations"} are on your list?`)
+                        ? sp(
+                            `Which ${kind === "program" ? "programs" : "organizations"} are on your list?`,
+                          )
                         : "No records found"}
                   </h2>
                   <p className="max-w-lg text-sm text-muted-foreground">
                     {view === "following" && !query && !discipline
-                      ? sp("Follow a favorite to hear when a confirmed call opens. You can follow it between application rounds.")
+                      ? sp(
+                          "Follow a favorite to hear when a confirmed call opens. You can follow it between application rounds.",
+                        )
                       : "Try another name or discipline."}
                   </p>
                   {view === "following" ? (
@@ -476,7 +477,9 @@ function FollowingDetail({
               ) : null}
               {data.kind === "organization" && data.programs.length ? (
                 <section className="space-y-3">
-                  <h2 className="font-sans text-xl font-semibold"><Sp>Programs</Sp></h2>
+                  <h2 className="font-sans text-xl font-semibold">
+                    <Sp>Programs</Sp>
+                  </h2>
                   {data.programs.map((p) => (
                     <button
                       key={p.id}

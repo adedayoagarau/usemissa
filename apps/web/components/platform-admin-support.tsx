@@ -20,6 +20,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { AdminArea } from "@/lib/platformAdmin";
 import type { PlatformAdminSupportData } from "@/lib/platformAdminSupport";
+import { Button } from "@/components/ui/button";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 
 const PLATFORM_SUPPORT_STATUSES = [
   "open",
@@ -251,13 +255,12 @@ export default function PlatformAdminSupport({
               {statusFilter !== "all" ? ` · ${statusLabel(statusFilter)}` : ""}
             </span>
             {statusFilter !== "all" && (
-              <button
+              <Button variant="outline" size="sm"
                 type="button"
                 onClick={() => setStatusFilter("all")}
-                className="font-medium text-accent-deep underline underline-offset-4"
               >
                 Show all cases
-              </button>
+              </Button>
             )}
           </div>
           {filteredRows.length === 0 ? (
@@ -346,14 +349,14 @@ export default function PlatformAdminSupport({
                           )}
                           {row.status !== "resolved" ? <div className="mt-3 grid gap-2">
                             <label className="text-[11px] text-muted-foreground">Verified correction
-                              <textarea className="mt-1 block w-full border border-border px-2 py-1 text-xs" value={resolutionById[row.id]?.correction ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: event.target.value, evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: current[row.id]?.field ?? "", value: current[row.id]?.value ?? "" } }))} placeholder="What should the public record say?" />
+                              <Textarea className="mt-1 block w-full" value={resolutionById[row.id]?.correction ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: event.target.value, evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: current[row.id]?.field ?? "", value: current[row.id]?.value ?? "" } }))} placeholder="What should the public record say?" />
                             </label>
                             <label className="text-[11px] text-muted-foreground">Apply to public field
-                              <select className="mt-1 block w-full border border-border px-2 py-1 text-xs" value={resolutionById[row.id]?.field ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: event.target.value, value: current[row.id]?.value ?? "" } }))}><option value="">Record only</option><option value="deadline_date">Deadline date</option><option value="status">Status</option><option value="fee_status">Fee status</option><option value="fee_cents">Fee amount (cents)</option><option value="guidelines_url">Guidelines URL</option><option value="submission_url">Submission URL</option><option value="location">Location</option><option value="title">Title</option></select>
+                              <NativeSelect className="mt-1 block w-full" value={resolutionById[row.id]?.field ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: event.target.value, value: current[row.id]?.value ?? "" } }))}><NativeSelectOption value="">Record only</NativeSelectOption><NativeSelectOption value="deadline_date">Deadline date</NativeSelectOption><NativeSelectOption value="status">Status</NativeSelectOption><NativeSelectOption value="fee_status">Fee status</NativeSelectOption><NativeSelectOption value="fee_cents">Fee amount (cents)</NativeSelectOption><NativeSelectOption value="guidelines_url">Guidelines URL</NativeSelectOption><NativeSelectOption value="submission_url">Submission URL</NativeSelectOption><NativeSelectOption value="location">Location</NativeSelectOption><NativeSelectOption value="title">Title</NativeSelectOption></NativeSelect>
                             </label>
-                            {resolutionById[row.id]?.field ? <label className="text-[11px] text-muted-foreground">Corrected value<input className="mt-1 block w-full border border-border px-2 py-1 text-xs" value={resolutionById[row.id]?.value ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: current[row.id]?.field ?? "", value: event.target.value } }))} /></label> : null}
+                            {resolutionById[row.id]?.field ? <label className="text-[11px] text-muted-foreground">Corrected value<Input className="mt-1 block w-full" value={resolutionById[row.id]?.value ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: current[row.id]?.field ?? "", value: event.target.value } }))} /></label> : null}
                             <label className="text-[11px] text-muted-foreground">Official source URL
-                              <input className="mt-1 block w-full border border-border px-2 py-1 text-xs" type="url" value={resolutionById[row.id]?.evidenceUrl ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: event.target.value, field: current[row.id]?.field ?? "", value: current[row.id]?.value ?? "" } }))} placeholder="https://official-source.example" />
+                              <Input className="mt-1 block w-full" type="url" value={resolutionById[row.id]?.evidenceUrl ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: event.target.value, field: current[row.id]?.field ?? "", value: current[row.id]?.value ?? "" } }))} placeholder="https://official-source.example" />
                             </label>
                           </div> : null}
                         </td>
@@ -406,10 +409,10 @@ export default function PlatformAdminSupport({
                       </p>
                     )}
                     {row.status !== "resolved" ? <div className="grid gap-2">
-                      <label className="text-xs text-muted-foreground">Verified correction<textarea className="mt-1 block w-full border border-border px-2 py-1 text-xs" value={resolutionById[row.id]?.correction ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: event.target.value, evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: current[row.id]?.field ?? "", value: current[row.id]?.value ?? "" } }))} /></label>
-                      <label className="text-xs text-muted-foreground">Official source URL<input className="mt-1 block w-full border border-border px-2 py-1 text-xs" type="url" value={resolutionById[row.id]?.evidenceUrl ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: event.target.value, field: current[row.id]?.field ?? "", value: current[row.id]?.value ?? "" } }))} /></label>
-                      <label className="text-xs text-muted-foreground">Apply to public field<select className="mt-1 block w-full border border-border px-2 py-1 text-xs" value={resolutionById[row.id]?.field ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: event.target.value, value: current[row.id]?.value ?? "" } }))}><option value="">Record only</option><option value="deadline_date">Deadline date</option><option value="status">Status</option><option value="fee_status">Fee status</option><option value="fee_cents">Fee amount (cents)</option><option value="guidelines_url">Guidelines URL</option><option value="submission_url">Submission URL</option><option value="location">Location</option><option value="title">Title</option></select></label>
-                      {resolutionById[row.id]?.field ? <label className="text-xs text-muted-foreground">Corrected value<input className="mt-1 block w-full border border-border px-2 py-1 text-xs" value={resolutionById[row.id]?.value ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: current[row.id]?.field ?? "", value: event.target.value } }))} /></label> : null}
+                      <label className="text-xs text-muted-foreground">Verified correction<Textarea className="mt-1 block w-full" value={resolutionById[row.id]?.correction ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: event.target.value, evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: current[row.id]?.field ?? "", value: current[row.id]?.value ?? "" } }))} /></label>
+                      <label className="text-xs text-muted-foreground">Official source URL<Input className="mt-1 block w-full" type="url" value={resolutionById[row.id]?.evidenceUrl ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: event.target.value, field: current[row.id]?.field ?? "", value: current[row.id]?.value ?? "" } }))} /></label>
+                      <label className="text-xs text-muted-foreground">Apply to public field<NativeSelect className="mt-1 block w-full" value={resolutionById[row.id]?.field ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: event.target.value, value: current[row.id]?.value ?? "" } }))}><NativeSelectOption value="">Record only</NativeSelectOption><NativeSelectOption value="deadline_date">Deadline date</NativeSelectOption><NativeSelectOption value="status">Status</NativeSelectOption><NativeSelectOption value="fee_status">Fee status</NativeSelectOption><NativeSelectOption value="fee_cents">Fee amount (cents)</NativeSelectOption><NativeSelectOption value="guidelines_url">Guidelines URL</NativeSelectOption><NativeSelectOption value="submission_url">Submission URL</NativeSelectOption><NativeSelectOption value="location">Location</NativeSelectOption><NativeSelectOption value="title">Title</NativeSelectOption></NativeSelect></label>
+                      {resolutionById[row.id]?.field ? <label className="text-xs text-muted-foreground">Corrected value<Input className="mt-1 block w-full" value={resolutionById[row.id]?.value ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: current[row.id]?.field ?? "", value: event.target.value } }))} /></label> : null}
                     </div> : null}
                   </article>
                 ))}
@@ -498,20 +501,19 @@ function StatusSelect({
   return (
     <label className="block">
       <span className="sr-only">Status for {rowId}</span>
-      <select
+      <NativeSelect
         value={status}
         disabled={saving}
         onChange={(event) =>
           onChange(rowId, event.target.value as PlatformSupportStatus)
-        }
-        className="h-9 min-w-32 border border-border bg-card px-2 text-xs text-foreground capitalize outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-wait disabled:opacity-60"
+        } className="min-w-32"
       >
         {PLATFORM_SUPPORT_STATUSES.map((option) => (
-          <option key={option} value={option}>
+          <NativeSelectOption key={option} value={option}>
             {statusLabel(option)}
-          </option>
+          </NativeSelectOption>
         ))}
-      </select>
+      </NativeSelect>
     </label>
   );
 }

@@ -974,3 +974,56 @@
   .deadlineLane { min-width: 840px; }
   .calendar:has(.weekScroller) { overflow-x: auto; }
 }
+
+/* These sit inside the shared Dialog; keep their own widths over its default cap. */
+.modal, .moveConfirm, .opportunityPicker, .connectionModal { max-width: calc(100vw - 32px); }
+
+/* 2026-10 redesign: a white canvas, a plain header, colour-coded stat tiles
+   and tinted event chips. These rules sit last so they win over the older
+   photo-banner styles above. */
+.page { background: var(--background); padding-top: 36px; }
+.hero { align-items: flex-end; gap: 24px; margin-bottom: 20px; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; overflow: visible; flex-wrap: wrap; }
+.hero::after { content: none; }
+.hero h1 { font-size: clamp(2.25rem, 4vw, 3rem); line-height: 1; }
+.hero span { margin-top: 8px; color: var(--muted-foreground); font-size: 15px; }
+.heroActions { flex-wrap: wrap; }
+.secondaryAction, .connectionButton, .primary { min-height: 40px; border-radius: 10px; font-size: 14px; }
+.monthPulse { max-width: 1460px; margin: 0 auto 20px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; border: 0; background: none; }
+.monthPulse div { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; align-items: center; column-gap: 12px; row-gap: 2px; min-height: 0; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); }
+.monthPulse div:last-child { border-right: 1px solid var(--border); }
+.monthPulse div > [data-slot="hue-tile"] { grid-row: 1 / 3; width: 40px; height: 40px; border-radius: 10px; }
+.monthPulse div > [data-slot="hue-tile"] svg { width: 18px; height: 18px; }
+.monthPulse dt { color: var(--muted-foreground); font-size: 13px; font-weight: 500; letter-spacing: 0; text-transform: none; }
+.monthPulse dd { font-size: 26px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.shell { border-radius: 16px; background: var(--card); box-shadow: none; }
+.toolbar h2 { white-space: nowrap; font-size: 22px; }
+.legend { gap: 6px; padding: 10px 16px; background: var(--card); flex-wrap: wrap; }
+.legend span, .filterButton { min-height: 32px; padding: 5px 11px; font-size: 13px; font-weight: 500; }
+.legend i { width: 10px; height: 10px; border-radius: 999px; }
+.filterButton[data-active="false"] { opacity: .5; text-decoration: none; }
+.legend small { font-size: 12px; }
+.day.today { background: color-mix(in srgb, var(--hue-teal-subtle) 55%, var(--background)); }
+.event { min-height: 30px; gap: 6px; padding: 4px 8px; border: 0 !important; border-left: 3px solid var(--event-ink, var(--border-strong)) !important; border-radius: 6px; font-size: 12px; }
+.event:hover { transform: none; filter: brightness(.98); }
+.event .resizeHandle { opacity: 0; }
+.event:hover .resizeHandle, .event:focus-within .resizeHandle { opacity: .6; }
+.ink { --event-ink: var(--hue-blue); background: var(--hue-blue-subtle) !important; color: var(--hue-blue-ink) !important; }
+.sage { --event-ink: var(--hue-green); background: var(--hue-green-subtle) !important; color: var(--hue-green-ink) !important; }
+.forest { --event-ink: var(--hue-teal); background: var(--hue-teal-subtle) !important; color: var(--hue-teal-ink) !important; }
+.blue { --event-ink: var(--hue-purple); background: var(--hue-purple-subtle) !important; color: var(--hue-purple-ink) !important; }
+.ochre { --event-ink: var(--hue-orange); background: var(--hue-orange-subtle) !important; color: var(--hue-orange-ink) !important; }
+.mineral { --event-ink: var(--hue-indigo); background: var(--hue-indigo-subtle) !important; color: var(--hue-indigo-ink) !important; }
+.plum { --event-ink: var(--hue-magenta); background: var(--hue-magenta-subtle) !important; color: var(--hue-magenta-ink) !important; }
+.legend i.ink, .legend i.sage, .legend i.forest, .legend i.blue, .legend i.ochre, .legend i.mineral, .legend i.plum { background: var(--event-ink) !important; border: 0 !important; }
+.nextSteps { border-radius: 14px; }
+.nextStepsArtwork { display: none; }
+@media (max-width: 760px) { .monthPulse { gap: 8px; } .monthPulse div { grid-template-columns: 1fr; padding: 12px; } .monthPulse div > [data-slot="hue-tile"] { grid-row: auto; width: 32px; height: 32px; margin-bottom: 6px; } .monthPulse dt { font-size: 12px; } .monthPulse dd { font-size: 22px; } .heroActions { width: 100%; } }
+.toolbar { background: var(--card); }
+.event { position: relative; }
+.event .resizeHandle { position: absolute; top: 50%; translate: 0 -50%; background: var(--background); }
+.event .resizeHandle:first-child { left: 2px; }
+.event .resizeHandle:last-child { right: 2px; }
+.eventCopy strong { font-size: 12px; font-weight: 600; }
+.eventCopy small { font-size: 11px; color: inherit; opacity: .75; }
+.legend small { flex-basis: 100%; max-width: none; margin-left: 0; text-align: left; }
+@media (max-width: 1100px) { .eventCopy strong { font-size: 11px; } }

@@ -1,11 +1,17 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Building2, ChevronDown, Menu, Search, UserRound, X } from 'lucide-react';
+import { Building2, ChartColumn, ClipboardCheck, Gavel, Globe, Inbox, LayoutDashboard, Megaphone, Menu, MessageSquare, Search, Settings, Truck, UserRound, Users, X, type LucideIcon } from 'lucide-react';
 import type { OrganizationDestination } from '@/lib/organizationProduct';
 import { MissaWordmark } from '@/components/missa-wordmark';
+import { HueTile } from '@/components/missa/hue-tile';
+import type { PersonHue } from '@/components/missa/person-avatar';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import styles from './organization-product-shell.module.css';
 import { Sp } from "@/components/missa/spelling";
 
@@ -14,18 +20,31 @@ type NavigationItem = { id: OrganizationDestination; label: string; href: string
 
 type Appearance = { accent: string; density: 'compact' | 'comfortable'; displayName: string; logoUrl?: string };
 
+/** Each destination keeps one hue and icon, as the account rail does. */
+const destinationMark: Record<OrganizationDestination, { icon: LucideIcon; hue: PersonHue }> = {
+  overview: { icon: LayoutDashboard, hue: 'teal' },
+  portal: { icon: Globe, hue: 'blue' },
+  opportunities: { icon: Megaphone, hue: 'orange' },
+  submissions: { icon: Inbox, hue: 'indigo' },
+  reviews: { icon: ClipboardCheck, hue: 'purple' },
+  decisions: { icon: Gavel, hue: 'red' },
+  messages: { icon: MessageSquare, hue: 'pink' },
+  delivery: { icon: Truck, hue: 'lime' },
+  insights: { icon: ChartColumn, hue: 'amber' },
+  people: { icon: Users, hue: 'magenta' },
+  settings: { icon: Settings, hue: 'green' },
+};
+
 export function OrganizationProductShell({ children, organization, organizations, roleLabel, navigation, appearance }: { children: React.ReactNode; organization: OrganizationOption; organizations: OrganizationOption[]; roleLabel: string; navigation: NavigationItem[]; appearance?: Appearance }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const commandButtonRef = useRef<HTMLButtonElement>(null);
-  const commandRef = useRef<HTMLElement>(null);
-  const commands = useMemo(() => navigation.filter((item) => item.label.toLocaleLowerCase('en').includes(query.trim().toLocaleLowerCase('en'))), [navigation, query]);
+  const term = query.trim();
+  const commands = navigation.filter((item) => item.label.toLocaleLowerCase('en').includes(term.toLocaleLowerCase('en')));
   const [records, setRecords] = useState<{ query: string; results: Array<{ kind: string; title: string; detail: string; href: string }> }>({ query: '', results: [] });
   useEffect(() => {
-    const term = query.trim();
     if (!commandOpen || term.length < 2) return;
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
@@ -35,48 +54,59 @@ export function OrganizationProductShell({ children, organization, organizations
         .catch(() => undefined);
     }, 200);
     return () => { controller.abort(); window.clearTimeout(timer); };
-  }, [commandOpen, query, organization.id]);
-  const recordResults = records.query === query.trim() ? records.results : [];
+  }, [commandOpen, term, organization.id]);
+  const recordResults = records.query === term ? records.results : [];
   const active = (item: NavigationItem) => item.id === 'overview' ? pathname.endsWith('/overview') : pathname.includes(`/${item.id}`);
 
-  useEffect(() => {
-    if (!commandOpen) return;
-    const commandButton = commandButtonRef.current;
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') { setCommandOpen(false); return; }
-      if (event.key !== 'Tab' || !commandRef.current) return;
-      const controls = [...commandRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), a[href]')];
-      const first = controls[0];
-      const last = controls.at(-1);
-      if (!first || !last) return;
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
-    }
-    document.addEventListener('keydown', handleKeyDown);
-    return () => { document.removeEventListener('keydown', handleKeyDown); commandButton?.focus({ preventScroll: true }); };
-  }, [commandOpen]);
+  function go(href: string) { setCommandOpen(false); setQuery(''); router.push(href); }
 
   return <div className={styles.product} data-org-accent={appearance?.accent && appearance.accent !== 'forest' ? appearance.accent : undefined} data-density={appearance?.density}>
     <a href="#organization-main" className={styles.skip}><Sp>Skip to Organization content</Sp></a>
     <header className={styles.topbar}>
       <MissaWordmark size="app" className={styles.wordmark} />
       <div className={styles.productSwitch}><Link href="/profile"><UserRound aria-hidden="true" /><span className={styles.productSwitchLabel}>Profile</span></Link><span aria-current="page"><Building2 aria-hidden="true" /><span className={styles.productSwitchLabel}><Sp>Organization</Sp></span></span></div>
-      <button ref={commandButtonRef} type="button" className={styles.commandButton} onClick={() => setCommandOpen(true)}><Search aria-hidden="true" /><Sp>Search Organization</Sp></button>
+      <Button type="button" variant="outline" className={styles.commandButton} onClick={() => setCommandOpen(true)}><Search aria-hidden="true" /><Sp>Search Organization</Sp></Button>
       <Link href="/profile" className={styles.avatar} aria-label="Open Profile">P</Link>
-      <button type="button" className={styles.mobileButton} aria-expanded={mobileOpen} aria-label={mobileOpen ? 'Close Organization navigation' : 'Open Organization navigation'} onClick={() => setMobileOpen((value) => !value)}>{mobileOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}</button>
+      <Button type="button" variant="ghost" size="icon" className={styles.mobileButton} aria-expanded={mobileOpen} aria-label={mobileOpen ? 'Close Organization navigation' : 'Open Organization navigation'} onClick={() => setMobileOpen((value) => !value)}>{mobileOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}</Button>
     </header>
     <div className={styles.shell}>
       <aside className={styles.rail} data-open={mobileOpen} aria-label="Organization navigation">
-        <label className={styles.organizationPicker}><span><Sp>Current Organization</Sp></span><select value={organization.id} aria-label="Switch Organization" onChange={(event) => router.push(`/organization/${encodeURIComponent(event.target.value)}/overview`)}>{organizations.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.roleLabel}</option>)}</select><ChevronDown aria-hidden="true" /></label>
+        <div className={styles.organizationPicker}>
+          <span><Sp>Current Organization</Sp></span>
+          <Select value={organization.id} onValueChange={(value) => { if (value && value !== organization.id) router.push(`/organization/${encodeURIComponent(String(value))}/overview`); }}>
+            <SelectTrigger aria-label="Switch Organization" className="w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>{organizations.map((item) => <SelectItem key={item.id} value={item.id}>{item.name} · {item.roleLabel}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
         <div className={styles.role}>{appearance?.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- organization-supplied https logo from an unknown host
           <img src={appearance.logoUrl} alt="" className={styles.orgLogo} />
         ) : null}<strong>{appearance?.displayName ?? organization.name}</strong><span>{roleLabel}</span></div>
-        <nav aria-label="Organization destinations">{navigation.map((item) => <Link key={item.id} href={item.href} aria-current={active(item) ? 'page' : undefined} onClick={() => setMobileOpen(false)}>{item.label}</Link>)}</nav>
-        <Link href="/organization" className={styles.switchLink}><Sp>Choose another Organization</Sp></Link>
+        <nav aria-label="Organization destinations"><ul>{navigation.map((item) => {
+          const { icon: Icon, hue } = destinationMark[item.id];
+          const current = active(item);
+          return <li key={item.id}><Link href={item.href} aria-current={current ? 'page' : undefined} onClick={() => setMobileOpen(false)} className={cn(buttonVariants({ variant: 'nav' }), styles.destination)}>
+            <HueTile hue={hue} tone={current ? 'solid' : 'soft'} size="sm"><Icon className="size-3.5 text-current" strokeWidth={2} aria-hidden="true" /></HueTile>
+            <span className="truncate">{item.label}</span>
+          </Link></li>;
+        })}</ul></nav>
+        <Link href="/organization" className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), styles.switchLink)}><Building2 aria-hidden="true" /><Sp>Choose another Organization</Sp></Link>
       </aside>
       <div className={styles.content}>{children}</div>
     </div>
-    {commandOpen ? <div className={styles.commandBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setCommandOpen(false); }}><section ref={commandRef} className={styles.command} role="dialog" aria-modal="true" aria-labelledby="organization-command-title"><header><div><p><Sp>Organization search</Sp></p><h2 id="organization-command-title">Find a page or record</h2></div><button type="button" aria-label="Close Organization search" onClick={() => setCommandOpen(false)}><X aria-hidden="true" /></button></header><label><Search aria-hidden="true" /><span className="sr-only"><Sp>Search Organization destinations</Sp></span><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search pages, submitters, Works" /></label><div>{commands.map((item) => <Link key={item.id} href={item.href} onClick={() => setCommandOpen(false)}>{item.label}<span>Open</span></Link>)}{recordResults.map((item) => <Link key={item.href} href={item.href} onClick={() => setCommandOpen(false)}><span className={styles.recordResult}><strong>{item.title}</strong><small>{item.detail}</small></span><span>{item.kind === 'opportunity' ? 'Opportunity' : 'Submission'}</span></Link>)}{commands.length === 0 && recordResults.length === 0 ? <p>{query.trim().length >= 2 ? `Nothing matches “${query}”.` : `No destinations match “${query}”.`}</p> : null}</div></section></div> : null}
+    <CommandDialog open={commandOpen} onOpenChange={setCommandOpen} title="Find a page or record" description="Search pages, people and work in your organization.">
+      <CommandInput value={query} onValueChange={setQuery} placeholder="Search pages, submitters, Works" />
+      <CommandList>
+        <CommandEmpty>{term.length >= 2 ? `Nothing matches “${query}”.` : `No destinations match “${query}”.`}</CommandEmpty>
+        {commands.length ? <CommandGroup heading="Pages">{commands.map((item) => {
+          const { icon: Icon, hue } = destinationMark[item.id];
+          return <CommandItem key={item.id} value={item.label} onSelect={() => go(item.href)}><HueTile hue={hue} tone="soft" size="sm"><Icon className="size-3.5 text-current" aria-hidden="true" /></HueTile>{item.label}</CommandItem>;
+        })}</CommandGroup> : null}
+        {recordResults.length ? <CommandGroup heading="Records">{recordResults.map((item) => <CommandItem key={item.href} value={`${item.title} ${item.detail} ${item.href}`} onSelect={() => go(item.href)}>
+          <span className="grid min-w-0 flex-1"><span className="truncate font-medium">{item.title}</span><span className="truncate text-xs text-muted-foreground">{item.detail}</span></span>
+          <span className="text-xs text-muted-foreground">{item.kind === 'opportunity' ? 'Opportunity' : 'Submission'}</span>
+        </CommandItem>)}</CommandGroup> : null}
+      </CommandList>
+    </CommandDialog>
   </div>;
 }

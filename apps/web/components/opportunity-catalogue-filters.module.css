@@ -42,18 +42,6 @@
   font-weight: 700;
 }
 
-.heading button {
-  min-height: 44px;
-  padding: 0 6px;
-  border: 0;
-  background: transparent;
-  color: var(--primary);
-  cursor: pointer;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-}
-
 .group {
   display: grid;
   gap: 10px;
@@ -108,30 +96,12 @@
   font-weight: 650;
 }
 
-.selectField select {
-  width: 100%;
-  height: 44px;
-  padding: 0 34px 0 11px;
-  border: 1px solid var(--input);
-  border-radius: 8px;
-  background: var(--background);
-  color: var(--foreground);
-  font: inherit;
-  font-weight: 500;
-}
-
-.selectField select:focus-visible {
-  border-color: var(--ring);
-  outline: 3px solid color-mix(in srgb, var(--ring) 20%, transparent);
-  outline-offset: 1px;
-}
-
 .more {
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
 }
 
-.more summary {
+.more .moreTrigger {
   display: flex;
   min-height: 68px;
   align-items: center;
@@ -141,27 +111,23 @@
   list-style: none;
 }
 
-.more summary::-webkit-details-marker {
-  display: none;
-}
-
-.more summary span {
+.more .moreTrigger span {
   display: grid;
   gap: 3px;
 }
 
-.more summary small {
+.more .moreTrigger small {
   color: var(--muted-foreground);
   font-size: 12px;
   font-weight: 400;
 }
 
-.more summary svg {
+.more .moreTrigger svg {
   width: 17px;
   transition: transform 160ms ease;
 }
 
-.more[open] summary svg {
+.more .moreTrigger[data-panel-open] svg {
   transform: rotate(180deg);
 }
 

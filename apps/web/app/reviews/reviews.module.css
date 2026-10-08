@@ -39,7 +39,7 @@
 .queueIdentity small, .queueFacts span { color: var(--muted-foreground); font-size: .65rem; }
 .queueFacts { display: grid; gap: 7px; }
 .state { width: fit-content; min-height: 30px; padding: 0 9px; white-space: nowrap; }
-.state[data-state='legacy-submitted'] { border-color: color-mix(in srgb, var(--success, #56705b) 32%, var(--border)); color: var(--success, #56705b); }
+.state[data-state='legacy-submitted'] { border-color: color-mix(in srgb, var(--success) 32%, var(--border)); color: var(--success); }
 .queueRows > a > svg { width: 17px; color: var(--muted-foreground); }
 .boundary, .evidenceBoundary { display: flex; gap: 12px; margin-top: 28px; padding: 16px; border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border)); border-radius: 10px; background: color-mix(in srgb, var(--primary) 3%, #fff); }
 .boundary svg, .evidenceBoundary svg { flex: 0 0 auto; width: 18px; color: var(--primary); }
@@ -88,7 +88,7 @@
 .reviewPane { min-width: 0; padding: 23px 20px; border-left: 1px solid var(--border); background: color-mix(in srgb, var(--muted) 28%, #fff); }
 .heldReview, .legacyRecord { display: grid; justify-items: start; margin-top: 18px; padding: 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--background); }
 .heldReview > svg, .legacyRecord > svg { width: 24px; color: var(--primary); }
-.legacyRecord > svg { color: var(--success, #56705b); }
+.legacyRecord > svg { color: var(--success); }
 .heldReview h3, .heldReview h4, .heldReview p, .legacyRecord h3, .legacyRecord p { margin: 0; }
 .heldReview h3, .legacyRecord h3 { margin-top: 12px; font-family: var(--font-heading), Georgia, serif; font-size: 1.15rem; font-weight: 570; }
 .heldReview p, .legacyRecord p { margin-top: 8px; color: var(--muted-foreground); font-size: .68rem; line-height: 1.55; }

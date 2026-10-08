@@ -43,7 +43,7 @@
 .actions { display: flex; align-items: center; gap: 4px; }
 .workRow > a, .workRow > button, .actions > a, .actions > button:first-child { min-height: 42px; }
 .error, .status, .blockedDelete, .deleteCopy { margin: 18px 0 0; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--destructive) 28%, var(--border)); border-radius: 10px; background: color-mix(in srgb, white 96%, var(--destructive) 4%); color: var(--destructive); font-size: 12px; line-height: 1.5; }
-.status { border-color: color-mix(in srgb, var(--success, #287a4b) 28%, var(--border)); background: color-mix(in srgb, white 96%, var(--success, #287a4b) 4%); color: var(--success, #287a4b); }
+.status { border-color: color-mix(in srgb, var(--success) 28%, var(--border)); background: color-mix(in srgb, white 96%, var(--success) 4%); color: var(--success); }
 .deleteCopy { border-color: var(--border); background: var(--muted); color: var(--muted-foreground); }
 .empty { display: grid; justify-items: center; padding: 88px 24px; border-top: 1px solid var(--border); text-align: center; }
 .empty > span { display: flex; width: 48px; height: 48px; align-items: center; justify-content: center; margin-bottom: 18px; border-radius: 12px; background: color-mix(in srgb, white 90%, var(--primary) 10%); color: var(--primary); }

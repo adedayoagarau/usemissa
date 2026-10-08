@@ -365,7 +365,10 @@
 .search input {
   min-width: 0;
   flex: 1;
+  height: 40px;
+  border: 0;
   background: transparent;
+  box-shadow: none;
   font-size: 0.88rem;
   outline: none;
 }
@@ -1164,3 +1167,5 @@
     grid-column: 1 / -1;
   }
 }
+
+.product > [data-slot="page-header"] { padding: 24px 0 28px; }

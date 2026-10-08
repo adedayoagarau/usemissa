@@ -30,7 +30,8 @@ test('Organization overview keeps scope, role, and exact actions visible', async
   await expect(page.getByRole('dialog', { name: 'Find a page or record' })).toBeVisible();
   await page.getByPlaceholder('Search pages, submitters, Works').fill('not-a-destination');
   await expect(page.getByText('Nothing matches “not-a-destination”.')).toBeVisible();
-  await page.getByRole('button', { name: 'Close Organization search' }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Find a page or record' })).toBeHidden();
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);
 });
