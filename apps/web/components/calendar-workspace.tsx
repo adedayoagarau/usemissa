@@ -52,6 +52,7 @@ import {
   AutocompleteList,
 } from "@/components/ui/autocomplete";
 import styles from "./calendar-workspace.module.css";
+import { HueTile } from "@/components/missa/hue-tile";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -1103,74 +1104,80 @@ export function CalendarWorkspace({
   return (
     <main className={styles.page}>
       <header className={styles.hero}>
-        <Image
-          className={styles.heroArtwork}
-          src="/media/calendar/calendar-sailboat.jpg"
-          alt=""
-          fill
-          priority
-          sizes="(min-width: 1200px) 80vw, 100vw"
-        />
         <div className={styles.heroCopy}>
           <h1 className="font-heading">Calendar</h1>
           <span>See your deadlines and plan when you’ll work on them.</span>
         </div>
-        <div className={styles.heroRail}>
-          <dl className={styles.monthPulse}>
-            <div>
-              <dt>On your calendar</dt>
-              <dd className="font-heading">{monthEvents.length}</dd>
-            </div>
-            <div>
-              <dt>Deadlines</dt>
-              <dd className="font-heading">{monthDeadlines}</dd>
-            </div>
-            <div>
-              <dt>Prep blocks</dt>
-              <dd className="font-heading">{monthPreparation}</dd>
-            </div>
-          </dl>
-          <div className={styles.heroActions}>
-            <button
-              type="button"
-              className={styles.connectionButton}
-              data-state={
-                connectionProblem
-                  ? "error"
-                  : connected.length
-                    ? "connected"
-                    : "disconnected"
-              }
-              onClick={() => setConnectionsOpen(true)}
-            >
-              {connectionProblem ? (
-                <CircleAlert />
-              ) : connected.length ? (
-                <CheckCircle2 />
-              ) : (
-                <Link2 />
-              )}
-              {connectionLabel}
-            </button>
-            <button
-              type="button"
-              className={styles.secondaryAction}
-              onClick={() => addOpportunity()}
-            >
-              <CalendarDays />
-              Add opportunity
-            </button>
-            <button
-              type="button"
-              className={styles.primary}
-              onClick={() => create()}
-            >
-              <Plus />
-              Add time
-            </button>
-          </div>
+        <div className={styles.heroActions}>
+          <button
+            type="button"
+            className={styles.connectionButton}
+            data-state={
+              connectionProblem
+                ? "error"
+                : connected.length
+                  ? "connected"
+                  : "disconnected"
+            }
+            onClick={() => setConnectionsOpen(true)}
+          >
+            {connectionProblem ? (
+              <CircleAlert />
+            ) : connected.length ? (
+              <CheckCircle2 />
+            ) : (
+              <Link2 />
+            )}
+            {connectionLabel}
+          </button>
+          <button
+            type="button"
+            className={styles.secondaryAction}
+            onClick={() => addOpportunity()}
+          >
+            <CalendarDays />
+            Add opportunity
+          </button>
+          <button
+            type="button"
+            className={styles.primary}
+            onClick={() => create()}
+          >
+            <Plus />
+            Add time
+          </button>
         </div>
       </header>
+      <dl className={styles.monthPulse}>
+        {[
+          {
+            label: "On your calendar",
+            value: monthEvents.length,
+            hue: "teal" as const,
+            icon: <CalendarDays />,
+          },
+          {
+            label: "Deadlines",
+            value: monthDeadlines,
+            hue: "orange" as const,
+            icon: <Clock3 />,
+          },
+          {
+            label: "Prep blocks",
+            value: monthPreparation,
+            hue: "purple" as const,
+            icon: <Plus />,
+          },
+        ].map((stat) => (
+          <div key={stat.label}>
+            <HueTile hue={stat.hue} tone="soft">
+              {stat.icon}
+            </HueTile>
+            <dt>{stat.label}</dt>
+            <dd>{stat.value}</dd>
+          </div>
+        ))}
+      </dl>
       <section className={styles.shell}>
         <header className={styles.toolbar}>
           <div>

@@ -10,6 +10,10 @@ import {
 import type { AdminArea } from "@/lib/platformAdmin";
 import type { PlatformAdminAgentControlsData } from "@/lib/platformAdminFoundations";
 import { captureProductEvent } from "@/components/analytics-provider";
+import { Button } from "@/components/ui/button";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 
 const targetTypes = [
   "agent-run",
@@ -256,16 +260,15 @@ export default function PlatformAdminAgentControls({
                     )}
                   </div>
                 </div>
-                <button
+                <Button variant="outline" size="sm"
                   type="button"
                   onClick={() => {
                     setTargetType("agent-run");
                     setTargetId(run.id);
                   }}
-                  className="min-h-9 border border-border px-3 text-xs font-medium text-foreground hover:border-primary hover:text-primary"
                 >
                   Control run
-                </button>
+                </Button>
               </article>
             ))}
           </div>
@@ -337,73 +340,68 @@ export default function PlatformAdminAgentControls({
               <span className="text-xs font-medium text-foreground">
                 Target type
               </span>
-              <select
+              <NativeSelect
                 value={targetType}
                 onChange={(event) =>
                   setTargetType(
                     event.target.value as (typeof targetTypes)[number],
                   )
-                }
-                className="mt-1 h-10 w-full border border-border px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                } className="mt-1 w-full"
               >
                 {targetTypes.map((item) => (
-                  <option key={item}>{item}</option>
+                  <NativeSelectOption key={item}>{item}</NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
             </label>
             <label className="block">
               <span className="text-xs font-medium text-foreground">
                 Target ID
               </span>
-              <input
+              <Input
                 required
                 value={targetId}
                 onChange={(event) => setTargetId(event.target.value)}
-                placeholder="run_… or job_…"
-                className="mt-1 h-10 w-full border border-border px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                placeholder="run_… or job_…" className="mt-1 w-full"
               />
             </label>
             <label className="block">
               <span className="text-xs font-medium text-foreground">
                 Action
               </span>
-              <select
+              <NativeSelect
                 value={action}
                 onChange={(event) =>
                   setAction(event.target.value as (typeof actions)[number])
-                }
-                className="mt-1 h-10 w-full border border-border px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                } className="mt-1 w-full"
               >
                 {actions.map((item) => (
-                  <option key={item}>{item}</option>
+                  <NativeSelectOption key={item}>{item}</NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
             </label>
             <label className="block">
               <span className="text-xs font-medium text-foreground">
                 Reason
               </span>
-              <textarea
+              <Textarea
                 maxLength={1000}
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}
                 rows={4}
-                placeholder="Why is this safe and necessary?"
-                className="mt-1 w-full resize-y border border-border px-3 py-2 text-sm leading-6 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                placeholder="Why is this safe and necessary?" className="mt-1 w-full"
               />
             </label>
             <label className="block">
               <span className="text-xs font-medium text-foreground">Exact confirmation</span>
               <span className="mt-1 block break-all font-mono text-[11px] text-muted-foreground">CONFIRM {targetType} {targetId || "<target-id>"} {action}</span>
-              <input required value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" className="mt-2 h-10 w-full border border-border px-3 font-mono text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
+              <Input required value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" className="mt-2 w-full" />
             </label>
-            <button
+            <Button size="sm"
               type="submit"
-              disabled={saving || !area.data.available}
-              className="min-h-10 w-full bg-foreground px-4 text-sm font-medium text-white hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={saving || !area.data.available} className="w-full"
             >
               {saving ? "Queueing…" : "Queue control request"}
-            </button>
+            </Button>
             {message && (
               <p
                 role="status"

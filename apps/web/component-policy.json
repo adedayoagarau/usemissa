@@ -898,7 +898,7 @@
         "NativeSelect",
         "Sheet",
         "Dialog",
-        "GoalSubmissionProgress"
+        "GoalSubmissionProgress", "HueTile"
       ],
       "boundary": "Account-owned persisted goals using canonical catalogue IDs and server scheduling"
     },
@@ -1089,7 +1089,7 @@
         "Button",
         "NativeSelect",
         "Collapsible",
-        "CalendarFeedButton"
+        "CalendarFeedButton", "Dialog", "Input", "Textarea", "HueTile"
       ],
       "boundary": "Retains existing calendar grid and editor. Separate application dates, goal dates, personal time and reminder instants; owned application links and overlap feedback. Provider connection is not delivery confirmation."
     }
