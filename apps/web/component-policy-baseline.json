@@ -334,9 +334,6 @@
       "<select>": 1,
       "<button>": 1
     },
-    "components/auth-form.tsx": {
-      "<button>": 8
-    },
     "components/calendar-workspace.tsx": {
       "<button>": 41,
       "<input>": 7,

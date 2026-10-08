@@ -804,13 +804,14 @@ export function AuthForm({
               You can continue with this account form, but Missa will not save
               the Opportunity automatically from an expired request.
             </p>
-            <button
+            <Button
               type="button"
-              className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline focus-visible:underline disabled:opacity-50"
+              variant="link"
+              size="inline"
               onClick={() => void clearInvalidFirstSave()}
             >
               Return to the Opportunity
-            </button>
+            </Button>
           </section>
         ) : null}
 
@@ -888,24 +889,26 @@ export function AuthForm({
             </Button>
             <div className="flex flex-wrap items-center justify-center gap-x-2 text-sm text-muted-foreground">
               <span>Didn’t get it?</span>
-              <button
+              <Button
                 type="button"
-                className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline focus-visible:underline disabled:opacity-50"
+                variant="link"
+                size="inline"
                 disabled={isPending || isResending}
                 aria-busy={isResending}
                 onClick={() => void resendVerificationCode()}
               >
                 {isResending ? "Sending…" : "Resend code"}
-              </button>
+              </Button>
               <span aria-hidden="true">·</span>
-              <button
+              <Button
                 type="button"
-                className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline focus-visible:underline disabled:opacity-50"
+                variant="link"
+                size="inline"
                 disabled={isPending || isResending}
                 onClick={useAnotherEmail}
               >
                 Use another email
-              </button>
+              </Button>
             </div>
           </form>
         ) : sessionReady && firstSaveContext ? (
@@ -1038,15 +1041,16 @@ export function AuthForm({
                   <Button type="button" onClick={() => router.push("/tracker")}>
                     Open Tracker <ArrowRight aria-hidden="true" />
                   </Button>
-                  <button
+                  <Button
                     type="button"
+                    variant="link"
                     className={styles.resolutionLink}
                     onClick={() =>
                       void leaveCompletedFirstSave(opportunityPath)
                     }
                   >
                     View the Opportunity
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : null}
@@ -1152,8 +1156,10 @@ export function AuthForm({
                   minLength={8}
                   required
                 />
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   className={styles.passwordToggle}
                   onClick={() => setShowPassword((value) => !value)}
                   aria-label={showPassword ? "Hide password" : "Show password"}
@@ -1163,7 +1169,7 @@ export function AuthForm({
                   ) : (
                     <Eye className="size-4" />
                   )}
-                </button>
+                </Button>
               </div>
               {mode === "signup" ? (
                 <p
@@ -1208,9 +1214,10 @@ export function AuthForm({
                 <AlertDescription>
                   {error}
                   {accountExists ? (
-                    <button
+                    <Button
                       type="button"
-                      className="mt-1 flex min-h-11 items-center font-medium text-destructive underline underline-offset-4"
+                      variant="destructive"
+                      size="sm"
                       onClick={() => {
                         setMode("login");
                         setError(null);
@@ -1221,7 +1228,7 @@ export function AuthForm({
                       }}
                     >
                       Log in with this email
-                    </button>
+                    </Button>
                   ) : null}
                 </AlertDescription>
               </Alert>
@@ -1274,9 +1281,10 @@ export function AuthForm({
         {!sessionReady && !pendingVerification ? (
           <p className="mt-8 border-t border-border pt-6 text-center text-sm text-muted-foreground">
             {mode === "login" ? "New to Missa?" : "Already have an account?"}{" "}
-            <button
+            <Button
               type="button"
-              className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline focus-visible:underline disabled:opacity-50"
+              variant="link"
+              size="inline"
               onClick={() => {
                 setMode(mode === "login" ? "signup" : "login");
                 setError(null);
@@ -1285,19 +1293,20 @@ export function AuthForm({
               }}
             >
               {mode === "login" ? "Create an account" : "Log in"}
-            </button>
+            </Button>
           </p>
         ) : null}
         {firstSaveContext &&
         resumeState?.status !== "created" &&
         resumeState?.status !== "already-present" ? (
-          <button
+          <Button
             type="button"
+            variant="link"
             className={styles.backLink}
             onClick={() => void abandonFirstSave()}
           >
             Return without saving <ArrowRight className="size-3.5" />
-          </button>
+          </Button>
         ) : firstSaveContext ? (
           <Link href="/opportunities" className={styles.backLink}>
             Browse public opportunities <ArrowRight className="size-3.5" />
