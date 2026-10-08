@@ -591,11 +591,6 @@
       "<input>": 1,
       "<button>": 1
     },
-    "components/tracker-product.tsx": {
-      "<button>": 14,
-      "<select>": 3,
-      "<input>": 1
-    },
     "components/tracker-view-switcher.tsx": {
       "<button>": 2
     },

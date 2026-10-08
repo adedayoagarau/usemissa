@@ -24,6 +24,11 @@ import {
 import type { MyStatus, OpportunityType } from "@missa/radar-engine";
 import { CalendarFeedButton } from "@/components/calendar-feed-button";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 import { UrgencyBadge } from "@/components/missa/deadline-badges";
 import {
   TrackerItemSheet,
@@ -247,14 +252,16 @@ function EmptyTracker({
           Browse Opportunities
         </Link>
         {receiptCount ? (
-          <button
+          <Button
             type="button"
-            className={styles.quietButton}
+            variant="ghost"
+            size="sm"
             onClick={onOpenReceipts}
           >
             <FileCheck2 aria-hidden="true" />
-            View {receiptCount === 1 ? "your receipt" : `${receiptCount} receipts`}
-          </button>
+            View{" "}
+            {receiptCount === 1 ? "your receipt" : `${receiptCount} receipts`}
+          </Button>
         ) : (
           <Link href="/import" className={styles.quietLink}>
             <Import aria-hidden="true" />
@@ -278,9 +285,9 @@ function SearchZero({
       <Search aria-hidden="true" />
       <h2 id="tracker-zero-title">No Tracker items match “{query}”</h2>
       <p>Try a call, organization, piece or type.</p>
-      <button type="button" className={styles.quietButton} onClick={onClear}>
+      <Button type="button" variant="ghost" size="sm" onClick={onClear}>
         Clear search
-      </button>
+      </Button>
     </section>
   );
 }
@@ -308,7 +315,9 @@ function HostedSubmissionCard({
           <h3>{submission.title}</h3>
           <span>{submission.organizationName}</span>
         </div>
-        <strong>{submission.stageSummary ?? submission.status.replaceAll("-", " ")}</strong>
+        <strong>
+          {submission.stageSummary ?? submission.status.replaceAll("-", " ")}
+        </strong>
       </div>
       <dl className={styles.submissionFacts}>
         <div>
@@ -461,7 +470,7 @@ function TrackerCard({
         {!item.isManual ? (
           <label>
             <span>Status</span>
-            <select
+            <NativeSelect
               aria-label={`Update status for ${item.title}`}
               value={item.myStatus}
               disabled={busy}
@@ -469,23 +478,23 @@ function TrackerCard({
                 onStatus(item, event.target.value as MyStatus)
               }
             >
-              <option value={item.myStatus}>
+              <NativeSelectOption value={item.myStatus}>
                 {STATUS_LABELS[item.myStatus]}
-              </option>
+              </NativeSelectOption>
               {nextStatuses(item.myStatus)
                 .filter((status) => status !== item.myStatus)
                 .map((status) => (
-                  <option value={status} key={status}>
+                  <NativeSelectOption value={status} key={status}>
                     {STATUS_LABELS[status]}
-                  </option>
+                  </NativeSelectOption>
                 ))}
-            </select>
+            </NativeSelect>
           </label>
         ) : null}
         {!item.isManual && works.length ? (
           <label>
             <span>Library Work</span>
-            <select
+            <NativeSelect
               aria-label={`Linked Work for ${item.title}`}
               value={item.workId ?? ""}
               disabled={busy}
@@ -493,44 +502,61 @@ function TrackerCard({
                 onWork(item, event.target.value || undefined)
               }
             >
-              <option value="">Not linked</option>
+              <NativeSelectOption value="">Not linked</NativeSelectOption>
               {works.map((work) => (
-                <option value={work.id} key={work.id}>
+                <NativeSelectOption value={work.id} key={work.id}>
                   {work.title}
-                </option>
+                </NativeSelectOption>
               ))}
-            </select>
+            </NativeSelect>
           </label>
         ) : null}
         {!item.isManual && item.revision ? (
-          <button
+          <Button
             type="button"
-            className={styles.quietButton}
+            variant="ghost"
+            size="sm"
             disabled={busy}
             aria-pressed={Boolean(item.notify)}
             onClick={() => onReminder(item, !item.notify)}
           >
-            {item.notify ? <Bell aria-hidden="true" /> : <BellOff aria-hidden="true" />}
+            {item.notify ? (
+              <Bell aria-hidden="true" />
+            ) : (
+              <BellOff aria-hidden="true" />
+            )}
             {item.notify ? "Deadline reminders on" : "Deadline reminders off"}
-          </button>
+          </Button>
         ) : null}
         {!item.isManual && item.revision ? (
-          <button
+          <Button
             type="button"
-            className={styles.quietButton}
+            variant="ghost"
+            size="sm"
             disabled={busy}
             onClick={() => onRemove(item)}
           >
             <Trash2 aria-hidden="true" />
             Remove from Tracker
-          </button>
+          </Button>
         ) : null}
       </div>
 
-      {error ? <div className={styles.itemError} role="alert">
-        <p>{error}</p>
-        {stale ? <button type="button" className={styles.quietButton} onClick={() => window.location.reload()}>Reload latest Tracker state</button> : null}
-      </div> : null}
+      {error ? (
+        <div className={styles.itemError} role="alert">
+          <p>{error}</p>
+          {stale ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => window.location.reload()}
+            >
+              Reload latest Tracker state
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
       <Link href={action.href} className={styles.rowAction}>
         {action.label}
         <ArrowRight aria-hidden="true" />
@@ -872,7 +898,9 @@ export function TrackerProduct({
       };
       if (response.status === 409) {
         setStaleItems((current) => new Set(current).add(item.opportunityId));
-        throw new Error("This Tracker item changed in another session. Reload its latest state before trying again.");
+        throw new Error(
+          "This Tracker item changed in another session. Reload its latest state before trying again.",
+        );
       }
       if (!response.ok)
         throw new Error(payload.error ?? "Status could not be updated");
@@ -923,8 +951,22 @@ export function TrackerProduct({
         `/api/me/tracker/${encodeURIComponent(item.opportunityId)}/work`,
         {
           method: workId ? "PUT" : "DELETE",
-          headers: item.revision ? { "content-type": "application/json", "Idempotency-Key": crypto.randomUUID() } : workId ? { "content-type": "application/json" } : undefined,
-          body: item.revision ? JSON.stringify({ ...(workId ? { workId } : {}), expectedRevision: item.revision }) : workId ? JSON.stringify({ workId }) : undefined,
+          headers: item.revision
+            ? {
+                "content-type": "application/json",
+                "Idempotency-Key": crypto.randomUUID(),
+              }
+            : workId
+              ? { "content-type": "application/json" }
+              : undefined,
+          body: item.revision
+            ? JSON.stringify({
+                ...(workId ? { workId } : {}),
+                expectedRevision: item.revision,
+              })
+            : workId
+              ? JSON.stringify({ workId })
+              : undefined,
         },
       );
       const payload = (await response.json().catch(() => ({}))) as {
@@ -938,7 +980,14 @@ export function TrackerProduct({
           ? `${work.title} linked to ${item.title}.`
           : `Work link removed from ${item.title}.`,
       );
-      if (payload.receipt?.revision) setItems((current) => current.map((candidate) => candidate.opportunityId === item.opportunityId ? { ...candidate, revision: payload.receipt?.revision } : candidate));
+      if (payload.receipt?.revision)
+        setItems((current) =>
+          current.map((candidate) =>
+            candidate.opportunityId === item.opportunityId
+              ? { ...candidate, revision: payload.receipt?.revision }
+              : candidate,
+          ),
+        );
     } catch (error) {
       setItems((current) =>
         current.map((candidate) =>
@@ -964,45 +1013,115 @@ export function TrackerProduct({
     const previous = Boolean(item.notify);
     setBusyId(item.opportunityId);
     setErrors((current) => ({ ...current, [item.opportunityId]: "" }));
-    setItems((current) => current.map((candidate) =>
-      candidate.opportunityId === item.opportunityId ? { ...candidate, notify } : candidate));
-    try {
-      const response = await fetch(`/api/me/tracker/${encodeURIComponent(item.opportunityId)}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json", "Idempotency-Key": crypto.randomUUID() },
-        body: JSON.stringify({ notify, expectedRevision: item.revision }),
-      });
-      const payload = await response.json().catch(() => ({})) as { error?: string; tracked?: { revision?: number } };
-      if (!response.ok) throw new Error(payload.error ?? "Reminder preference could not be updated");
-      setItems((current) => current.map((candidate) =>
+    setItems((current) =>
+      current.map((candidate) =>
         candidate.opportunityId === item.opportunityId
-          ? { ...candidate, notify, revision: payload.tracked?.revision ?? candidate.revision }
-          : candidate));
-      setAnnouncement(`${item.title} deadline reminders are ${notify ? "on" : "off"}.`);
+          ? { ...candidate, notify }
+          : candidate,
+      ),
+    );
+    try {
+      const response = await fetch(
+        `/api/me/tracker/${encodeURIComponent(item.opportunityId)}`,
+        {
+          method: "PATCH",
+          headers: {
+            "content-type": "application/json",
+            "Idempotency-Key": crypto.randomUUID(),
+          },
+          body: JSON.stringify({ notify, expectedRevision: item.revision }),
+        },
+      );
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        tracked?: { revision?: number };
+      };
+      if (!response.ok)
+        throw new Error(
+          payload.error ?? "Reminder preference could not be updated",
+        );
+      setItems((current) =>
+        current.map((candidate) =>
+          candidate.opportunityId === item.opportunityId
+            ? {
+                ...candidate,
+                notify,
+                revision: payload.tracked?.revision ?? candidate.revision,
+              }
+            : candidate,
+        ),
+      );
+      setAnnouncement(
+        `${item.title} deadline reminders are ${notify ? "on" : "off"}.`,
+      );
     } catch (error) {
-      setItems((current) => current.map((candidate) =>
-        candidate.opportunityId === item.opportunityId ? { ...candidate, notify: previous } : candidate));
-      setErrors((current) => ({ ...current, [item.opportunityId]: error instanceof Error ? error.message : "Reminder preference could not be updated" }));
-    } finally { setBusyId(undefined); }
+      setItems((current) =>
+        current.map((candidate) =>
+          candidate.opportunityId === item.opportunityId
+            ? { ...candidate, notify: previous }
+            : candidate,
+        ),
+      );
+      setErrors((current) => ({
+        ...current,
+        [item.opportunityId]:
+          error instanceof Error
+            ? error.message
+            : "Reminder preference could not be updated",
+      }));
+    } finally {
+      setBusyId(undefined);
+    }
   }
 
   async function removeItem(item: TrackerProductItem) {
-    if (!item.revision || !(await confirm({ title: `Remove ${item.title} from your Tracker?`, description: 'Its private status history and checklist will also be removed.', confirmLabel: 'Remove', destructive: true }))) return;
+    if (
+      !item.revision ||
+      !(await confirm({
+        title: `Remove ${item.title} from your Tracker?`,
+        description:
+          "Its private status history and checklist will also be removed.",
+        confirmLabel: "Remove",
+        destructive: true,
+      }))
+    )
+      return;
     setBusyId(item.opportunityId);
     setErrors((current) => ({ ...current, [item.opportunityId]: "" }));
     try {
-      const response = await fetch(`/api/me/tracker/${encodeURIComponent(item.opportunityId)}`, {
-        method: "DELETE",
-        headers: { "content-type": "application/json", "Idempotency-Key": crypto.randomUUID() },
-        body: JSON.stringify({ expectedRevision: item.revision }),
-      });
-      const payload = await response.json().catch(() => ({})) as { error?: string };
-      if (!response.ok) throw new Error(payload.error ?? "Tracker item could not be removed");
-      setItems((current) => current.filter((candidate) => candidate.opportunityId !== item.opportunityId));
+      const response = await fetch(
+        `/api/me/tracker/${encodeURIComponent(item.opportunityId)}`,
+        {
+          method: "DELETE",
+          headers: {
+            "content-type": "application/json",
+            "Idempotency-Key": crypto.randomUUID(),
+          },
+          body: JSON.stringify({ expectedRevision: item.revision }),
+        },
+      );
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      if (!response.ok)
+        throw new Error(payload.error ?? "Tracker item could not be removed");
+      setItems((current) =>
+        current.filter(
+          (candidate) => candidate.opportunityId !== item.opportunityId,
+        ),
+      );
       setAnnouncement(`${item.title} was removed from your Tracker.`);
     } catch (error) {
-      setErrors((current) => ({ ...current, [item.opportunityId]: error instanceof Error ? error.message : "Tracker item could not be removed" }));
-    } finally { setBusyId(undefined); }
+      setErrors((current) => ({
+        ...current,
+        [item.opportunityId]:
+          error instanceof Error
+            ? error.message
+            : "Tracker item could not be removed",
+      }));
+    } finally {
+      setBusyId(undefined);
+    }
   }
 
   function renderItem(item: TrackerProductItem) {
@@ -1053,7 +1172,11 @@ export function TrackerProduct({
     const stage = stageFor(item.myStatus);
     if (stage !== "Saved" && stage !== "Preparing") return false;
     const moment = rowDeadline(item, clock);
-    return moment.state === "open" && moment.daysLeft !== null && moment.daysLeft <= 7;
+    return (
+      moment.state === "open" &&
+      moment.daysLeft !== null &&
+      moment.daysLeft <= 7
+    );
   });
   const today = viewerToday(clock);
   const attentionSteps = attentionObligations(
@@ -1091,10 +1214,13 @@ export function TrackerProduct({
           </span>
           {allowance ? (
             <div className={styles.allowance}>
-              <span className={`${styles.allowanceCount} font-mono tabular-nums`}>
+              <span
+                className={`${styles.allowanceCount} font-mono tabular-nums`}
+              >
                 {allowance.active} of {allowance.limit}
               </span>{" "}
-              calls in progress on Free. Submitted and closed calls don&apos;t count.{" "}
+              calls in progress on Free. Submitted and closed calls don&apos;t
+              count.{" "}
               <Link href="/plan" className={styles.allowanceLink}>
                 Plus has no limit
               </Link>
@@ -1141,7 +1267,9 @@ export function TrackerProduct({
               Start this action <ArrowRight aria-hidden="true" />
             </Link>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             type="button"
             className={styles.firstSaveDismiss}
             onClick={() => {
@@ -1164,10 +1292,12 @@ export function TrackerProduct({
             }}
           >
             Dismiss guidance
-          </button>
+          </Button>
         </section>
       ) : firstSaveReceipt ? (
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           type="button"
           ref={reopenGuidanceRef}
           className={styles.reopenGuidance}
@@ -1178,7 +1308,7 @@ export function TrackerProduct({
           }}
         >
           Show guidance for {firstSaveReceipt.title}
-        </button>
+        </Button>
       ) : null}
 
       {initialImportId ? (
@@ -1205,7 +1335,9 @@ export function TrackerProduct({
 
       <nav className={styles.views} aria-label="Tracker views">
         {primaryViews.map((candidate) => (
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             type="button"
             key={candidate.id}
             aria-current={view === candidate.id ? "page" : undefined}
@@ -1213,12 +1345,12 @@ export function TrackerProduct({
             onClick={() => changeView(candidate.id)}
           >
             {candidate.label}
-          </button>
+          </Button>
         ))}
         <label className={styles.moreViews}>
           <span className="sr-only">More Tracker views</span>
           <ListFilter aria-hidden="true" />
-          <select
+          <NativeSelect
             aria-label="More Tracker views"
             value={
               secondaryViews.some((candidate) => candidate.id === view)
@@ -1229,13 +1361,13 @@ export function TrackerProduct({
               event.target.value && changeView(event.target.value as View)
             }
           >
-            <option value="">More views</option>
+            <NativeSelectOption value="">More views</NativeSelectOption>
             {secondaryViews.map((candidate) => (
-              <option value={candidate.id} key={candidate.id}>
+              <NativeSelectOption value={candidate.id} key={candidate.id}>
                 {candidate.label}
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
+          </NativeSelect>
           <ChevronDown aria-hidden="true" />
         </label>
       </nav>
@@ -1244,7 +1376,7 @@ export function TrackerProduct({
         <label className={styles.search}>
           <Search aria-hidden="true" />
           <span className="sr-only">Search Tracker</span>
-          <input
+          <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onBlur={() => updateUrl({ q: query.trim() || undefined })}
@@ -1255,7 +1387,9 @@ export function TrackerProduct({
             placeholder="Search Tracker"
           />
           {query ? (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               type="button"
               onClick={() => {
                 setQuery("");
@@ -1263,7 +1397,7 @@ export function TrackerProduct({
               }}
             >
               Clear
-            </button>
+            </Button>
           ) : null}
         </label>
         <span>
@@ -1288,16 +1422,17 @@ export function TrackerProduct({
             </h2>
             <span>It may have been removed. Your other items are below.</span>
           </div>
-          <button
+          <Button
             type="button"
-            className={styles.quietButton}
+            variant="ghost"
+            size="sm"
             onClick={() => {
               setMissingApplication(false);
               updateUrl({ application: undefined });
             }}
           >
             Dismiss
-          </button>
+          </Button>
         </section>
       ) : null}
 
@@ -1337,7 +1472,9 @@ export function TrackerProduct({
             role="group"
             aria-label="Active Tracker layout"
           >
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               type="button"
               aria-pressed={layout === "actions"}
               data-active={layout === "actions"}
@@ -1347,8 +1484,10 @@ export function TrackerProduct({
               }}
             >
               Next actions
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               type="button"
               aria-pressed={layout === "board"}
               data-active={layout === "board"}
@@ -1358,7 +1497,7 @@ export function TrackerProduct({
               }}
             >
               Stage board
-            </button>
+            </Button>
           </div>
 
           {layout === "actions" ? (
@@ -1403,21 +1542,32 @@ export function TrackerProduct({
                         <span>
                           <strong>{step.label}</strong>
                           <small>
-                            {dueLabel(step.dueOn, today, (iso) => formatShortDate(iso, clock.now))}
-                            {step.opportunityTitle ? ` · ${step.opportunityTitle}` : ""}
+                            {dueLabel(step.dueOn, today, (iso) =>
+                              formatShortDate(iso, clock.now),
+                            )}
+                            {step.opportunityTitle
+                              ? ` · ${step.opportunityTitle}`
+                              : ""}
                           </small>
                         </span>
                         {tracked ? (
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             type="button"
                             className={styles.attentionButton}
                             aria-haspopup="dialog"
-                            onClick={(event) => openDetails(tracked, event.currentTarget)}
+                            onClick={(event) =>
+                              openDetails(tracked, event.currentTarget)
+                            }
                           >
                             Open plan
-                            <span className="sr-only"> for {tracked.title}</span>
+                            <span className="sr-only">
+                              {" "}
+                              for {tracked.title}
+                            </span>
                             <ArrowRight aria-hidden="true" />
-                          </button>
+                          </Button>
                         ) : null}
                       </div>
                     );
@@ -1591,13 +1741,14 @@ export function TrackerProduct({
                 Submitted Opportunities will keep their receipt, Work snapshot,
                 messages, and decisions here.
               </p>
-              <button
+              <Button
                 type="button"
-                className={styles.quietButton}
+                variant="ghost"
+                size="sm"
                 onClick={() => changeView("active")}
               >
                 Open active Tracker
-              </button>
+              </Button>
             </section>
           ) : null}
         </section>
@@ -1718,7 +1869,11 @@ export function TrackerProduct({
         features={features}
         clock={clock}
         section={sheetSection}
-        hosted={sheetItem ? submissionByOpportunity.get(sheetItem.opportunityId) : undefined}
+        hosted={
+          sheetItem
+            ? submissionByOpportunity.get(sheetItem.opportunityId)
+            : undefined
+        }
         works={works}
         emailEvidence={emailEvidence}
         returnFocus={() => sheetTrigger.current}
