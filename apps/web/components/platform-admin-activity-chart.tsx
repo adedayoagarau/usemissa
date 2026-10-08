@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Button } from "@/components/ui/button";
 
 const chartConfig = {
   events: { label: 'Product events', color: 'var(--chart-1)' },
@@ -67,8 +69,9 @@ export default function PlatformAdminActivityChart({ daily }: { daily: Array<{ d
           <Area dataKey={series} type="monotone" stroke={`var(--color-${series})`} fill={`var(--color-${series})`} fillOpacity={0.12} strokeWidth={2} isAnimationActive={false} />
         </AreaChart>
       </ChartContainer>
-      <details className="text-xs text-muted-foreground">
-        <summary className="cursor-pointer">View as table</summary>
+      <Collapsible>
+        <CollapsibleTrigger render={<Button variant="disclosure" size="sm" />}>View as table</CollapsibleTrigger>
+<CollapsibleContent>
         <div className="mt-2 max-h-56 overflow-y-auto">
           <table className="w-full text-left">
             <caption className="sr-only">Daily product events and waitlist signups</caption>
@@ -76,7 +79,8 @@ export default function PlatformAdminActivityChart({ daily }: { daily: Array<{ d
             <tbody>{daily.map((row) => <tr key={row.day} className="border-t border-border"><td className="py-1 font-mono">{row.day}</td><td className="py-1 text-right font-mono tabular-nums">{row.events}</td><td className="py-1 text-right font-mono tabular-nums">{row.signups}</td></tr>)}</tbody>
           </table>
         </div>
-      </details>
+      </CollapsibleContent>
+</Collapsible>
     </div>
   );
 }

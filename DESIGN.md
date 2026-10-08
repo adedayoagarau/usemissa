@@ -755,6 +755,15 @@ Unknown data is not automatically a badge. Show an unknown or conflict state
 only when the absence changes a decision. For example, omit location when an
 opportunity does not require location; do not display `Location not listed`.
 
+### Page headers
+
+Every signed-in page opens with `PageHeader`: an optional eyebrow, the title
+in Instrument Sans (semibold, 30px), one sentence on what the page is for, and
+the page's own actions on the right. Organization pages follow the same title
+size and face. Newsreader stays for authored work and public identity, not page
+titles. A document's own title field inside an editor uses `Input`
+`size="document"`.
+
 ### Navigation and selection
 
 Marketing navigation is light and spacious. Creator navigation prioritizes

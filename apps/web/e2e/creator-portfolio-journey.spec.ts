@@ -239,7 +239,7 @@ test("the studio builds a profile section by section and previews it as visitors
   await expectAccessible(page, "body");
 
   await rail.getByRole("button", { name: /^Appearance/ }).click();
-  await editor.getByRole("radio", { name: /After hours/ }).click();
+  await editor.getByRole("button", { name: /After hours/ }).click();
   await expect(status).toContainText("Changes will save shortly");
   await expect(status).toContainText("Saved on this device");
   await page.reload();

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import type { FitScore } from "@missa/radar-engine";
+import { Button } from "@/components/ui/button";
 
 /**
  * Story 3.1: renders any self-explaining score (starting with FitScore) with
@@ -33,11 +34,10 @@ export function FitScoreBadge({ fit }: { fit: FitScore }) {
 
   return (
     <div>
-      <button
+      <Button variant="outline" size="sm"
         type="button"
         aria-expanded={expanded}
-        onClick={() => hasReasons && setExpanded((e) => !e)}
-        className="inline-flex items-center gap-1"
+        onClick={() => hasReasons && setExpanded((e) => !e)} className="inline-flex"
       >
         <Badge className={LEVEL_VARIANT[fit.level]}>
           {LEVEL_LABEL[fit.level]}
@@ -47,7 +47,7 @@ export function FitScoreBadge({ fit }: { fit: FitScore }) {
             {expanded ? "hide reasons" : "why?"}
           </span>
         )}
-      </button>
+      </Button>
       {expanded && (
         <ul className="mt-1 space-y-0.5 text-sm">
           {fit.reasons.map((r) => (

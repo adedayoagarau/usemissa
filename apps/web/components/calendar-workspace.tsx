@@ -1109,7 +1109,7 @@ export function CalendarWorkspace({
         description="See your deadlines and plan when you’ll work on them."
         actions={
           <div className={styles.heroActions}>
-            <button
+            <Button variant="ghost"
               type="button"
               className={styles.connectionButton}
               data-state={
@@ -1129,23 +1129,23 @@ export function CalendarWorkspace({
                 <Link2 />
               )}
               {connectionLabel}
-            </button>
-            <button
+            </Button>
+            <Button variant="ghost"
               type="button"
               className={styles.secondaryAction}
               onClick={() => addOpportunity()}
             >
               <CalendarDays />
               Add opportunity
-            </button>
-            <button
+            </Button>
+            <Button variant="default"
               type="button"
               className={styles.primary}
               onClick={() => create()}
             >
               <Plus />
               Add time
-            </button>
+            </Button>
           </div>
         }
       />
@@ -1241,7 +1241,7 @@ export function CalendarWorkspace({
         </header>
         <div className={styles.legend} aria-label="Calendar filters">
           {calendarFilters.map((filter) => (
-            <button
+            <Button variant="ghost"
               type="button"
               key={filter.key}
               className={styles.filterButton}
@@ -1255,16 +1255,16 @@ export function CalendarWorkspace({
               }
             >
               <i className={styles[filter.color]} /> {filter.label}
-            </button>
+            </Button>
           ))}
           {Object.values(filters).some((active) => !active) ? (
-            <button
+            <Button variant="ghost"
               type="button"
               className={styles.resetFilters}
               onClick={() => setFilters(ALL_FILTERS)}
             >
               Show all
-            </button>
+            </Button>
           ) : null}
           <small>
             Drag time blocks to another day. Use the labels to show or hide a
@@ -1327,7 +1327,7 @@ export function CalendarWorkspace({
                           {d.getDate()}
                         </Button>
                         {items.slice(0, 3).map((e) => (
-                          <button
+                          <Button variant="ghost"
                             type="button"
                             key={e.id}
                             draggable={
@@ -1369,20 +1369,7 @@ export function CalendarWorkspace({
                             }}
                             className={`${styles.event} ${styles[e.color]}`}
                           >
-                            {e.kind === "personal" ? (
-                              <span
-                                className={styles.resizeHandle}
-                                role="button"
-                                tabIndex={0}
-                                aria-label={`Shorten ${e.title}`}
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  void resizeEvent(e, -30);
-                                }}
-                              >
-                                −
-                              </span>
-                            ) : null}
+                            
                             <span
                               className={styles.eventIcon}
                               aria-hidden="true"
@@ -1414,21 +1401,8 @@ export function CalendarWorkspace({
                                   : `${format(e.startAt, { hour: "numeric", minute: "2-digit" })} · ${e.sourceLabel ?? "Scheduled time"}`}
                               </small>
                             </span>
-                            {e.kind === "personal" ? (
-                              <span
-                                className={styles.resizeHandle}
-                                role="button"
-                                tabIndex={0}
-                                aria-label={`Extend ${e.title}`}
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  void resizeEvent(e, 30);
-                                }}
-                              >
-                                +
-                              </span>
-                            ) : null}
-                          </button>
+                            
+                          </Button>
                         ))}
                         {items.length > 3 ? (
                           <small>+{items.length - 3} more</small>
@@ -1487,7 +1461,7 @@ export function CalendarWorkspace({
                         }}
                         onDoubleClick={() => create(key)}
                       >
-                        <button
+                        <Button variant="ghost"
                           type="button"
                           className={styles.weekDayHeading}
                           onClick={() => {
@@ -1501,11 +1475,11 @@ export function CalendarWorkspace({
                           <strong className={isToday ? styles.weekToday : ""}>
                             {day.getDate()}
                           </strong>
-                        </button>
+                        </Button>
                         <div className={styles.weekDayEvents}>
                           {items.length ? (
                             items.map((event) => (
-                              <button
+                              <Button variant="ghost"
                                 type="button"
                                 key={event.id}
                                 draggable={
@@ -1540,20 +1514,7 @@ export function CalendarWorkspace({
                                 aria-keyshortcuts="ArrowLeft ArrowRight"
                                 className={`${styles.weekEvent} ${styles[event.color]}`}
                               >
-                                {event.kind === "personal" ? (
-                                  <span
-                                    className={styles.resizeHandle}
-                                    role="button"
-                                    tabIndex={0}
-                                    aria-label={`Shorten ${event.title}`}
-                                    onClick={(keyboardEvent) => {
-                                      keyboardEvent.stopPropagation();
-                                      void resizeEvent(event, -30);
-                                    }}
-                                  >
-                                    −
-                                  </span>
-                                ) : null}
+                                
                                 <span>
                                   {event.kind === "tracker" ? (
                                     <OpportunityMark
@@ -1571,30 +1532,17 @@ export function CalendarWorkspace({
                                 </span>
                                 <strong>{event.title}</strong>
                                 <small>{event.sourceLabel}</small>
-                                {event.kind === "personal" ? (
-                                  <span
-                                    className={styles.resizeHandle}
-                                    role="button"
-                                    tabIndex={0}
-                                    aria-label={`Extend ${event.title}`}
-                                    onClick={(keyboardEvent) => {
-                                      keyboardEvent.stopPropagation();
-                                      void resizeEvent(event, 30);
-                                    }}
-                                  >
-                                    +
-                                  </span>
-                                ) : null}
-                              </button>
+                                
+                              </Button>
                             ))
                           ) : (
-                            <button
+                            <Button variant="ghost"
                               type="button"
                               className={styles.weekEmpty}
                               onClick={() => create(key)}
                             >
                               + Add time
-                            </button>
+                            </Button>
                           )}
                         </div>
                       </section>
@@ -1683,14 +1631,14 @@ export function CalendarWorkspace({
           {selected ? (
             <aside className={styles.inspector}>
               <>
-                <button
+                <Button variant="ghost"
                   type="button"
                   className={styles.close}
                   onClick={() => setSelected(undefined)}
                   aria-label="Close"
                 >
                   <X />
-                </button>
+                </Button>
                 <div className={styles.inspectorKicker}>
                   {selected.kind === "tracker" ? (
                     <OpportunityMark
@@ -1851,14 +1799,14 @@ export function CalendarWorkspace({
                           ) : selected.syncStatus === "failed" ? (
                             <>
                               {`Sync failed${selected.syncError ? ` · ${selected.syncError}` : ""}`}{" "}
-                              <button
+                              <Button variant="link"
                                 type="button"
                                 className={styles.inlineAction}
                                 disabled={saving}
                                 onClick={() => void retrySync(selected)}
                               >
                                 Retry
-                              </button>
+                              </Button>
                             </>
                           ) : selected.syncStatus === "running" ? (
                             "Syncing now"
@@ -2041,7 +1989,32 @@ export function CalendarWorkspace({
                 >
                   Edit time
                 </Button>
-              ) : (
+              ) : null}
+              {contextMenu.event.kind === "personal" ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      void resizeEvent(contextMenu.event!, 30);
+                      setContextMenu(undefined);
+                    }}
+                  >
+                    Extend by 30 minutes
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      void resizeEvent(contextMenu.event!, -30);
+                      setContextMenu(undefined);
+                    }}
+                  >
+                    Shorten by 30 minutes
+                  </Button>
+                </>
+              ) : null}
+              {contextMenu.event.kind !== "personal" ? (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -2053,7 +2026,7 @@ export function CalendarWorkspace({
                 >
                   Open details
                 </Button>
-              )}
+              ) : null}
               {contextMenu.event.kind === "goal" ? (
                 <Button
                   variant="ghost"

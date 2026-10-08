@@ -5,6 +5,7 @@ import type { OpportunityBrowseProjection } from '@missa/radar-engine';
 import { ChevronDown, LoaderCircle } from 'lucide-react';
 import { OpportunityCatalogueCard } from '@/components/opportunity-catalogue-card';
 import styles from '@/app/opportunities/opportunities.module.css';
+import { Button } from "@/components/ui/button";
 
 type BrowseResponse = {
   items: OpportunityBrowseProjection[];
@@ -94,10 +95,10 @@ export function OpportunityResults({
       </div>
       {nextCursor ? (
         <div className={styles.loadMore}>
-          <button type="button" className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-background px-4 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted disabled:cursor-wait disabled:opacity-60" onClick={() => void loadMore()} disabled={loading}>
+          <Button variant="outline" size="sm" type="button" className="inline-flex" onClick={() => void loadMore()} disabled={loading}>
             {loading ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <ChevronDown className="size-4" aria-hidden="true" />}
             {loading ? 'Loading opportunities…' : 'Load more opportunities'}
-          </button>
+          </Button>
           {error ? <p role="alert" className="mt-2 text-sm text-destructive">We could not load more opportunities. Try again.</p> : null}
         </div>
       ) : null}

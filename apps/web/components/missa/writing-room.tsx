@@ -129,6 +129,7 @@ import {
   WritingSync,
   type WritingFork,
 } from "@/lib/writing-sync";
+import { Input } from "@/components/ui/input";
 
 export type WritingRoomProps = {
   /** Separates this account's device drafts from anyone else's in the same browser. */
@@ -1631,7 +1632,7 @@ export function WritingRoom({
               editors={editors}
               onActiveEditor={onActiveEditor}
               before={
-                <input
+                <Input
                   aria-label="Title"
                   placeholder={
                     current.state === "opening" ? "Opening…" : "Untitled"
@@ -1646,7 +1647,8 @@ export function WritingRoom({
                       setFocusTick((tick) => tick + 1);
                     }
                   }}
-                  className={`w-full max-w-2xl bg-transparent text-center text-3xl text-foreground outline-none placeholder:text-muted-foreground focus-visible:underline focus-visible:decoration-primary focus-visible:underline-offset-8 print:hidden ${face.className}`}
+                  size="document"
+                  className={`print:hidden ${face.className}`}
                 />
               }
             />

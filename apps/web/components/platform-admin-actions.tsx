@@ -60,7 +60,7 @@ export function AdminOperationButton({
     }
   }
 
-  return <span className="inline-flex flex-col items-start gap-1"><button type="button" onClick={run} disabled={state === 'working'} className={`min-h-9 rounded-md border px-3 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-wait disabled:opacity-60 ${tone === 'primary' ? 'border-primary bg-primary text-white hover:bg-primary-hover' : 'border-border bg-card text-foreground hover:bg-muted'}`}>{state === 'working' ? 'Working…' : label}</button>{message && <span role="status" className={`max-w-[240px] text-[11px] leading-4 ${state === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>{message}</span>}</span>;
+  return <span className="inline-flex flex-col items-start gap-1"><Button variant={tone === 'primary' ? 'default' : 'outline'} size="sm" type="button" onClick={run} disabled={state === 'working'}>{state === 'working' ? 'Working…' : label}</Button>{message && <span role="status" className={`max-w-[240px] text-[11px] leading-4 ${state === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>{message}</span>}</span>;
 }
 
 export function AdminConfirmationAction({

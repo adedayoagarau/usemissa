@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 
 import styles from './email-review-queue.module.css';
 import { Sp } from "@/components/missa/spelling";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 
 type Candidate = {
   id: string;
@@ -140,7 +141,7 @@ export function EmailReviewQueue({ mode = 'desk', onOpenDesk }: { mode?: QueueMo
       </header>
       <div className={styles.filters} role="group" aria-label="Email review source">
         {([['all', 'All'], ['gmail', 'Gmail'], ['forwarding', 'Forwarded']] as const).map(([value, label]) => (
-          <button key={value} type="button" aria-pressed={filter === value} onClick={() => { setLoading(true); setError(''); setFilter(value); setMobileDetail(false); }}>{label}</button>
+          <Button variant="outline" size="sm" key={value} type="button" aria-pressed={filter === value} onClick={() => { setLoading(true); setError(''); setFilter(value); setMobileDetail(false); }}>{label}</Button>
         ))}
       </div>
       {message ? <p className={styles.status} role="status" aria-live="polite">{message}</p> : null}
@@ -159,10 +160,10 @@ export function EmailReviewQueue({ mode = 'desk', onOpenDesk }: { mode?: QueueMo
         <div className={styles.columns}>
           <section className={styles.list} aria-label="Email updates">
             {candidates.map((candidate) => (
-              <button key={candidate.id} type="button" data-active={candidate.id === selected?.id} onClick={() => { setSelectedId(candidate.id); setMobileDetail(true); }}>
+              <Button variant="outline" size="sm" key={candidate.id} type="button" data-active={candidate.id === selected?.id} onClick={() => { setSelectedId(candidate.id); setMobileDetail(true); }}>
                 <MailCheck aria-hidden="true" />
                 <span><small>{sourceLabel(candidate)}{candidate.senderDomain ? ` · ${candidate.senderDomain}` : ''}</small><strong>{candidate.subject || 'Email without a subject'}</strong><span>{reviewPrompt(candidate)}</span></span>
-              </button>
+              </Button>
             ))}
           </section>
           {selected ? <CandidateReview key={selected.id} candidate={selected} busy={busy === selected.id} onBack={() => setMobileDetail(false)} onReview={review} /> : null}
@@ -191,11 +192,11 @@ function CandidateReview({ candidate, busy, onBack, onReview }: { candidate: Can
       {candidate.attachmentMetadata.length ? <p className={styles.attachment}>Attachments were not imported. Only this private text excerpt is available for review.</p> : null}
       <div className={styles.fields}>
         {candidate.candidates.length ? (
-          <div><Label htmlFor={`${candidate.id}-opportunity`}>Related Tracker record</Label><select id={`${candidate.id}-opportunity`} value={opportunityId} onChange={(event) => setOpportunityId(event.target.value)}><option value="">Choose an opportunity</option>{candidate.candidates.map((item) => <option key={item.opportunityId} value={item.opportunityId}>{item.title}{item.organizationName ? ` · ${item.organizationName}` : ''}</option>)}</select></div>
+          <div><Label htmlFor={`${candidate.id}-opportunity`}>Related Tracker record</Label><NativeSelect id={`${candidate.id}-opportunity`} value={opportunityId} onChange={(event) => setOpportunityId(event.target.value)}><NativeSelectOption value="">Choose an opportunity</NativeSelectOption>{candidate.candidates.map((item) => <NativeSelectOption key={item.opportunityId} value={item.opportunityId}>{item.title}{item.organizationName ? ` · ${item.organizationName}` : ''}</NativeSelectOption>)}</NativeSelect></div>
         ) : (
           <div className={styles.manualFields}><div><Label htmlFor={`${candidate.id}-title`}>Opportunity title</Label><Input id={`${candidate.id}-title`} value={title} onChange={(event) => setTitle(event.target.value)} /></div><div><Label htmlFor={`${candidate.id}-org`}><Sp>Organization</Sp></Label><Input id={`${candidate.id}-org`} value={organizationName} onChange={(event) => setOrganizationName(event.target.value)} /></div></div>
         )}
-        <div><Label htmlFor={`${candidate.id}-status`}>What does the email say?</Label><select id={`${candidate.id}-status`} value={status} onChange={(event) => setStatus(event.target.value)}>{statuses.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+        <div><Label htmlFor={`${candidate.id}-status`}>What does the email say?</Label><NativeSelect id={`${candidate.id}-status`} value={status} onChange={(event) => setStatus(event.target.value)}>{statuses.map(([value, label]) => <NativeSelectOption key={value} value={value}>{label}</NativeSelectOption>)}</NativeSelect></div>
       </div>
       <p className={styles.consequence}><strong>What will happen</strong>{manual ? 'Missa will create a private Tracker record from the details above. The Missa listing and your work stay as they are.' : 'Missa will update only this private Tracker record. The Missa listing and your work stay as they are.'}</p>
       <div className={styles.actions}>

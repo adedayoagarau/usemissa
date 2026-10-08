@@ -8,7 +8,8 @@ import {
   useSpring,
   type Transition,
 } from "framer-motion";
-import { Play } from "lucide-react";
+import { Pause, Play } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 
 import {
@@ -229,10 +230,6 @@ export function HomepageMorph({ call }: { call: VignetteCall | null }) {
     <div
       ref={stage}
       className={styles.stage}
-      role="button"
-      tabIndex={0}
-      aria-pressed={held}
-      aria-label={held ? "Play the product animation" : "Pause the product animation"}
       onPointerEnter={(event) => {
         if (event.pointerType === "mouse") setAttending(true);
       }}
@@ -241,15 +238,7 @@ export function HomepageMorph({ call }: { call: VignetteCall | null }) {
         settle();
       }}
       onPointerMove={onPointerMove}
-      onFocus={() => setAttending(true)}
-      onBlur={() => setAttending(false)}
       onClick={toggleHold}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          toggleHold();
-        }
-      }}
     >
       <div className={styles.canvas} ref={canvas} aria-hidden="true">
         <motion.div className={styles.tilt} style={{ rotateX: tiltX, rotateY: tiltY }}>
@@ -294,20 +283,23 @@ export function HomepageMorph({ call }: { call: VignetteCall | null }) {
         >
           <path d="M5 3l14 8-6 1.6L10 19z" />
         </motion.svg>
-        {/* Only a held tour shows a mark, so a tap is never a mystery. */}
-        <AnimatePresence>
-          {held ? (
-            <motion.span
-              className={styles.heldMark}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.18, ease: [0.2, 0, 0, 1] }}
-            >
-              <Play size={12} aria-hidden="true" />
-            </motion.span>
-          ) : null}
-        </AnimatePresence>
+        {/* A real control for keyboards and screen readers; a tap on the stage does the same. */}
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          className={styles.heldMark}
+          aria-pressed={held}
+          aria-label={held ? "Play the product animation" : "Pause the product animation"}
+          onClick={(event) => {
+            event.stopPropagation();
+            toggleHold();
+          }}
+          onFocus={() => setAttending(true)}
+          onBlur={() => setAttending(false)}
+        >
+          {held ? <Play aria-hidden="true" /> : <Pause aria-hidden="true" />}
+        </Button>
       </div>
     </div>
   );

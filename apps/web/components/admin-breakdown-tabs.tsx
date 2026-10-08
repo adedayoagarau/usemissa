@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarList } from './admin-observability-ui';
+import { Button } from "@/components/ui/button";
 
 export interface BreakdownView {
   key: string;
@@ -23,24 +24,22 @@ export default function BreakdownTabs({ title, views }: { title: string; views: 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle>{title}</CardTitle>
           {views.length > 1 && (
-            <div role="tablist" aria-label={`${title} views`} className="inline-flex rounded-lg bg-muted p-0.5">
+            <div role="group" aria-label={`${title} views`} className="inline-flex rounded-lg bg-muted p-0.5">
               {views.map((candidate) => (
-                <button
+                <Button variant={candidate.key === view?.key ? "secondary" : "ghost"} size="xs"
                   key={candidate.key}
                   type="button"
-                  role="tab"
-                  aria-selected={candidate.key === view?.key}
+                  aria-pressed={candidate.key === view?.key}
                   onClick={() => setActive(candidate.key)}
-                  className={`min-h-7 rounded-md px-2.5 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary ${candidate.key === view?.key ? 'bg-card text-foreground shadow-[0_1px_2px_rgba(28,24,21,0.08)]' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   {candidate.label}
-                </button>
+                </Button>
               ))}
             </div>
           )}
         </div>
       </CardHeader>
-      <CardContent role="tabpanel" aria-label={view?.label}>
+      <CardContent>
         {view && <BarList rows={view.rows} valueLabel={view.valueLabel} secondaryLabel={view.secondaryLabel} empty={view.empty} />}
       </CardContent>
     </Card>

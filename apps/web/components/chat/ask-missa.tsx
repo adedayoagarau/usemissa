@@ -133,7 +133,7 @@ function ConversationHistory({
   return (
     <>
       <header><div><p>Private history</p><h2>Conversations</h2></div><Button type="button" variant="outline" size="icon" aria-label="Start a new search" onClick={newConversation}><Plus aria-hidden="true" /></Button></header>
-      {conversations.length ? <nav>{conversations.map((conversation) => <button key={conversation.id} type="button" aria-current={conversation.id === conversationId ? 'page' : undefined} onClick={() => void openConversation(conversation)}><MessageSquareText aria-hidden="true" /><span><strong>{conversation.title || 'Opportunity search'}</strong><small>Private conversation</small></span></button>)}</nav> : <p className={styles.noHistory}>Your private Opportunity searches will appear here.</p>}
+      {conversations.length ? <nav>{conversations.map((conversation) => <Button variant="outline" size="sm" key={conversation.id} type="button" aria-current={conversation.id === conversationId ? 'page' : undefined} onClick={() => void openConversation(conversation)}><MessageSquareText aria-hidden="true" /><span><strong>{conversation.title || 'Opportunity search'}</strong><small>Private conversation</small></span></Button>)}</nav> : <p className={styles.noHistory}>Your private Opportunity searches will appear here.</p>}
       <small className={styles.historyPolicy}>History is account-scoped. Rename, export, retention, and deletion controls will appear only after their policy is approved.</small>
     </>
   );
@@ -286,7 +286,7 @@ export function AskMissa() {
               <Search aria-hidden="true" />
               <h3>What published Opportunity are you looking for?</h3>
               <p>Try a type of call, what you make, a fee, a place or a deadline. Missa only searches calls it has published.</p>
-              <div>{suggestions.map((suggestion) => <button key={suggestion} type="button" onClick={() => { setInput(suggestion); inputRef.current?.focus(); }}>{suggestion}</button>)}</div>
+              <div>{suggestions.map((suggestion) => <Button variant="outline" size="sm" key={suggestion} type="button" onClick={() => { setInput(suggestion); inputRef.current?.focus(); }}>{suggestion}</Button>)}</div>
             </section>
           ) : null}
           {messages.map((message) => <Message key={message.id} message={message} />)}

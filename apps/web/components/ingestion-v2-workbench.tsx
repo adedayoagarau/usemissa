@@ -13,6 +13,9 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { captureProductEvent } from "@/components/analytics-provider";
+import { Button } from "@/components/ui/button";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Input } from "@/components/ui/input";
 
 type Run = {
   id: string;
@@ -413,23 +416,21 @@ export default function IngestionV2Workbench() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button
+            <Button variant="outline" size="sm"
               type="button"
               onClick={() => void requestLaneBatch("core-daily")}
-              disabled={batchRequesting || sources.length === 0}
-              className="inline-flex min-h-9 items-center gap-2 rounded-md border border-primary bg-card px-3 text-xs font-medium text-primary hover:bg-accent disabled:cursor-wait disabled:opacity-60"
+              disabled={batchRequesting || sources.length === 0} className="inline-flex"
             >
               <Play className="size-3.5" aria-hidden="true" />
               Daily core
-            </button>
-            <button
+            </Button>
+            <Button variant="outline" size="sm"
               type="button"
               onClick={() => void requestLaneBatch("scheduled")}
-              disabled={batchRequesting || sources.length === 0}
-              className="inline-flex min-h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground hover:bg-muted disabled:cursor-wait disabled:opacity-60"
+              disabled={batchRequesting || sources.length === 0} className="inline-flex"
             >
               Scheduled
-            </button>
+            </Button>
             <form
               onSubmit={requestRun}
               className="flex flex-wrap items-center gap-2"
@@ -437,7 +438,7 @@ export default function IngestionV2Workbench() {
               <label htmlFor="shadow-source" className="sr-only">
                 Source for shadow pass
               </label>
-              <select
+              <NativeSelect
                 id="shadow-source"
                 value={
                   sourceId === "all"
@@ -445,26 +446,24 @@ export default function IngestionV2Workbench() {
                         ?.id ?? "")
                     : sourceId
                 }
-                onChange={(event) => setSourceId(event.target.value)}
-                className="min-h-9 max-w-[230px] rounded-md border border-border bg-card px-2 text-xs text-foreground"
+                onChange={(event) => setSourceId(event.target.value)} className="max-w-[230px]"
               >
-                <option value="">No source available</option>
+                <NativeSelectOption value="">No source available</NativeSelectOption>
                 {sources
                   .filter((source) => source.eligible !== false)
                   .map((source) => (
-                    <option key={source.id} value={source.id}>
+                    <NativeSelectOption key={source.id} value={source.id}>
                       {source.name}
-                    </option>
+                    </NativeSelectOption>
                   ))}
-              </select>
-              <button
+              </NativeSelect>
+              <Button size="sm"
                 type="submit"
-                disabled={requesting || sources.length === 0}
-                className="hover:bg-primary-hover inline-flex min-h-9 items-center gap-2 rounded-md bg-primary px-3 text-xs font-medium text-white disabled:cursor-wait disabled:opacity-60"
+                disabled={requesting || sources.length === 0} className="inline-flex"
               >
                 <Play className="size-3.5" aria-hidden="true" />
                 Run one
-              </button>
+              </Button>
             </form>
           </div>
         </div>
@@ -494,7 +493,7 @@ export default function IngestionV2Workbench() {
                   Newest durable runs first · {filteredRuns.length} shown
                 </p>
               </div>
-              <button
+              <Button variant="outline" size="sm"
                 type="button"
                 onClick={() => {
                   captureProductEvent("ingestion_run_filtered", {
@@ -503,10 +502,9 @@ export default function IngestionV2Workbench() {
                   });
                   void loadRuns();
                 }}
-                className="min-h-8 rounded-md border border-border px-3 text-xs font-medium hover:bg-muted"
               >
                 Refresh
-              </button>
+              </Button>
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
               <label className="relative block">
@@ -515,7 +513,7 @@ export default function IngestionV2Workbench() {
                   aria-hidden="true"
                 />
                 <span className="sr-only">Search runs</span>
-                <input
+                <Input
                   value={query}
                   onChange={(event) => {
                     setQuery(event.target.value);
@@ -524,11 +522,10 @@ export default function IngestionV2Workbench() {
                       filter_value: event.target.value ? "present" : "empty",
                     });
                   }}
-                  placeholder="Search run, source, failure code"
-                  className="min-h-9 w-full rounded-md border border-border pr-3 pl-8 text-xs outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
+                  placeholder="Search run, source, failure code" className="w-full"
                 />
               </label>
-              <select
+              <NativeSelect
                 aria-label="Filter status"
                 value={status}
                 onChange={(event) => {
@@ -538,16 +535,15 @@ export default function IngestionV2Workbench() {
                     filter_value: event.target.value,
                   });
                 }}
-                className="min-h-9 rounded-md border border-border bg-card px-2 text-xs"
               >
-                <option value="all">All statuses</option>
-                <option value="queued">Queued</option>
-                <option value="running">Running</option>
-                <option value="completed">Completed</option>
-                <option value="failed">Failed</option>
-                <option value="review">Review quality</option>
-              </select>
-              <select
+                <NativeSelectOption value="all">All statuses</NativeSelectOption>
+                <NativeSelectOption value="queued">Queued</NativeSelectOption>
+                <NativeSelectOption value="running">Running</NativeSelectOption>
+                <NativeSelectOption value="completed">Completed</NativeSelectOption>
+                <NativeSelectOption value="failed">Failed</NativeSelectOption>
+                <NativeSelectOption value="review">Review quality</NativeSelectOption>
+              </NativeSelect>
+              <NativeSelect
                 aria-label="Filter source"
                 value={sourceId}
                 onChange={(event) => {
@@ -557,15 +553,14 @@ export default function IngestionV2Workbench() {
                     filter_value: event.target.value,
                   });
                 }}
-                className="min-h-9 rounded-md border border-border bg-card px-2 text-xs"
               >
-                <option value="all">All sources</option>
+                <NativeSelectOption value="all">All sources</NativeSelectOption>
                 {sources.map((source) => (
-                  <option key={source.id} value={source.id}>
+                  <NativeSelectOption key={source.id} value={source.id}>
                     {source.name}
-                  </option>
+                  </NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
           </div>
           {loading ? (
@@ -579,11 +574,10 @@ export default function IngestionV2Workbench() {
           ) : (
             <div className="divide-y divide-border">
               {filteredRuns.map((run) => (
-                <button
+                <Button variant="choice" size="choice" data-selected={selectedId === run.id}
                   type="button"
                   key={run.id}
                   onClick={() => void selectRun(run)}
-                  className={`flex w-full items-start gap-3 p-4 text-left transition-colors hover:bg-muted/30 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${selectedId === run.id ? "bg-accent" : ""}`}
                   aria-pressed={selectedId === run.id}
                 >
                   <IconForStatus value={run.status} />
@@ -611,7 +605,7 @@ export default function IngestionV2Workbench() {
                     className="mt-1 size-4 shrink-0 text-muted-foreground"
                     aria-hidden="true"
                   />
-                </button>
+                </Button>
               ))}
             </div>
           )}

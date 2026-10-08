@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { Building2, Search, User } from 'lucide-react';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command';
 import { Kbd } from '@/components/ui/kbd';
+import { Button } from "@/components/ui/button";
 
 export interface PaletteLink {
   href: string;
@@ -69,15 +70,14 @@ export function AdminCommandPalette({ links, shortcut = true }: { links: Palette
 
   return (
     <>
-      <button
+      <Button variant="outline" size="sm"
         type="button"
-        onClick={() => setOpen(true)}
-        className="flex min-h-9 w-full items-center gap-2 rounded-lg border border-border bg-card px-2.5 text-left text-xs text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        onClick={() => setOpen(true)} className="w-full"
       >
         <Search className="size-3.5" aria-hidden="true" />
         <span className="flex-1">Search or jump to…</span>
         <Kbd>⌘K</Kbd>
-      </button>
+      </Button>
       <CommandDialog open={open} onOpenChange={setOpen} title="Search the admin" description="Jump to a page, user, or organization">
         <CommandInput placeholder="Pages, users by email or name, organizations…" value={query} onValueChange={setQuery} />
         <CommandList>

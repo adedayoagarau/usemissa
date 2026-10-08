@@ -247,7 +247,6 @@ export function MediaField({
           <input
             ref={input}
             type="file"
-            className="sr-only"
             tabIndex={-1}
             aria-label={label}
             accept={
@@ -368,7 +367,7 @@ export function ItemList<T extends { id?: string }>({
               className={cn(styles.item, expanded && styles.itemOpen)}
             >
               <div className={styles.itemRow}>
-                <button
+                <Button variant="ghost"
                   type="button"
                   className={styles.itemToggle}
                   aria-expanded={expanded}
@@ -379,7 +378,7 @@ export function ItemList<T extends { id?: string }>({
                     <span className={styles.itemMeta}>{metaOf(item)}</span>
                   )}
                   <ChevronDown aria-hidden="true" className={styles.chevron} />
-                </button>
+                </Button>
                 <span className={styles.itemTools}>
                   <Button
                     type="button"
@@ -442,7 +441,7 @@ export function ItemList<T extends { id?: string }>({
         {removed && (
           <>
             Removed “{titleOf(removed.item).trim() || `Untitled ${noun}`}”.{" "}
-            <button
+            <Button variant="outline" size="sm"
               type="button"
               onClick={() => {
                 const next = [...items];
@@ -452,7 +451,7 @@ export function ItemList<T extends { id?: string }>({
               }}
             >
               Undo
-            </button>
+            </Button>
           </>
         )}
       </p>
@@ -548,7 +547,7 @@ export function BasicsEditor({ draft, update, upload, onError }: EditorProps) {
           {draft.selected.map((item) => (
             <li key={item}>
               {item}
-              <button
+              <Button variant="outline" size="sm"
                 type="button"
                 aria-label={`Remove ${item}`}
                 onClick={() =>
@@ -558,7 +557,7 @@ export function BasicsEditor({ draft, update, upload, onError }: EditorProps) {
                 }
               >
                 <X aria-hidden="true" />
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
@@ -588,10 +587,10 @@ export function BasicsEditor({ draft, update, upload, onError }: EditorProps) {
           {PRACTICE_SUGGESTIONS.filter(
             (item) => !draft.selected.includes(item),
           ).map((item) => (
-            <button key={item} type="button" onClick={() => addPractice(item)}>
+            <Button variant="outline" size="sm" key={item} type="button" onClick={() => addPractice(item)}>
               <Plus aria-hidden="true" />
               {item}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -745,21 +744,20 @@ export function AppearanceEditor({
         <legend>Craft lens</legend>
         <div
           className={styles.choiceGrid}
-          role="radiogroup"
+          role="group"
           aria-label="Craft lens"
         >
           {PORTFOLIO_LENSES.map((lens) => (
-            <button
+            <Button variant="ghost"
               key={lens}
               type="button"
-              role="radio"
-              aria-checked={draft.lens === lens}
+              aria-pressed={draft.lens === lens}
               className={styles.choice}
               onClick={() => update((current) => ({ ...current, lens }))}
             >
               <span className={styles.choiceTitle}>{LENSES[lens].label}</span>
               <span className={styles.choiceLead}>{LENSES[lens].lead}</span>
-            </button>
+            </Button>
           ))}
         </div>
         <Button
@@ -789,13 +787,12 @@ export function AppearanceEditor({
       </fieldset>
       <fieldset className={styles.group}>
         <legend>Theme</legend>
-        <div className={styles.themes} role="radiogroup" aria-label="Theme">
+        <div className={styles.themes} role="group" aria-label="Theme">
           {PORTFOLIO_THEMES.map((theme) => (
-            <button
+            <Button variant="ghost"
               key={theme}
               type="button"
-              role="radio"
-              aria-checked={draft.theme === theme}
+              aria-pressed={draft.theme === theme}
               className={styles.theme}
               onClick={() => update((current) => ({ ...current, theme }))}
             >
@@ -806,7 +803,7 @@ export function AppearanceEditor({
                 Aa
               </span>
               {THEME_LABELS[theme]}
-            </button>
+            </Button>
           ))}
         </div>
       </fieldset>
@@ -814,15 +811,14 @@ export function AppearanceEditor({
         <legend>Top of the page</legend>
         <div
           className={styles.choiceGrid}
-          role="radiogroup"
+          role="group"
           aria-label="Top of the page"
         >
           {PORTFOLIO_HEROES.map((hero) => (
-            <button
+            <Button variant="ghost"
               key={hero}
               type="button"
-              role="radio"
-              aria-checked={draft.hero === hero}
+              aria-pressed={draft.hero === hero}
               className={styles.choice}
               onClick={() => update((current) => ({ ...current, hero }))}
             >
@@ -830,7 +826,7 @@ export function AppearanceEditor({
                 {HERO_COPY[hero].label}
               </span>
               <span className={styles.choiceLead}>{HERO_COPY[hero].lead}</span>
-            </button>
+            </Button>
           ))}
         </div>
         {draft.hero === "plate" && !plateReady && (

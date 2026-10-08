@@ -193,13 +193,13 @@ export function MissaSiteHeader({
               <Link href="/tracker" onClick={() => setMobileOpen(false)}>
                 Tracker
               </Link>
-              <button
+              <Button variant="ghost"
                 type="button"
                 className={styles.mobileLogout}
                 onClick={() => void signOut()}
               >
                 Log out
-              </button>
+              </Button>
               {logoutError ? <p className={styles.mobileError} role="alert">Couldn’t log out. Try again.</p> : null}
             </>
           ) : null}

@@ -13,6 +13,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Input } from "@/components/ui/input";
 
 interface ReportResponseDialogProps {
   profileId: string;
@@ -157,16 +159,15 @@ export function ReportResponseDialog({
                 <label className="text-xs font-semibold tracking-wider text-foreground uppercase">
                   Genre Submitted
                 </label>
-                <select
+                <NativeSelect
                   value={genre}
-                  onChange={(e) => setGenre(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  onChange={(e) => setGenre(e.target.value)} className="mt-1 w-full"
                 >
-                  <option value="fiction">Fiction</option>
-                  <option value="poetry">Poetry</option>
-                  <option value="nonfiction">Nonfiction</option>
-                  <option value="hybrid">Hybrid / Flash</option>
-                </select>
+                  <NativeSelectOption value="fiction">Fiction</NativeSelectOption>
+                  <NativeSelectOption value="poetry">Poetry</NativeSelectOption>
+                  <NativeSelectOption value="nonfiction">Nonfiction</NativeSelectOption>
+                  <NativeSelectOption value="hybrid">Hybrid / Flash</NativeSelectOption>
+                </NativeSelect>
               </div>
 
               {/* Dates */}
@@ -175,25 +176,23 @@ export function ReportResponseDialog({
                   <label className="text-xs font-semibold tracking-wider text-foreground uppercase">
                     Date Sent
                   </label>
-                  <input
+                  <Input
                     type="date"
                     required
                     value={submittedDate}
-                    onChange={(e) => setSubmittedDate(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    onChange={(e) => setSubmittedDate(e.target.value)} className="mt-1 w-full"
                   />
                 </div>
                 <div>
                   <label className="text-xs font-semibold tracking-wider text-foreground uppercase">
                     Decision Date
                   </label>
-                  <input
+                  <Input
                     type="date"
                     value={decisionDate}
                     onChange={(e) => setDecisionDate(e.target.value)}
                     disabled={outcome === "pending"}
-                    required={outcome !== "pending"}
-                    className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-50"
+                    required={outcome !== "pending"} className="mt-1 w-full"
                   />
                 </div>
               </div>
@@ -221,18 +220,13 @@ export function ReportResponseDialog({
                     { id: "withdrawn", label: "Withdrawn" },
                     { id: "pending", label: "Pending" },
                   ].map((o) => (
-                    <button
+                    <Button variant={outcome === o.id ? "default" : "outline"} size="sm"
                       key={o.id}
                       type="button"
                       onClick={() => setOutcome(o.id)}
-                      className={`rounded-lg border py-1.5 text-xs font-medium transition-colors ${
-                        outcome === o.id
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-card text-foreground hover:bg-muted"
-                      }`}
                     >
                       {o.label}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -243,19 +237,18 @@ export function ReportResponseDialog({
                   <label className="text-xs font-semibold tracking-wider text-foreground uppercase">
                     Rejection Character
                   </label>
-                  <select
+                  <NativeSelect
                     value={rejectionType}
-                    onChange={(e) => setRejectionType(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    onChange={(e) => setRejectionType(e.target.value)} className="mt-1 w-full"
                   >
-                    <option value="form">Standard Form Rejection</option>
-                    <option value="tiered_personal">
+                    <NativeSelectOption value="form">Standard Form Rejection</NativeSelectOption>
+                    <NativeSelectOption value="tiered_personal">
                       Tiered / Encouraging Rejection
-                    </option>
-                    <option value="editor_note">
+                    </NativeSelectOption>
+                    <NativeSelectOption value="editor_note">
                       Personal Note from Editor
-                    </option>
-                  </select>
+                    </NativeSelectOption>
+                  </NativeSelect>
                 </div>
               ) : null}
 
@@ -268,13 +261,12 @@ export function ReportResponseDialog({
                   <span className="absolute top-2 left-3 text-sm text-muted-foreground">
                     $
                   </span>
-                  <input
+                  <Input
                     type="number"
                     min="0"
                     step="1"
                     value={feePaidDollars}
-                    onChange={(e) => setFeePaidDollars(e.target.value)}
-                    className="w-full rounded-lg border border-border bg-card py-2 pr-3 pl-7 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    onChange={(e) => setFeePaidDollars(e.target.value)} className="w-full"
                   />
                 </div>
               </div>

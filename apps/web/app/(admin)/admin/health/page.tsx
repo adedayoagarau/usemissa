@@ -9,6 +9,8 @@ import { getHealthPage, getSmsHealth, parsePeriod } from '@/lib/platformAdminObs
 import { getPlatformAdminView } from '@/lib/platformAdmin';
 import { platformAnalyticsDatabaseUrl } from '@/lib/platformAnalyticsDatabase';
 import { maskPhoneNumber } from '@/lib/sms-phone';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Button } from "@/components/ui/button";
 
 const VITAL_LABELS: Record<string, { name: string; help: string }> = {
   LCP: { name: 'Largest content paint', help: 'How long until the main content shows' },
@@ -133,12 +135,14 @@ export default async function AdminHealthPage({ searchParams }: { searchParams: 
                 </div>
               )}
               {data.incidents.length > 0 && (
-                <details className="rounded-xl border border-border bg-card px-4 py-3 text-sm">
-                  <summary className="cursor-pointer font-medium text-foreground">{data.incidents.length} failed checks in the last 7 days</summary>
+                <Collapsible variant="divided">
+                  <CollapsibleTrigger render={<Button variant="disclosure" size="sm" />}>{data.incidents.length} failed checks in the last 7 days</CollapsibleTrigger>
+<CollapsibleContent>
                   <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
                     {data.incidents.map((incident) => <li key={`${incident.target}-${incident.at}`}><span className="font-mono">{when(incident.at)}</span> · {incident.target} · {incident.status ?? 'no response'} {incident.error ? `· ${incident.error}` : ''}</li>)}
                   </ul>
-                </details>
+                </CollapsibleContent>
+</Collapsible>
               )}
             </section>
 
