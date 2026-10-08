@@ -3,7 +3,16 @@
 import { useId, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import styles from "./guide-article.module.css";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 export interface GuideChecklistItem {
   content: ReactNode;
@@ -92,44 +101,61 @@ export function GuideChecklist({
   const done = checked.filter(Boolean).length;
 
   return (
-    <section className={styles.checklist} aria-labelledby={headingId}>
-      <div className={styles.checklistHeader}>
-        <div>
-          <p id={headingId} className={styles.checklistTitle}>
+    <section aria-labelledby={headingId}>
+      <Card size="lg">
+        <CardHeader>
+          <CardTitle id={headingId} className="font-sans text-base">
             Checklist
-          </p>
-          <span className={styles.checklistCount} aria-live="polite">
+          </CardTitle>
+          <CardDescription aria-live="polite">
             {done} of {items.length} done
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {done ? (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => writeStored(storageKey, "[]")}
-            >
-              Clear
-            </Button>
-          ) : null}
-          <Button type="button" variant="outline" onClick={copy}>
-            {copied ? "Copied" : "Copy list"}
-          </Button>
-        </div>
-      </div>
-      <ul className={styles.checklistItems}>
-        {items.map((item, index) => (
-          <li key={index}>
-            <label data-checked={checked[index] ? "true" : undefined}>
-              <Checkbox
-                checked={checked[index] ?? false}
-                onCheckedChange={(value) => update(index, value === true)}
-              />
-              <span>{item.content}</span>
-            </label>
-          </li>
-        ))}
-      </ul>
+          </CardDescription>
+          <CardAction>
+            <div className="flex flex-wrap justify-end gap-2 print:hidden">
+              {done ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => writeStored(storageKey, "[]")}
+                >
+                  Clear
+                </Button>
+              ) : null}
+              <Button type="button" variant="outline" onClick={copy}>
+                {copied ? "Copied" : "Copy list"}
+              </Button>
+            </div>
+          </CardAction>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="print:hidden">
+            <Progress
+              value={items.length ? (done / items.length) * 100 : 0}
+              aria-label="Checklist progress"
+            />
+          </div>
+          <ul className="divide-y">
+            {items.map((item, index) => (
+              <li key={index}>
+                <label
+                  className={cn(
+                    "flex min-h-11 cursor-pointer items-start gap-3 py-2.5 text-base text-pretty transition-colors",
+                    checked[index] && "text-muted-foreground",
+                  )}
+                >
+                  <span className="flex h-6 shrink-0 items-center">
+                    <Checkbox
+                      checked={checked[index] ?? false}
+                      onCheckedChange={(value) => update(index, value === true)}
+                    />
+                  </span>
+                  <span>{item.content}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
     </section>
   );
 }

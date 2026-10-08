@@ -525,7 +525,9 @@
       "semantic": "GuideArticle",
       "implementation": "apps/web/components/missa/guide-article.tsx",
       "appearance": "editorial-collection-palette",
-      "composition": ["EditorialTypography", "EditorialMotif", "GuideToc", "Alert", "Table", "GuideChecklist", "Accordion", "Collapsible", "PersonAvatar", "FeeBadge", "Button"]
+      "composition": ["GuideTypography", "EditorialMotif", "Breadcrumb", "GuideToc", "Card", "Alert", "Table", "GuideChecklist", "OpportunityBrowseProjectCard", "Accordion", "Collapsible", "Item", "PersonAvatar", "Button"],
+      "studioReferences": ["card-05", "card-06", "typography-01", "typography-02", "typography-03"],
+      "boundary": "Primitives keep their own variants; feature code passes them layout classes only (shadcn/no-restyle). Editorial type, density spacing (Spacious) and the cover palette live on plain elements. Guide cards use Card variant=interactive; open calls use the discovery collections' OpportunityBrowseProjectCard; callouts are default Alerts with a meaning icon; questions use the default Accordion; tables are ruled Tables that read as labelled records under a 36rem column."
     },
     "composition.manuscript-match": {
       "semantic": "ManuscriptMatchWizard",
@@ -1346,17 +1348,25 @@
       "implementation": "components/missa/editorial-motif.tsx",
       "boundary": "Decorative cover motif (orbit, burst, steps, frame) in currentColor for discovery collection and guide covers. Always inside an aria-hidden cover."
     },
+    "GuideTypography": {
+      "base": "typography",
+      "motion": "never",
+      "implementation": "components/missa/guide-typography.ts",
+      "studioReferences": ["typography-01", "typography-02", "typography-03", "typography-05", "typography-06", "typography-08", "typography-09", "typography-10", "typography-11", "typography-12", "typography-15"],
+      "boundary": "Class recipes for long-form guide text on plain elements: display and section headings in Newsreader, body large and lists in Instrument Sans, inline code and dates in Fragment Mono, Forest links. Never applied to components/ui primitives."
+    },
     "GuideChecklist": {
       "base": "Checkbox",
       "motion": "never",
       "implementation": "components/missa/guide-checklist.tsx",
+      "studioReferences": ["card-01"],
       "boundary": "A checklist inside a guide article. Ticks stay in this browser and Copy list puts the items on the clipboard. Not an application record."
     },
     "GuideToc": {
       "base": "Collapsible",
       "motion": "never",
       "implementation": "components/missa/guide-toc.tsx",
-      "boundary": "On this page for a guide: a sticky rail marking the current section with aria-current=location on wide screens, a closed Collapsible on narrow ones."
+      "boundary": "On this page for a guide: a sticky rail marking the current section with aria-current=location on wide screens, a closed Collapsible with an outline Button trigger on narrow ones."
     },
     "GoalSubmissionProgress": {
       "base": "Progress",
@@ -1581,7 +1591,7 @@
     "EventCard": ["EditorialTypography", "PrintStyles", "QrCodeSvg"],
     "CreatorWorkPage": ["Breadcrumb", "Button", "Collapsible", "Item", "Alert", "ProvenanceBadge", "ProfileConnect"],
     "WorkPageFields": ["Collapsible", "Button", "Input", "Textarea", "NativeSelect", "ItemList", "MediaField"],
-    "GuideArticle": ["EditorialMotif", "GuideToc", "Alert", "Table", "GuideChecklist", "Accordion", "Collapsible", "PersonAvatar", "FeeBadge", "Button"],
+    "GuideArticle": ["GuideTypography", "EditorialMotif", "Breadcrumb", "GuideToc", "Card", "Alert", "Table", "GuideChecklist", "OpportunityBrowseProjectCard", "Accordion", "Collapsible", "Item", "PersonAvatar", "Button"],
     "WritingRoom": ["WritingPages", "WritingFormatBar", "WritingFormatSheet", "WritingLibrary", "Button", "DropdownMenu", "Popover", "Dialog", "AlertDialog", "Alert"]
   },
   "motion": {
