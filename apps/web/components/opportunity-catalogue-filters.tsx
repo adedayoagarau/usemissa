@@ -31,6 +31,15 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import styles from "./opportunity-catalogue-filters.module.css";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import type { OpportunityFacetCounts } from "@/lib/opportunityFacetCounts";
 
 /** URL parameter for "Confirmed dates only"; mirrors CONFIRMED_DATES_PARAM in lib/opportunityQuery. */
@@ -106,7 +115,18 @@ function DesktopFilters({
 
   function clearAll() {
     const next = new URLSearchParams(searchParams.toString());
-    for (const key of ["type", "discipline", "taxonomy", "taxonomyDescendants", "taxonomyVersion", "location", "fee", "deadlineWithinDays", "deadline", CONFIRMED_DATES])
+    for (const key of [
+      "type",
+      "discipline",
+      "taxonomy",
+      "taxonomyDescendants",
+      "taxonomyVersion",
+      "location",
+      "fee",
+      "deadlineWithinDays",
+      "deadline",
+      CONFIRMED_DATES,
+    ])
       next.delete(key);
     navigate(next);
   }
@@ -114,11 +134,24 @@ function DesktopFilters({
   function menu(label: string, selectedCount: number, content: ReactNode) {
     return (
       <Popover>
-        <PopoverTrigger render={<Button type="button" variant="outline" className={styles.filterTrigger} />}>
-          {label}{selectedCount ? <span className={styles.triggerCount}>{selectedCount}</span> : null}
+        <PopoverTrigger
+          render={
+            <Button
+              type="button"
+              variant="outline"
+              className={styles.filterTrigger}
+            />
+          }
+        >
+          {label}
+          {selectedCount ? (
+            <span className={styles.triggerCount}>{selectedCount}</span>
+          ) : null}
           <ChevronDown aria-hidden="true" />
         </PopoverTrigger>
-        <PopoverContent align="start" className={styles.optionPopover}>{content}</PopoverContent>
+        <PopoverContent align="start" className={styles.optionPopover}>
+          {content}
+        </PopoverContent>
       </Popover>
     );
   }
@@ -136,47 +169,187 @@ function DesktopFilters({
 
   return (
     <div className={styles.desktopFilterBar} aria-label="Opportunity filters">
-      {menu(selectedTypeLabel ?? "Type", selectedTypeLabel ? 0 : selectedTypes.length, <Command>
-        <CommandInput placeholder="Find a type…" />
-        <CommandList><CommandEmpty>No types found.</CommandEmpty><CommandGroup>
-          <CommandItem value="All opportunity types" data-checked={selectedTypes.length === 0} onSelect={() => setValue("type")}>
-            <Checkbox checked={selectedTypes.length === 0} aria-hidden="true" tabIndex={-1} />
-            <span>All opportunity types</span>
-          </CommandItem>
-          {facetCounts.types.map((option) => <CommandItem key={option.value} value={option.label} data-checked={selectedTypes.includes(option.value)} onSelect={() => toggle("type", option.value)}>
-            <Checkbox checked={selectedTypes.includes(option.value)} aria-hidden="true" tabIndex={-1} />
-            <span>{option.label}</span><span className={styles.optionCount}>{option.count.toLocaleString()}</span>
-          </CommandItem>)}
-        </CommandGroup></CommandList>
-      </Command>)}
-      {menu("Discipline", selectedDisciplines.length, <Command>
-        <CommandInput placeholder="Find a discipline…" />
-        <CommandList><CommandEmpty>No disciplines found.</CommandEmpty><CommandGroup>
-          {facetCounts.disciplines.map((option) => <CommandItem key={option.value} value={option.label} data-checked={selectedDisciplines.includes(option.value)} onSelect={() => toggle("discipline", option.value)}>
-            <Checkbox checked={selectedDisciplines.includes(option.value)} aria-hidden="true" tabIndex={-1} />
-            <span>{option.label}</span><span className={styles.optionCount}>{option.count.toLocaleString()}</span>
-          </CommandItem>)}
-        </CommandGroup></CommandList>
-      </Command>)}
-      {menu(location ? "Location · 1" : "Location", 0, <Command>
-        <CommandInput placeholder="Find a location…" />
-        <CommandList><CommandEmpty>No locations found.</CommandEmpty><CommandGroup>
-          <CommandItem value="Anywhere" data-checked={!location} onSelect={() => setValue("location")}><span>Anywhere</span></CommandItem>
-          {locations.map((option) => <CommandItem key={option.value} value={option.label} data-checked={location === option.value} onSelect={() => setValue("location", option.value)}><span>{option.label}</span></CommandItem>)}
-        </CommandGroup></CommandList>
-      </Command>)}
-      {menu("Deadline", (deadline || deadlineKind ? 1 : 0) + (confirmedDates ? 1 : 0), <Command><CommandList><CommandGroup>
-        {[["", "Any time"], ["7", "Closing this week"], ["30", "Next 30 days"], ["90", "Next 90 days"], ["rolling", "Rolling / year-round"]].map(([value, label]) => <CommandItem key={label} data-checked={value === "rolling" ? deadlineKind === value : (deadline ?? "") === value} onSelect={() => setDeadline(value)}>{label}</CommandItem>)}
-      </CommandGroup><CommandGroup heading="Date confidence">
-        <CommandItem value="Confirmed dates only" data-checked={confirmedDates} onSelect={() => setValue(CONFIRMED_DATES, confirmedDates ? undefined : "1")}>
-          <Checkbox checked={confirmedDates} aria-hidden="true" tabIndex={-1} />
-          <span>Confirmed dates only</span>
-        </CommandItem>
-      </CommandGroup></CommandList></Command>)}
-      {menu("Fee", fee ? 1 : 0, <Command><CommandList><CommandGroup>
-        {[["", "Any fee"], ["no-fee", "No fee"], ["paid", "Application fee"], ["unknown", "Fee not listed"]].map(([value, label]) => <CommandItem key={label} data-checked={(fee ?? "") === value} onSelect={() => setValue("fee", value)}>{label}</CommandItem>)}
-      </CommandGroup></CommandList></Command>)}
-      {activeFilterCount ? <Button type="button" variant="ghost" className={styles.resetButton} onClick={clearAll}><RotateCcw aria-hidden="true" />Reset <span>{activeFilterCount}</span></Button> : null}
+      {menu(
+        selectedTypeLabel ?? "Type",
+        selectedTypeLabel ? 0 : selectedTypes.length,
+        <Command>
+          <CommandInput placeholder="Find a type…" />
+          <CommandList>
+            <CommandEmpty>No types found.</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value="All opportunity types"
+                data-checked={selectedTypes.length === 0}
+                onSelect={() => setValue("type")}
+              >
+                <Checkbox
+                  checked={selectedTypes.length === 0}
+                  aria-hidden="true"
+                  tabIndex={-1}
+                />
+                <span>All opportunity types</span>
+              </CommandItem>
+              {facetCounts.types.map((option) => (
+                <CommandItem
+                  key={option.value}
+                  value={option.label}
+                  data-checked={selectedTypes.includes(option.value)}
+                  onSelect={() => toggle("type", option.value)}
+                >
+                  <Checkbox
+                    checked={selectedTypes.includes(option.value)}
+                    aria-hidden="true"
+                    tabIndex={-1}
+                  />
+                  <span>{option.label}</span>
+                  <span className={styles.optionCount}>
+                    {option.count.toLocaleString()}
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>,
+      )}
+      {menu(
+        "Discipline",
+        selectedDisciplines.length,
+        <Command>
+          <CommandInput placeholder="Find a discipline…" />
+          <CommandList>
+            <CommandEmpty>No disciplines found.</CommandEmpty>
+            <CommandGroup>
+              {facetCounts.disciplines.map((option) => (
+                <CommandItem
+                  key={option.value}
+                  value={option.label}
+                  data-checked={selectedDisciplines.includes(option.value)}
+                  onSelect={() => toggle("discipline", option.value)}
+                >
+                  <Checkbox
+                    checked={selectedDisciplines.includes(option.value)}
+                    aria-hidden="true"
+                    tabIndex={-1}
+                  />
+                  <span>{option.label}</span>
+                  <span className={styles.optionCount}>
+                    {option.count.toLocaleString()}
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>,
+      )}
+      {menu(
+        location ? "Location · 1" : "Location",
+        0,
+        <Command>
+          <CommandInput placeholder="Find a location…" />
+          <CommandList>
+            <CommandEmpty>No locations found.</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value="Anywhere"
+                data-checked={!location}
+                onSelect={() => setValue("location")}
+              >
+                <span>Anywhere</span>
+              </CommandItem>
+              {locations.map((option) => (
+                <CommandItem
+                  key={option.value}
+                  value={option.label}
+                  data-checked={location === option.value}
+                  onSelect={() => setValue("location", option.value)}
+                >
+                  <span>{option.label}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>,
+      )}
+      {menu(
+        "Deadline",
+        (deadline || deadlineKind ? 1 : 0) + (confirmedDates ? 1 : 0),
+        <Command>
+          <CommandList>
+            <CommandGroup>
+              {[
+                ["", "Any time"],
+                ["7", "Closing this week"],
+                ["30", "Next 30 days"],
+                ["90", "Next 90 days"],
+                ["rolling", "Rolling / year-round"],
+              ].map(([value, label]) => (
+                <CommandItem
+                  key={label}
+                  data-checked={
+                    value === "rolling"
+                      ? deadlineKind === value
+                      : (deadline ?? "") === value
+                  }
+                  onSelect={() => setDeadline(value)}
+                >
+                  {label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            <CommandGroup heading="Date confidence">
+              <CommandItem
+                value="Confirmed dates only"
+                data-checked={confirmedDates}
+                onSelect={() =>
+                  setValue(CONFIRMED_DATES, confirmedDates ? undefined : "1")
+                }
+              >
+                <Checkbox
+                  checked={confirmedDates}
+                  aria-hidden="true"
+                  tabIndex={-1}
+                />
+                <span>Confirmed dates only</span>
+              </CommandItem>
+            </CommandGroup>
+          </CommandList>
+        </Command>,
+      )}
+      {menu(
+        "Fee",
+        fee ? 1 : 0,
+        <Command>
+          <CommandList>
+            <CommandGroup>
+              {[
+                ["", "Any fee"],
+                ["no-fee", "No fee"],
+                ["paid", "Application fee"],
+                ["unknown", "Fee not listed"],
+              ].map(([value, label]) => (
+                <CommandItem
+                  key={label}
+                  data-checked={(fee ?? "") === value}
+                  onSelect={() => setValue("fee", value)}
+                >
+                  {label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>,
+      )}
+      {activeFilterCount ? (
+        <Button
+          type="button"
+          variant="ghost"
+          className={styles.resetButton}
+          onClick={clearAll}
+        >
+          <RotateCcw aria-hidden="true" />
+          Reset <span>{activeFilterCount}</span>
+        </Button>
+      ) : null}
     </div>
   );
 }
@@ -290,9 +463,9 @@ function FilterPanel({
     <form className={styles.panel} onSubmit={(event) => event.preventDefault()}>
       <div className={styles.heading}>
         <h2>Search filters</h2>
-        <button type="button" onClick={clearAll}>
+        <Button type="button" variant="link" size="inline" onClick={clearAll}>
           Clear all
-        </button>
+        </Button>
       </div>
 
       <fieldset className={styles.group}>
@@ -335,64 +508,77 @@ function FilterPanel({
 
       <label className={styles.selectField}>
         <span>Location or eligibility reach</span>
-        <select
+        <NativeSelect
+          className="w-full"
           value={searchParams.get("location") ?? ""}
           onChange={(event) => update("location", event.target.value)}
         >
-          <option value="">Anywhere</option>
+          <NativeSelectOption value="">Anywhere</NativeSelectOption>
           {locations.map((location) => (
-            <option key={location.value} value={location.value}>
+            <NativeSelectOption key={location.value} value={location.value}>
               {location.label}
-            </option>
+            </NativeSelectOption>
           ))}
-        </select>
+        </NativeSelect>
       </label>
 
       <label className={styles.selectField}>
         <span>Deadline</span>
-        <select
-          value={searchParams.get("deadline") ?? searchParams.get("deadlineWithinDays") ?? ""}
+        <NativeSelect
+          className="w-full"
+          value={
+            searchParams.get("deadline") ??
+            searchParams.get("deadlineWithinDays") ??
+            ""
+          }
           onChange={(event) => updateDeadline(event.target.value)}
         >
-          <option value="">Any time</option>
-          <option value="7">Closing this week</option>
-          <option value="30">Next 30 days</option>
-          <option value="90">Next 90 days</option>
-          <option value="rolling">Rolling / year-round</option>
-        </select>
+          <NativeSelectOption value="">Any time</NativeSelectOption>
+          <NativeSelectOption value="7">Closing this week</NativeSelectOption>
+          <NativeSelectOption value="30">Next 30 days</NativeSelectOption>
+          <NativeSelectOption value="90">Next 90 days</NativeSelectOption>
+          <NativeSelectOption value="rolling">
+            Rolling / year-round
+          </NativeSelectOption>
+        </NativeSelect>
       </label>
 
       <label className={styles.checkRow}>
         <Checkbox
           aria-label="Confirmed dates only"
           checked={searchParams.get(CONFIRMED_DATES) === "1"}
-          onCheckedChange={(checked) => update(CONFIRMED_DATES, checked === true ? "1" : "")}
+          onCheckedChange={(checked) =>
+            update(CONFIRMED_DATES, checked === true ? "1" : "")
+          }
         />
         <span>Confirmed dates only</span>
       </label>
 
       <label className={styles.selectField}>
         <span>Fee</span>
-        <select
+        <NativeSelect
+          className="w-full"
           value={searchParams.get("fee") ?? ""}
           onChange={(event) => update("fee", event.target.value)}
         >
-          <option value="">Any fee</option>
-          <option value="no-fee">No fee</option>
-          <option value="paid">Application fee</option>
-          <option value="unknown">Fee not listed</option>
-        </select>
+          <NativeSelectOption value="">Any fee</NativeSelectOption>
+          <NativeSelectOption value="no-fee">No fee</NativeSelectOption>
+          <NativeSelectOption value="paid">Application fee</NativeSelectOption>
+          <NativeSelectOption value="unknown">
+            Fee not listed
+          </NativeSelectOption>
+        </NativeSelect>
       </label>
 
-      <details className={styles.more}>
-        <summary>
+      <Collapsible className={styles.more}>
+        <CollapsibleTrigger className={styles.moreTrigger}>
           <span>
             <strong>More category filters</strong>
             <small>Keep each category separate.</small>
           </span>
           <ChevronDown aria-hidden="true" />
-        </summary>
-        <div className={styles.moreFields}>
+        </CollapsibleTrigger>
+        <CollapsibleContent className={styles.moreFields}>
           {visibleFacets
             .filter((facet) => facet.key !== "practice-family")
             .map((facet) => {
@@ -403,24 +589,25 @@ function FilterPanel({
               return (
                 <label key={facet.key} className={styles.selectField}>
                   <span>{facet.label}</span>
-                  <select
+                  <NativeSelect
+                    className="w-full"
                     value={selected}
                     onChange={(event) =>
                       setFacet(facet.key, event.target.value)
                     }
                   >
-                    <option value="">Any</option>
+                    <NativeSelectOption value="">Any</NativeSelectOption>
                     {termsForFacet(facet.key).map((term) => (
-                      <option key={term.id} value={term.id}>
+                      <NativeSelectOption key={term.id} value={term.id}>
                         {term.preferredLabel}
-                      </option>
+                      </NativeSelectOption>
                     ))}
-                  </select>
+                  </NativeSelect>
                 </label>
               );
             })}
-        </div>
-      </details>
+        </CollapsibleContent>
+      </Collapsible>
 
       <div className={styles.status} aria-live="polite">
         {pending ? (
@@ -455,41 +642,53 @@ export function OpportunityCatalogueFilters({
   const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
-    <div className={`${styles.root} ${appearance === "index" ? styles.index : ""} ${placement === "desktop" ? styles.desktopRoot : placement === "mobile" ? styles.mobileRoot : ""}`}>
-      {placement !== "mobile" ? <div className={styles.desktopControls}>
-        <DesktopFilters locations={locations} facetCounts={facetCounts} activeFilterCount={activeFilterCount} />
-      </div> : null}
-      {placement !== "desktop" ? <div className={styles.mobileControls}>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setSheetOpen(true)}
-        >
-          <Filter aria-hidden="true" />
-          Filters
-          {activeFilterCount ? (
-            <span className={styles.count}>{activeFilterCount}</span>
-          ) : null}
-        </Button>
-      </div> : null}
-      {placement !== "desktop" ? <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent side="bottom" className={styles.sheet}>
-          <SheetHeader>
-            <SheetTitle>Filter opportunities</SheetTitle>
-            <SheetDescription>
-              Use the details that matter for this search.
-            </SheetDescription>
-          </SheetHeader>
-          <div className={styles.sheetBody}>
-            <FilterPanel
-              locations={locations}
-              facetCounts={facetCounts}
-              onDone={() => setSheetOpen(false)}
-              resultCount={resultCount}
-            />
-          </div>
-        </SheetContent>
-      </Sheet> : null}
+    <div
+      className={`${styles.root} ${appearance === "index" ? styles.index : ""} ${placement === "desktop" ? styles.desktopRoot : placement === "mobile" ? styles.mobileRoot : ""}`}
+    >
+      {placement !== "mobile" ? (
+        <div className={styles.desktopControls}>
+          <DesktopFilters
+            locations={locations}
+            facetCounts={facetCounts}
+            activeFilterCount={activeFilterCount}
+          />
+        </div>
+      ) : null}
+      {placement !== "desktop" ? (
+        <div className={styles.mobileControls}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setSheetOpen(true)}
+          >
+            <Filter aria-hidden="true" />
+            Filters
+            {activeFilterCount ? (
+              <span className={styles.count}>{activeFilterCount}</span>
+            ) : null}
+          </Button>
+        </div>
+      ) : null}
+      {placement !== "desktop" ? (
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+          <SheetContent side="bottom" className={styles.sheet}>
+            <SheetHeader>
+              <SheetTitle>Filter opportunities</SheetTitle>
+              <SheetDescription>
+                Use the details that matter for this search.
+              </SheetDescription>
+            </SheetHeader>
+            <div className={styles.sheetBody}>
+              <FilterPanel
+                locations={locations}
+                facetCounts={facetCounts}
+                onDone={() => setSheetOpen(false)}
+                resultCount={resultCount}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+      ) : null}
     </div>
   );
 }

@@ -451,11 +451,6 @@
       "<input>": 2,
       "<textarea>": 1
     },
-    "components/opportunity-catalogue-filters.tsx": {
-      "<button>": 1,
-      "<select>": 4,
-      "<details>": 1
-    },
     "components/opportunity-filters.tsx": {
       "<select>": 4,
       "<input>": 2
