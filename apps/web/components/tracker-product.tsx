@@ -62,6 +62,7 @@ import {
 import { EmptyStateArt } from "@/components/illustrations/missa-illustrations";
 import styles from "./tracker-product.module.css";
 import { useConfirm } from "@/components/missa/confirm-dialog";
+import { PageHeader } from "@/components/missa/page-header";
 
 export type TrackerProductItem = {
   opportunityId: string;
@@ -1204,37 +1205,33 @@ export function TrackerProduct({
   return (
     <div className={styles.product}>
       {confirmDialog}
-      <header className={styles.pageHeader}>
-        <div>
-          <p>Private to your Profile</p>
-          <h1>Tracker</h1>
-          <span>
-            Keep the next deadline, preparation step, and submission record
-            together.
-          </span>
-          {allowance ? (
-            <div className={styles.allowance}>
-              <span
-                className={`${styles.allowanceCount} font-mono tabular-nums`}
-              >
-                {allowance.active} of {allowance.limit}
-              </span>{" "}
-              calls in progress on Free. Submitted and closed calls don&apos;t
-              count.{" "}
-              <Link href="/plan" className={styles.allowanceLink}>
-                Plus has no limit
-              </Link>
-            </div>
-          ) : null}
-        </div>
-        <div className={styles.pageActions}>
-          <Link href="/import" className={styles.quietLink}>
-            <Import aria-hidden="true" />
-            Import
-          </Link>
-          {userId ? <CalendarFeedButton userId={userId} /> : null}
-        </div>
-      </header>
+      <PageHeader
+        eyebrow="Private to your Profile"
+        title="Tracker"
+        description="Keep the next deadline, preparation step, and submission record together."
+        actions={
+          <>
+            <Link href="/import" className={styles.quietLink}>
+              <Import aria-hidden="true" />
+              Import
+            </Link>
+            {userId ? <CalendarFeedButton userId={userId} /> : null}
+          </>
+        }
+      >
+        {allowance ? (
+          <div className={styles.allowance}>
+            <span className={`${styles.allowanceCount} font-mono tabular-nums`}>
+              {allowance.active} of {allowance.limit}
+            </span>{" "}
+            calls in progress on Free. Submitted and closed calls don&apos;t
+            count.{" "}
+            <Link href="/plan" className={styles.allowanceLink}>
+              Plus has no limit
+            </Link>
+          </div>
+        ) : null}
+      </PageHeader>
 
       {firstSaveReceipt && !firstSaveDismissed ? (
         <section

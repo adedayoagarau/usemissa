@@ -1167,3 +1167,5 @@
     grid-column: 1 / -1;
   }
 }
+
+.product > [data-slot="page-header"] { padding: 24px 0 28px; }

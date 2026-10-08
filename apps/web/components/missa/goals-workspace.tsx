@@ -33,6 +33,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { GoalSubmissionProgress } from "./goal-submission-progress";
 import { HueTile } from "./hue-tile";
+import { PageHeader } from "./page-header";
 import { personHue } from "./person-avatar";
 
 type Target = {
@@ -301,30 +302,28 @@ export function GoalsWorkspace() {
       id="main-content"
       className="mx-auto max-w-7xl px-5 py-8 md:px-10 md:py-12"
     >
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-5">
-        <div className="max-w-xl">
-          <h1 className="text-3xl leading-tight font-semibold tracking-tight md:text-4xl">
-            Pick your number.
-          </h1>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Some writers aim for 100 rejections a year. Some aim for one yes.
-          </p>
-        </div>
-        <Button
-          variant={step === null ? "default" : "outline"}
-          disabled={busy}
-          onClick={() => (step === null ? start() : setStep(null))}
-        >
-          {step === null ? (
-            <>
-              <Plus aria-hidden="true" />
-              New goal
-            </>
-          ) : (
-            "Close setup"
-          )}
-        </Button>
-      </header>
+      <div className="mb-8">
+        <PageHeader
+          title="Pick your number."
+          description="Some writers aim for 100 rejections a year. Some aim for one yes."
+          actions={
+            <Button
+              variant={step === null ? "default" : "outline"}
+              disabled={busy}
+              onClick={() => (step === null ? start() : setStep(null))}
+            >
+              {step === null ? (
+                <>
+                  <Plus aria-hidden="true" />
+                  New goal
+                </>
+              ) : (
+                "Close setup"
+              )}
+            </Button>
+          }
+        />
+      </div>
       {error && (
         <div
           role="alert"

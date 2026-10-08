@@ -57,6 +57,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Sp, useSp } from "@/components/missa/spelling";
+import { PageHeader } from "@/components/missa/page-header";
 type EventItem = PlanningEvent;
 type OpportunityOption = {
   id: string;
@@ -1103,51 +1104,51 @@ export function CalendarWorkspace({
   };
   return (
     <main className={styles.page}>
-      <header className={styles.hero}>
-        <div className={styles.heroCopy}>
-          <h1 className="font-heading">Calendar</h1>
-          <span>See your deadlines and plan when you’ll work on them.</span>
-        </div>
-        <div className={styles.heroActions}>
-          <button
-            type="button"
-            className={styles.connectionButton}
-            data-state={
-              connectionProblem
-                ? "error"
-                : connected.length
-                  ? "connected"
-                  : "disconnected"
-            }
-            onClick={() => setConnectionsOpen(true)}
-          >
-            {connectionProblem ? (
-              <CircleAlert />
-            ) : connected.length ? (
-              <CheckCircle2 />
-            ) : (
-              <Link2 />
-            )}
-            {connectionLabel}
-          </button>
-          <button
-            type="button"
-            className={styles.secondaryAction}
-            onClick={() => addOpportunity()}
-          >
-            <CalendarDays />
-            Add opportunity
-          </button>
-          <button
-            type="button"
-            className={styles.primary}
-            onClick={() => create()}
-          >
-            <Plus />
-            Add time
-          </button>
-        </div>
-      </header>
+      <PageHeader
+        title="Calendar"
+        description="See your deadlines and plan when you’ll work on them."
+        actions={
+          <div className={styles.heroActions}>
+            <button
+              type="button"
+              className={styles.connectionButton}
+              data-state={
+                connectionProblem
+                  ? "error"
+                  : connected.length
+                    ? "connected"
+                    : "disconnected"
+              }
+              onClick={() => setConnectionsOpen(true)}
+            >
+              {connectionProblem ? (
+                <CircleAlert />
+              ) : connected.length ? (
+                <CheckCircle2 />
+              ) : (
+                <Link2 />
+              )}
+              {connectionLabel}
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryAction}
+              onClick={() => addOpportunity()}
+            >
+              <CalendarDays />
+              Add opportunity
+            </button>
+            <button
+              type="button"
+              className={styles.primary}
+              onClick={() => create()}
+            >
+              <Plus />
+              Add time
+            </button>
+          </div>
+        }
+      />
       <dl className={styles.monthPulse}>
         {[
           {

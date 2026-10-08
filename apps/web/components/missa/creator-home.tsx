@@ -6,6 +6,8 @@ import {
   Import,
   LockKeyhole,
   Target,
+  BookOpen,
+  Search,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -31,6 +33,8 @@ import {
   type HomeGoalPace,
   type HomeMove,
 } from "@/lib/creator-home";
+import { PageHeader } from "@/components/missa/page-header";
+import { HueTile } from "@/components/missa/hue-tile";
 
 const typeLabel = (value: string) =>
   value === "open-call"
@@ -70,28 +74,30 @@ export function CreatorHome({
 
   return (
     <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-14 pb-16">
-      <header className="grid items-start gap-12 lg:grid-cols-[minmax(0,1fr)_18.75rem]">
-        <div className="flex min-w-0 flex-col gap-3">
-          <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+      <PageHeader
+        eyebrow={
+          <>
             <span>{today}</span>
             <span aria-hidden="true">·</span>
             <span className="inline-flex items-center gap-1">
               <LockKeyhole className="size-3.5" aria-hidden="true" />
               Private to you
             </span>
-          </p>
-          <h1 className="font-heading text-4xl leading-tight font-medium tracking-tight sm:text-5xl">
+          </>
+        }
+        title={
+          <>
             {firstRun ? "Welcome" : greeting}
             {firstName ? `, ${firstName}.` : "."}
-          </h1>
-          <p className="max-w-2xl font-heading text-xl leading-snug text-foreground sm:text-2xl">
-            {firstRun
-              ? "Home fills in as you save calls. Here is what it will do for you."
-              : home.summary}
-          </p>
-        </div>
-        {home.pace ? <GoalPace pace={home.pace} /> : null}
-      </header>
+          </>
+        }
+        description={
+          firstRun
+            ? "Home fills in as you save calls. Here is what it will do for you."
+            : home.summary
+        }
+        actions={home.pace ? <GoalPace pace={home.pace} /> : undefined}
+      />
 
       {firstRun ? (
         <FirstRun />
@@ -516,6 +522,8 @@ function FirstRun() {
       label: "Browse opportunities",
       variant: "default" as const,
       icon: ArrowRight,
+      hue: "orange" as const,
+      mark: Search,
     },
     {
       title: "Or bring the spreadsheet you keep",
@@ -524,6 +532,8 @@ function FirstRun() {
       label: "Import a tracker",
       variant: "outline" as const,
       icon: Import,
+      hue: "indigo" as const,
+      mark: BookOpen,
     },
     {
       title: "Set a submission goal",
@@ -532,6 +542,8 @@ function FirstRun() {
       label: "Set a goal",
       variant: "ghost" as const,
       icon: Target,
+      hue: "red" as const,
+      mark: Target,
     },
   ];
   return (
@@ -545,12 +557,9 @@ function FirstRun() {
             key={step.href}
             className={`flex flex-col gap-3 rounded-xl border p-7 ${index === 0 ? "border-input shadow-xs" : "border-border"}`}
           >
-            <span
-              className={`inline-flex size-8 items-center justify-center rounded-full font-mono text-sm ${index === 0 ? "bg-primary text-primary-foreground" : "border border-input"}`}
-              aria-hidden="true"
-            >
-              {index + 1}
-            </span>
+            <HueTile hue={step.hue} tone={index === 0 ? "solid" : "soft"}>
+              <step.mark className="size-4 text-current" aria-hidden="true" />
+            </HueTile>
             <h3 className="text-lg font-semibold">{step.title}</h3>
             <p className="text-sm text-muted-foreground">{step.body}</p>
             <Link

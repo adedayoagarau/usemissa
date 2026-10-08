@@ -1241,6 +1241,12 @@
       "implementation": "components/missa/operations-badges.tsx",
       "boundary": "Marks a settings section that cannot be changed (Read only, Not available yet). Editable sections carry no badge."
     },
+    "PageHeader": {
+      "base": "header",
+      "motion": "never",
+      "implementation": "components/missa/page-header.tsx",
+      "boundary": "The heading every signed-in page opens with: optional eyebrow, an Instrument Sans h1, one sentence on what the page is for, and the page's actions on the right. Pages never restyle the title; layout spacing belongs to the page container."
+    },
     "HueTile": {
       "base": "span",
       "motion": "never",

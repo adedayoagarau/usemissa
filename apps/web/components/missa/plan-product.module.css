@@ -1,16 +1,10 @@
 .page {
-  width: min(100%, 720px);
+  width: min(100%, 1040px);
   margin: 0 auto;
   padding: 24px 0 64px;
   color: var(--foreground);
 }
 
-.header h1 {
-  margin: 0;
-  font-size: clamp(2rem, 4vw, 3rem);
-  font-weight: 500;
-  line-height: 1.05;
-}
 
 .notice {
   margin: 16px 0 0;
@@ -80,3 +74,14 @@
   color: var(--destructive);
   font-size: 0.875rem;
 }
+
+/* Free and Plus side by side; the plan you are on carries a Forest edge. */
+.compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; align-items: start; margin-top: 24px; }
+.compare .card { margin-top: 0; height: 100%; }
+.card[data-current="true"] { border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); }
+.cardHead { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.cardHead h2 { margin: 0; font-size: 1.25rem; font-weight: 600; }
+.cardHead [data-slot="badge"] { margin-left: auto; }
+.benefits { list-style: none; padding-inline-start: 0; }
+.benefits li { position: relative; padding-inline-start: 22px; }
+.benefits li::before { content: ""; position: absolute; inset-inline-start: 2px; top: .55em; width: 10px; height: 6px; border-inline-start: 2px solid var(--primary); border-bottom: 2px solid var(--primary); transform: rotate(-45deg); }

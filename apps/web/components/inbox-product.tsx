@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/empty";
 import { Sp } from "@/components/missa/spelling";
 import { EmptyStateArt } from "@/components/illustrations/missa-illustrations";
+import { PageHeader } from "@/components/missa/page-header";
 
 export type InboxProductGroup =
   "attention" | "changes" | "submissions" | "discovery";
@@ -256,24 +257,22 @@ export function InboxProduct({
   return (
     <div className="mx-auto max-w-6xl space-y-8 pb-12">
       <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <header className="flex flex-wrap items-end justify-between gap-6">
-          <div className="max-w-2xl">
-            <h1 className="font-sans text-3xl font-semibold tracking-tight">
-              Inbox
-            </h1>
-            <p className="mt-2 text-muted-foreground">
-              Decisions, reminders and changes connected to your Missa work.
-            </p>
-          </div>
-          {initialPreferences ? (
-            <CollapsibleTrigger
-              render={<Button variant="outline" aria-expanded={settingsOpen} />}
-            >
-              <BellRing />
-              Notification settings
-            </CollapsibleTrigger>
-          ) : null}
-        </header>
+        <PageHeader
+          title="Inbox"
+          description="Decisions, reminders and changes connected to your Missa work."
+          actions={
+            initialPreferences ? (
+              <CollapsibleTrigger
+                render={
+                  <Button variant="outline" aria-expanded={settingsOpen} />
+                }
+              >
+                <BellRing />
+                Notification settings
+              </CollapsibleTrigger>
+            ) : null
+          }
+        />
         {initialPreferences ? (
           <CollapsibleContent className="pt-6">
             <NotificationPreferencesPanel
@@ -290,8 +289,7 @@ export function InboxProduct({
         className="gap-8"
       >
         <TabsList
-          variant="section"
-          size="responsive"
+          variant="line"
           aria-label="Inbox views"
           className="max-w-full overflow-x-auto"
         >
@@ -387,105 +385,105 @@ export function InboxProduct({
                   ) : null}
                   {grouped.map((group) =>
                     group.items.length ? (
-                    <section
-                      key={group.id}
-                      aria-labelledby={`inbox-${group.id}`}
-                      className="space-y-4"
-                    >
-                      <div className="flex flex-wrap items-end justify-between gap-4">
-                        <div className="max-w-2xl">
-                          <h3
-                            id={`inbox-${group.id}`}
-                            className="font-sans text-lg font-semibold"
-                          >
-                            {group.id === "attention"
-                              ? "Needs attention"
-                              : group.title}
-                          </h3>
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            <Sp>{group.description}</Sp>
-                          </p>
-                        </div>
-                        <span className="text-sm text-muted-foreground tabular-nums">
-                          {group.items.length}{" "}
-                          {group.items.length === 1 ? "update" : "updates"}
-                        </span>
-                      </div>
-                      <div className="divide-y divide-border border-y border-border">
-                        {group.items.map((item) => (
-                          <article
-                            key={item.id}
-                            className={`grid grid-cols-[auto_minmax(0,1fr)] gap-4 px-3 py-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-5 ${item.unread ? "bg-secondary" : ""}`}
-                          >
-                            <span className="mt-1 shrink-0 text-primary">
-                              {iconFor(item)}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <div className="mb-2 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-                                <span>{item.category}</span>
-                                <time dateTime={item.createdAt}>
-                                  {dateLabel(item.createdAt)}
-                                </time>
-                              </div>
-                              <button
-                                className="text-start outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
-                                onClick={() => void openItem(item)}
-                                aria-label={`${item.actionLabel}: ${item.title}`}
-                              >
-                                <span className="block font-sans text-lg font-semibold">
-                                  {item.title}
-                                </span>
-                                <span className="mt-2 block text-sm leading-relaxed text-muted-foreground">
-                                  {item.summary}
-                                </span>
-                              </button>
-                              <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                                <span>
-                                  <span className="font-medium text-foreground">
-                                    Why you&apos;re seeing this:{" "}
-                                  </span>
-                                  {item.reason}
-                                </span>
-                                {item.reminderId ? (
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => {
-                                      setView("reminders");
-                                      router.replace(
-                                        `/inbox?view=reminders&reminder=${encodeURIComponent(item.reminderId!)}`,
-                                        { scroll: false },
-                                      );
-                                    }}
-                                  >
-                                    Remind me later
-                                  </Button>
-                                ) : null}
-                                {item.unread ? (
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    disabled={busy}
-                                    onClick={() => void markRead([item.id])}
-                                  >
-                                    Mark read
-                                  </Button>
-                                ) : null}
-                              </div>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="col-start-2 justify-self-start sm:col-start-3 sm:row-start-1 sm:self-center sm:justify-self-end"
-                              onClick={() => void openItem(item)}
+                      <section
+                        key={group.id}
+                        aria-labelledby={`inbox-${group.id}`}
+                        className="space-y-4"
+                      >
+                        <div className="flex flex-wrap items-end justify-between gap-4">
+                          <div className="max-w-2xl">
+                            <h3
+                              id={`inbox-${group.id}`}
+                              className="font-sans text-lg font-semibold"
                             >
-                              {item.actionLabel}
-                              <ArrowRight />
-                            </Button>
-                          </article>
-                        ))}
-                      </div>
-                    </section>
+                              {group.id === "attention"
+                                ? "Needs attention"
+                                : group.title}
+                            </h3>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              <Sp>{group.description}</Sp>
+                            </p>
+                          </div>
+                          <span className="text-sm text-muted-foreground tabular-nums">
+                            {group.items.length}{" "}
+                            {group.items.length === 1 ? "update" : "updates"}
+                          </span>
+                        </div>
+                        <div className="divide-y divide-border border-y border-border">
+                          {group.items.map((item) => (
+                            <article
+                              key={item.id}
+                              className={`grid grid-cols-[auto_minmax(0,1fr)] gap-4 px-3 py-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-5 ${item.unread ? "bg-secondary" : ""}`}
+                            >
+                              <span className="mt-1 shrink-0 text-primary">
+                                {iconFor(item)}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="mb-2 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+                                  <span>{item.category}</span>
+                                  <time dateTime={item.createdAt}>
+                                    {dateLabel(item.createdAt)}
+                                  </time>
+                                </div>
+                                <button
+                                  className="text-start outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
+                                  onClick={() => void openItem(item)}
+                                  aria-label={`${item.actionLabel}: ${item.title}`}
+                                >
+                                  <span className="block font-sans text-lg font-semibold">
+                                    {item.title}
+                                  </span>
+                                  <span className="mt-2 block text-sm leading-relaxed text-muted-foreground">
+                                    {item.summary}
+                                  </span>
+                                </button>
+                                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                                  <span>
+                                    <span className="font-medium text-foreground">
+                                      Why you&apos;re seeing this:{" "}
+                                    </span>
+                                    {item.reason}
+                                  </span>
+                                  {item.reminderId ? (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => {
+                                        setView("reminders");
+                                        router.replace(
+                                          `/inbox?view=reminders&reminder=${encodeURIComponent(item.reminderId!)}`,
+                                          { scroll: false },
+                                        );
+                                      }}
+                                    >
+                                      Remind me later
+                                    </Button>
+                                  ) : null}
+                                  {item.unread ? (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      disabled={busy}
+                                      onClick={() => void markRead([item.id])}
+                                    >
+                                      Mark read
+                                    </Button>
+                                  ) : null}
+                                </div>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="col-start-2 justify-self-start sm:col-start-3 sm:row-start-1 sm:self-center sm:justify-self-end"
+                                onClick={() => void openItem(item)}
+                              >
+                                {item.actionLabel}
+                                <ArrowRight />
+                              </Button>
+                            </article>
+                          ))}
+                        </div>
+                      </section>
                     ) : null,
                   )}
                 </>
