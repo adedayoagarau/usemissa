@@ -483,12 +483,6 @@
       "<textarea>": 3,
       "<select>": 3
     },
-    "components/organization-product-shell.tsx": {
-      "<button>": 3,
-      "<select>": 1,
-      "<input>": 1,
-      "role=dialog": 1
-    },
     "components/organization-seats.tsx": {
       "<select>": 1,
       "<button>": 1
