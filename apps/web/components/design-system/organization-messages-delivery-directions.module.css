@@ -345,8 +345,8 @@
   position: relative;
   margin-bottom: 16px;
   padding-right: 190px;
-  border-color: color-mix(in srgb, var(--warning, #a56b16) 28%, var(--border));
-  background: color-mix(in srgb, #fff 96%, var(--warning, #a56b16) 4%);
+  border-color: color-mix(in srgb, var(--warning) 28%, var(--border));
+  background: color-mix(in srgb, #fff 96%, var(--warning) 4%);
 }
 
 .fixtureAlert > button {
@@ -363,10 +363,10 @@
   gap: 9px;
   margin-bottom: 14px;
   padding: 10px 13px;
-  border: 1px solid color-mix(in srgb, var(--success, #47704d) 30%, var(--border));
+  border: 1px solid color-mix(in srgb, var(--success) 30%, var(--border));
   border-radius: 8px;
-  background: color-mix(in srgb, #fff 95%, var(--success, #47704d) 5%);
-  color: color-mix(in srgb, var(--success, #47704d) 85%, black);
+  background: color-mix(in srgb, #fff 95%, var(--success) 5%);
+  color: color-mix(in srgb, var(--success) 85%, black);
   font-size: 11px;
   font-weight: 620;
 }
@@ -547,7 +547,7 @@
 .recordCopy strong { font-size: 12px; line-height: 1.3; }
 .recordCopy small { color: var(--muted-foreground); font-size: 9px; }
 .recordCopy > span { display: flex; min-width: 0; align-items: center; gap: 7px; }
-.recordCopy small[data-attention='true'] { color: color-mix(in srgb, var(--warning, #a56b16) 85%, black); font-weight: 650; }
+.recordCopy small[data-attention='true'] { color: color-mix(in srgb, var(--warning) 85%, black); font-weight: 650; }
 
 .stateChip {
   display: inline-flex;
@@ -566,21 +566,21 @@
 }
 
 .stateChip[data-tone='positive'] {
-  border-color: color-mix(in srgb, var(--success, #47704d) 28%, var(--border));
-  background: color-mix(in srgb, #fff 91%, var(--success, #47704d) 9%);
-  color: color-mix(in srgb, var(--success, #47704d) 88%, black);
+  border-color: color-mix(in srgb, var(--success) 28%, var(--border));
+  background: color-mix(in srgb, #fff 91%, var(--success) 9%);
+  color: color-mix(in srgb, var(--success) 88%, black);
 }
 
 .stateChip[data-tone='attention'] {
-  border-color: color-mix(in srgb, var(--warning, #a56b16) 32%, var(--border));
-  background: color-mix(in srgb, #fff 90%, var(--warning, #a56b16) 10%);
-  color: color-mix(in srgb, var(--warning, #a56b16) 88%, black);
+  border-color: color-mix(in srgb, var(--warning) 32%, var(--border));
+  background: color-mix(in srgb, #fff 90%, var(--warning) 10%);
+  color: color-mix(in srgb, var(--warning) 88%, black);
 }
 
 .stateChip[data-tone='information'] {
-  border-color: color-mix(in srgb, var(--info, #497080) 30%, var(--border));
-  background: color-mix(in srgb, #fff 91%, var(--info, #497080) 9%);
-  color: color-mix(in srgb, var(--info, #497080) 88%, black);
+  border-color: color-mix(in srgb, var(--information) 30%, var(--border));
+  background: color-mix(in srgb, #fff 91%, var(--information) 9%);
+  color: color-mix(in srgb, var(--information) 88%, black);
 }
 
 .detailPanel { overflow: hidden; }
@@ -790,8 +790,8 @@
 }
 
 .taskGroup li + li { border-top: 1px solid var(--border); }
-.taskGroup li[data-state='Blocked'] { background: color-mix(in srgb, #fff 95%, var(--warning, #a56b16) 5%); }
-.taskGroup li[data-state='Complete'] { background: color-mix(in srgb, #fff 97%, var(--success, #47704d) 3%); }
+.taskGroup li[data-state='Blocked'] { background: color-mix(in srgb, #fff 95%, var(--warning) 5%); }
+.taskGroup li[data-state='Complete'] { background: color-mix(in srgb, #fff 97%, var(--success) 3%); }
 
 .taskIcon { display: grid; width: 26px; height: 26px; place-items: center; color: var(--muted-foreground); }
 .taskIcon svg { width: 17px; height: 17px; }

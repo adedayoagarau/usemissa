@@ -27,7 +27,7 @@
 .panelHeading { margin: 20px 0 24px; }
 .panelHeading h2 { margin: 7px 0 8px; font-family: var(--font-heading), Georgia, serif; font-size: clamp(34px, 4vw, 48px); font-weight: 600; letter-spacing: -.035em; }
 .panelHeading > p:last-child { max-width: 540px; margin: 0; color: var(--muted-foreground); font-size: 11px; line-height: 1.55; }
-.returnContext { display: grid; gap: 11px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: color-mix(in srgb, var(--mineral-blue, #476b7a) 5%, white); grid-template-columns: 20px minmax(0, 1fr); }
+.returnContext { display: grid; gap: 11px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: color-mix(in srgb, var(--mineral-blue) 5%, white); grid-template-columns: 20px minmax(0, 1fr); }
 .returnContext > svg { width: 17px; color: var(--primary); }
 .returnContext div { display: grid; gap: 3px; }
 .returnContext p { margin: 0; color: var(--muted-foreground); font-size: 8px; }

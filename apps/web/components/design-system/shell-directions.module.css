@@ -56,8 +56,8 @@
 .pageHeading p { margin: 0; color: var(--muted-foreground); font: 8px var(--font-mono), monospace; letter-spacing: .09em; text-transform: uppercase; }
 .pageHeading h2 { max-width: 850px; margin: 7px 0; font-family: var(--font-heading), Georgia, serif; font-size: clamp(32px, 4vw, 48px); font-weight: 600; letter-spacing: -.035em; }
 .pageHeading span { display: block; max-width: 670px; color: var(--muted-foreground); font-size: 11px; line-height: 1.55; }
-.notice { display: grid; min-height: 70px; align-items: center; gap: 11px; margin-bottom: 18px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 11px; background: color-mix(in srgb, var(--mineral-blue, #476b7a) 5%, white); grid-template-columns: 21px minmax(0, 1fr) auto; }
-.notice[data-tone='attention'] { background: color-mix(in srgb, var(--ochre, #a2712a) 7%, white); }
+.notice { display: grid; min-height: 70px; align-items: center; gap: 11px; margin-bottom: 18px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 11px; background: color-mix(in srgb, var(--mineral-blue) 5%, white); grid-template-columns: 21px minmax(0, 1fr) auto; }
+.notice[data-tone='attention'] { background: color-mix(in srgb, var(--ochre) 7%, white); }
 .notice[data-tone='danger'] { background: color-mix(in srgb, var(--destructive) 5%, white); }
 .notice > svg { width: 18px; color: var(--primary); }
 .notice div { display: grid; gap: 3px; }

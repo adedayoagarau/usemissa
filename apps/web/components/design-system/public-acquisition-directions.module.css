@@ -86,8 +86,8 @@
 .capabilityList article:last-child { border: 0; }
 .capabilityList strong { font-size: 11px; }
 .capabilityList p { margin: 5px 0 0; color: var(--muted-foreground); font-size: 9px; line-height: 1.45; }
-.capabilityList [data-state='planned'] { border-color: color-mix(in srgb, var(--ochre, #a2712a) 45%, var(--border)); }
-.boundaryAlert { margin-top: 18px; background: color-mix(in srgb, var(--mineral-blue, #476b7a) 5%, white); }
+.capabilityList [data-state='planned'] { border-color: color-mix(in srgb, var(--ochre) 45%, var(--border)); }
+.boundaryAlert { margin-top: 18px; background: color-mix(in srgb, var(--mineral-blue) 5%, white); }
 .guideList { border-top: 1px solid var(--border); }
 .guideList > a { display: grid; min-height: 120px; align-items: center; gap: 16px; padding: 18px 4px; border-bottom: 1px solid var(--border); color: inherit; grid-template-columns: 30px minmax(0, 1fr) 20px; }
 .guideList > a > span { color: var(--primary); font: 9px var(--font-mono), monospace; }
@@ -142,7 +142,7 @@
 .accessPage aside > svg { width: 24px; color: var(--primary); }
 .accessPage aside h3 { font-family: var(--font-heading), Georgia, serif; font-size: 22px; }
 .accessPage aside p { color: var(--muted-foreground); font-size: 10px; line-height: 1.55; }
-.successPanel { margin-top: 24px; background: color-mix(in srgb, var(--lichen, #65754b) 7%, white); }
+.successPanel { margin-top: 24px; background: color-mix(in srgb, var(--lichen) 7%, white); }
 .publicFooter { display: grid; min-height: 130px; align-items: center; gap: 20px; padding: 24px 30px; border-top: 1px solid var(--border); grid-template-columns: auto minmax(0, 1fr) auto; }
 .publicFooter strong { color: var(--primary); font-family: var(--font-heading), Georgia, serif; font-size: 22px; }
 .publicFooter p { color: var(--muted-foreground); font-size: 9px; }
