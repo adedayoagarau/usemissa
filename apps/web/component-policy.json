@@ -1245,7 +1245,13 @@
       "base": "span",
       "motion": "never",
       "implementation": "components/missa/hue-tile.tsx",
-      "boundary": "A small colour tile marking a record (a review round, a rubric criterion) with an icon or number on a categorical hue derived from the record's identity. Decorative and aria-hidden; the record's name always sits beside it."
+      "boundary": "A small colour tile marking a record (a review round, a rubric criterion) with an icon or number on a categorical hue derived from the record's identity. A fixed place such as a navigation destination names its hue instead, so no two destinations collide. Tone soft (tinted tile, icon in the hue's ink) is the resting state; tone solid marks the current page in CreatorShell. Decorative and aria-hidden; the record's name always sits beside it."
+    },
+    "CreatorShell": {
+      "base": "Sheet",
+      "motion": "finite-state-transition",
+      "implementation": "components/creator-shell.tsx",
+      "boundary": "The signed-in account rail and its mobile drawer. Destinations are grouped (Find, Plan and track, Your work, Switch to) as Links styled with the Button nav variant, each with a HueTile in its own fixed hue; the current page lifts its tile from soft to solid and keeps aria-current. Collapsed, the rail shows tiles only and names each in a Tooltip. The account is a PersonAvatar opening a DropdownMenu (Profile, Plan, Log out)."
     },
     "CalibrationBadge": {
       "base": "Badge",

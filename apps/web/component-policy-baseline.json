@@ -372,9 +372,6 @@
       "role=radiogroup": 3,
       "role=radio": 3
     },
-    "components/creator-shell.tsx": {
-      "<button>": 3
-    },
     "components/creator-workspace-preview.tsx": {
       "<button>": 4,
       "<input>": 1
