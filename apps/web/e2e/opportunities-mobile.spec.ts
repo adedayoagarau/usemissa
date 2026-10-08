@@ -19,7 +19,7 @@ test('signed-in Opportunity browse uses the creator rail at wide widths', async 
   await signUp(page);
   await page.goto('/opportunities?sort=recently-added');
   expect(await page.locator('article a[aria-label^="View "]').evaluateAll((links) => links.map((link) => link.getAttribute('href')))).toEqual(anonymousResults);
-  const navigation = page.getByRole('navigation', { name: 'Creator navigation' });
+  const navigation = page.getByRole('navigation', { name: 'Missa navigation' });
   await expect(navigation).toBeVisible();
   await expect(navigation.getByRole('link', { name: 'Opportunities' })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toHaveCount(0);
@@ -38,7 +38,7 @@ test('mobile Profile uses compact navigation and a canonical opportunity detail 
   await expect(trigger).toBeVisible();
   await trigger.click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByRole('navigation', { name: 'Creator navigation' })).toBeVisible();
+  await expect(dialog.getByRole('navigation', { name: 'Missa navigation' })).toBeVisible();
   await dialog.getByRole('link', { name: 'Following', exact: true }).click();
   await expect(dialog).toBeHidden();
   await expect(page).toHaveURL(/\/following$/);

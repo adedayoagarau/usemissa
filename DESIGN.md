@@ -257,6 +257,10 @@ green, teal, blue, indigo, purple, magenta, pink) each have three tokens in
    identity.
 3. Labels use `LabelPill`; feature code never picks a hue class directly.
 4. Forest remains the only action colour.
+5. Each account navigation destination keeps one hue on a `HueTile` (Home
+   teal, Inbox blue, Opportunities orange, and so on in `CreatorShell`). The
+   tile rests in its soft tone and turns solid on the current page, alongside
+   the `nav` button's muted fill and `aria-current`.
 
 ## 4. Typography
 

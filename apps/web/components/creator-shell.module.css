@@ -1,58 +1,44 @@
 .shell { min-height: 100vh; background: var(--background); }
-.skipLink { position: fixed; z-index: 60; inset-block-start: 8px; inset-inline-start: 8px; translate: 0 -160%; padding: 12px 16px; border-radius: 8px; background: var(--foreground); color: var(--background); text-decoration: none; }.skipLink:focus { translate: 0; }
-.rail { position: fixed; z-index: 30; inset-block: 0; inset-inline-start: 0; display: none; width: 248px; flex-direction: column; padding: 24px 16px; border-inline-end: 1px solid var(--border); background: color-mix(in srgb, var(--background) 94%, var(--mineral-blue-tint)); }
-.railHeader { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:0 4px 42px 8px; }
-.wordmark { color: var(--foreground); transition:opacity 140ms ease; }
-.collapseButton { display:grid; width:36px; height:36px; flex:0 0 36px; place-items:center; border:1px solid var(--border); border-radius:9px; background:var(--background); color:var(--muted-foreground); }
-.collapseButton:hover { color:var(--foreground); border-color:var(--border-strong); }
-.collapseButton svg { width:17px; }
-.navigation { display: grid; gap: 4px; }
-.navigation p { margin: 0 12px 8px; color: var(--muted-foreground); font-size: 12px; font-weight: 650; }
-.navigation a, .organization { display: flex; min-height: 44px; align-items: center; gap: 12px; padding: 0 12px; border-radius: 8px; color: var(--muted-foreground); font-size: 14px; font-weight: 550; text-decoration: none; }
-.navigation a svg, .organization svg { width: 18px; height: 18px; flex: 0 0 auto; stroke-width: 1.75; }
-.navigation a:hover, .organization:hover { background: var(--muted); color: var(--foreground); }
-.navigation a[aria-current="page"] { background: var(--accent); color: var(--primary); }
-.navigation a:focus-visible, .organization:focus-visible, .account button:focus-visible, .mobileLogout:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.organization { margin-top: 24px; border-top: 1px solid var(--border); border-radius: 0; padding-top: 16px; }
-.organization span { display: grid; }
-.organization small { font-size: 12px; font-weight: 400; }
-.account { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 10px; align-items: center; margin-top: auto; padding: 16px 8px 0; border-top: 1px solid var(--border); }
-.account > span { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 999px; background: var(--accent-deep); color: white; font-size: 13px; font-weight: 700; }
-.account div { display: grid; min-width: 0; }
-.account b, .account small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.account b { font-size: 13px; }.account small { color: var(--muted-foreground); font-size: 11px; }
-.account button { grid-column: 2; justify-self: start; border: 0; background: transparent; color: var(--muted-foreground); font-size: 12px; }
-.account .accountActions { display: flex; grid-column: 2; align-items: center; gap: 12px; }
-.accountActions a { color: var(--muted-foreground); font-size: 12px; text-decoration: none; }
-.accountActions a:hover, .accountActions a[aria-current="page"] { color: var(--foreground); }
-.accountActions a:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.account p { grid-column: 1 / -1; margin: 0; color: var(--destructive); font-size: 12px; }
+.skipLink { position: fixed; z-index: 60; inset-block-start: 8px; inset-inline-start: 8px; translate: 0 -160%; padding: 12px 16px; border-radius: 8px; background: var(--foreground); color: var(--background); text-decoration: none; }
+.skipLink:focus { translate: 0; }
+
+.rail { position: fixed; z-index: 30; inset-block: 0; inset-inline-start: 0; display: none; width: 256px; flex-direction: column; gap: 8px; padding: 20px 12px 12px; border-inline-end: 1px solid var(--sidebar-border); background: var(--sidebar); color: var(--sidebar-foreground); }
+.railHeader { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding-inline: 8px 0; margin-bottom: 8px; }
+.wordmark { color: var(--foreground); transition: opacity 140ms ease; }
+
+/* The list scrolls on short screens so the account stays in reach. */
+.navigation { display: grid; flex: 1 1 auto; align-content: start; gap: 16px; min-height: 0; overflow-y: auto; margin-inline: -4px; padding-inline: 4px; scrollbar-width: thin; }
+.group ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.groupLabel { margin: 0 0 4px; padding-inline: 12px; color: var(--muted-foreground); font-size: 12px; font-weight: 500; }
+
+.destination { height: auto; min-height: 44px; gap: 12px; padding-inline: 10px; font-weight: 500; }
+.destinationText { display: grid; min-width: 0; flex: 1 1 auto; text-align: start; line-height: 1.25; }
+/* The current page lifts its tile from tint to full colour. */
+.destination [data-slot="hue-tile"] { transition: background-color 140ms ease, color 140ms ease; }
+
+.account { display: grid; gap: 4px; padding-top: 12px; border-top: 1px solid var(--sidebar-border); }
+.accountTrigger { width: 100%; height: auto; min-height: 52px; justify-content: flex-start; gap: 10px; padding: 8px; }
+.accountText { display: grid; min-width: 0; flex: 1 1 auto; text-align: start; line-height: 1.3; }
+.accountChevron { color: var(--muted-foreground); }
+
 .mobileHeader { position: sticky; z-index: 20; top: 0; display: flex; height: 68px; align-items: center; justify-content: space-between; padding-inline: 24px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--background) 96%, transparent); }
-.drawer { width: min(88vw, 320px); padding: 24px 16px; }
-.drawer .navigation { margin-top: 24px; }
-.mobilePlan { display: flex; min-height: 44px; align-items: center; margin: 24px 0 0; padding: 0 12px; border-top: 1px solid var(--border); color: var(--muted-foreground); font-size: 14px; text-decoration: none; }
-.mobilePlan:hover, .mobilePlan[aria-current="page"] { color: var(--foreground); }
-.mobilePlan:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.mobilePlan + .mobileLogout { margin-top: 8px; }
-.mobileLogout { min-height: 44px; margin: 24px 12px 0; border: 0; background: transparent; color: var(--destructive); font: inherit; }
+.drawer { display: flex; width: min(88vw, 320px); flex-direction: column; gap: 12px; padding: 20px 12px 12px; }
+.drawerHeader { display: flex; min-height: 44px; align-items: center; padding-inline: 8px; }
 .content { min-width: 0; }
+
 @media (min-width: 1200px) {
   .rail { display: flex; }
   .mobileHeader { display: none; }
-  .content { padding-inline-start: 248px; }
-  .shell[data-rail-collapsed] .rail { width:76px; padding-inline:10px; }
-  .shell[data-rail-collapsed] .content { padding-inline-start:76px; }
-  .shell[data-rail-collapsed] .railHeader { justify-content:center; margin-inline:0; }
-  .shell[data-rail-collapsed] .wordmark { position:absolute; width:0; opacity:0; pointer-events:none; }
-  .shell[data-rail-collapsed] .navigation p,
-  .shell[data-rail-collapsed] .navigation a span,
-  .shell[data-rail-collapsed] .organization span,
-  .shell[data-rail-collapsed] .account div,
-  .shell[data-rail-collapsed] .account button,
-  .shell[data-rail-collapsed] .account p { display:none; }
-  .shell[data-rail-collapsed] .navigation a,
-  .shell[data-rail-collapsed] .organization { justify-content:center; padding-inline:0; }
-  .shell[data-rail-collapsed] .organization { border-top:0; }
-  .shell[data-rail-collapsed] .account { display:flex; justify-content:center; padding-inline:0; }
+  .content { padding-inline-start: 256px; }
+  .shell[data-rail-collapsed] .rail { width: 72px; padding-inline: 10px; }
+  .shell[data-rail-collapsed] .content { padding-inline-start: 72px; }
+  .shell[data-rail-collapsed] .railHeader { justify-content: center; padding-inline: 0; }
+  .shell[data-rail-collapsed] .wordmark { position: absolute; width: 0; opacity: 0; pointer-events: none; }
+  .shell[data-rail-collapsed] .rail .groupLabel { height: 1px; margin: 0 12px 8px; padding: 0; overflow: hidden; background: var(--sidebar-border); color: transparent; }
+  .shell[data-rail-collapsed] .rail .destinationText,
+  .shell[data-rail-collapsed] .rail .accountText,
+  .shell[data-rail-collapsed] .rail .accountChevron { display: none; }
+  .shell[data-rail-collapsed] .rail .destination,
+  .shell[data-rail-collapsed] .rail .accountTrigger { justify-content: center; padding-inline: 0; }
 }
-@media (prefers-reduced-motion: reduce) { .navigation a, .organization, .wordmark { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .wordmark, .destination [data-slot="hue-tile"] { transition: none; } }
