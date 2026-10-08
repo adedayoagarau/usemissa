@@ -7,6 +7,7 @@ import {
   getPublicProfileForOpportunity,
 } from '@/lib/publicProfileReads';
 import { taxonomyLabelFor } from '@/lib/opportunityTaxonomy';
+import { guideArticlesForOpportunity } from '@/lib/guideArticles';
 import { MissaSiteHeader, type HeaderSession } from '@/components/missa-site-header';
 import { OpportunityDetailView } from '@/components/opportunity-detail-view';
 import { PublicDiscoveryEvent } from '@/components/public-discovery-event';
@@ -104,6 +105,7 @@ export async function OpportunityDetailPageBody({
     }, new Map<string, string>()).values(),
   ).slice(0, 8);
   const hub = TYPE_HUBS[opportunity.type];
+  const guides = guideArticlesForOpportunity({ type: opportunity.type, feePaid: opportunity.fee.status === 'paid' });
 
   return (
     <div className="min-h-screen bg-card">
@@ -127,6 +129,11 @@ export async function OpportunityDetailPageBody({
         ) : null}
         <Link href="/opportunities" className="text-primary underline underline-offset-4">All open calls</Link>
         <Link href="/countries" className="text-primary underline underline-offset-4">Calls by country</Link>
+        {guides.map((article) => (
+          <Link key={article.slug} href={`/guides/${article.slug}`} className="text-primary underline underline-offset-4">
+            Guide: {article.title}
+          </Link>
+        ))}
       </nav>
     </div>
   );

@@ -4,7 +4,14 @@ import path from "node:path";
 import { test } from "node:test";
 
 import { discoveryCollection, discoveryGuides } from "./discoveryGuides";
-import { GUIDE_SECTIONS, guideArticle, guideArticles } from "./guideArticles";
+import {
+  GUIDE_SECTIONS,
+  guideArticle,
+  guideArticles,
+  guideArticlesFor,
+  guideArticlesForOpportunity,
+  guideListItems,
+} from "./guideArticles";
 import { headingId, parseGuide, plainText } from "./guideMarkdown";
 import { brandedTitle } from "./seo";
 
@@ -101,4 +108,46 @@ Yes, mostly.
   assert.deepEqual(parsed.sources.map((source) => source.host), ["example.org", "example.org"]);
   assert.equal(headingId("Fees & “free” calls"), "fees-free-calls");
   assert.equal(plainText(parseGuide("**Bold** and [link](/x)").blocks as Parameters<typeof plainText>[0]), "Bold and link");
+});
+
+test("pages outside /guides link to the guides that answer their question", () => {
+  const slugs = (path: string) => guideArticlesFor(path).map((article) => article.slug);
+  assert.deepEqual(slugs("/discover/residencies-no-fee"), [
+    "free-artist-residencies",
+    "how-to-apply-artist-residency",
+    "fully-funded-opportunities-nigeria-africa",
+  ]);
+  assert.equal(slugs("/residency/yaddo")[0], "how-to-apply-artist-residency");
+  assert.equal(slugs("/journal/the-paris-review")[0], "literary-magazine-acceptance-rates");
+  assert.equal(slugs("/countries/ng")[0], "fully-funded-opportunities-nigeria-africa");
+  assert.equal(slugs("/countries/gh")[0], "fully-funded-opportunities-nigeria-africa");
+  assert.equal(slugs("/countries/us")[0], "where-to-find-open-calls");
+  assert.equal(slugs("/discover/some-new-collection")[0], "where-to-find-open-calls");
+  assert.deepEqual(slugs("/about"), []);
+  for (const path of ["/discover/magazines", "/rankings/magazines", "/methodology", "/journals"]) {
+    const linked = guideArticlesFor(path);
+    assert.ok(linked.length > 0 && linked.length <= 3, path);
+  }
+  assert.equal(
+    guideArticlesForOpportunity({ type: "residency", feePaid: true })[0]?.slug,
+    "how-to-apply-artist-residency",
+  );
+  assert.equal(
+    guideArticlesForOpportunity({ type: "open-call", feePaid: true })[0]?.slug,
+    "entry-fees-hanging-fees-participation-fees",
+  );
+});
+
+test("list articles name the items their comparison table covers", () => {
+  const sites = guideListItems(guideArticle("where-to-find-open-calls")!);
+  assert.equal(sites.length, 10);
+  assert.deepEqual(sites[0], {
+    name: "ArtConnect",
+    url: "https://www.artconnect.com/opportunities/opencalls?types=OPEN_CALL",
+  });
+  const trackers = guideListItems(guideArticle("duotrope-alternatives")!);
+  assert.ok(trackers.some((item) => item.name === "Spreadsheet" && !item.url));
+  const magazines = guideListItems(guideArticle("best-literary-magazines-to-submit-to")!);
+  assert.equal(magazines[0]?.name, "The New Yorker");
+  assert.deepEqual(guideListItems(guideArticle("free-artist-residencies")!), []);
 });

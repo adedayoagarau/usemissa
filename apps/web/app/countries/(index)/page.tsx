@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Globe, ArrowRight } from "lucide-react";
 import { PublicSiteShell } from "@/components/public-site-shell";
+import { GuideLinks } from "@/components/missa/guide-links";
 import { pageMetadata, JsonLd, absoluteUrl } from "@/lib/seo";
 import {
   CANONICAL_COUNTRIES,
@@ -229,6 +230,9 @@ export default async function CountriesPage() {
             </div>
           </section>
         )}
+        <div className="mt-12">
+          <GuideLinks path="/countries" />
+        </div>
       </div>
     </PublicSiteShell>
   );

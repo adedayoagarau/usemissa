@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, MapPin, Search } from "lucide-react";
 import {
@@ -38,6 +39,7 @@ export function DirectoryBrowseView({
   basePath = "/directory",
   title = "Find your creative community.",
   description = "Explore residencies, journals, presses and arts organizations worldwide.",
+  guides,
 }: {
   items: ProfileCard[];
   total: number;
@@ -52,6 +54,8 @@ export function DirectoryBrowseView({
   basePath?: string;
   title?: string;
   description?: string;
+  /** Guides for this kind of record, after the results. */
+  guides?: ReactNode;
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
   function href(
@@ -369,6 +373,7 @@ export function DirectoryBrowseView({
           </PaginationContent>
         </Pagination>
       )}
+      {guides ? <div className="mt-12">{guides}</div> : null}
     </main>
   );
 }

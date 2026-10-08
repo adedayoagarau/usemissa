@@ -27,6 +27,7 @@ import { GuideTocDisclosure, GuideTocRail } from "@/components/missa/guide-toc";
 import { getPublicOpportunityPage } from "@/lib/publicOpportunityReads";
 import { discoveryCollection } from "@/lib/discoveryGuides";
 import {
+  guideListItems,
   relatedGuideArticles,
   type GuideArticleWithBody,
 } from "@/lib/guideArticles";
@@ -34,7 +35,10 @@ import { JsonLd, absoluteUrl, breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
 import { contactMailto } from "@/lib/legalContact";
 import { cn } from "@/lib/utils";
 
-const SOCIAL_IMAGE = "/brand/missa-social-share.png";
+/** The guide's own share card, built by ./cover.png/route.tsx. */
+function coverImageUrl(slug: string): string {
+  return absoluteUrl(`/guides/${slug}/cover.png`);
+}
 
 export function guideArticleMetadata(article: GuideArticleWithBody): Metadata {
   const base = pageMetadata({
@@ -42,6 +46,13 @@ export function guideArticleMetadata(article: GuideArticleWithBody): Metadata {
     description: article.description,
     path: `/guides/${article.slug}`,
   });
+  const cover = {
+    url: coverImageUrl(article.slug),
+    width: 1200,
+    height: 630,
+    type: "image/png",
+    alt: article.title,
+  };
   return {
     ...base,
     authors: [{ name: article.author.name }],
@@ -52,7 +63,9 @@ export function guideArticleMetadata(article: GuideArticleWithBody): Metadata {
       modifiedTime: `${article.updatedAt}T00:00:00.000Z`,
       authors: [article.author.name],
       section: article.section,
+      images: [cover],
     },
+    twitter: { ...base.twitter, images: [cover.url] },
   };
 }
 
@@ -107,6 +120,7 @@ export async function GuideArticlePage({
     unavailable = true;
   }
   const related = relatedGuideArticles(article);
+  const listItems = guideListItems(article);
   const { parsed } = article;
 
   return (
@@ -132,7 +146,7 @@ export async function GuideArticlePage({
               description: article.description,
               url,
               mainEntityOfPage: url,
-              image: [absoluteUrl(SOCIAL_IMAGE)],
+              image: [coverImageUrl(article.slug)],
               datePublished: `${article.publishedAt}T00:00:00.000Z`,
               dateModified: `${article.updatedAt}T00:00:00.000Z`,
               articleSection: article.section,
@@ -158,6 +172,30 @@ export async function GuideArticlePage({
               isPartOf: { "@id": `${home}#website` },
             }}
           />
+          {/* The comparison table is on the page; ItemList names what it compares. */}
+          {listItems.length && article.itemList ? (
+            <JsonLd
+              data={{
+                "@context": "https://schema.org",
+                "@type": "ItemList",
+                name: article.itemList.name,
+                url,
+                numberOfItems: listItems.length,
+                itemListElement: listItems.map((item, index) => ({
+                  "@type": "ListItem",
+                  position: index + 1,
+                  name: item.name,
+                  ...(item.url
+                    ? {
+                        url: item.url.startsWith("/")
+                          ? absoluteUrl(item.url)
+                          : item.url,
+                      }
+                    : {}),
+                })),
+              }}
+            />
+          ) : null}
           {/* The questions below are visible on the page; FAQPage describes them. */}
           {parsed.faq.length ? (
             <JsonLd

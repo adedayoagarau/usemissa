@@ -1,5 +1,6 @@
 import { getProfileRepository } from "@/lib/profileRepository";
 import { PublicSiteShell } from "@/components/public-site-shell";
+import { GuideLinks } from "@/components/missa/guide-links";
 import { InstitutionProfileView } from "@/components/institution-profile-view";
 import { ResidencyIntelligenceDrawer } from "@/components/rankings/residency-intelligence-drawer";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -38,6 +39,7 @@ export default async function ResidencyDetailPage({ params }: { params: Promise<
       <ProfileJsonLd profile={profile} />
       <InstitutionProfileView
         profile={profile}
+        guides={<GuideLinks path={`/residency/${profile.slug}`} />}
         rankingSummary={
           <div className="flex items-center gap-3 pt-2">
             <ResidencyIntelligenceDrawer

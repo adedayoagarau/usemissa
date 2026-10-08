@@ -5,6 +5,7 @@ import Link from "next/link";
 import { unstable_cache } from "next/cache";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { PublicSiteShell } from "@/components/public-site-shell";
+import { GuideLinks } from "@/components/missa/guide-links";
 import { MagazineMethodology } from "@/components/rankings/magazine-methodology";
 import { BetaBadge } from "@/components/ui/beta-badge";
 import { Button } from "@/components/ui/button";
@@ -164,6 +165,9 @@ export default async function RankingsMethodologyPage() {
               </Button>
             </div>
           </section>
+        </div>
+        <div className="mt-12">
+          <GuideLinks path="/rankings/methodology" />
         </div>
       </main>
     </PublicSiteShell>

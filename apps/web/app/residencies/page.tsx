@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { listingMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { DirectoryCategoryPage } from "@/components/directory-category-page";
+import { GuideLinks } from "@/components/missa/guide-links";
 import { ResidencyRankingsInteractive } from "@/components/rankings/residency-rankings-interactive";
 import { getResidencyRankingRepository } from "@/lib/residencyRankingRepository";
 import { PublicSiteShell } from "@/components/public-site-shell";
@@ -63,6 +64,10 @@ export default async function Page({
 
           <ResidencyRankingsInteractive initialItems={page.items} />
 
+          <div className="mt-12">
+            <GuideLinks path="/residencies" />
+          </div>
+
           <footer className="mt-8 flex items-center justify-between border-t border-border pt-4 text-sm text-muted-foreground">
             <Link
               href="/rankings/methodology"
@@ -89,6 +94,7 @@ export default async function Page({
       title="Find space to make your work."
       description="Explore artist residency centers, studios and retreat programs worldwide."
       searchParams={searchParams}
+      guides={<GuideLinks path="/residencies" />}
     />
   );
 }

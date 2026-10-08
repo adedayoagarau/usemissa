@@ -16,5 +16,6 @@
   "illustrationAlt": "Call cards for art and writing, linked to one shortlist.",
   "liveCalls": "closing-this-week",
   "cta": { "label": "Browse open calls", "href": "/opportunities" },
-  "related": ["entry-fees-hanging-fees-participation-fees", "duotrope-alternatives"]
+  "related": ["entry-fees-hanging-fees-participation-fees", "duotrope-alternatives"],
+  "itemList": { "name": "Open call websites compared", "table": 0, "column": 0 }
 }

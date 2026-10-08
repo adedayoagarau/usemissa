@@ -9,6 +9,7 @@ import { OpportunityBrowsePagination } from "@/components/opportunity-browse-pag
 
 import type { OpportunityBrowseProjection } from "@missa/radar-engine";
 import { PublicSiteShell } from "@/components/public-site-shell";
+import { GuideLinks } from "@/components/missa/guide-links";
 import { EditorialMotif } from "@/components/missa/editorial-motif";
 import { headerSessionFor } from "@/lib/headerSession";
 import { OpportunityBrowseProjectCard } from "@/components/design-system/opportunity-browse-project-card";
@@ -246,6 +247,9 @@ export default async function DiscoveryCollectionPage({
             />
           )}
         </section>
+        <div className={styles.results}>
+          <GuideLinks path={`/discover/${collection.slug}`} />
+        </div>
       </main>
     </PublicSiteShell>
   );

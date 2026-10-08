@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { listingMetadata } from "@/lib/seo";
 import { DirectoryCategoryPage } from "@/components/directory-category-page";
+import { GuideLinks } from "@/components/missa/guide-links";
 export const dynamic = "force-dynamic";
 export function generateMetadata({
   searchParams,
@@ -29,6 +30,7 @@ export default function Page({
       title="Find a home for your writing."
       description="Explore literary journals and magazines publishing poetry, fiction and essays."
       searchParams={searchParams}
+      guides={<GuideLinks path="/journals" />}
     />
   );
 }

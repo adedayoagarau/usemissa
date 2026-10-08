@@ -10,6 +10,7 @@ import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
 import { getProfileRepository } from "@/lib/profileRepository";
 import { PublicSiteShell } from "@/components/public-site-shell";
+import { GuideLinks } from "@/components/missa/guide-links";
 import { headerSessionFor } from "@/lib/headerSession";
 import { InstitutionProfileView } from "@/components/institution-profile-view";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -80,6 +81,7 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
     <PublicSiteShell current="Directory" session={headerSessionFor(session)}>
       <ProfileJsonLd profile={displayProfile} />
       <InstitutionProfileView profile={displayProfile} opportunityActions={opportunityActions}
+        guides={<GuideLinks path={`/journal/${profile.slug}`} />}
         rankingSummary={primary ? <div className="flex flex-wrap items-center gap-3 py-3 text-sm">
           <Link href="#profile-rankings">#{primary.rankPosition} {primary.genre === "overall" ? "Overall" : primary.genre} · {primary.totalScore} pts</Link>
           <RankingTierBadge tier={primary.prestigeTier} />

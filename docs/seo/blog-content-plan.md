@@ -115,7 +115,7 @@ keyword as the primary instead.
 | Dates | "Published" and "Updated" dates, in the page and in the schema. |
 | Sources | Link every number and every claim about another product to its source, opening in the same tab. |
 | Images | One header illustration, plus diagrams where they explain something. Follow "Images" in the messaging doc. Descriptive alt text. Never call an illustration a photo. |
-| Internal links | The links listed in each brief, plus two related articles. Write descriptive anchor text, never "click here". |
+| Internal links | The links listed in each brief, plus two related articles. Write descriptive anchor text, never "click here". Links *into* each article from the rest of the site are set in `GUIDE_PLACEMENTS` in `apps/web/lib/guideArticles.ts`; add a new article there when it publishes. |
 | CTA | One, at the end, matching the article. "Browse open calls" or "Get Missa free". Never a pop-up. |
 
 ### Structured data
