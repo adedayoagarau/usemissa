@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { currentYear, listingMetadata } from "@/lib/seo";
 import { cookies } from "next/headers";
 import { PublicSiteShell } from "@/components/public-site-shell";
+import { GuideLinks } from "@/components/missa/guide-links";
 import { headerSessionFor } from "@/lib/headerSession";
 import { MagazineRankingsInteractive } from "@/components/rankings/magazine-rankings-interactive";
 import {
@@ -118,6 +119,9 @@ export default async function MagazineRankingsPage({
             signedIn={Boolean(session)}
           />
         )}
+        <div className="mt-12">
+          <GuideLinks path="/rankings/magazines" />
+        </div>
         <footer className="mt-8 border-t border-border pt-4">
           <Link href="/rankings/methodology" className="inline-flex min-h-11 items-center text-sm text-primary underline underline-offset-4">Methodology</Link>
         </footer>

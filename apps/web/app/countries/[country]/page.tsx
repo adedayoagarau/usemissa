@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { ArrowRight, Building2, Globe, MapPin } from "lucide-react";
 import { PublicSiteShell } from "@/components/public-site-shell";
+import { GuideLinks } from "@/components/missa/guide-links";
 import { pageMetadata, JsonLd, breadcrumbJsonLd, absoluteUrl, currentYear } from "@/lib/seo";
 import { CANONICAL_COUNTRIES, normalizeCountry } from "@missa/contracts";
 import { getSemanticUrlForProfile } from "@missa/radar-adapters";
@@ -356,6 +357,9 @@ export default async function CountryHubPage({
               </div>
             )}
           </section>
+        </div>
+        <div className="mt-12">
+          <GuideLinks path={`/countries/${countryCode.toLowerCase()}`} />
         </div>
       </main>
     </PublicSiteShell>

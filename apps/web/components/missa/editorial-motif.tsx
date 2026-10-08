@@ -5,9 +5,22 @@ export type EditorialMotifName = "orbit" | "burst" | "steps" | "frame";
  * It draws in `currentColor`, so the cover's graphic role sets its color, and
  * it is hidden from assistive technology by the cover that holds it.
  */
-export function EditorialMotif({ motif }: { motif: EditorialMotifName }) {
+export function EditorialMotif({
+  motif,
+  size,
+}: {
+  motif: EditorialMotifName;
+  /** A fixed size in pixels, for renderers without CSS such as share images. */
+  size?: number;
+}) {
   return (
-    <svg viewBox="0 0 240 240" focusable="false" aria-hidden="true">
+    <svg
+      viewBox="0 0 240 240"
+      width={size}
+      height={size}
+      focusable="false"
+      aria-hidden="true"
+    >
       {motif === "burst" ? (
         Array.from({ length: 16 }, (_, i) => (
           <path
@@ -18,13 +31,15 @@ export function EditorialMotif({ motif }: { motif: EditorialMotifName }) {
           />
         ))
       ) : motif === "steps" ? (
-        <>
+        // Groups, not fragments: the share-image renderer only accepts SVG
+        // elements inside <svg>.
+        <g>
           <path
             d="M30 200V150H80V100H130V50H180V10H220V200Z"
             fill="currentColor"
           />
           <path d="M10 220H230" stroke="currentColor" strokeWidth="2" />
-        </>
+        </g>
       ) : motif === "frame" ? (
         [0, 1, 2, 3].map((i) => (
           <rect
@@ -41,7 +56,7 @@ export function EditorialMotif({ motif }: { motif: EditorialMotifName }) {
           />
         ))
       ) : (
-        <>
+        <g>
           {[0, 60, 120].map((angle) => (
             <ellipse
               key={angle}
@@ -56,7 +71,7 @@ export function EditorialMotif({ motif }: { motif: EditorialMotifName }) {
             />
           ))}
           <circle cx="120" cy="120" r="14" fill="currentColor" />
-        </>
+        </g>
       )}
     </svg>
   );

@@ -21,5 +21,6 @@
   "illustrationAlt": "Illustration of three steps for building a magazine shortlist: read the work, compare terms, choose a group.",
   "liveCalls": "magazines",
   "cta": { "label": "See the magazine rankings", "href": "/rankings/magazines" },
-  "related": ["literary-magazine-acceptance-rates", "literary-magazine-submission-fees"]
+  "related": ["literary-magazine-acceptance-rates", "literary-magazine-submission-fees"],
+  "itemList": { "name": "Literary magazines worth reading first", "table": 1, "column": 1 }
 }

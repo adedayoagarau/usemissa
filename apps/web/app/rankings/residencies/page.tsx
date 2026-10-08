@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { unstable_cache } from "next/cache";
 import { currentYear, pageMetadata } from "@/lib/seo";
 import { PublicSiteShell } from "@/components/public-site-shell";
+import { GuideLinks } from "@/components/missa/guide-links";
 import { ResidencyRankingsInteractive } from "@/components/rankings/residency-rankings-interactive";
 import {
   Empty,
@@ -89,6 +90,10 @@ export default async function ResidencyRankingsPage() {
             signedIn={Boolean(session)}
           />
         )}
+
+        <div className="mt-12">
+          <GuideLinks path="/rankings/residencies" />
+        </div>
 
         <footer className="mt-8 border-t border-border pt-4">
           <Link

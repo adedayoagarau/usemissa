@@ -1355,6 +1355,12 @@
       "studioReferences": ["typography-01", "typography-02", "typography-03", "typography-05", "typography-06", "typography-08", "typography-09", "typography-10", "typography-11", "typography-12", "typography-15"],
       "boundary": "Class recipes for long-form guide text on plain elements: display and section headings in Newsreader, body large and lists in Instrument Sans, inline code and dates in Fragment Mono, Forest links. Never applied to components/ui primitives."
     },
+    "GuideLinks": {
+      "base": "Item",
+      "motion": "never",
+      "implementation": "components/missa/guide-links.tsx",
+      "boundary": "Links from a page outside /guides to up to three guides that answer its question, chosen by path in lib/guideArticles.ts (GUIDE_PLACEMENTS). Outline Items in a responsive grid; renders nothing when no guide fits. The page owns the spacing around it."
+    },
     "GuideChecklist": {
       "base": "Checkbox",
       "motion": "never",

@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { ArrowRight, ExternalLink } from 'lucide-react';
 import type { OpportunityBrowseProjection } from '@missa/radar-engine';
 import { PublicSiteShell } from '@/components/public-site-shell';
+import { GuideLinks } from '@/components/missa/guide-links';
 import { PublicDiscoveryEvent } from '@/components/public-discovery-event';
 import { getPublicOpportunityPage } from '@/lib/publicOpportunityReads';
 import {
@@ -156,6 +157,9 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
               </>
             )}
           </aside>
+        </div>
+        <div className={styles.section}>
+          <GuideLinks path={path} />
         </div>
       </main>
     </PublicSiteShell>

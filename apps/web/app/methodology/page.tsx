@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ArrowRight, ExternalLink } from 'lucide-react';
 import { PublicSiteShell } from '@/components/public-site-shell';
+import { GuideLinks } from '@/components/missa/guide-links';
 import { JsonLd, absoluteUrl, breadcrumbJsonLd, pageMetadata } from '@/lib/seo';
 import styles from '../public-editorial.module.css';
 import { contactMailto } from "@/lib/legalContact";
@@ -22,5 +23,6 @@ export default function MethodologyPage() {
     <header className={styles.hero}><p className={styles.eyebrow}>How Missa works</p><h1>How we check a call</h1><p><Sp>We read the organizer’s page so you can decide faster. Pages change and rules have exceptions, so we always send you there before you apply. We can’t promise you’re eligible, that you’ll get in, or that a page won’t change.</Sp></p></header>
     <section className={styles.section} aria-labelledby="public-record-heading"><header className={styles.sectionHeader}><p className={styles.eyebrow}>What every call shows</p><h2 id="public-record-heading">Each fact on its own.</h2><p>A call that looks familiar can still have a different fee, deadline or rule. So each one gets checked and shown separately.</p></header><div className={styles.facts}>{facts.map(([title, copy]) => <article key={title}><h3><Sp>{title}</Sp></h3><p><Sp>{copy}</Sp></p></article>)}</div></section>
     <section className={styles.responsibility} aria-labelledby="responsibility-heading"><div><p className={styles.eyebrow}>Before you send</p><h2 id="responsibility-heading"><Sp>Read the organizer’s page once more.</Sp></h2><p>Check the deadline, the fee, who can apply, what to send, the rights and how to submit on their own page. If something on Missa looks wrong, tell us and we’ll fix it.</p><nav className={styles.actions}><Link href="/opportunities">Browse open calls <ArrowRight aria-hidden="true" /></Link><a href={contactMailto()}>Report a mistake <ExternalLink aria-hidden="true" /></a></nav></div><aside className={styles.notice}><strong>Listed isn’t the same as guaranteed</strong><p><Sp>Every call on Missa has passed our checks, but organizers change things. A call can still have gaps, clashes or a newer version on their page.</Sp></p></aside></section>
+    <div className={styles.section}><GuideLinks path="/methodology" /></div>
   </main></PublicSiteShell>;
 }

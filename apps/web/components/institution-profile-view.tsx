@@ -42,12 +42,14 @@ function humanize(value: string) {
   return value.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 export function InstitutionProfileView({
-  profile, rankingSummary, journalDetails, opportunityActions,
+  profile, rankingSummary, journalDetails, opportunityActions, guides,
 }: {
   profile: ProfileDetail;
   rankingSummary?: ReactNode;
   journalDetails?: ReactNode;
   opportunityActions?: Record<string, ReactNode>;
+  /** Guides for this kind of record, at the end of the page. */
+  guides?: ReactNode;
 }) {
   const meta = KIND_METADATA[profile.kind] || KIND_METADATA.all;
   const Icon = meta.icon;
@@ -657,6 +659,7 @@ export function InstitutionProfileView({
           source={curated?.source}
         />
       )}
+      {guides ? <div className="mt-12">{guides}</div> : null}
     </main>
   );
 }

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { ProfileKind } from "@missa/radar-adapters";
 import { getPublicProfileBrowse } from "@/lib/publicProfileReads";
 import { PublicSiteShell } from "./public-site-shell";
@@ -14,11 +15,13 @@ export async function DirectoryCategoryPage({
   title,
   description,
   searchParams,
+  guides,
 }: {
   kind: ProfileKind;
   basePath: string;
   title: string;
   description: string;
+  guides?: ReactNode;
   searchParams?: Promise<{
     q?: string;
     page?: string;
@@ -84,6 +87,7 @@ export async function DirectoryCategoryPage({
         activeCountry={activeCountry}
         activeSort={activeSort}
         loadFailed={loadFailed}
+        guides={guides}
       />
     </PublicSiteShell>
   );

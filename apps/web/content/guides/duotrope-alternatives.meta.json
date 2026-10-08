@@ -22,5 +22,6 @@
   "illustrationAlt": "Illustration of submission records moving from a spreadsheet into a tracker in three steps: export a copy, check records, keep a backup.",
   "liveCalls": "magazines",
   "cta": { "label": "Bring your spreadsheet", "href": "/import" },
-  "related": ["literary-magazine-acceptance-rates", "where-to-find-open-calls"]
+  "related": ["literary-magazine-acceptance-rates", "where-to-find-open-calls"],
+  "itemList": { "name": "Submission trackers compared", "table": 0, "column": 0 }
 }
