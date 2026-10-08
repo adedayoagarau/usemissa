@@ -335,13 +335,8 @@
       "<button>": 1
     },
     "components/calendar-workspace.tsx": {
-      "<button>": 41,
-      "<input>": 7,
-      "<textarea>": 1,
-      "role=button": 4,
-      "role=menu": 1,
-      "role=menuitem": 7,
-      "role=dialog": 4
+      "<button>": 11,
+      "role=button": 4
     },
     "components/chat/ask-missa.tsx": {
       "<button>": 2

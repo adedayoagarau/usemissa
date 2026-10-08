@@ -974,3 +974,6 @@
   .deadlineLane { min-width: 840px; }
   .calendar:has(.weekScroller) { overflow-x: auto; }
 }
+
+/* These sit inside the shared Dialog; keep their own widths over its default cap. */
+.modal, .moveConfirm, .opportunityPicker, .connectionModal { max-width: calc(100vw - 32px); }

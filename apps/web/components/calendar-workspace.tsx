@@ -52,6 +52,9 @@ import {
   AutocompleteList,
 } from "@/components/ui/autocomplete";
 import styles from "./calendar-workspace.module.css";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Sp, useSp } from "@/components/missa/spelling";
 type EventItem = PlanningEvent;
 type OpportunityOption = {
@@ -158,7 +161,6 @@ export function CalendarWorkspace({
   initialView?: CalendarView;
 }) {
   const sp = useSp();
-  const editorRef = useRef<HTMLElement>(null);
   const editorTriggerRef = useRef<HTMLElement | null>(null);
   const pendingMutation = useRef<{ signature: string; key: string } | null>(
     null,
@@ -310,7 +312,8 @@ export function CalendarWorkspace({
       > = data.provenance ?? {};
       const withProvenance = (event: EventItem): EventItem => {
         const fact =
-          event.opportunityId && isDeadlineLaneEvent(event) &&
+          event.opportunityId &&
+          isDeadlineLaneEvent(event) &&
           event.kind === "tracker"
             ? provenance[event.opportunityId]
             : undefined;
@@ -332,7 +335,8 @@ export function CalendarWorkspace({
         },
         isoDay(new Date()),
       ).map((event) =>
-        event.opportunityId && provenance[event.opportunityId] &&
+        event.opportunityId &&
+        provenance[event.opportunityId] &&
         event.kind !== "forecast"
           ? {
               ...event,
@@ -476,38 +480,13 @@ export function CalendarWorkspace({
       controller.abort();
     };
   }, [opportunityPicker, opportunityQuery]);
+  // The Dialog traps focus and closes on Escape; give focus back to what opened it.
   useEffect(() => {
     if (!editorOpen) return;
-    const editor = editorRef.current;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !saving) {
-        event.preventDefault();
-        setEditing(undefined);
-        return;
-      }
-      if (event.key !== "Tab" || !editor) return;
-      const controls = [
-        ...editor.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        ),
-      ];
-      const first = controls[0],
-        last = controls.at(-1);
-      if (!first || !last) return;
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener("keydown", onKeyDown);
       requestAnimationFrame(() => editorTriggerRef.current?.focus());
     };
-  }, [editorOpen, saving]);
+  }, [editorOpen]);
   const first = new Date(year, month, 1),
     start = new Date(first);
   start.setDate(1 - ((first.getDay() + 6) % 7));
@@ -1021,7 +1000,9 @@ export function CalendarWorkspace({
     .slice()
     .sort((a, b) => a.startAt.localeCompare(b.startAt));
   const laneButton = (event: EventItem) => (
-    <button
+    <Button
+      variant="ghost"
+      size="sm"
       key={event.id}
       type="button"
       className={`${styles.laneEvent} ${styles[event.color]}`}
@@ -1033,7 +1014,7 @@ export function CalendarWorkspace({
           ? `${event.sourceLabel ?? KIND_LABELS[event.kind]} · ${event.confidence === "changed" ? "Changed" : event.confidence === "predicted" ? "Predicted" : "Needs checking"}`
           : (event.sourceLabel ?? KIND_LABELS[event.kind])}
       </small>
-    </button>
+    </Button>
   );
   const monthEvents = visible.filter((event) => {
     const date = new Date(event.startAt);
@@ -1095,15 +1076,26 @@ export function CalendarWorkspace({
           ) : null}
         </div>
         {active ? (
-          <button onClick={() => disconnect(provider)}>Disconnect</button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => disconnect(provider)}
+          >
+            Disconnect
+          </Button>
         ) : providers.availability[provider] ? (
           <a href={`/api/me/calendar/connections/${provider}/start`}>
             {failed ? "Reconnect" : "Connect"}
           </a>
         ) : (
-          <button disabled title={`${label} OAuth is not configured`}>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled
+            title={`${label} OAuth is not configured`}
+          >
             Unavailable
-          </button>
+          </Button>
         )}
       </article>
     );
@@ -1140,6 +1132,7 @@ export function CalendarWorkspace({
           </dl>
           <div className={styles.heroActions}>
             <button
+              type="button"
               className={styles.connectionButton}
               data-state={
                 connectionProblem
@@ -1160,13 +1153,18 @@ export function CalendarWorkspace({
               {connectionLabel}
             </button>
             <button
+              type="button"
               className={styles.secondaryAction}
               onClick={() => addOpportunity()}
             >
               <CalendarDays />
               Add opportunity
             </button>
-            <button className={styles.primary} onClick={() => create()}>
+            <button
+              type="button"
+              className={styles.primary}
+              onClick={() => create()}
+            >
               <Plus />
               Add time
             </button>
@@ -1176,16 +1174,29 @@ export function CalendarWorkspace({
       <section className={styles.shell}>
         <header className={styles.toolbar}>
           <div>
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               aria-label={`Previous ${view}`}
               onClick={() => shiftCursor(-1)}
             >
               <ChevronLeft />
-            </button>
-            <button onClick={() => setCursor(new Date())}>Today</button>
-            <button aria-label={`Next ${view}`} onClick={() => shiftCursor(1)}>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCursor(new Date())}
+            >
+              Today
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={`Next ${view}`}
+              onClick={() => shiftCursor(1)}
+            >
               <ChevronRight />
-            </button>
+            </Button>
             <h2
               className={`font-sans ${view === "week" ? styles.weekTitle : ""}`}
             >
@@ -1200,7 +1211,7 @@ export function CalendarWorkspace({
           <label>
             <Search />
             <span className="sr-only">Search events</span>
-            <input
+            <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search your time"
@@ -1208,21 +1219,23 @@ export function CalendarWorkspace({
           </label>
           <nav>
             {(["month", "week", "day", "agenda"] as View[]).map((v) => (
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 key={v}
                 aria-pressed={view === v}
                 onClick={() => setView(v)}
               >
                 {v}
-              </button>
+              </Button>
             ))}
           </nav>
         </header>
         <div className={styles.legend} aria-label="Calendar filters">
           {calendarFilters.map((filter) => (
             <button
-              key={filter.key}
               type="button"
+              key={filter.key}
               className={styles.filterButton}
               data-active={filters[filter.key]}
               aria-pressed={filters[filter.key]}
@@ -1294,7 +1307,9 @@ export function CalendarWorkspace({
                           if (item) void move(item, key);
                         }}
                       >
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => {
                             setCursor(d);
                             setSelected(undefined);
@@ -1302,9 +1317,10 @@ export function CalendarWorkspace({
                           aria-label={`Open ${format(d.toISOString(), { dateStyle: "full" })}`}
                         >
                           {d.getDate()}
-                        </button>
+                        </Button>
                         {items.slice(0, 3).map((e) => (
                           <button
+                            type="button"
                             key={e.id}
                             draggable={
                               e.kind === "personal" || e.kind === "goal"
@@ -1416,164 +1432,167 @@ export function CalendarWorkspace({
               </>
             ) : view === "week" ? (
               <div className={styles.weekScroller}>
-              <div
-                className={styles.deadlineLane}
-                role="group"
-                aria-label="Deadlines this week"
-              >
-                <span className={styles.laneLabel}>Deadlines</span>
-                <div className={styles.laneDays}>
+                <div
+                  className={styles.deadlineLane}
+                  role="group"
+                  aria-label="Deadlines this week"
+                >
+                  <span className={styles.laneLabel}>Deadlines</span>
+                  <div className={styles.laneDays}>
+                    {weekDays.map((day) => {
+                      const key = isoDay(day),
+                        items = onDay(key).filter(isDeadlineLaneEvent);
+                      return (
+                        <div key={key} className={styles.laneDay}>
+                          <span className="sr-only">
+                            {format(day.toISOString(), { dateStyle: "full" })}
+                          </span>
+                          {items.map((event) => laneButton(event))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div
+                  className={styles.weekView}
+                  role="group"
+                  aria-label={`Week of ${format(weekDays[0].toISOString(), { dateStyle: "long" })}`}
+                >
                   {weekDays.map((day) => {
                     const key = isoDay(day),
-                      items = onDay(key).filter(isDeadlineLaneEvent);
+                      items = onDay(key).filter(
+                        (event) => !isDeadlineLaneEvent(event),
+                      ),
+                      isToday = key === isoDay(new Date());
                     return (
-                      <div key={key} className={styles.laneDay}>
-                        <span className="sr-only">
-                          {format(day.toISOString(), { dateStyle: "full" })}
-                        </span>
-                        {items.map((event) => laneButton(event))}
-                      </div>
+                      <section
+                        key={key}
+                        className={`${styles.weekDay} ${key === isoDay(cursor) ? styles.weekDaySelected : ""}`}
+                        onDragOver={(event) => event.preventDefault()}
+                        onDrop={(event) => {
+                          const item = events.find(
+                            (entry) =>
+                              entry.id ===
+                              event.dataTransfer.getData("text/calendar-event"),
+                          );
+                          if (item) void move(item, key);
+                        }}
+                        onDoubleClick={() => create(key)}
+                      >
+                        <button
+                          type="button"
+                          className={styles.weekDayHeading}
+                          onClick={() => {
+                            setCursor(day);
+                            setSelected(undefined);
+                          }}
+                        >
+                          <span>
+                            {format(day.toISOString(), { weekday: "short" })}
+                          </span>
+                          <strong className={isToday ? styles.weekToday : ""}>
+                            {day.getDate()}
+                          </strong>
+                        </button>
+                        <div className={styles.weekDayEvents}>
+                          {items.length ? (
+                            items.map((event) => (
+                              <button
+                                type="button"
+                                key={event.id}
+                                draggable={
+                                  event.kind === "personal" ||
+                                  event.kind === "goal"
+                                }
+                                onDragStart={(drag) =>
+                                  drag.dataTransfer.setData(
+                                    "text/calendar-event",
+                                    event.id,
+                                  )
+                                }
+                                onClick={() =>
+                                  event.kind === "personal"
+                                    ? edit(event)
+                                    : setSelected(event)
+                                }
+                                onKeyDown={(keyboardEvent) => {
+                                  if (
+                                    keyboardEvent.key === "ArrowLeft" ||
+                                    keyboardEvent.key === "ArrowRight"
+                                  ) {
+                                    keyboardEvent.preventDefault();
+                                    moveWithKeyboard(
+                                      event,
+                                      keyboardEvent.key === "ArrowRight"
+                                        ? "next"
+                                        : "previous",
+                                    );
+                                  }
+                                }}
+                                aria-keyshortcuts="ArrowLeft ArrowRight"
+                                className={`${styles.weekEvent} ${styles[event.color]}`}
+                              >
+                                {event.kind === "personal" ? (
+                                  <span
+                                    className={styles.resizeHandle}
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-label={`Shorten ${event.title}`}
+                                    onClick={(keyboardEvent) => {
+                                      keyboardEvent.stopPropagation();
+                                      void resizeEvent(event, -30);
+                                    }}
+                                  >
+                                    −
+                                  </span>
+                                ) : null}
+                                <span>
+                                  {event.kind === "tracker" ? (
+                                    <OpportunityMark
+                                      label={event.title}
+                                      tone={event.color}
+                                    />
+                                  ) : event.allDay ? (
+                                    "All day"
+                                  ) : (
+                                    format(event.startAt, {
+                                      hour: "numeric",
+                                      minute: "2-digit",
+                                    })
+                                  )}
+                                </span>
+                                <strong>{event.title}</strong>
+                                <small>{event.sourceLabel}</small>
+                                {event.kind === "personal" ? (
+                                  <span
+                                    className={styles.resizeHandle}
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-label={`Extend ${event.title}`}
+                                    onClick={(keyboardEvent) => {
+                                      keyboardEvent.stopPropagation();
+                                      void resizeEvent(event, 30);
+                                    }}
+                                  >
+                                    +
+                                  </span>
+                                ) : null}
+                              </button>
+                            ))
+                          ) : (
+                            <button
+                              type="button"
+                              className={styles.weekEmpty}
+                              onClick={() => create(key)}
+                            >
+                              + Add time
+                            </button>
+                          )}
+                        </div>
+                      </section>
                     );
                   })}
                 </div>
-              </div>
-              <div
-                className={styles.weekView}
-                role="group"
-                aria-label={`Week of ${format(weekDays[0].toISOString(), { dateStyle: "long" })}`}
-              >
-                {weekDays.map((day) => {
-                  const key = isoDay(day),
-                    items = onDay(key).filter(
-                      (event) => !isDeadlineLaneEvent(event),
-                    ),
-                    isToday = key === isoDay(new Date());
-                  return (
-                    <section
-                      key={key}
-                      className={`${styles.weekDay} ${key === isoDay(cursor) ? styles.weekDaySelected : ""}`}
-                      onDragOver={(event) => event.preventDefault()}
-                      onDrop={(event) => {
-                        const item = events.find(
-                          (entry) =>
-                            entry.id ===
-                            event.dataTransfer.getData("text/calendar-event"),
-                        );
-                        if (item) void move(item, key);
-                      }}
-                      onDoubleClick={() => create(key)}
-                    >
-                      <button
-                        className={styles.weekDayHeading}
-                        onClick={() => {
-                          setCursor(day);
-                          setSelected(undefined);
-                        }}
-                      >
-                        <span>
-                          {format(day.toISOString(), { weekday: "short" })}
-                        </span>
-                        <strong className={isToday ? styles.weekToday : ""}>
-                          {day.getDate()}
-                        </strong>
-                      </button>
-                      <div className={styles.weekDayEvents}>
-                        {items.length ? (
-                          items.map((event) => (
-                            <button
-                              key={event.id}
-                              draggable={
-                                event.kind === "personal" ||
-                                event.kind === "goal"
-                              }
-                              onDragStart={(drag) =>
-                                drag.dataTransfer.setData(
-                                  "text/calendar-event",
-                                  event.id,
-                                )
-                              }
-                              onClick={() =>
-                                event.kind === "personal"
-                                  ? edit(event)
-                                  : setSelected(event)
-                              }
-                              onKeyDown={(keyboardEvent) => {
-                                if (
-                                  keyboardEvent.key === "ArrowLeft" ||
-                                  keyboardEvent.key === "ArrowRight"
-                                ) {
-                                  keyboardEvent.preventDefault();
-                                  moveWithKeyboard(
-                                    event,
-                                    keyboardEvent.key === "ArrowRight"
-                                      ? "next"
-                                      : "previous",
-                                  );
-                                }
-                              }}
-                              aria-keyshortcuts="ArrowLeft ArrowRight"
-                              className={`${styles.weekEvent} ${styles[event.color]}`}
-                            >
-                              {event.kind === "personal" ? (
-                                <span
-                                  className={styles.resizeHandle}
-                                  role="button"
-                                  tabIndex={0}
-                                  aria-label={`Shorten ${event.title}`}
-                                  onClick={(keyboardEvent) => {
-                                    keyboardEvent.stopPropagation();
-                                    void resizeEvent(event, -30);
-                                  }}
-                                >
-                                  −
-                                </span>
-                              ) : null}
-                              <span>
-                                {event.kind === "tracker" ? (
-                                  <OpportunityMark
-                                    label={event.title}
-                                    tone={event.color}
-                                  />
-                                ) : event.allDay ? (
-                                  "All day"
-                                ) : (
-                                  format(event.startAt, {
-                                    hour: "numeric",
-                                    minute: "2-digit",
-                                  })
-                                )}
-                              </span>
-                              <strong>{event.title}</strong>
-                              <small>{event.sourceLabel}</small>
-                              {event.kind === "personal" ? (
-                                <span
-                                  className={styles.resizeHandle}
-                                  role="button"
-                                  tabIndex={0}
-                                  aria-label={`Extend ${event.title}`}
-                                  onClick={(keyboardEvent) => {
-                                    keyboardEvent.stopPropagation();
-                                    void resizeEvent(event, 30);
-                                  }}
-                                >
-                                  +
-                                </span>
-                              ) : null}
-                            </button>
-                          ))
-                        ) : (
-                          <button
-                            className={styles.weekEmpty}
-                            onClick={() => create(key)}
-                          >
-                            + Add time
-                          </button>
-                        )}
-                      </div>
-                    </section>
-                  );
-                })}
-              </div>
               </div>
             ) : (
               <div className={styles.agenda}>
@@ -1606,7 +1625,9 @@ export function CalendarWorkspace({
                 ) : null}
                 {agenda.length ? (
                   agenda.map((e) => (
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       key={e.id}
                       onClick={() =>
                         e.kind === "personal" ? edit(e) : setSelected(e)
@@ -1639,7 +1660,7 @@ export function CalendarWorkspace({
                           {e.sourceLabel ?? e.location ?? "Personal event"}
                         </small>
                       </span>
-                    </button>
+                    </Button>
                   ))
                 ) : (
                   <p>
@@ -1655,6 +1676,7 @@ export function CalendarWorkspace({
             <aside className={styles.inspector}>
               <>
                 <button
+                  type="button"
                   className={styles.close}
                   onClick={() => setSelected(undefined)}
                   aria-label="Close"
@@ -1681,7 +1703,9 @@ export function CalendarWorkspace({
                 {selected.confidence ? (
                   <div className={styles.provenance}>
                     <DateConfidenceBadge state={selected.confidence} />
-                    <small><Sp>{dateConfidenceDescription(selected.confidence)}</Sp></small>
+                    <small>
+                      <Sp>{dateConfidenceDescription(selected.confidence)}</Sp>
+                    </small>
                   </div>
                 ) : null}
                 <dl>
@@ -1745,11 +1769,13 @@ export function CalendarWorkspace({
                         <dt>Previous date</dt>
                         <dd>
                           Moved from{" "}
-                          {format(`${selected.previousDeadline.slice(0, 10)}T12:00:00`, {
-                            dateStyle: "medium",
-                          })}{" "}
-                          to{" "}
-                          {format(selected.startAt, { dateStyle: "medium" })}
+                          {format(
+                            `${selected.previousDeadline.slice(0, 10)}T12:00:00`,
+                            {
+                              dateStyle: "medium",
+                            },
+                          )}{" "}
+                          to {format(selected.startAt, { dateStyle: "medium" })}
                         </dd>
                       </span>
                     </div>
@@ -1768,22 +1794,26 @@ export function CalendarWorkspace({
                           What should happen to your preparation time?
                         </dd>
                         <span className={styles.reconciliationActions}>
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             disabled={saving}
                             onClick={() =>
                               void resolveDeadline("move-preparation")
                             }
                           >
                             Move preparation
-                          </button>
-                          <button
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             disabled={saving}
                             onClick={() =>
                               void resolveDeadline("keep-preparation")
                             }
                           >
                             Leave it
-                          </button>
+                          </Button>
                         </span>
                       </span>
                     </div>
@@ -1814,6 +1844,7 @@ export function CalendarWorkspace({
                             <>
                               {`Sync failed${selected.syncError ? ` · ${selected.syncError}` : ""}`}{" "}
                               <button
+                                type="button"
                                 className={styles.inlineAction}
                                 disabled={saving}
                                 onClick={() => void retrySync(selected)}
@@ -1853,13 +1884,13 @@ export function CalendarWorkspace({
                     ) : null}
                     {selected.opportunityId &&
                     canSetDeadlineReminder(selected) ? (
-                      <button
-                        className={buttonVariants({ variant: "outline" })}
+                      <Button
+                        variant="outline"
                         disabled={saving}
                         onClick={() => void addReminder(selected)}
                       >
                         <Bell /> Set reminder
-                      </button>
+                      </Button>
                     ) : null}
                     {selected.kind === "goal" && selected.sourceId ? (
                       <div className={styles.goalMoveControl}>
@@ -1867,12 +1898,14 @@ export function CalendarWorkspace({
                           Move goal date
                         </label>
                         <div>
-                          <input
+                          <Input
                             id="goal-calendar-date"
                             type="date"
                             defaultValue={selected.startAt.slice(0, 10)}
                           />
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             type="button"
                             onClick={() => {
                               const value = (
@@ -1888,7 +1921,7 @@ export function CalendarWorkspace({
                             }}
                           >
                             Move
-                          </button>
+                          </Button>
                         </div>
                         <small>This changes the date on your Goal too.</small>
                       </div>
@@ -1906,18 +1939,30 @@ export function CalendarWorkspace({
                     ) : null}
                     {selected.purpose === "preparation" &&
                     selected.opportunityId ? (
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         disabled={saving}
                         onClick={() => void addReminder(selected)}
                       >
                         <Bell /> Set reminder
-                      </button>
+                      </Button>
                     ) : null}
-                    <button onClick={() => edit(selected)}>Edit</button>
-                    <button onClick={() => void remove()}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => edit(selected)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void remove()}
+                    >
                       <Trash2 />
                       Delete
-                    </button>
+                    </Button>
                   </footer>
                 )}
               </>
@@ -1970,95 +2015,110 @@ export function CalendarWorkspace({
             left: Math.min(contextMenu.x, window.innerWidth - 230),
             top: Math.min(contextMenu.y, window.innerHeight - 210),
           }}
-          role="menu"
+          aria-label="Calendar actions"
           onClick={(event) => event.stopPropagation()}
         >
           {contextMenu.event ? (
             <>
               <p>{contextMenu.event.title}</p>
               {contextMenu.event.kind === "personal" ? (
-                <button
-                  role="menuitem"
+                <Button
+                  variant="ghost"
+                  size="sm"
+
                   onClick={() => {
                     edit(contextMenu.event!);
                     setContextMenu(undefined);
                   }}
                 >
                   Edit time
-                </button>
+                </Button>
               ) : (
-                <button
-                  role="menuitem"
+                <Button
+                  variant="ghost"
+                  size="sm"
+
                   onClick={() => {
                     setSelected(contextMenu.event);
                     setContextMenu(undefined);
                   }}
                 >
                   Open details
-                </button>
+                </Button>
               )}
               {contextMenu.event.kind === "goal" ? (
-                <button
-                  role="menuitem"
+                <Button
+                  variant="ghost"
+                  size="sm"
+
                   onClick={() => {
                     setSelected(contextMenu.event);
                     setContextMenu(undefined);
                   }}
                 >
                   Move goal date
-                </button>
+                </Button>
               ) : null}
               {contextMenu.event.kind === "personal" ? (
-                <button
-                  role="menuitem"
+                <Button
+                  variant="ghost"
+                  size="sm"
+
                   onClick={() => {
                     void remove(contextMenu.event);
                     setContextMenu(undefined);
                   }}
                 >
                   Delete
-                </button>
+                </Button>
               ) : null}
             </>
           ) : null}
-          <button
-            role="menuitem"
+          <Button
+            variant="ghost"
+            size="sm"
+
             onClick={() => addOpportunity(contextMenu.day)}
           >
             <Plus /> Add opportunity
-          </button>
-          <button
-            role="menuitem"
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+
             onClick={() => {
               create(contextMenu.day);
               setContextMenu(undefined);
             }}
           >
             <Clock3 /> Add preparation time
-          </button>
-          <button
-            role="menuitem"
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+
             onClick={() => {
               create(contextMenu.day);
               setContextMenu(undefined);
             }}
           >
             <CalendarDays /> New personal event
-          </button>
+          </Button>
         </div>
       ) : null}
       {pendingGoalMove ? (
-        <div
-          className={styles.backdrop}
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !saving)
-              setPendingGoalMove(undefined);
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              if (!saving) setPendingGoalMove(undefined);
+            }
           }}
         >
-          <section
+          <DialogContent
+            showCloseButton={false}
             className={styles.moveConfirm}
-            role="dialog"
-            aria-modal="true"
+
             aria-labelledby="move-goal-title"
           >
             <p>Change goal date</p>
@@ -2089,13 +2149,15 @@ export function CalendarWorkspace({
               time stays where you placed it.
             </p>
             <footer>
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 type="button"
                 disabled={saving}
                 onClick={() => setPendingGoalMove(undefined)}
               >
                 Keep current date
-              </button>
+              </Button>
               <Button
                 type="button"
                 disabled={saving}
@@ -2104,21 +2166,22 @@ export function CalendarWorkspace({
                 {saving ? "Moving…" : "Move goal date"}
               </Button>
             </footer>
-          </section>
-        </div>
+          </DialogContent>
+        </Dialog>
       ) : null}
       {opportunityPicker ? (
-        <div
-          className={styles.backdrop}
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget)
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open) {
               setOpportunityPicker(false);
+            }
           }}
         >
-          <section
+          <DialogContent
+            showCloseButton={false}
             className={styles.opportunityPicker}
-            role="dialog"
-            aria-modal="true"
+
             aria-labelledby="opportunity-picker-title"
           >
             <header className={styles.opportunityPickerHeader}>
@@ -2129,21 +2192,25 @@ export function CalendarWorkspace({
                 sizes="600px"
               />
               <div className={styles.opportunityPickerHeading}>
-                <span><Sp>Missa catalog</Sp></span>
+                <span>
+                  <Sp>Missa catalog</Sp>
+                </span>
                 <h2 id="opportunity-picker-title" className="font-heading">
                   Add an opportunity
                 </h2>
                 <p>
-                  Find the opportunity you want to work on. A call that is
-                  not in your Tracker yet is saved first, with its deadline.
+                  Find the opportunity you want to work on. A call that is not
+                  in your Tracker yet is saved first, with its deadline.
                 </p>
               </div>
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setOpportunityPicker(false)}
                 aria-label="Close"
               >
                 <X />
-              </button>
+              </Button>
             </header>
             <div className={styles.opportunityPickerBody}>
               <label htmlFor="calendar-opportunity-search">
@@ -2191,7 +2258,9 @@ export function CalendarWorkspace({
                               key={item.id}
                               value={item}
                               onClick={() => void chooseOpportunity(item)}
-                              aria-busy={opportunitySaving === item.id || undefined}
+                              aria-busy={
+                                opportunitySaving === item.id || undefined
+                              }
                             >
                               <OpportunityMark
                                 label={item.organizationName ?? item.title}
@@ -2247,25 +2316,31 @@ export function CalendarWorkspace({
               </Autocomplete>
               <footer>
                 <span>Press Esc to close</span>
-                <button onClick={() => setOpportunityPicker(false)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setOpportunityPicker(false)}
+                >
                   Cancel
-                </button>
+                </Button>
               </footer>
             </div>
-          </section>
-        </div>
+          </DialogContent>
+        </Dialog>
       ) : null}
       {connectionsOpen ? (
-        <div
-          className={styles.backdrop}
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setConnectionsOpen(false);
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setConnectionsOpen(false);
+            }
           }}
         >
-          <section
+          <DialogContent
+            showCloseButton={false}
             className={`${styles.modal} ${styles.connectionModal}`}
-            role="dialog"
-            aria-modal="true"
+
             aria-labelledby="calendar-connections-title"
           >
             <header className={styles.connectionHeader}>
@@ -2285,12 +2360,14 @@ export function CalendarWorkspace({
                   calendar.
                 </p>
               </div>
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setConnectionsOpen(false)}
                 aria-label="Close"
               >
                 <X />
-              </button>
+              </Button>
             </header>
             <div className={styles.connectionBody}>
               <div className={styles.providerGrid}>
@@ -2311,16 +2388,22 @@ export function CalendarWorkspace({
                 <CalendarFeedCard userId={userId} />
               </div>
             </div>
-          </section>
-        </div>
+          </DialogContent>
+        </Dialog>
       ) : null}
       {editing ? (
-        <div className={styles.backdrop}>
-          <section
-            ref={editorRef}
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              if (!saving) setEditing(undefined);
+            }
+          }}
+        >
+          <DialogContent
+            showCloseButton={false}
             className={styles.modal}
-            role="dialog"
-            aria-modal="true"
+
             aria-labelledby="calendar-editor"
           >
             <header>
@@ -2334,17 +2417,19 @@ export function CalendarWorkspace({
                     : "Add time to your calendar."}
                 </span>
               </div>
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 disabled={saving}
                 onClick={() => setEditing(undefined)}
                 aria-label="Close"
               >
                 <X />
-              </button>
+              </Button>
             </header>
             <label>
               Title
-              <input
+              <Input
                 disabled={saving}
                 autoFocus
                 value={editing.title ?? ""}
@@ -2409,7 +2494,7 @@ export function CalendarWorkspace({
             <div className={styles.row}>
               <label>
                 Starts
-                <input
+                <Input
                   disabled={saving}
                   type="datetime-local"
                   value={editing.startAt ?? ""}
@@ -2420,7 +2505,7 @@ export function CalendarWorkspace({
               </label>
               <label>
                 Ends
-                <input
+                <Input
                   disabled={saving}
                   type="datetime-local"
                   value={editing.endAt ?? ""}
@@ -2432,7 +2517,7 @@ export function CalendarWorkspace({
             </div>
             <label>
               Location
-              <input
+              <Input
                 disabled={saving}
                 value={editing.location ?? ""}
                 onChange={(e) =>
@@ -2442,7 +2527,7 @@ export function CalendarWorkspace({
             </label>
             <label>
               Notes
-              <textarea
+              <Textarea
                 disabled={saving}
                 value={editing.description ?? ""}
                 onChange={(e) =>
@@ -2453,7 +2538,9 @@ export function CalendarWorkspace({
             <fieldset>
               <legend>Colour</legend>
               {["ink", "sage", "blue", "ochre", "rose"].map((c) => (
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   type="button"
                   key={c}
                   className={styles[c]}
@@ -2464,7 +2551,7 @@ export function CalendarWorkspace({
               ))}
             </fieldset>
             <label className={styles.checkbox}>
-              <input
+              <Input
                 disabled={saving}
                 type="checkbox"
                 checked={editing.allDay ?? false}
@@ -2484,15 +2571,20 @@ export function CalendarWorkspace({
               </p>
             ) : null}
             <footer>
-              <button disabled={saving} onClick={() => setEditing(undefined)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={saving}
+                onClick={() => setEditing(undefined)}
+              >
                 Cancel
-              </button>
+              </Button>
               <Button disabled={saving} onClick={save}>
                 {saving ? "Saving…" : "Save event"}
               </Button>
             </footer>
-          </section>
-        </div>
+          </DialogContent>
+        </Dialog>
       ) : null}
       <p className="sr-only" aria-live="polite">
         {announcement}
