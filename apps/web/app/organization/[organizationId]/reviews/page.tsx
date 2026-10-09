@@ -17,7 +17,7 @@ function ReviewsWorkspace({ organizationId, operations, rounds, openCalls, stage
   return (
     <main id="organization-main" className={styles.main}>
       <header className="grid gap-1 border-b border-border pb-5">
-        <h1 className="font-heading text-3xl font-medium tracking-tight text-foreground">Reviews</h1>
+        <h1 className="font-sans text-3xl font-semibold tracking-tight text-foreground">Reviews</h1>
         <p className="text-sm text-muted-foreground">Who is reading what, how the scores compare, and what each piece needs next.</p>
       </header>
       <div className="pt-6">

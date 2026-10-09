@@ -16,6 +16,7 @@ import {
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
 import { Button } from "@/components/ui/button";
 import { Sp } from "@/components/missa/spelling";
+import { Input } from "@/components/ui/input";
 
 interface ResidencyComparisonViewProps {
   allResidencies: ResidencyRankingRow[];
@@ -95,22 +96,20 @@ export function ResidencyComparisonView({
           </label>
           <div className="relative max-w-md">
             <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
+            <Input
               id="compare-residency-search"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search residency by name or location to add…"
-              className="min-h-11 w-full rounded-lg border border-border bg-background py-2 pr-3 pl-9 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              placeholder="Search residency by name or location to add…" className="w-full"
             />
             {searchResults.length > 0 && (
               <ul className="absolute z-20 mt-1 w-full rounded-lg border border-border bg-popover py-1 shadow-lg">
                 {searchResults.map((res) => (
                   <li key={res.profileId}>
-                    <button
+                    <Button variant="outline" size="sm"
                       type="button"
-                      onClick={() => addResidency(res.profileId)}
-                      className="flex min-h-11 w-full items-center justify-between px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted/70 focus-visible:outline-2 focus-visible:outline-ring"
+                      onClick={() => addResidency(res.profileId)} className="w-full"
                     >
                       <div className="space-y-0.5">
                         <span className="block font-medium">{res.name}</span>
@@ -121,7 +120,7 @@ export function ResidencyComparisonView({
                       <span className="font-mono text-xs font-semibold text-primary">
                         {res.totalScore.toFixed(1)} pts
                       </span>
-                    </button>
+                    </Button>
                   </li>
                 ))}
               </ul>

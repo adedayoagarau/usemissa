@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import styles from "./creator-workspace-preview.module.css";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type View = "workspace" | "tracker" | "library" | "calendar";
 const nav = [
@@ -31,7 +33,7 @@ export function CreatorWorkspacePreview() {
     >
       {!mobile && <p className={styles.navLabel}>Your workspace</p>}
       {nav.map(({ id, label, icon: Icon }) => (
-        <button
+        <Button variant="outline" size="sm"
           key={id}
           type="button"
           data-active={view === id}
@@ -40,7 +42,7 @@ export function CreatorWorkspacePreview() {
         >
           <Icon aria-hidden="true" size={mobile ? 18 : 17} />
           {label}
-        </button>
+        </Button>
       ))}
     </nav>
   );
@@ -109,10 +111,10 @@ export function CreatorWorkspacePreview() {
                             className={styles.task}
                             data-complete={tasks[index]}
                           >
-                            <input
-                              type="checkbox"
+                            <Checkbox
+                              
                               checked={tasks[index]}
-                              onChange={() =>
+                              onCheckedChange={() =>
                                 setTasks((current) =>
                                   current.map((value, position) =>
                                     position === index ? !value : value,
@@ -125,14 +127,14 @@ export function CreatorWorkspacePreview() {
                           </label>
                         ))}
                       </div>
-                      <button
+                      <Button variant="default"
                         type="button"
                         className={styles.primaryAction}
                         onClick={() => setView("tracker")}
                       >
                         Continue in Tracker{" "}
                         <ArrowRight aria-hidden="true" size={17} />
-                      </button>
+                      </Button>
                     </div>
                   </article>
                 </section>
@@ -179,12 +181,12 @@ export function CreatorWorkspacePreview() {
                       <h3>{title}</h3>
                       <p>{detail}</p>
                     </div>
-                    <button
+                    <Button variant="outline" size="sm"
                       type="button"
                       onClick={() => setView("tracker")}
                     >
                       Open in Tracker <ArrowRight aria-hidden="true" size={14} />
-                    </button>
+                    </Button>
                   </article>
                 ))}
               </section>
@@ -254,9 +256,9 @@ function WorkspaceList({ view }: { view: Exclude<View, "workspace"> }) {
               <strong>{name}</strong>
               <span>{detail}</span>
             </div>
-            <button type="button">
+            <Button variant="outline" size="sm" type="button">
               {action} <ArrowRight aria-hidden="true" size={14} />
-            </button>
+            </Button>
           </article>
         ))}
       </div>

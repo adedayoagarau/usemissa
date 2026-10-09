@@ -146,7 +146,7 @@ function ResetPasswordForm() {
                 fieldError ? "password-error" : "password-guidance"
               }
             />
-            <button
+            <Button variant="ghost"
               type="button"
               className={styles.passwordToggle}
               onClick={() => setShowPassword((value) => !value)}
@@ -157,7 +157,7 @@ function ResetPasswordForm() {
               ) : (
                 <Eye className="size-4" />
               )}
-            </button>
+            </Button>
           </div>
           <p
             id="password-guidance"

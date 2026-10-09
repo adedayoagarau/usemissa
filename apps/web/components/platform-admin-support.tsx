@@ -181,61 +181,61 @@ export default function PlatformAdminSupport({
         className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"
         aria-label="Support summary"
       >
-        <button
+        <Button variant="choice" size="choice"
           type="button"
           onClick={() => setStatusFilter("all")}
-          className={`text-left ${statusFilter === "all" ? "rounded-xl ring-2 ring-primary/30" : ""}`}
+          data-selected={statusFilter === "all"}
         >
           <MetricCard
             label="All cases"
             value={summary.total}
             detail="Durable issue reports"
           />
-        </button>
-        <button
+        </Button>
+        <Button variant="choice" size="choice"
           type="button"
           onClick={() => setStatusFilter("open")}
-          className={`text-left ${statusFilter === "open" ? "rounded-xl ring-2 ring-primary/30" : ""}`}
+          data-selected={statusFilter === "open"}
         >
           <MetricCard
             label="Open"
             value={summary.byStatus.open ?? 0}
             detail="Waiting for triage"
           />
-        </button>
-        <button
+        </Button>
+        <Button variant="choice" size="choice"
           type="button"
           onClick={() => setStatusFilter("in-progress")}
-          className={`text-left ${statusFilter === "in-progress" ? "rounded-xl ring-2 ring-primary/30" : ""}`}
+          data-selected={statusFilter === "in-progress"}
         >
           <MetricCard
             label="In progress"
             value={summary.byStatus["in-progress"] ?? 0}
             detail="Owned by an operator"
           />
-        </button>
-        <button
+        </Button>
+        <Button variant="choice" size="choice"
           type="button"
           onClick={() => setStatusFilter("resolved")}
-          className={`text-left ${statusFilter === "resolved" ? "rounded-xl ring-2 ring-primary/30" : ""}`}
+          data-selected={statusFilter === "resolved"}
         >
           <MetricCard
             label="Resolved"
             value={summary.byStatus.resolved ?? 0}
             detail="Closed with a resolution"
           />
-        </button>
-        <button
+        </Button>
+        <Button variant="choice" size="choice"
           type="button"
           onClick={() => setStatusFilter("dismissed")}
-          className={`text-left ${statusFilter === "dismissed" ? "rounded-xl ring-2 ring-primary/30" : ""}`}
+          data-selected={statusFilter === "dismissed"}
         >
           <MetricCard
             label="Dismissed"
             value={summary.byStatus.dismissed ?? 0}
             detail="Not actionable"
           />
-        </button>
+        </Button>
       </section>
 
       <section aria-labelledby="support-case-list-title">

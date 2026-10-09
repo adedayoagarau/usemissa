@@ -474,7 +474,7 @@ export function ProfileStudio({
           <div className={styles.railGroup}>
             <p className={styles.railLabel}>Profile</p>
             {(["basics", "appearance"] as const).map((id) => (
-              <button
+              <Button variant="ghost"
                 key={id}
                 type="button"
                 className={styles.railItem}
@@ -485,7 +485,7 @@ export function ProfileStudio({
                 <span className={styles.railHint}>
                   {id === "appearance" ? LENSES[draft.lens].label : ""}
                 </span>
-              </button>
+              </Button>
             ))}
           </div>
           <div className={styles.railGroup}>
@@ -528,7 +528,7 @@ export function ProfileStudio({
                             <GripVertical />
                           </span>
                         </SortableItemHandle>
-                        <button
+                        <Button variant="ghost"
                           type="button"
                           className={styles.railItem}
                           aria-current={
@@ -542,7 +542,7 @@ export function ProfileStudio({
                               {count}
                             </span>
                           )}
-                        </button>
+                        </Button>
                         <span className={styles.moduleTools}>
                           <Button
                             variant="ghost"
@@ -583,14 +583,14 @@ export function ProfileStudio({
             </p>
           </div>
           <div className={styles.railGroup}>
-            <button
+            <Button variant="ghost"
               type="button"
               className={styles.railItem}
               aria-current={panel === "publish" ? "true" : undefined}
               onClick={() => open("publish")}
             >
               Address and publishing
-            </button>
+            </Button>
             <Button
               variant="ghost"
               className={styles.railItem}

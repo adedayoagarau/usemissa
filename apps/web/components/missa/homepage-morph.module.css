@@ -11,10 +11,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.stage:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 4px;
-}
+.stage:focus-within .heldMark { opacity: 1; }
 
 /* No panel: the shape floats on the page itself. */
 .canvas {

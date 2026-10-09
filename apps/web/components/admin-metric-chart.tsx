@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import TimeSeriesChart, { type ChartNoteMark } from './admin-time-series';
+import { Button } from "@/components/ui/button";
 
 export interface MetricTab {
   key: string;
@@ -27,7 +28,7 @@ export default function MetricChart({ tabs, data, notes = [], caption, footer }:
 
   return (
     <section aria-label={caption} className="overflow-hidden rounded-xl border border-border bg-card">
-      <div role="tablist" aria-label="Choose a metric to chart" className={`grid grid-cols-2 gap-px border-b border-border bg-border [&>*:last-child:nth-child(odd)]:col-span-2 sm:[&>*:last-child:nth-child(odd)]:col-span-1 ${columns}`}>
+      <div role="group" aria-label="Choose a metric to chart" className={`grid grid-cols-2 gap-px border-b border-border bg-border [&>*:last-child:nth-child(odd)]:col-span-2 sm:[&>*:last-child:nth-child(odd)]:col-span-1 ${columns}`}>
         {tabs.map((tab) => {
           const isActive = tab.key === current?.key;
           const body = (
@@ -39,23 +40,21 @@ export default function MetricChart({ tabs, data, notes = [], caption, footer }:
             </>
           );
           return tab.seriesKey ? (
-            <button
+            <Button variant={isActive ? "secondary" : "ghost"} size="choice"
               key={tab.key}
               type="button"
-              role="tab"
-              aria-selected={isActive}
+              aria-pressed={isActive}
               onClick={() => setActive(tab.key)}
-              className={`relative min-w-0 px-5 py-5 text-start transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${isActive ? 'bg-card' : 'bg-card hover:bg-muted/50'}`}
             >
               {body}
-            </button>
+            </Button>
           ) : (
             <div key={tab.key} className="relative min-w-0 bg-card px-5 py-5">{body}</div>
           );
         })}
       </div>
       {current?.seriesKey && (
-        <div role="tabpanel" aria-label={current.label} className="px-4 pt-5 pb-4 sm:px-6">
+        <div className="px-4 pt-5 pb-4 sm:px-6">
           <TimeSeriesChart data={data} kind={current.kind ?? 'area'} series={[{ key: current.seriesKey, label: current.label }]} notes={notes} height={280} caption={`${current.label} per day`} />
           {footer && <div className="mt-4 border-t border-border pt-4">{footer}</div>}
         </div>

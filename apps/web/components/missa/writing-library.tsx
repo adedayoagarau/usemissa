@@ -272,7 +272,7 @@ export function WritingLibrary(props: WritingLibraryProps) {
                             <Item
                               variant="outline"
                               render={
-                                <button
+                                <Button variant="outline" size="sm"
                                   type="button"
                                   onClick={() =>
                                     props.onShowProject(project.id)

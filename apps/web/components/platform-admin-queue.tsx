@@ -554,12 +554,11 @@ function LaneHealth({
         {counts.map(({ queue, count }) => {
           const selected = activeQueue === queue;
           return (
-            <button
+            <Button variant="choice" size="choice" data-selected={selected}
               key={queue}
               type="button"
               onClick={() => onSelect(selected ? "all" : queue)}
               aria-pressed={selected}
-              className={`min-h-16 border px-3 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${selected ? "border-primary bg-accent text-primary" : "border-border hover:border-primary/50 hover:bg-muted/30"}`}
             >
               <span className="block truncate text-xs font-medium text-foreground">
                 {queueLabels[queue]}
@@ -567,7 +566,7 @@ function LaneHealth({
               <span className="mt-1 block font-mono text-lg text-foreground tabular-nums">
                 {count}
               </span>
-            </button>
+            </Button>
           );
         })}
       </div>

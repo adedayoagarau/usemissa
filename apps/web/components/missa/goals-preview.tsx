@@ -13,6 +13,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 type Goal = {
   id: number;
@@ -159,7 +161,7 @@ export function GoalsPreview() {
               </NativeSelect>
             </label>
             {goals.map((g) => (
-              <button
+              <Button variant="default"
                 key={g.id}
                 onClick={() => {
                   setSelected(g.id);
@@ -181,7 +183,7 @@ export function GoalsPreview() {
                       ? "Waiting for the next call"
                       : `${g.checked.length} of ${g.steps.length} preparation steps`}
                 </span>
-              </button>
+              </Button>
             ))}
           </section>
           <section aria-label="Goal details" className="min-w-0">
@@ -314,11 +316,9 @@ export function GoalsPreview() {
                       key={step}
                       className="flex min-h-16 cursor-pointer items-center gap-3 border-b border-border py-4 text-sm"
                     >
-                      <input
-                        type="checkbox"
-                        className="size-5 shrink-0 accent-primary"
+                      <Checkbox
                         checked={current.checked.includes(step)}
-                        onChange={() => {
+                        onCheckedChange={() => {
                           setMessage(
                             current.checked.includes(step)
                               ? "Step reopened."
@@ -351,10 +351,11 @@ export function GoalsPreview() {
                 </Link>
               </section>
             </div>
-            <details className="mt-6 border-b border-border pb-5">
-              <summary className="cursor-pointer py-2 text-sm font-medium">
+            <Collapsible variant="divided" className="mt-6">
+              <CollapsibleTrigger render={<Button variant="disclosure" size="sm" />}>
                 Reminders &amp; recommendations
-              </summary>
+              </CollapsibleTrigger>
+<CollapsibleContent>
               <div className="mt-4 grid gap-5 md:grid-cols-2">
                 <section className="rounded-lg border border-border p-5">
                   <h3 className="flex items-center gap-2 font-semibold">
@@ -384,11 +385,10 @@ export function GoalsPreview() {
                     Recommendations
                   </h3>
                   <label className="mt-4 flex items-start gap-3 text-sm">
-                    <input
-                      className="mt-1 size-4 accent-primary"
-                      type="checkbox"
+                    <Checkbox
+                      
                       checked={current.influence}
-                      onChange={(e) => update({ influence: e.target.checked })}
+                      onCheckedChange={(checked) => update({ influence: checked === true })}
                     />
                     Use this goal to tailor suggestions
                   </label>
@@ -398,7 +398,8 @@ export function GoalsPreview() {
                   </p>
                 </section>
               </div>
-            </details>
+            </CollapsibleContent>
+</Collapsible>
             <section className="mt-8 pt-2">
               <h3 className="text-lg font-semibold">
                 {current.watching ? "Following" : "Find an opportunity"}
@@ -588,10 +589,10 @@ export function GoalsPreview() {
                     </NativeSelect>
                   </label>
                   <label className="flex gap-2 text-sm">
-                    <input
-                      type="checkbox"
+                    <Checkbox
+                      
                       checked={influence}
-                      onChange={(e) => setInfluence(e.target.checked)}
+                      onCheckedChange={(checked) => setInfluence(checked === true)}
                     />
                     Use this goal for recommendations
                   </label>

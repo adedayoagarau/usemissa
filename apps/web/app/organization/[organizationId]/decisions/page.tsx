@@ -71,7 +71,7 @@ export default async function OrganizationDecisionsPage({ params, searchParams }
     <main id="organization-main" className={styles.main}>
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
         <div className="grid gap-1">
-          <h1 className="font-heading text-3xl font-medium tracking-tight text-foreground">Decisions</h1>
+          <h1 className="font-sans text-3xl font-semibold tracking-tight text-foreground">Decisions</h1>
           <p className="text-sm text-muted-foreground">Record an outcome for each piece. Recording a decision never sends a letter.</p>
         </div>
         <Button variant="outline" size="sm" render={<Link href={`/organization/${encodeURIComponent(organizationId)}/messages`} />}><Mail aria-hidden="true" />Draft decision letters</Button>

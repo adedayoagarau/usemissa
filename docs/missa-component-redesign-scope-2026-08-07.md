@@ -129,7 +129,7 @@ These are the 53 existing shadcn/Base UI primitives. The first pass should align
 | Opportunity card | `components/opportunity-card.tsx` | P1 | Card hierarchy, source/freshness/deadline/fee evidence, save and selection |
 | Opportunity detail panel | `components/opportunity-detail-panel.tsx` | P1 | Desktop side panel and mobile sheet, fact order, source action |
 | Opportunity search | `components/opportunity-search.tsx` | P1 | Search field, query persistence, loading/clear states |
-| Opportunity filters | `components/opportunity-filters.tsx` | P1 | Taxonomy, location, date, fee, filter count, mobile filter sheet |
+| Opportunity filters | `components/opportunity-catalogue-filters.tsx` | P1 | Taxonomy, location, date, fee, filter count, mobile filter sheet |
 | Taxonomy browse picker | `components/taxonomy-browse-picker.tsx` | P1 | Discipline/genre/style hierarchy, include/prefer/exclude states |
 | Opportunity results refresh | `components/opportunity-results-refresh.tsx` | P1 | Refresh/loading transition and stale-result handling |
 | Save opportunity button | `components/save-opportunity-button.tsx` | P1 | Saved/unsaved/loading/error/unauthenticated states |

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import type { LibraryWork } from '@missa/radar-engine';
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 
 export function TrackerWorkLink({ userId, opportunityId, workId, workTitle, works }: {
   userId: string;
@@ -27,10 +28,10 @@ export function TrackerWorkLink({ userId, opportunityId, workId, workTitle, work
   return (
     <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
       <label htmlFor={`work-${opportunityId}`} className="sr-only">Work for this submission</label>
-      <select id={`work-${opportunityId}`} disabled={pending || works.length === 0} value={selected} onChange={(event) => { setSelected(event.target.value); save(event.target.value); }} className="h-8 max-w-[18rem] rounded-md border border-border bg-background px-2 text-xs">
-        <option value="">{works.length ? (workTitle ? `Work: ${workTitle}` : 'Link a piece…') : 'Add a piece to Library first'}</option>
-        {works.map((work) => <option key={work.id} value={work.id}>{work.title}</option>)}
-      </select>
+      <NativeSelect id={`work-${opportunityId}`} disabled={pending || works.length === 0} value={selected} onChange={(event) => { setSelected(event.target.value); save(event.target.value); }} className="max-w-[18rem]">
+        <NativeSelectOption value="">{works.length ? (workTitle ? `Work: ${workTitle}` : 'Link a piece…') : 'Add a piece to Library first'}</NativeSelectOption>
+        {works.map((work) => <NativeSelectOption key={work.id} value={work.id}>{work.title}</NativeSelectOption>)}
+      </NativeSelect>
       {workId && <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => { setSelected(''); save(''); }}>Clear</Button>}
     </div>
   );

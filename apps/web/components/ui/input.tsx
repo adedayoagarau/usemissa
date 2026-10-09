@@ -12,6 +12,9 @@ const inputVariants = cva(
         default: "text-base md:text-sm",
         compact: "h-9 text-sm",
         large: "text-lg",
+        /** A document's own title, set in the page like a heading: no box, centred, underlined on focus. */
+        document:
+          "h-auto max-w-2xl border-0 bg-transparent px-0 text-center text-3xl text-foreground shadow-none hover:border-0 focus-visible:underline focus-visible:decoration-primary focus-visible:underline-offset-8 focus-visible:ring-0 dark:bg-transparent",
       },
     },
     defaultVariants: { size: "default" },

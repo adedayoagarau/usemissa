@@ -115,7 +115,7 @@ export default async function OrganizationMessagesPage({ params }: { params: Pro
   return (
     <main id="organization-main" className={styles.main}>
       <header className="grid gap-1 border-b border-border pb-5">
-        <h1 className="font-heading text-3xl font-medium tracking-tight text-foreground">Messages</h1>
+        <h1 className="font-sans text-3xl font-semibold tracking-tight text-foreground">Messages</h1>
         <p className="text-sm text-muted-foreground">Letters to submitters, their questions, and what the email provider recorded.</p>
       </header>
       <div className="pt-6">

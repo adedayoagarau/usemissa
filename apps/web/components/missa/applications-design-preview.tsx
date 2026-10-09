@@ -29,6 +29,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 type View = "Saved" | "Awaiting responses" | "History";
 type Application = {
@@ -728,10 +729,11 @@ export function ApplicationsDesignPreview() {
           </Tabs>
           <footer className="mt-12 border-t border-border pt-5 text-xs text-muted-foreground">
             <p>Private to you. Applying happens on the original website.</p>
-            <details className="mt-6">
-              <summary className="cursor-pointer py-3">
+            <Collapsible className="mt-6">
+              <CollapsibleTrigger render={<Button variant="disclosure" size="sm" />}>
                 Preview controls
-              </summary>
+              </CollapsibleTrigger>
+<CollapsibleContent>
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
@@ -765,7 +767,8 @@ export function ApplicationsDesignPreview() {
                   Test a save error
                 </Button>
               </div>
-            </details>
+            </CollapsibleContent>
+</Collapsible>
           </footer>
         </main>
         <Dialog

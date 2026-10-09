@@ -242,14 +242,13 @@ export function ApplicationReminders({
         />
       ) : null}
       {!application ? scheduled.map((item) => (
-        <button
+        <Button variant="outline" size="sm"
           key={item.id}
           type="button"
           onClick={() => {
             setError("");
             setDialog(item);
-          }}
-          className="flex w-full items-start gap-4 border-b border-border py-4 text-start outline-offset-4 hover:text-primary focus-visible:outline-2 focus-visible:outline-ring"
+          }} className="w-full"
         >
           <Bell className="mt-1 size-5 shrink-0 text-primary" />
           <span className="min-w-0 flex-1">
@@ -270,7 +269,7 @@ export function ApplicationReminders({
             ) : null}
           </span>
           <ArrowRight className="mt-1 size-4 shrink-0" />
-        </button>
+        </Button>
       )) : null}
       {items && !scheduled.length && !application ? (
         <p className="text-sm text-muted-foreground">

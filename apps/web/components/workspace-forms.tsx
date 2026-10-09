@@ -3,6 +3,8 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Input } from "@/components/ui/input";
 
 function useSubmit(url: string, buildBody: (fd: FormData) => unknown) {
   const router = useRouter();
@@ -39,7 +41,7 @@ export function CreateTeamForm({ organizationId }: { organizationId: string }) {
       <label htmlFor="new-team-name" className="sr-only">
         Team name
       </label>
-      <input id="new-team-name" name="name" placeholder="Team name" required className="rounded-md border border-input px-2 py-1 text-sm" />
+      <Input id="new-team-name" name="name" placeholder="Team name" required />
       <Button size="sm" type="submit" disabled={isPending}>
         {isPending ? 'Creating…' : 'Create team'}
       </Button>
@@ -59,7 +61,7 @@ export function CreateProgramForm({ organizationId, entityId }: { organizationId
       <label htmlFor={`new-program-name-${entityId}`} className="sr-only">
         Program name
       </label>
-      <input id={`new-program-name-${entityId}`} name="name" placeholder="Program name" required className="rounded-md border border-input px-2 py-1 text-sm" />
+      <Input id={`new-program-name-${entityId}`} name="name" placeholder="Program name" required />
       <Button size="sm" variant="outline" type="submit" disabled={isPending}>
         {isPending ? 'Adding…' : 'Add program'}
       </Button>
@@ -83,16 +85,16 @@ export function CreateOpenCallForm({ organizationId, programId, radarOpportuniti
       <label htmlFor={`new-opportunity-title-${programId}`} className="sr-only">
         Opportunity title
       </label>
-      <input id={`new-opportunity-title-${programId}`} name="title" placeholder="Opportunity title" required className="rounded-md border border-input px-2 py-1 text-sm" />
+      <Input id={`new-opportunity-title-${programId}`} name="title" placeholder="Opportunity title" required />
       {radarOpportunities.length > 0 && (
-        <select name="radarOpportunityId" defaultValue="" className="min-h-9 rounded-md border border-input bg-card px-2 py-1 text-xs">
-          <option value="">Link a claimed opportunity (optional)</option>
+        <NativeSelect name="radarOpportunityId" defaultValue="">
+          <NativeSelectOption value="">Link a claimed opportunity (optional)</NativeSelectOption>
           {radarOpportunities.map((opportunity) => (
-            <option key={opportunity.id} value={opportunity.id}>
+            <NativeSelectOption key={opportunity.id} value={opportunity.id}>
               {opportunity.title}
-            </option>
+            </NativeSelectOption>
           ))}
-        </select>
+        </NativeSelect>
       )}
       <Button size="sm" variant="outline" type="submit" disabled={isPending}>
         {isPending ? 'Creating…' : 'Create opportunity'}
