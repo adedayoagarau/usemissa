@@ -4,6 +4,12 @@ The goal: a writing tool better than Scrivener, untouched by AI. How the room
 works today is in `docs/writing-room.md`. This file tracks what is built and
 what comes next, in the order agreed with the owner.
 
+On 8 October the owner authorized development of the complete general-writing
+concept: manuscript, structure, research, revision and readers, and format and
+export, plus Harper. The initial integrated implementation is documented in
+`docs/writing-development-2026-10-08.md`. The sequence below is retained as the
+original roadmap; it is not a current claim that all of G–M remain unstarted.
+
 ## Built
 
 | Stage | What it gives the writer | Migration |

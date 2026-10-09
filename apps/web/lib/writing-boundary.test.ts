@@ -5,8 +5,9 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 /**
- * The writing room promises that Missa's automated systems never read what a
- * creator writes and that no AI touches it. These tests make that promise
+ * Ordinary editing keeps text out of model services. Optional spelling and
+ * grammar checks run on the writer's device; paid read-aloud has an explicit,
+ * authenticated speech endpoint. These tests make the module boundary
  * checkable: they fail when code outside the writing module reaches the
  * writing table or the repository, or when the module imports an AI SDK.
  */
@@ -47,15 +48,19 @@ test("only the writing module names the writing tables", () => {
     "packages/db/migrations/0098_creator_writing_snapshots.sql",
     "packages/db/migrations/0099_creator_writing_calls.sql",
     "packages/db/migrations/0100_creator_writing_cards.sql",
+    "packages/db/migrations/0101_creator_writing_studio.sql",
     "apps/web/lib/writing-repository.ts",
     "apps/web/lib/writing-repository.test.ts",
+    "apps/web/lib/writing-studio-repository.test.ts",
     "apps/web/lib/writing-boundary.test.ts",
   ]);
   const offenders = sources
     .filter(
       ({ path, text }) =>
         !allowed.has(path) &&
-        /creator_writing_(?:entries|projects|snapshots)(?!\.sql)/.test(text),
+        /creator_writing_(?:entries|projects|snapshots|studios|reader_shares|reader_comments)(?!\.sql)/.test(
+          text,
+        ),
     )
     .map(({ path }) => path);
   assert.deepEqual(
@@ -69,7 +74,10 @@ test("only the writing room and its routes use the writing repository", () => {
   const allowed = (path: string) =>
     path === "apps/web/app/doc/page.tsx" ||
     path.startsWith("apps/web/app/api/me/writing/") ||
+    path.startsWith("apps/web/app/api/writing/read/") ||
     path === "apps/web/lib/writing-repository.test.ts" ||
+    path === "apps/web/lib/writing-studio-repository.test.ts" ||
+    path === "apps/web/lib/writing-tool-repository.test.ts" ||
     path === "apps/web/lib/writing-boundary.test.ts";
   const offenders = sources
     .filter(
@@ -88,7 +96,9 @@ test("the writing module imports no AI or model SDK", () => {
     ({ path }) =>
       /^apps\/web\/(?:lib\/writing[^/]*|components\/missa\/writing-[^/]*|app\/(?:doc|write)\/[^/]*)$/.test(
         path,
-      ) || path.startsWith("apps/web/app/api/me/writing/"),
+      ) ||
+      path.startsWith("apps/web/app/api/me/writing/") ||
+      path.startsWith("apps/web/app/api/writing/read/"),
   );
   assert.ok(moduleFiles.length >= 8, "the writing module files were found");
   const imports = moduleFiles.flatMap(({ path, text }) =>

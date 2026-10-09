@@ -1,5 +1,9 @@
 "use client";
 
+import { remapDocument } from "@/lib/writing-project-backup";
+import type { PieceDetails } from "@/components/missa/writing-piece-actions";
+import { nodeText } from "@/lib/writing-document";
+
 import Link from "next/link";
 import {
   Fragment,
@@ -65,6 +69,22 @@ import {
 } from "@/components/missa/writing-format";
 import { WritingSnapshots } from "@/components/missa/writing-snapshots";
 import { WritingFind } from "@/components/missa/writing-find";
+import { WritingChecks } from "@/components/missa/writing-checks";
+import type { ReadAloudPlan } from "@/lib/writing-read-aloud";
+import { WritingPractice } from "@/components/missa/writing-practice";
+import { useAutomaticWritingHistory } from "@/components/missa/writing-history";
+import { setWritingTracking } from "@/lib/writing-tracked-changes";
+import { WritingProjectRestore } from "@/components/missa/writing-project-restore";
+import { WritingRevisionTools } from "@/components/missa/writing-revision-tools";
+import { WritingOfflineProject } from "@/components/missa/writing-offline";
+import { activateOfflineAccount } from "@/lib/writing-offline";
+import { WritingNavigation } from "@/components/missa/writing-navigation";
+import { WritingReadAloud, type WritingReadAloudHandle } from "@/components/missa/writing-read-aloud";
+import { WritingManuscript } from "@/components/missa/writing-manuscript";
+import { WritingStudio, type StudioPiece } from "@/components/missa/writing-studio";
+import { WritingDrive } from "@/components/missa/writing-drive";
+import { WritingExport } from "@/components/missa/writing-export";
+import type { WritingCheckpoint } from "@/lib/writing-revisions";
 import { WritingWordCount } from "@/components/missa/writing-word-count";
 import {
   WritingPlanner,
@@ -141,6 +161,8 @@ export type WritingRoomProps = {
   listFailed: boolean;
   /** The account's plan includes the planner: cards, plotlines, corkboard (Plus). */
   planner: boolean;
+  /** Read-aloud tier; the audio endpoint resolves the plan independently. */
+  readAloud?: ReadAloudPlan | null;
 };
 
 type Current = {
@@ -302,7 +324,7 @@ function summaryOf(entry: WritingEntry): WritingEntrySummary {
 
 async function requestJson(
   url: string,
-  init: RequestInit,
+  init: RequestInit = {},
 ): Promise<{ ok: boolean; status: number; data: Record<string, unknown> }> {
   try {
     const response = await fetch(url, {
@@ -346,6 +368,7 @@ export function WritingRoom({
   storage,
   listFailed,
   planner,
+  readAloud = null,
 }: WritingRoomProps) {
   const [sync] = useState(
     () =>
@@ -400,6 +423,18 @@ export function WritingRoom({
   const [outlineProject, setOutlineProject] = useState<string | null>(null);
   const [snapshotsOpen, setSnapshotsOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
+  const [trackingEntry, setTrackingEntry] = useState<string | null>(null);
+  const [checksOpen, setChecksOpen] = useState(false);
+  const [revisionOpen, setRevisionOpen] = useState(false);
+  const [practiceOpen, setPracticeOpen] = useState(false);
+  useEffect(() => { activateOfflineAccount(deviceKey); }, [deviceKey]);
+  const [studioOpen, setStudioOpen] = useState(false);
+  const [studioTab, setStudioTab] = useState<"manuscript" | "research">("manuscript");
+  const [formattingOpen, setFormattingOpen] = useState(false);
+  const [writingToolsOpen, setWritingToolsOpen] = useState(false);
+  const [lockedIn, setLockedIn] = useState(false);
+  const [manuscriptPieces, setManuscriptPieces] = useState<StudioPiece[] | null>(null);
+  const [studioForks, setStudioForks] = useState<WritingFork[]>([]);
   const [callOpen, setCallOpen] = useState(false);
   const [wordCountOpen, setWordCountOpen] = useState(false);
   const [compileState, setCompileState] = useState<{
@@ -500,9 +535,10 @@ export function WritingRoom({
     selector: ({ editor }) => {
       if (!editor || editor.isDestroyed) return null;
       const { from, to, empty } = editor.state.selection;
-      return empty ? null : editor.state.doc.textBetween(from, to, "\n");
+      return empty ? null : nodeText(editor.state.doc.cut(from, to).toJSON());
     },
   });
+  const readAloudPlayer = useRef<WritingReadAloudHandle>(null);
   const selectedWords = selection ? countWords(selection) : 0;
   const activeIndex = Math.max(
     0,
@@ -577,6 +613,7 @@ export function WritingRoom({
             ...list.filter((item) => item.id !== entry.id),
           ]),
         onForked: (fork: WritingFork) => {
+          setStudioForks((value) => [...value, fork]);
           setEntries((list) => {
             const rest = list.filter((item) => item.id !== fork.from);
             return fork.current ? [summaryOf(fork.current), ...rest] : rest;
@@ -757,9 +794,42 @@ export function WritingRoom({
   );
 
   const onActiveEditor = useCallback(
-    (pageId: string, editor: Editor) => setActive({ pageId, editor }),
-    [],
+    (pageId: string, editor: Editor) => {
+      setWritingTracking(editor, { enabled: trackingEntry === current.id });
+      setActive({ pageId, editor });
+    },
+    [trackingEntry, current.id],
   );
+
+  useEffect(() => {
+    if (current.state !== "ready") return;
+    let observer: MutationObserver | null = null;
+    const reveal = () => {
+      const section = window.location.hash.slice(1);
+      if (!/^section_[0-9a-f-]{36}$/.test(section)) return false;
+      for (const editor of editors.values()) {
+        if (editor.isDestroyed) continue;
+        try {
+          const heading = editor.view.dom.querySelector<HTMLElement>(`[data-section-id="${section}"]`);
+          if (!heading) continue;
+          heading.scrollIntoView({ block: "center" });
+          editor.commands.focus(editor.view.posAtDOM(heading, 0));
+          observer?.disconnect();
+          return true;
+        } catch { /* A page editor may still be mounting. */ }
+      }
+      return false;
+    };
+    const watch = () => {
+      observer?.disconnect();
+      if (reveal() || !scroller.current) return;
+      observer = new MutationObserver(() => { reveal(); });
+      observer.observe(scroller.current, { childList: true, subtree: true });
+    };
+    const frame = requestAnimationFrame(watch);
+    window.addEventListener("hashchange", watch);
+    return () => { cancelAnimationFrame(frame); observer?.disconnect(); window.removeEventListener("hashchange", watch); };
+  }, [current.id, current.mount, current.state, editors]);
 
   /** Switches the open page between flowing text and a free canvas. Its words come along. */
   function setLayout(kind: "flow" | "canvas") {
@@ -851,6 +921,10 @@ export function WritingRoom({
   }
 
   function openEntry(id: string) {
+    if (manuscriptPieces) {
+      setManuscriptPieces(null);
+      setCurrent((value) => ({ ...value, mount: ++mounts }));
+    }
     setSheetOpen(false);
     setOutlineProject(null);
     setCompiled(null);
@@ -1168,6 +1242,7 @@ export function WritingRoom({
   }
 
   function newEntry() {
+    setManuscriptPieces(null);
     setSheetOpen(false);
     setCompiled(null);
     if (
@@ -1252,6 +1327,40 @@ export function WritingRoom({
     }
   }
 
+  function focusWriting() {
+    if (manuscriptPieces) requestAnimationFrame(() => scroller.current?.querySelector<HTMLElement>('[contenteditable="true"]')?.focus());
+    else setFocusTick((tick) => tick + 1);
+  }
+
+  function enterLockIn() {
+    setStudioOpen(false);
+    setSheetOpen(false);
+    setFormatOpen(false);
+    setSnapshotsOpen(false);
+    setChecksOpen(false);
+    setRevisionOpen(false);
+    setPracticeOpen(false);
+    setWordCountOpen(false);
+    setCallOpen(false);
+    setFindOpen(false);
+    setLockedIn(true);
+    setTimeUp(false);
+    if (!running) {
+      const time = Date.now();
+      const length = remaining > 0 ? remaining : prefs.minutes * 60_000;
+      setNow(time);
+      setTimer({ endsAt: time + length, remaining: length });
+    }
+    focusWriting();
+  }
+
+  function leaveLockIn() {
+    const time = Date.now();
+    setTimer((value) => ({ endsAt: null, remaining: value.endsAt === null ? value.remaining : Math.max(0, value.endsAt - time) }));
+    setLockedIn(false);
+    focusWriting();
+  }
+
   function toggleTimer(event: MouseEvent) {
     const time = Date.now();
     setTimeUp(false);
@@ -1265,7 +1374,7 @@ export function WritingRoom({
     setTimer({ endsAt: time + length, remaining: length });
     // Started with a pointer, the page takes focus so writing can begin; started
     // from the keyboard (detail 0), focus stays on the button.
-    if (event.detail > 0) setFocusTick((tick) => tick + 1);
+    if (event.detail > 0) focusWriting();
   }
 
   function resetTimer(minutes = prefs.minutes) {
@@ -1291,6 +1400,8 @@ export function WritingRoom({
   const rejection = syncState.rejected[current.id];
   const deviceOnly =
     storage === "device" || syncState.account === "unavailable";
+  const historyStatus = useAutomaticWritingHistory({ entryId: current.id, content: contentOf(current), enabled: !deviceOnly && !compiled && Boolean(inAccount) && current.state === "ready" && syncState.account !== "signed-out" });
+
   const callId = deviceOnly
     ? null
     : (entries.find((item) => item.id === current.id)?.callId ?? null);
@@ -1299,12 +1410,15 @@ export function WritingRoom({
     writingCall.state.kind === "ready"
       ? wordMeter(writingCall.state.details.input, words)
       : null;
+  useEffect(() => { if (syncState.account === "signed-out") activateOfflineAccount(""); }, [syncState.account]);
   const status =
     current.state === "opening"
       ? "Opening…"
       : current.state === "failed"
         ? ""
-        : pending
+        : pending && !syncState.device
+          ? "Needs attention · download a backup"
+          : pending
           ? syncState.account === "offline"
             ? "Offline · kept on this device"
             : syncState.account === "retrying"
@@ -1313,7 +1427,7 @@ export function WritingRoom({
                 ? "Saving…"
                 : "Kept on this device"
           : inAccount
-            ? "Saved"
+            ? "Saved to account"
             : "";
   const announcement = timeUp
     ? "Time’s up."
@@ -1334,7 +1448,8 @@ export function WritingRoom({
     !pageDeleteOpen &&
     !snapshotsOpen &&
     !callOpen &&
-    !wordCountOpen;
+    !wordCountOpen &&
+    !studioOpen;
   const timerLabel = running
     ? "Pause timer"
     : remaining === 0
@@ -1390,7 +1505,8 @@ export function WritingRoom({
     const live = {
       title: current.title,
       preview: writingPreview(body),
-      wordCount: words,
+      wordCount: current.doc.purpose === "research" ? 0 : words,
+      research: current.doc.purpose === "research",
       projectId: current.projectId,
       open: true,
     };
@@ -1414,6 +1530,7 @@ export function WritingRoom({
     current.id,
     current.title,
     current.projectId,
+    current.doc.purpose,
     current.state,
     body,
     words,
@@ -1422,25 +1539,164 @@ export function WritingRoom({
     (project) => project.id === current.projectId,
   );
 
+  async function studioPieces(): Promise<StudioPiece[]> {
+    if (!current.projectId) return [];
+    const result = await requestJson(`/api/me/writing/projects/${encodeURIComponent(current.projectId)}/compile`, { method: "GET" });
+    const stored = result.data.entries as WritingEntry[] | undefined;
+    if (!result.ok || !stored) throw new Error("Project did not load");
+    for (const entry of stored) sync.adopt(entry);
+    const known = new Set(stored.map((item) => item.id));
+    const sources = [...stored.map((entry) => ({ id: entry.id, content: sync.draft(entry.id)?.content ?? entry })),
+      ...syncState.pending.filter((id) => !known.has(id) && sync.draft(id)?.projectId === current.projectId)
+        .map((id) => ({ id, content: sync.draft(id)!.content }))];
+    if (!sources.some((item) => item.id === current.id)) sources.push({ id: current.id, content: contentOf(current) });
+    return sources.map(({ id, content }) => ({ id, title: content.title,
+      doc: id === current.id ? current.doc : parseWritingDocument(content.document) ?? plainTextToDocument(content.body, prefs.typeface) }));
+  }
+
+  function importDocument(doc: WritingDocument, title: string) {
+    const id = newWritingEntryId();
+    const next = { ...opened(id, null, prefs.typeface, "ready", current.projectId), title, doc };
+    sync.edit(id, contentOf(next), current.projectId);
+    setCurrent(next); setManuscriptPieces(null); setStudioOpen(false); setCompiled(null); setActive(null);
+  }
+
+  async function pieceForAction(id: string) {
+    const result = await requestJson(`/api/me/writing/${encodeURIComponent(id)}`);
+    const entry = result.data.entry as WritingEntry | undefined;
+    if (!result.ok || !entry) throw new Error("Wait for this piece to save to your account, then try again.");
+    sync.adopt(entry);
+    const content = current.id === id ? contentOf(current) : sync.draft(id)?.content ?? entry;
+    const doc = parseWritingDocument(content.document) ?? plainTextToDocument(content.body, prefs.typeface);
+    return { entry, content, doc };
+  }
+
+  async function loadPieceDetails(id: string): Promise<PieceDetails> {
+    const { entry, content, doc } = await pieceForAction(id);
+    return { title: content.title, status: entry.status as PieceDetails["status"], target: entry.card.target, research: doc.purpose === "research" };
+  }
+
+  async function savePieceDetails(id: string, details: PieceDetails) {
+    const { entry, content, doc } = await pieceForAction(id);
+    const metadata: Record<string, unknown> = {};
+    if (details.status !== entry.status) metadata.status = details.status;
+    if (details.target !== entry.card.target) {
+      const card = { ...entry.card };
+      if (details.target === undefined) delete card.target; else card.target = details.target;
+      metadata.card = card;
+    }
+    let summary: Partial<WritingEntrySummary> = {};
+    if (Object.keys(metadata).length) {
+      const result = await requestJson(`/api/me/writing/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(metadata) });
+      if (!result.ok) throw new Error(errorOf(result.data, "Could not save these piece details. Try again."));
+      summary = result.data.entry as WritingEntrySummary;
+    }
+    const nextDoc: WritingDocument = { ...doc, purpose: details.research ? "research" : "draft" };
+    const next = { ...content, title: details.title, document: serializeDocument(nextDoc), body: documentText(nextDoc) };
+    if (current.id === id) change({ title: details.title, doc: nextDoc });
+    else sync.edit(id, next, entry.projectId);
+    setEntries((list) => list.map((item) => item.id === id ? { ...item, ...summary, title: details.title, wordCount: details.research ? 0 : countWords(next.body) } : item));
+  }
+
+  async function duplicatePiece(id: string) {
+    const { entry, content } = await pieceForAction(id);
+    const copyId = newWritingEntryId();
+    const result = await requestJson(`/api/me/writing/${copyId}`, { method: "PUT", body: JSON.stringify({ ...content, title: `${content.title || "Untitled"} — copy`.slice(0, WRITING_TITLE_MAX), baseRevision: 0, projectId: entry.projectId }) });
+    const copy = result.data.entry as WritingEntry | undefined;
+    if (!result.ok || !copy) throw new Error(errorOf(result.data, "Could not create a copy. Your original is unchanged."));
+    sync.adopt(copy);
+    const metadata = await requestJson(`/api/me/writing/${copyId}`, { method: "PATCH", body: JSON.stringify({ synopsis: entry.synopsis, status: entry.status, ...(planner ? { card: entry.card } : {}) }) });
+    setEntries((list) => [metadata.ok ? metadata.data.entry as WritingEntrySummary : copy, ...list.filter((item) => item.id !== copyId)]);
+    if (!metadata.ok) toast.info("The writing was copied. Its planning details could not be copied.");
+    await openEntry(copyId);
+  }
+
+  async function restoreProjectCopy(checkpoint: WritingCheckpoint) {
+    const id = newWritingProjectId();
+    const result = await requestJson("/api/me/writing/projects", { method: "POST", body: JSON.stringify({ id, title: checkpoint.name, template: "blank" }) });
+    const project = result.data.project as WritingProject | undefined;
+    if (!result.ok || !project) throw new Error("Project copy failed");
+    setProjects((list) => [project, ...list]);
+    const pieceIds = new Map(checkpoint.pieces.map((piece) => [piece.id, newWritingEntryId()]));
+    for (const piece of checkpoint.pieces) sync.edit(pieceIds.get(piece.id)!, { title: piece.title, body: piece.body, document: piece.document ? remapDocument(piece.document, pieceIds) : null }, id);
+    sync.flush();
+  }
+
   const chrome =
     "transition-opacity duration-180 motion-reduce:transition-none data-[hidden=true]:opacity-0 data-[hidden=true]:hover:opacity-100 data-[hidden=true]:focus-within:opacity-100 data-[hidden=true]:[&:not(:hover):not(:focus-within)_*]:pointer-events-none";
 
+  const timerControls = (
+    <ButtonGroup>
+      <Button
+        variant="ghost"
+        aria-label={`${timerLabel} (${clock(remaining)})`}
+        onClick={toggleTimer}
+      >
+        <span className="font-mono tabular-nums" aria-hidden="true">
+          {clock(remaining)}
+        </span>
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Timer length"
+            />
+          }
+        >
+          <ChevronUp aria-hidden="true" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="top" align="end" className="w-44">
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Timer length</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={String(prefs.minutes)}
+              onValueChange={(value) => {
+                const minutes = Number(value);
+                updatePrefs({ minutes });
+                resetTimer(minutes);
+              }}
+            >
+              {TIMER_LENGTHS.map((minutes) => (
+                <DropdownMenuRadioItem
+                  key={minutes}
+                  value={String(minutes)}
+                >
+                  {minutes} minutes
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => resetTimer()}>
+            Reset timer
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </ButtonGroup>
+  );
+
   return (
-    <div className="flex h-dvh flex-col bg-background text-foreground">
+    <div className="flex h-dvh flex-col bg-background text-foreground" onKeyDownCapture={(event) => {
+      if (lockedIn && event.key === "Escape") { event.preventDefault(); event.stopPropagation(); leaveLockIn(); }
+    }}>
+      {!lockedIn ? (
       <header
         data-hidden={hideChrome}
         className={`flex flex-col border-b border-border px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1 sm:px-4 print:hidden ${chrome}`}
       >
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-1">
-            <Link href="/home" className={buttonVariants({ variant: "ghost" })}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1">
+            <Link href="/home" className={buttonVariants({ variant: "ghost", className: "max-w-full whitespace-normal" })}>
               <ArrowLeft aria-hidden="true" />
               Home
             </Link>
             {currentProject ? (
               <Button
                 variant="ghost"
-                className="min-w-0"
+                className="min-w-0 shrink"
                 aria-label={`Project: ${projectName(currentProject)}. Open its pieces`}
                 onClick={() => {
                   setLibraryProject(currentProject.id);
@@ -1452,7 +1708,7 @@ export function WritingRoom({
             ) : null}
           </div>
           <Popover>
-            <PopoverTrigger render={<Button variant="ghost" />}>
+            <PopoverTrigger render={<Button variant="ghost" className="max-w-full whitespace-normal" />}>
               <Lock aria-hidden="true" />
               Private
             </PopoverTrigger>
@@ -1462,14 +1718,16 @@ export function WritingRoom({
               </PopoverHeader>
               <ul className="flex list-disc flex-col gap-2 ps-5 text-muted-foreground">
                 <li>
-                  Missa adds no AI here. Nothing suggests, rewrites or finishes
-                  your words.
+                  Nothing writes or finishes your words for you.
                 </li>
                 <li>
-                  Your writing is never sent to an AI service or used to train
-                  one.
+                  Read aloud sends the text you choose to DeepInfra to make
+                  speech, only when you press Read. Ordinary editing does not.
                 </li>
-                <li>Missa’s automated systems don’t read it.</li>
+                <li>
+                  Optional spelling and grammar checks run on your device,
+                  only when you ask. You choose which suggestions to apply.
+                </li>
                 <li>Deleting an entry removes it from your account.</li>
                 <li>
                   Extensions you add to your browser can still read pages you
@@ -1479,16 +1737,23 @@ export function WritingRoom({
             </PopoverContent>
           </Popover>
         </div>
-        <div className={compiled ? "hidden" : "flex justify-center"}>
-          <WritingFormatBar
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Button variant="ghost" className="max-w-full whitespace-normal" disabled={Boolean(compiled || manuscriptPieces)} aria-expanded={formattingOpen} aria-controls="writing-formatting" onClick={() => setFormattingOpen((value) => !value)}>Formatting</Button>
+          <Button variant="outline" className="max-w-full flex-wrap whitespace-normal" disabled={current.state !== "ready" || Boolean(compiled)} aria-label="Lock in" onClick={enterLockIn}>Lock in <span className="text-muted-foreground">{remaining > 0 && remaining < prefs.minutes * 60_000 ? clock(remaining) : `${prefs.minutes} min`}</span></Button>
+        </div>
+        <div id="writing-formatting" className={compiled || manuscriptPieces || !formattingOpen ? "hidden" : "flex justify-center"}>
+                  <WritingFormatBar
+                    document={current.doc}
             editor={active && !active.editor.isDestroyed ? active.editor : null}
             onOpenFormat={() => setFormatOpen(true)}
           />
         </div>
       </header>
+      ) : null}
 
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
       <main
-        className="flex min-h-0 flex-1 flex-col print:block"
+        className="flex min-h-0 min-w-0 flex-1 flex-col print:block"
         onKeyDown={(event) => {
           if (
             (event.metaKey || event.ctrlKey) &&
@@ -1497,6 +1762,7 @@ export function WritingRoom({
             event.preventDefault();
             sync.flush();
           }
+          if (lockedIn) return;
           // Word count, as in Google Docs.
           if (
             (event.metaKey || event.ctrlKey) &&
@@ -1543,6 +1809,7 @@ export function WritingRoom({
             }}
           />
         ) : null}
+        {historyStatus === "attention" ? <p role="status" className="px-4 text-sm text-muted-foreground">Revision history could not save its latest copy. Your normal draft saving continues; download a backup if needed.</p> : null}
         <WritingNotices
           notice={notice}
           rejection={rejection}
@@ -1567,7 +1834,15 @@ export function WritingRoom({
             if (prefs.typewriter) requestAnimationFrame(centerCaret);
           }}
         >
-          {compiled ? (
+          {manuscriptPieces ? <>
+            <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3"><p className="text-sm text-muted-foreground">Editing the manuscript in binder order.</p><Button variant="ghost" onClick={() => { setManuscriptPieces(null); setCurrent((value) => ({ ...value, mount: ++mounts })); }}>Back to piece</Button></div>
+            <WritingManuscript pieces={manuscriptPieces} readOnly={false} onChangePiece={(id, doc) => {
+              setManuscriptPieces((value) => value?.map((piece) => piece.id === id ? { ...piece, doc } : piece) ?? null);
+              const piece = manuscriptPieces.find((item) => item.id === id);
+              if (id === current.id) change({ doc });
+              else if (piece) sync.edit(id, { title: piece.title, body: documentText(doc), document: serializeDocument(doc) }, currentProject?.id ?? null);
+            }} />
+          </> : compiled ? (
             <WritingPages
               key={`compiled-${compiled.projectId}-${compiled.doc.pages.length}`}
               document={compiled.doc}
@@ -1626,11 +1901,26 @@ export function WritingRoom({
                   "This page has its own format. To join it to the page before, choose More, then Remove the section break before this page.",
                 )
               }
-              view={view}
+              view={lockedIn && current.doc.pages.every((page) => page.kind === "flow") ? "draft" : view}
               spellcheck={prefs.spellcheck}
               readOnly={current.state !== "ready"}
               editors={editors}
               onActiveEditor={onActiveEditor}
+              sectionLinkBase={`/doc?entry=${current.id}`}
+              sectionFolding={view === "draft"}
+              selectionTools={!lockedIn && !prefs.quiet}
+              onSelectionAction={(action, editor) => {
+                const pageId = [...editors].find(([, value]) => value === editor)?.[0];
+                if (pageId) setActive({ pageId, editor });
+                if (action === "listen") {
+                  const { from, to } = editor.state.selection;
+                  readAloudPlayer.current?.read(nodeText(editor.state.doc.cut(from, to).toJSON()));
+                }
+                else if (action === "check") setChecksOpen(true);
+                else if (action === "revision") setRevisionOpen(true);
+                else if (currentProject) { setStudioTab("research"); setStudioOpen(true); }
+                else setRevisionOpen(true);
+              }}
               before={
                 <Input
                   aria-label="Title"
@@ -1662,14 +1952,40 @@ export function WritingRoom({
           {announcement}
         </p>
       </main>
+      {studioOpen && currentProject ? (
+        <WritingStudio key={currentProject.id} project={currentProject}
+          libraryPieces={pieces.filter((piece) => piece.projectId === currentProject.id).sort((a, b) => a.position - b.position)}
+          currentPiece={{ id: current.id, title: current.title, doc: current.doc }}
+          onInsertPieceLink={(label, href) => {
+            if (!active || active.editor.isDestroyed || !active.editor.isEditable || manuscriptPieces) return false;
+            return active.editor.chain().focus().insertContent({ type: "text", text: label, marks: [{ type: "link", attrs: { href } }] }).run();
+          }}
+          initialTab={studioTab} onInsertFootnote={(text) => {
+            if (!active || active.editor.isDestroyed || !active.editor.isEditable || manuscriptPieces || !text.trim()) return false;
+            return active.editor.chain().focus().setTextSelection(active.editor.state.selection.to).insertContent({ type: "footnote", attrs: { id: crypto.randomUUID(), note: text.trim() } }).run();
+          }}
+          deviceKey={deviceKey} planner={planner} forks={studioForks} loadPieces={studioPieces}
+          manuscriptPieces={manuscriptPieces} selection={selection ?? ""}
+          onOpenPiece={(id) => { setManuscriptPieces(null); void openEntry(id); }}
+          onEditManuscript={(loaded) => { setCompiled(null); setManuscriptPieces(loaded); }}
+          onInsertCitation={(text) => {
+            if (!active?.editor || active.editor.isDestroyed || manuscriptPieces) return false;
+            active.editor.view.dispatch(active.editor.state.tr.insertText(text, active.editor.state.selection.to)); return true;
+          }}
+          onRestoreCopy={restoreProjectCopy} onImport={importDocument}
+          onPrint={(doc, title) => { setManuscriptPieces(null); setStudioOpen(false); setCompiled({ projectId: currentProject.id, title, doc, text: documentText(doc) }); setTimeout(printPages, 100); }}
+          onClose={() => { setStudioOpen(false); setFocusTick((tick) => tick + 1); }} />
+      ) : null}
+      </div>
 
       <footer
-        data-hidden={hideChrome}
+        data-hidden={!lockedIn && hideChrome}
         // The compiled manuscript has its own actions; the piece's controls step aside.
         hidden={compiled !== null}
         className={`flex flex-wrap items-center justify-between gap-x-6 gap-y-1 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 print:hidden ${chrome}`}
       >
-        <div className="flex items-center gap-1">
+        {!lockedIn ? <>
+        <div className={formattingOpen ? "flex items-center gap-1" : "hidden"}>
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
@@ -1777,56 +2093,8 @@ export function WritingRoom({
         </p>
 
         <div className="flex flex-wrap items-center gap-1">
-          <ButtonGroup>
-            <Button
-              variant="ghost"
-              aria-label={`${timerLabel} (${clock(remaining)})`}
-              onClick={toggleTimer}
-            >
-              <span className="font-mono tabular-nums" aria-hidden="true">
-                {clock(remaining)}
-              </span>
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Timer length"
-                  />
-                }
-              >
-                <ChevronUp aria-hidden="true" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" align="end" className="w-44">
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>Timer length</DropdownMenuLabel>
-                  <DropdownMenuRadioGroup
-                    value={String(prefs.minutes)}
-                    onValueChange={(value) => {
-                      const minutes = Number(value);
-                      updatePrefs({ minutes });
-                      resetTimer(minutes);
-                    }}
-                  >
-                    {TIMER_LENGTHS.map((minutes) => (
-                      <DropdownMenuRadioItem
-                        key={minutes}
-                        value={String(minutes)}
-                      >
-                        {minutes} minutes
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => resetTimer()}>
-                  Reset timer
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </ButtonGroup>
+          <div id="writing-tools" className={writingToolsOpen ? "flex flex-wrap items-center gap-1" : "hidden"}>
+          {timerControls}
           {canFullscreen ? (
             // On narrow screens full screen moves into More, keeping the bar to two rows.
             <Button
@@ -1837,9 +2105,26 @@ export function WritingRoom({
               {fullscreen ? "Exit full screen" : "Full screen"}
             </Button>
           ) : null}
-          <Button variant="ghost" onClick={newEntry}>
-            New entry
-          </Button>
+          {currentProject ? <WritingOfflineProject accountKey={deviceKey} project={currentProject} loadEntries={async () => {
+            const loaded = await studioPieces();
+            return loaded.map((piece, index) => {
+              const metadata = entries.find((entry) => entry.id === piece.id);
+              const now = new Date().toISOString();
+              return { id: piece.id, projectId: currentProject.id, position: metadata?.position ?? index,
+                title: piece.title, body: documentText(piece.doc), document: serializeDocument(piece.doc),
+                synopsis: metadata?.synopsis ?? "", status: metadata?.status ?? "", callId: metadata?.callId ?? null,
+                card: metadata?.card ?? {}, preview: writingPreview(documentText(piece.doc)), wordCount: countWords(documentText(piece.doc)),
+                revision: metadata?.revision ?? 0, createdAt: metadata?.createdAt ?? now, updatedAt: metadata?.updatedAt ?? now };
+            });
+          }} /> : null}
+          {currentProject ? <Button variant="ghost" disabled={current.state !== "ready"} onClick={() => setStudioOpen(true)}>Project workspace</Button> : null}
+          <WritingDrive key={current.id} document={current.doc} title={current.title} entryId={current.id}
+            readOnly={current.state !== "ready" || Boolean(manuscriptPieces)} onImport={importDocument} />
+          <WritingExport document={current.doc} title={current.title} readOnly={current.state !== "ready"}
+            onImport={importDocument} onPrint={printPages} />
+          </div>
+          <Button variant="ghost" aria-expanded={writingToolsOpen} aria-controls="writing-tools" onClick={() => setWritingToolsOpen((value) => !value)}>Tools</Button>
+          <Button variant="ghost" onClick={newEntry}>New entry</Button>
           <Button
             variant="ghost"
             onClick={() => {
@@ -2060,6 +2345,9 @@ export function WritingRoom({
                   {mac ? "⇧⌘C" : "Ctrl+Shift+C"}
                 </DropdownMenuShortcut>
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setPracticeOpen(true)}>Writing sessions and starting guides</DropdownMenuItem>
+              <DropdownMenuItem disabled={current.state !== "ready" || Boolean(manuscriptPieces)} onClick={() => setRevisionOpen(true)}>Revision notes and cuttings</DropdownMenuItem>
+              <DropdownMenuCheckboxItem checked={current.doc.purpose === "research"} onCheckedChange={(checked) => change({ doc: { ...current.doc, purpose: checked ? "research" : "draft" } })}>Research material (exclude from manuscript)</DropdownMenuCheckboxItem>
               <DropdownMenuItem onClick={() => setFindOpen(true)}>
                 Find and replace
               </DropdownMenuItem>
@@ -2067,7 +2355,7 @@ export function WritingRoom({
                 disabled={deviceOnly || current.state !== "ready"}
                 onClick={() => setSnapshotsOpen(true)}
               >
-                Snapshots…
+                Revision history…
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={deviceOnly || current.state !== "ready" || !inAccount}
@@ -2095,8 +2383,14 @@ export function WritingRoom({
                   updatePrefs({ spellcheck: checked })
                 }
               >
-                Check spelling
+                Browser spellcheck
               </DropdownMenuCheckboxItem>
+              <DropdownMenuItem
+                disabled={current.state !== "ready" || Boolean(compiled)}
+                onClick={() => setChecksOpen(true)}
+              >
+                Writing checks…
+              </DropdownMenuItem>
               <DropdownMenuCheckboxItem
                 checked={prefs.smartPunctuation}
                 onCheckedChange={(checked) =>
@@ -2119,8 +2413,57 @@ export function WritingRoom({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+      </> : <section aria-label="Lock in session" className="flex flex-1 flex-wrap items-center justify-between gap-2">
+        <span role="status" className="text-sm text-muted-foreground">{timeUp ? "Session complete. Keep writing if you like." : status || "Your draft stays on this device until saved."}</span>
+        <div className="ml-auto flex items-center gap-1">
+          {timerControls}
+          <Button variant="ghost" onClick={leaveLockIn}>Leave Lock in</Button>
+        </div>
+      </section>}
+      {!compiled && !lockedIn ? <WritingNavigation accountId={deviceKey} entryId={current.id} document={current.doc} editors={editors} active={active}
+        onNavigate={(location, editor) => setActive({ pageId: location.editorId, editor })}
+        actions={[
+          { id: "find", label: "Find and replace", shortcut: "⌘/Ctrl+F", run: () => setFindOpen(true) },
+          { id: "checks", label: "Writing checks", run: () => setChecksOpen(true) },
+          { id: "revision", label: "Revision notes, suggestions and cuttings", run: () => setRevisionOpen(true) },
+          { id: "lock", label: "Lock in", run: enterLockIn },
+          { id: "library", label: "Open library", run: () => { setLibraryProject(current.projectId); setSheetOpen(true); } },
+          { id: "new", label: "New entry", run: newEntry },
+          { id: "sessions", label: "Writing sessions and starting guides", run: () => setPracticeOpen(true) },
+          { id: "count", label: "Word and selection statistics", run: () => setWordCountOpen(true) },
+          { id: "format", label: "Page format and reading spacing", run: () => setFormatOpen(true) },
+          { id: "project", label: "Sources, references and project workspace", disabled: !currentProject, run: () => setStudioOpen(true) },
+          ...pieces.filter((piece) => piece.id !== current.id).slice(0, 100).map((piece) => ({ id: piece.id, label: `Open ${piece.title || "Untitled piece"}`, run: () => openEntry(piece.id) })),
+        ]} /> : null}
+      {!compiled ? <WritingReadAloud key={current.mount} ref={readAloudPlayer} text={selection ?? documentText(current.doc)} plan={readAloud}
+        disabled={current.state !== "ready" || Boolean(manuscriptPieces)} /> : null}
       </footer>
 
+      <WritingPractice open={practiceOpen} onOpenChange={setPracticeOpen} accountKey={deviceKey}
+        onCreateTemplate={(title, text, preparedDocument) => importDocument(preparedDocument ?? plainTextToDocument(text, prefs.typeface), title)} />
+      {revisionOpen && !compiled ? <WritingRevisionTools key={`${deviceKey}:${current.id}`} accountId={deviceKey} accountSync={!deviceOnly} documentId={current.id}
+        trackingEnabled={trackingEntry === current.id} onTrackingChange={(enabled) => {
+          setTrackingEntry(enabled ? current.id : null);
+          for (const editor of editors.values()) setWritingTracking(editor, { enabled });
+        }}
+        editor={active?.editor ?? null} editors={editors} readOnly={current.state !== "ready" || Boolean(manuscriptPieces)} onClose={() => setRevisionOpen(false)} /> : null}
+      {checksOpen && !compiled ? (
+        <WritingChecks
+          accountId={deviceOnly ? undefined : deviceKey}
+          documentId={current.id}
+          preferenceKey={`${deviceKey}:${current.id}`}
+          dictionaryKey={deviceKey}
+          selectionKey={active?.pageId}
+          key={`${deviceKey}:${current.mount}`}
+          document={current.doc}
+          editors={editors}
+          readOnly={current.state !== "ready"}
+          onClose={() => {
+            setChecksOpen(false);
+            setFocusTick((tick) => tick + 1);
+          }}
+        />
+      ) : null}
       <WritingLibrary
         open={sheetOpen}
         onOpenChange={setSheetOpen}
@@ -2136,6 +2479,10 @@ export function WritingRoom({
         }
         onAddPiece={addPiece}
         onReorder={(projectId, ids) => void reorderPieces(projectId, ids)}
+        onLoadPieceDetails={loadPieceDetails}
+        onSavePiece={savePieceDetails}
+        onDuplicatePiece={duplicatePiece}
+        canSetTarget={planner}
         onMovePiece={(id, projectId) => void movePiece(id, projectId)}
         onRenameProject={(id, title) => void renameProject(id, title)}
         onDeleteProject={(id) => void deleteProject(id)}
@@ -2143,6 +2490,13 @@ export function WritingRoom({
           setCompileState({ projectId: id, busy: false, error: "" })
         }
         onOutline={setOutlineProject}
+        extraActions={!deviceOnly ? <WritingProjectRestore deviceKey={deviceKey} onRestored={async (projectId, entryId) => {
+          const [projectResult, entryResult] = await Promise.all([requestJson("/api/me/writing/projects"), requestJson("/api/me/writing")]);
+          if (projectResult.ok && Array.isArray(projectResult.data.projects)) setProjects(projectResult.data.projects as WritingProject[]);
+          if (entryResult.ok && Array.isArray(entryResult.data.entries)) setEntries(entryResult.data.entries as WritingEntrySummary[]);
+          setLibraryProject(projectId);
+          if (entryId) await openEntry(entryId);
+        }} /> : null}
         onDownloadAll={() => void downloadAll()}
         exportError={exportError}
       />
@@ -2153,6 +2507,10 @@ export function WritingRoom({
         onClosed={() => setFocusTick((tick) => tick + 1)}
         entryId={current.id}
         content={contentOf(current)}
+        onRestoreCopy={(content, versionName) => {
+          const doc = parseWritingDocument(content.document) ?? plainTextToDocument(content.body, prefs.typeface);
+          importDocument(doc, `${content.title || "Untitled"} — ${versionName || "restored copy"}`.slice(0, WRITING_TITLE_MAX));
+        }}
         onRestore={(content) => {
           setActive(null);
           setCurrent((value) =>
@@ -2306,7 +2664,7 @@ export function WritingRoom({
 
       {/* Printing draws each page on its own sheet of the chosen paper. */}
       <style>{`@page { size: ${PAGE_SIZES[(compiled?.doc ?? current.doc).pageSize].width}mm ${PAGE_SIZES[(compiled?.doc ?? current.doc).pageSize].height}mm; margin: 0; }
-@media print { [data-slot="writing-page"] { zoom: 1 !important; break-after: page; } section:last-of-type > [data-slot="writing-page"] { break-after: auto; } [data-sonner-toaster] { display: none !important; } }`}</style>
+@media print { [data-slot="sheet-content"], [data-slot="sheet-overlay"] { display: none !important; } [data-slot="writing-page"] [data-writing-review-layer] { display: inline !important; color: inherit !important; text-decoration: inherit !important; } [data-slot="writing-page"] ins[data-writing-tracked="writingInsertion"] { display: inline !important; color: inherit !important; text-decoration: none !important; } [data-slot="writing-page"] del[data-writing-tracked="writingDeletion"] { display: none !important; } [data-slot="writing-page"] { --background: var(--bg); --foreground: var(--ink); --muted-foreground: var(--ink-2); --primary: var(--brand-accent); color-scheme: light; background: var(--background) !important; color: var(--foreground) !important; zoom: 1 !important; break-after: page; } section:last-of-type > [data-slot="writing-page"] { break-after: auto; } [data-sonner-toaster] { display: none !important; } }`}</style>
     </div>
   );
 }

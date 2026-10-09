@@ -60,11 +60,12 @@ export function CookieConsent() {
           <Button
             type="button"
             variant="outline"
+            className="min-w-0 max-w-full whitespace-normal"
             onClick={() => decide("declined")}
           >
             Decline
           </Button>
-          <Button type="button" onClick={() => decide("accepted")}>
+          <Button type="button" className="min-w-0 max-w-full whitespace-normal" onClick={() => decide("accepted")}>
             Accept analytics
           </Button>
         </div>

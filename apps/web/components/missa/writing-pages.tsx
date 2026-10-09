@@ -1,8 +1,11 @@
 "use client";
 
+import { WritingContextMenu } from "./writing-context-menu";
+
 import {
   Fragment,
   useEffect,
+  useId,
   useRef,
   useState,
   useSyncExternalStore,
@@ -20,10 +23,17 @@ import {
 import { BulletList } from "@tiptap/extension-list";
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
+import {
+  WritingSelectionMenu,
+  WritingFootnotes,
+  type WritingSelectionAction,
+} from "@/components/missa/writing-selection-menu";
 import { writingTypeface } from "@/components/missa/writing-typefaces";
 import { cn } from "@/lib/utils";
 import { FocusDim } from "@/lib/writing-focus";
 import { SearchHighlight } from "@/lib/writing-search";
+import { WritingInsertion, WritingDeletion, WritingTrackedChanges } from "@/lib/writing-tracked-changes";
+import { writingRichExtensions } from "@/lib/writing-rich";
 import {
   SmartPunctuation,
   Subscript,
@@ -127,6 +137,7 @@ const PageKeys = Extension.create<{
           this.storage.leaving = false;
           return false;
         }
+        if (editor.isActive("table")) return editor.commands.goToNextCell();
         if (editor.can().sinkListItem("listItem"))
           return editor.commands.sinkListItem("listItem");
         editor.view.dispatch(editor.state.tr.insertText("\t"));
@@ -134,9 +145,15 @@ const PageKeys = Extension.create<{
       },
       "Mod-Enter": () =>
         this.options.callbacks.current.onBreak(this.options.pageId),
+      "Shift-Tab": ({ editor }) =>
+        editor.isActive("table") ? editor.commands.goToPreviousCell() : false,
       ArrowDown: ({ editor }) => {
         const { selection, doc } = editor.state;
-        if (!selection.empty || selection.$head.after(1) !== doc.content.size)
+        if (
+          !selection.empty ||
+          selection.$head.depth < 1 ||
+          selection.$head.after(1) !== doc.content.size
+        )
           return false;
         if (!editor.view.endOfTextblock("down")) return false;
         return this.options.callbacks.current.onExit(
@@ -146,7 +163,12 @@ const PageKeys = Extension.create<{
       },
       ArrowUp: ({ editor }) => {
         const { selection } = editor.state;
-        if (!selection.empty || selection.$head.before(1) !== 0) return false;
+        if (
+          !selection.empty ||
+          selection.$head.depth < 1 ||
+          selection.$head.before(1) !== 0
+        )
+          return false;
         if (!editor.view.endOfTextblock("up")) return false;
         return this.options.callbacks.current.onExit(this.options.pageId, "up");
       },
@@ -187,6 +209,8 @@ export function writingExtensions() {
       heading: { levels: [1, 2] },
     }),
     LineStartBulletList,
+    ...writingRichExtensions(),
+    WritingInsertion, WritingDeletion, WritingTrackedChanges,
     TextAlign.configure({
       types: ["heading", "paragraph"],
       alignments: ["left", "center", "right", "justify"],
@@ -200,8 +224,15 @@ export function writingExtensions() {
   ];
 }
 
+function noteSpace(editor: Editor): number {
+  const notes = editor.view.dom
+    .closest("[data-slot=writing-page]")
+    ?.querySelector<HTMLElement>("[data-slot=writing-footnotes]");
+  return notes ? notes.getBoundingClientRect().height + 16 : 0;
+}
+
 export const WRITING_TEXT_CLASS =
-  "outline-none [&_p]:m-0 [&_p]:min-h-[1lh] [&_h1]:m-0 [&_h1]:text-[1.6em] [&_h1]:font-medium [&_h2]:m-0 [&_h2]:text-[1.25em] [&_h2]:font-medium [&_blockquote]:ms-[2em] [&_blockquote]:italic [&_hr]:my-[1lh] [&_hr]:border-border [&_ul]:ps-[1.5em] [&_ul]:list-disc [&_ol]:ps-[1.5em] [&_ol]:list-decimal";
+  "outline-none [&_p]:m-0 [&_p]:min-h-[1lh] [&_h1]:m-0 [&_h1]:text-[1.6em] [&_h1]:font-medium [&_h2]:m-0 [&_h2]:text-[1.25em] [&_h2]:font-medium [&_blockquote]:ms-[2em] [&_blockquote]:italic [&_hr]:my-[1lh] [&_hr]:border-border [&_ul]:ps-[1.5em] [&_ul]:list-disc [&_ol]:ps-[1.5em] [&_ol]:list-decimal [&_a]:text-primary [&_a]:underline [&_table]:w-full [&_table]:table-fixed [&_table]:border-collapse [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:bg-muted [&_th]:p-2 [&_th]:text-start [&_img]:max-w-full [&_img]:h-auto [&_figcaption]:text-sm [&_figcaption]:text-muted-foreground [&_figure]:my-4 [&_mark]:bg-warning-subtle [&_mark]:text-foreground [&_ul[data-type=taskList]]:list-none [&_ul[data-type=taskList]]:ps-0 [&_li[data-type=taskItem]]:flex [&_li[data-type=taskItem]]:gap-2 [&_li[data-type=taskItem]>label]:shrink-0 [&_li[data-type=taskItem]>div]:min-w-0 [&_.selectedCell]:bg-accent [&_.ProseMirror-selectednode]:outline [&_.ProseMirror-selectednode]:outline-ring";
 
 /** Tab writes a tab in a text box too; Escape, then Tab, leaves it. */
 export const TabKeys = Extension.create({
@@ -223,9 +254,12 @@ export const TabKeys = Extension.create({
           this.storage.leaving = false;
           return false;
         }
+        if (editor.isActive("table")) return editor.commands.goToNextCell();
         editor.view.dispatch(editor.state.tr.insertText("\t"));
         return true;
       },
+      "Shift-Tab": ({ editor }) =>
+        editor.isActive("table") ? editor.commands.goToPreviousCell() : false,
     };
   },
 });
@@ -283,6 +317,12 @@ function PageSheet({
   callbacks,
   editors,
   markers,
+  instructionsId,
+  accessibleLabelPrefix,
+  onSelectionAction,
+  selectionTools = true,
+  sectionLinkBase,
+  sectionFolding = false,
 }: {
   document: WritingDocument;
   page: FlowPage;
@@ -294,6 +334,12 @@ function PageSheet({
   callbacks: { current: PageCallbacks };
   editors: PageEditors;
   markers: Map<string, HTMLDivElement>;
+  instructionsId: string;
+  accessibleLabelPrefix?: string;
+  selectionTools?: boolean;
+  sectionLinkBase?: string;
+  sectionFolding?: boolean;
+  onSelectionAction?: (action: WritingSelectionAction, editor: Editor) => void;
 }) {
   const editor = useEditor(
     {
@@ -307,8 +353,8 @@ function PageSheet({
       ],
       editorProps: {
         attributes: {
-          "aria-label": `Page ${index + 1}`,
-          "aria-describedby": "writing-page-keys",
+          "aria-label": `${accessibleLabelPrefix ? `${accessibleLabelPrefix}, ` : ""}Page ${index + 1}`,
+          "aria-describedby": instructionsId,
           "data-slot": "writing-page-text",
           class: WRITING_TEXT_CLASS,
         },
@@ -335,9 +381,14 @@ function PageSheet({
   }, [editor, mounted, readOnly]);
 
   useEffect(() => {
-    if (editor && mounted && viewMounted(editor))
+    if (editor && mounted && viewMounted(editor)) {
       editor.view.dom.setAttribute("spellcheck", String(spellcheck));
-  }, [editor, mounted, spellcheck]);
+      editor.view.dom.setAttribute(
+        "aria-label",
+        `${accessibleLabelPrefix ? `${accessibleLabelPrefix}, ` : ""}Page ${index + 1}`,
+      );
+    }
+  }, [editor, mounted, spellcheck, accessibleLabelPrefix, index]);
 
   // Text flows on to the next page by itself. Only a first paragraph taller
   // than the whole page can't flow, and is marked so the writer can break it.
@@ -346,7 +397,9 @@ function PageSheet({
   useEffect(() => {
     if (!editor || !mounted || view !== "page" || !viewMounted(editor)) return;
     const measure = () => {
-      const limit = marker.current?.getBoundingClientRect().top;
+      const bottom = marker.current?.getBoundingClientRect().top;
+      const limit =
+        bottom === undefined ? undefined : bottom - noteSpace(editor);
       if (limit === undefined || !viewMounted(editor)) return;
       const first = editor.view.dom.firstElementChild;
       setTooTall(
@@ -367,7 +420,7 @@ function PageSheet({
 
   return (
     <section
-      aria-label={`Page ${index + 1}`}
+      aria-label={`${accessibleLabelPrefix ? `${accessibleLabelPrefix}, ` : ""}Page ${index + 1}`}
       className="flex w-full flex-col items-center gap-2"
     >
       <div
@@ -390,7 +443,30 @@ function PageSheet({
         }
       >
         <div className={face.className} style={pageTextStyle(document, page)}>
-          <EditorContent editor={editor} />
+          <WritingContextMenu
+            editor={mounted ? editor : null}
+            enabled={!readOnly && selectionTools}
+            sectionLinkBase={sectionLinkBase}
+            sectionFolding={sectionFolding}
+          >
+            <EditorContent editor={editor} />
+          </WritingContextMenu>
+          {mounted && !readOnly && selectionTools ? (
+            <WritingSelectionMenu
+              editor={editor}
+              onSelectionAction={onSelectionAction}
+              sectionLinkBase={sectionLinkBase}
+              sectionFolding={sectionFolding}
+              writingDocument={document}
+            />
+          ) : null}
+          {mounted ? (
+            <WritingFootnotes
+              editor={editor}
+              document={document}
+              pageId={page.id}
+            />
+          ) : null}
         </div>
         {paged ? (
           <div
@@ -431,8 +507,19 @@ export function WritingPages({
   commandsRef,
   onJoinRefused,
   before,
+  accessibleLabelPrefix,
+  onSelectionAction,
+  selectionTools = true,
+  sectionLinkBase,
+  sectionFolding = false,
 }: {
   before?: ReactNode;
+  /** Distinguishes regions when several pieces appear in one manuscript. */
+  accessibleLabelPrefix?: string;
+  selectionTools?: boolean;
+  sectionLinkBase?: string;
+  sectionFolding?: boolean;
+  onSelectionAction?: (action: WritingSelectionAction, editor: Editor) => void;
   document: WritingDocument;
   onChange: (document: WritingDocument) => void;
   view: PagesView;
@@ -445,6 +532,7 @@ export function WritingPages({
   /** Backspace met a section break whose page has a format of its own. */
   onJoinRefused?: () => void;
 }) {
+  const instructionsId = useId();
   const latest = useRef(document);
   const desk = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -637,7 +725,9 @@ export function WritingPages({
     const size = PAGE_SIZES[document.pageSize];
     const resize = () => {
       const available = element.clientWidth - 32;
-      setScale(Math.max(0.3, Math.min(1.25, available / (size.width * MM))));
+      // Fit the saved paper even when enlarged browser text leaves a narrow desk.
+      // A scale floor could make the paper wider than its own scroll container.
+      setScale(Math.min(1.25, Math.max(1, available) / (size.width * MM)));
     };
     resize();
     const observer = new ResizeObserver(resize);
@@ -761,7 +851,7 @@ export function WritingPages({
       const marker = markers.get(page.id);
       // A page still appearing is measured on the next frame.
       if (!editor || !marker || !viewMounted(editor)) return "waiting";
-      const limit = marker.getBoundingClientRect().top;
+      const limit = marker.getBoundingClientRect().top - noteSpace(editor);
       const blocks = [...editor.view.dom.children];
       const over = blocks.findIndex(
         (block) => block.getBoundingClientRect().bottom > limit + 1,
@@ -822,12 +912,12 @@ export function WritingPages({
     <div
       ref={desk}
       className={cn(
-        "flex min-h-full flex-col items-center gap-8 px-4 py-8 print:gap-0 print:p-0",
+        "flex min-h-full w-full min-w-0 flex-col items-center gap-8 px-4 py-8 print:gap-0 print:p-0",
         view === "page" ? "bg-muted/40 print:bg-transparent" : "",
       )}
     >
       {before}
-      <p id="writing-page-keys" className="sr-only">
+      <p id={instructionsId} className="sr-only">
         Tab writes a tab. To leave the page, press Escape, then Tab.
       </p>
       {document.pages.map((page, index) => {
@@ -850,6 +940,12 @@ export function WritingPages({
               readOnly={readOnly}
               editors={editors}
               callbacks={canvasCallbacks}
+              instructionsId={instructionsId}
+              accessibleLabelPrefix={accessibleLabelPrefix}
+              onSelectionAction={onSelectionAction}
+              selectionTools={selectionTools}
+              sectionLinkBase={sectionLinkBase}
+              sectionFolding={sectionFolding}
             />
           ) : (
             <PageSheet
@@ -864,6 +960,12 @@ export function WritingPages({
               callbacks={callbacks}
               editors={editors}
               markers={markers}
+              instructionsId={instructionsId}
+              accessibleLabelPrefix={accessibleLabelPrefix}
+              onSelectionAction={onSelectionAction}
+              selectionTools={selectionTools}
+              sectionLinkBase={sectionLinkBase}
+              sectionFolding={sectionFolding}
             />
           );
         // One wrapper per page, so a label coming or going never remakes the page.

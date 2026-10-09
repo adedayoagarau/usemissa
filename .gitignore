@@ -23,3 +23,10 @@ test-results/
 # Written by next dev (Next 16.3+) on every start
 apps/web/AGENTS.md
 apps/web/CLAUDE.md
+
+# Copied from the pinned Harper package by install/build/dev hooks.
+apps/web/public/harper/**/*.wasm
+apps/web/public/harper/**/checker-worker.js
+
+# Rebuilt from canonical editor and tokens by build-writing-offline.mjs
+/apps/web/public/writing-offline/generated/

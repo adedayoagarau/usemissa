@@ -1,5 +1,5 @@
 import { isWritingEntryId } from "@/lib/writing";
-import { parseSnapshotRequest } from "@/lib/writing-snapshots";
+import { NamedVersionLimitError, parseSnapshotRequest } from "@/lib/writing-snapshots";
 import { json, writingSession } from "../../_shared";
 
 type Context = { params: Promise<{ id: string }> };
@@ -55,7 +55,8 @@ export async function POST(request: Request, context: Context) {
           },
           404,
         );
-  } catch {
+  } catch (error) {
+    if (error instanceof NamedVersionLimitError) return json({ error: error.message }, 409);
     return json({ error: "We could not keep this snapshot. Try again." }, 500);
   }
 }

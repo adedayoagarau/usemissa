@@ -48,6 +48,9 @@
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
   flex-shrink: 0;
   gap: 8px;
   align-items: center;

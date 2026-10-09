@@ -127,6 +127,11 @@ model, no reading of meaning. Dimmed text must stay at 4.5:1 contrast through
 a token, not opacity, and the mode must be easy to switch off (WCAG 1.4.3).
 Typewriter scrolling is instant, never animated.
 
+**Original research recommendation, superseded in part on 8 October 2026:** the
+owner approved optional on-device Harper spelling and grammar checks. The
+following caution still applies to unrequested linguistic highlighting, not
+to the explicitly requested checker.
+
 **Not recommended:** parts-of-speech highlighting (iA Writer, Scrivener's
 Linguistic Focus). Even on the device it is automated reading of the
 writer's text, it would contradict the room's promise, and it works in

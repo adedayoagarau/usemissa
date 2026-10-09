@@ -1,0 +1,34 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { initializeWritingHistory, WritingHistoryRecorder } from "./writing-history.ts";
+const content = (body: string) => ({ title: "Draft", body, document: null });
+test("loading placeholder never replaces the loaded pre-edit history baseline", () => {
+ const recorders = new Map<string, WritingHistoryRecorder>();
+ initializeWritingHistory(recorders, "existing", content(""), false);
+ assert.equal(recorders.size, 0);
+ initializeWritingHistory(recorders, "existing", content("Saved existing writing"), true);
+ initializeWritingHistory(recorders, "existing", content("Immediate edit"), true);
+ const recorder = recorders.get("existing")!;
+ const baseline = recorder.checkpoint(content("Immediate edit"), 1000)!;
+ assert.equal(baseline.content.body, "Saved existing writing");
+ initializeWritingHistory(recorders, "existing", content(""), false);
+ initializeWritingHistory(recorders, "existing", content("Reloaded writing"), true);
+ assert.equal(recorders.get("existing"), recorder);
+ assert.deepEqual(recorder.checkpoint(content("Reloaded writing"), 2000), baseline);
+});
+test("history keeps session start, first change, then only changed interval versions", () => {
+ const recorder = new WritingHistoryRecorder(content("Start"), 1000);
+ assert.equal(recorder.checkpoint(content("Start"),1000),null);
+ const baseline=recorder.checkpoint(content("First edit"),1001)!;
+ assert.equal(baseline.content.body,"Start");
+ assert.deepEqual(recorder.checkpoint(content("More edits"),1010),baseline,"failed attempts reuse the same version id");
+ recorder.confirmed(1010);
+ const changed=recorder.checkpoint(content("More edits"),1020)!;
+ assert.equal(changed.content.body,"More edits");
+ recorder.confirmed(1020);
+ assert.equal(recorder.checkpoint(content("Another edit"),1100),null);
+ const later=recorder.checkpoint(content("Another edit"),2021)!;
+ assert.equal(later.content.body,"Another edit");
+ recorder.confirmed(2021);
+ assert.equal(recorder.checkpoint(content("Another edit"),5000),null);
+});

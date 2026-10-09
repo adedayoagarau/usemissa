@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { ArrowLeft, Ellipsis, GripVertical } from "lucide-react";
 import {
   AlertDialog,
@@ -77,6 +77,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { WRITING_TITLE_MAX } from "@/lib/writing";
 import { PAGE_SIZES, type PageSizeId } from "@/lib/writing-document";
 import type { PieceCard } from "@/lib/writing-cards";
+import {
+  WritingPieceContext,
+  WritingPieceDetails,
+  type PieceDetails,
+} from "./writing-piece-actions";
 import { UpgradeHint } from "@/components/missa/upgrade-hint";
 import {
   PIECE_STATUSES,
@@ -107,6 +112,7 @@ export type LibraryPiece = {
   /** The planner's index card. */
   card: PieceCard;
   /** Kept on this device, not yet in the account. */
+  research?: boolean;
   local: boolean;
   open: boolean;
 };
@@ -126,12 +132,17 @@ export type WritingLibraryProps = {
   onAddPiece: (projectId: string) => void;
   onReorder: (projectId: string, ids: string[]) => void;
   onMovePiece: (id: string, projectId: string | null) => void;
+  onLoadPieceDetails?: (id: string) => Promise<PieceDetails>;
+  canSetTarget?: boolean;
+  onSavePiece?: (id: string, details: PieceDetails) => void | Promise<void>;
+  onDuplicatePiece?: (id: string) => void | Promise<void>;
   onRenameProject: (id: string, title: string) => void;
   onDeleteProject: (id: string) => void;
   onCompile: (id: string) => void;
   onOutline: (id: string) => void;
   onDownloadAll: () => void;
   exportError: string;
+  extraActions?: ReactNode;
 };
 
 export function wordLabel(words: number) {
@@ -192,6 +203,7 @@ function PieceLink({
         {detail === null
           ? wordLabel(piece.wordCount)
           : `${detail ?? shortDate(piece.updatedAt)} · ${wordLabel(piece.wordCount)}`}
+        {piece.research ? " · Research" : ""}
         {piece.open ? " · Open now" : ""}
         {piece.local ? " · Not saved to your account yet" : ""}
       </ItemDescription>
@@ -222,6 +234,9 @@ export function WritingLibrary(props: WritingLibraryProps) {
           return false;
         }}
       >
+        {props.extraActions ? (
+          <div className="px-4 pt-4">{props.extraActions}</div>
+        ) : null}
         {shown ? (
           // Remounts when the title changes elsewhere, so the field shows it.
           <ProjectBinder
@@ -322,21 +337,37 @@ export function WritingLibrary(props: WritingLibraryProps) {
                     <ItemGroup>
                       {loose.map((piece) => (
                         <div role="listitem" key={piece.id}>
-                          <Item>
-                            <PieceLink
-                              piece={piece}
-                              onOpen={props.onOpenPiece}
-                            />
-                            {!deviceOnly && projects.length ? (
-                              <ItemActions>
-                                <PieceMenu
-                                  piece={piece}
-                                  projects={projects}
-                                  onMovePiece={props.onMovePiece}
-                                />
-                              </ItemActions>
-                            ) : null}
-                          </Item>
+                          <PieceRowContext
+                            piece={piece}
+                            projects={projects}
+                            onMovePiece={props.onMovePiece}
+                            onLoadPieceDetails={props.onLoadPieceDetails}
+                            canSetTarget={props.canSetTarget}
+                            onSavePiece={props.onSavePiece}
+                            onDuplicatePiece={props.onDuplicatePiece}
+                          >
+                            <Item>
+                              <PieceLink
+                                piece={piece}
+                                onOpen={props.onOpenPiece}
+                              />
+                              {!deviceOnly ? (
+                                <ItemActions>
+                                  <PieceMenu
+                                    piece={piece}
+                                    projects={projects}
+                                    onMovePiece={props.onMovePiece}
+                                    onLoadPieceDetails={
+                                      props.onLoadPieceDetails
+                                    }
+                                    canSetTarget={props.canSetTarget}
+                                    onSavePiece={props.onSavePiece}
+                                    onDuplicatePiece={props.onDuplicatePiece}
+                                  />
+                                </ItemActions>
+                              ) : null}
+                            </Item>
+                          </PieceRowContext>
                         </div>
                       ))}
                     </ItemGroup>
@@ -389,61 +420,94 @@ function PieceMenu({
   onMove,
   first,
   last,
+  onLoadPieceDetails,
+  canSetTarget,
+  onSavePiece,
+  onDuplicatePiece,
 }: {
   piece: LibraryPiece;
   projects: WritingProject[];
   onMovePiece: (id: string, projectId: string | null) => void;
   onMove?: (step: -1 | 1) => void;
+  onLoadPieceDetails?: WritingLibraryProps["onLoadPieceDetails"];
+  canSetTarget?: boolean;
+  onSavePiece?: WritingLibraryProps["onSavePiece"];
+  onDuplicatePiece?: WritingLibraryProps["onDuplicatePiece"];
   first?: boolean;
   last?: boolean;
 }) {
+  const [editing, setEditing] = useState(false);
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={`Options for ${pieceName(piece)}`}
-          />
-        }
-      >
-        <Ellipsis aria-hidden="true" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        {onMove ? (
-          <>
-            <DropdownMenuGroup>
-              <DropdownMenuItem disabled={first} onClick={() => onMove(-1)}>
-                Move up
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Options for ${pieceName(piece)}`}
+            />
+          }
+        >
+          <Ellipsis aria-hidden="true" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuGroup>
+            {onSavePiece ? (
+              <DropdownMenuItem onClick={() => setEditing(true)}>
+                Piece details
               </DropdownMenuItem>
-              <DropdownMenuItem disabled={last} onClick={() => onMove(1)}>
-                Move down
+            ) : null}
+            {onDuplicatePiece ? (
+              <DropdownMenuItem onClick={() => void onDuplicatePiece(piece.id)}>
+                Duplicate piece
               </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-          </>
-        ) : null}
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>Move to</DropdownMenuLabel>
-          <DropdownMenuRadioGroup
-            value={piece.projectId ?? "loose"}
-            onValueChange={(value) =>
-              onMovePiece(piece.id, value === "loose" ? null : value)
-            }
-          >
-            {projects.map((project) => (
-              <DropdownMenuRadioItem key={project.id} value={project.id}>
-                {projectName(project)}
+            ) : null}
+          </DropdownMenuGroup>
+          {onMove ? (
+            <>
+              <DropdownMenuGroup>
+                <DropdownMenuItem disabled={first} onClick={() => onMove(-1)}>
+                  Move up
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={last} onClick={() => onMove(1)}>
+                  Move down
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+            </>
+          ) : null}
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Move to</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={piece.projectId ?? "loose"}
+              onValueChange={(value) =>
+                onMovePiece(piece.id, value === "loose" ? null : value)
+              }
+            >
+              {projects.map((project) => (
+                <DropdownMenuRadioItem key={project.id} value={project.id}>
+                  {projectName(project)}
+                </DropdownMenuRadioItem>
+              ))}
+              <DropdownMenuRadioItem value="loose">
+                Loose pieces
               </DropdownMenuRadioItem>
-            ))}
-            <DropdownMenuRadioItem value="loose">
-              Loose pieces
-            </DropdownMenuRadioItem>
-          </DropdownMenuRadioGroup>
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {editing && onSavePiece ? (
+        <WritingPieceDetails
+          key={piece.id}
+          piece={piece}
+          onClose={() => setEditing(false)}
+          onSave={onSavePiece}
+          onLoad={onLoadPieceDetails}
+          canSetTarget={canSetTarget}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -456,6 +520,10 @@ function ProjectBinder({
   onAddPiece,
   onReorder,
   onMovePiece,
+  onLoadPieceDetails,
+  canSetTarget,
+  onSavePiece,
+  onDuplicatePiece,
   onRenameProject,
   onDeleteProject,
   onCompile,
@@ -597,35 +665,49 @@ function ProjectBinder({
                     role="listitem"
                     className="mb-1 rounded-lg bg-background"
                   >
-                    <Item size="sm">
-                      <SortableItemHandle asChild>
-                        <span
-                          aria-hidden="true"
-                          className="text-muted-foreground"
-                        >
-                          <GripVertical className="size-4" />
-                        </span>
-                      </SortableItemHandle>
-                      <PieceLink
-                        piece={piece}
-                        onOpen={onOpenPiece}
-                        detail={
-                          piece.status
-                            ? PIECE_STATUSES[piece.status as PieceStatus]
-                            : null
-                        }
-                      />
-                      <ItemActions>
-                        <PieceMenu
+                    <PieceRowContext
+                      piece={piece}
+                      projects={projects}
+                      onMovePiece={onMovePiece}
+                      onLoadPieceDetails={onLoadPieceDetails}
+                      canSetTarget={canSetTarget}
+                      onSavePiece={onSavePiece}
+                      onDuplicatePiece={onDuplicatePiece}
+                    >
+                      <Item size="sm">
+                        <SortableItemHandle asChild>
+                          <span
+                            aria-hidden="true"
+                            className="text-muted-foreground"
+                          >
+                            <GripVertical className="size-4" />
+                          </span>
+                        </SortableItemHandle>
+                        <PieceLink
                           piece={piece}
-                          projects={projects}
-                          onMovePiece={onMovePiece}
-                          onMove={(step) => move(index, step)}
-                          first={index === 0}
-                          last={index === saved.length - 1}
+                          onOpen={onOpenPiece}
+                          detail={
+                            piece.status
+                              ? PIECE_STATUSES[piece.status as PieceStatus]
+                              : null
+                          }
                         />
-                      </ItemActions>
-                    </Item>
+                        <ItemActions>
+                          <PieceMenu
+                            piece={piece}
+                            projects={projects}
+                            onMovePiece={onMovePiece}
+                            onLoadPieceDetails={onLoadPieceDetails}
+                            canSetTarget={canSetTarget}
+                            onSavePiece={onSavePiece}
+                            onDuplicatePiece={onDuplicatePiece}
+                            onMove={(step) => move(index, step)}
+                            first={index === 0}
+                            last={index === saved.length - 1}
+                          />
+                        </ItemActions>
+                      </Item>
+                    </PieceRowContext>
                   </div>
                 </SortableItem>
               ))}
@@ -1022,5 +1104,52 @@ export function CompileDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function PieceRowContext({
+  piece,
+  projects,
+  onMovePiece,
+  onLoadPieceDetails,
+  canSetTarget,
+  onSavePiece,
+  onDuplicatePiece,
+  children,
+}: Pick<
+  WritingLibraryProps,
+  | "projects"
+  | "onMovePiece"
+  | "onSavePiece"
+  | "onDuplicatePiece"
+  | "onLoadPieceDetails"
+  | "canSetTarget"
+> & { piece: LibraryPiece; children: ReactNode }) {
+  const [editing, setEditing] = useState(false);
+  if (piece.local) return <>{children}</>;
+  return (
+    <>
+      <WritingPieceContext
+        piece={piece}
+        projects={projects}
+        onMovePiece={onMovePiece}
+        onEdit={onSavePiece ? () => setEditing(true) : undefined}
+        onDuplicate={
+          onDuplicatePiece ? () => void onDuplicatePiece(piece.id) : undefined
+        }
+      >
+        {children}
+      </WritingPieceContext>
+      {editing && onSavePiece ? (
+        <WritingPieceDetails
+          key={piece.id}
+          piece={piece}
+          onClose={() => setEditing(false)}
+          onSave={onSavePiece}
+          onLoad={onLoadPieceDetails}
+          canSetTarget={canSetTarget}
+        />
+      ) : null}
+    </>
   );
 }

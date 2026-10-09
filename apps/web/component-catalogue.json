@@ -1,4 +1,224 @@
 {
+  "WritingContextMenu": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/writing-context-menu.tsx",
+    "composition": [
+      "ContextMenu",
+      "ContextMenuTrigger",
+      "ContextMenuContent",
+      "ContextMenuItem",
+      "ContextMenuGroup",
+      "ContextMenuSeparator",
+      "Button"
+    ],
+    "source": "Installed shadcn Base UI ContextMenu at components/ui/context-menu.tsx; official Tiptap state transactions and decorations.",
+    "adaptation": "Native Shift-right-click and touch long-press preserved. Contextual text/link/image actions share selection controls. Stable heading IDs, undoable same-editor section moves, draft-only local folds and bounded image-width controls."
+  },
+  "WritingSelectionMenu": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/writing-selection-menu.tsx",
+    "composition": [
+      "Button",
+      "Popover",
+      "Field",
+      "Input",
+      "Textarea",
+      "NativeSelect"
+    ],
+    "source": "Installed Missa components; selection positioning uses the official Tiptap BubbleMenu plugin.",
+    "adaptation": "Selection formatting, contextual links and images, checklists and numbered footnotes; native browser context menu stays available.",
+    "boundary": " Icon-only speaker reads selected text through the shared player."
+  },
+  "WritingNavigation": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/writing-navigation.tsx",
+    "composition": [
+      "Button",
+      "Command",
+      "Collapsible"
+    ],
+    "source": "Installed Missa components; selection positioning uses the official Tiptap BubbleMenu plugin.",
+    "adaptation": "Searchable document commands, heading outline and account-scoped device bookmarks; stale locations do not jump to another passage."
+  },
+  "WritingRevisionTools": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/writing-revision-tools.tsx",
+    "composition": [
+      "Sheet",
+      "Button",
+      "Label",
+      "Textarea",
+      "NativeSelect"
+    ],
+    "source": "Installed Missa components; selection positioning uses the official Tiptap BubbleMenu plugin.",
+    "adaptation": "Explicit human suggestions and private comments on device; accept or reject individually, retain cuttings before removal and refuse stale anchors."
+  },
+  "WritingPractice": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/writing-practice.tsx",
+    "composition": [
+      "Sheet",
+      "Button",
+      "Input",
+      "Checkbox"
+    ],
+    "source": "Installed Missa components; selection positioning uses the official Tiptap BubbleMenu plugin.",
+    "adaptation": "Opt-in writing and revision sessions, rest days and author-marked milestones; genre guides create separate new pieces."
+  },
+  "WritingOfflineProject": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/writing-offline.tsx",
+    "composition": [
+      "Button"
+    ],
+    "source": "Installed Missa components; selection positioning uses the official Tiptap BubbleMenu plugin.",
+    "adaptation": "Explicit downloaded project snapshots; offline editor reuses WritingPages; edits recover as separate rich copies without flattening the rich original."
+  },
+  "WritingReadAloud": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/writing-read-aloud.tsx",
+    "composition": [
+      "Popover",
+      "Button",
+      "ButtonGroup",
+      "Tooltip",
+      "Field",
+      "NativeSelect"
+    ],
+    "source": "Installed Missa Base UI controls; no registry installation or theme changes.",
+    "adaptation": "Icon buttons in the existing footer and Lock in, with tooltips and a settings popover using Missa tokens: 5,000 characters/month on Free, 100,000 on Plus, unlimited monthly characters on Pro with fair-use rate limits.",
+    "boundary": "Explicit speaker playback freezes the passage; highlighted text is played through the shared footer player. No range selector."
+  },
+  "WritingRoom": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/writing-room.tsx",
+    "composition": [
+      "WritingPages",
+      "WritingFormatBar",
+      "Button",
+      "ButtonGroup",
+      "DropdownMenu"
+    ],
+    "source": "Existing Missa writing editor and installed Base UI controls.",
+    "adaptation": "On-demand Formatting and Tools disclosures, plus a timed Lock in session in the existing editor. No new theme or primitive.",
+    "boundary": "Lock in preserves the draft and saving, temporarily uses readable draft view for flow pages, keeps canvas geometry, permits pause/resume, and exits with Escape or Leave Lock in. It does not block other applications."
+  },
+  "WritingChecks": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/writing-checks.tsx",
+    "composition": [
+      "Dialog",
+      "Button"
+    ],
+    "source": "Installed Missa/Base UI primitives and existing writing editors.",
+    "adaptation": "Missa semantic tokens, touch controls, progressive disclosure and author-controlled changes.",
+    "boundary": "On-request Harper suggestions, local worker, stale ranges rejected, author-applied undoable changes."
+  },
+  "WritingStudio": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/writing-studio.tsx",
+    "composition": [
+      "Tabs",
+      "Button",
+      "Input",
+      "NativeSelect",
+      "WritingStructure",
+      "WritingResearch",
+      "WritingExport",
+      "ConfirmDialog"
+    ],
+    "source": "Installed Missa/Base UI primitives and existing writing editors.",
+    "adaptation": "Nonmodal companion panel inside the existing /doc shell; research uses the open editor, and combined editing is an explicit document mode. Original page, typography controls, timer and footer remain.",
+    "approvedVariants": {
+      "TabsList": [
+        "section"
+      ]
+    },
+    "boundary": "Account-owned project tools alongside the existing writing page; no replacement editor shell. Device backup, optimistic revision checks and explicit checkpoint sharing."
+  },
+  "WritingManuscript": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/writing-manuscript.tsx",
+    "composition": [
+      "WritingPages",
+      "WritingFormatBar",
+      "WritingFormatSheet",
+      "WritingFind",
+      "Button"
+    ],
+    "source": "Installed Missa/Base UI primitives and existing writing editors.",
+    "adaptation": "Quiet piece headers with formatting shown only for the active piece; existing WritingPages and undo histories preserved.",
+    "boundary": "Live edits preserve piece identities and independent undo; shared search writes to the original editors."
+  },
+  "WritingStructure": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/writing-structure.tsx",
+    "composition": [
+      "Tabs",
+      "Field",
+      "Input",
+      "Textarea",
+      "NativeSelect",
+      "Checkbox",
+      "Table",
+      "Button",
+      "Empty",
+      "DatePickerField",
+      "ConfirmDialog"
+    ],
+    "source": "Installed Missa/Base UI primitives and existing writing editors.",
+    "adaptation": "Missa semantic tokens, touch controls, progressive disclosure and author-controlled changes.",
+    "boundary": "Plus planning from writer-entered records; dates and word counts are deterministic; no prose inference."
+  },
+  "WritingResearch": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/writing-research.tsx",
+    "composition": [
+      "Field",
+      "Input",
+      "Textarea",
+      "NativeSelect",
+      "Button",
+      "Dialog",
+      "AlertDialog",
+      "Alert",
+      "Empty",
+      "ConfirmDialog"
+    ],
+    "source": "Installed Missa/Base UI primitives and existing writing editors.",
+    "adaptation": "Missa semantic tokens, touch controls, progressive disclosure and author-controlled changes.",
+    "boundary": "Private source records and explicit quote/context anchors; ambiguous anchors stay orphaned; citations enter the draft only on request."
+  },
+  "WritingExport": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/writing-export.tsx",
+    "composition": [
+      "Sheet",
+      "Button",
+      "Field",
+      "Input",
+      "NativeSelect",
+      "Checkbox",
+      "Alert"
+    ],
+    "source": "Installed Missa/Base UI primitives and existing writing editors.",
+    "adaptation": "Missa semantic tokens, touch controls, progressive disclosure and author-controlled changes.",
+    "boundary": "Local file export and bounded text import; imports create new pieces; canvas flattening requires a choice."
+  },
+  "WritingReader": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/writing-reader.tsx",
+    "composition": [
+      "Button",
+      "Input",
+      "Textarea",
+      "Label",
+      "NativeSelect"
+    ],
+    "source": "Installed Missa/Base UI primitives and existing writing editors.",
+    "adaptation": "Missa semantic tokens, touch controls, progressive disclosure and author-controlled changes.",
+    "boundary": "An expiring revocable checkpoint link, read-only prose and authenticated comments; original drafts are never edited."
+  },
   "primitiveContracts": {
     "status": "approved",
     "implementation": [
@@ -31,7 +251,9 @@
         "hue-magenta",
         "hue-pink"
       ],
-      "AvatarGroup": ["tight"],
+      "AvatarGroup": [
+        "tight"
+      ],
       "Badge": [
         "compact",
         "information",
@@ -60,24 +282,72 @@
         "disclosure",
         "nav"
       ],
-      "Card": ["empty"],
-      "Collapsible": ["section", "sectionSpacious", "divided"],
-      "Empty": ["bordered", "spacious"],
-      "Input": ["compact", "large"],
-      "PopoverContent": ["flush"],
-      "PopoverHeader": ["ruled"],
-      "RadioGroup": ["segmented", "scale"],
-      "RadioGroupItem": ["segmented", "scale"],
-      "NavigationMenuList": ["app"],
-      "NavigationMenuLink": ["app"],
-      "SelectTrigger": ["quiet", "touch"],
-      "SheetContent": ["card", "canvas"],
-      "SheetHeader": ["section", "muted"],
-      "TableCell": ["muted"],
-      "Table": ["grid"],
-      "TableRow": ["static"],
-      "TabsList": ["responsive", "section", "tiles", "auto"],
-      "TabsTrigger": ["touch"]
+      "Card": [
+        "empty"
+      ],
+      "Collapsible": [
+        "section",
+        "sectionSpacious",
+        "divided"
+      ],
+      "Empty": [
+        "bordered",
+        "spacious"
+      ],
+      "Input": [
+        "compact",
+        "large"
+      ],
+      "PopoverContent": [
+        "flush"
+      ],
+      "PopoverHeader": [
+        "ruled"
+      ],
+      "RadioGroup": [
+        "segmented",
+        "scale"
+      ],
+      "RadioGroupItem": [
+        "segmented",
+        "scale"
+      ],
+      "NavigationMenuList": [
+        "app"
+      ],
+      "NavigationMenuLink": [
+        "app"
+      ],
+      "SelectTrigger": [
+        "quiet",
+        "touch"
+      ],
+      "SheetContent": [
+        "card",
+        "canvas"
+      ],
+      "SheetHeader": [
+        "section",
+        "muted"
+      ],
+      "TableCell": [
+        "muted"
+      ],
+      "Table": [
+        "grid"
+      ],
+      "TableRow": [
+        "static"
+      ],
+      "TabsList": [
+        "responsive",
+        "section",
+        "tiles",
+        "auto"
+      ],
+      "TabsTrigger": [
+        "touch"
+      ]
     },
     "adaptation": "Missa-owned semantic component APIs for authenticated navigation, quiet sorting, empty states, drawer surfaces, choice tiles, compact data controls, and coarse-pointer targets. Product-wide shadcn/no-restyle enforcement is enabled; layout and title-typography contracts remain deliberately narrow. Existing theme tokens, focus states, and reduced-motion behavior remain authoritative.",
     "evidence": "Product-wide shadcn/lint review, 2026-09-14"
@@ -85,15 +355,23 @@
   "countBadge": {
     "status": "approved",
     "implementation": "apps/web/components/missa/count-badge.tsx",
-    "composition": ["Badge"],
+    "composition": [
+      "Badge"
+    ],
     "adaptation": "Compact semantic count for unread or selected totals. It supplies an explicit accessible label and does not communicate state through color alone.",
     "evidence": "Creator Inbox information-architecture redesign, 2026-09-14"
   },
   "collaborationBadge": {
     "status": "approved",
     "implementation": "apps/web/components/missa/collaboration-badge.tsx",
-    "composition": ["Badge", "Popover"],
-    "variants": ["confirmed", "awaiting"],
+    "composition": [
+      "Badge",
+      "Popover"
+    ],
+    "variants": [
+      "confirmed",
+      "awaiting"
+    ],
     "adaptation": "The credit between two creators on a public profile. Confirmed means the other creator's published profile credits this one back, read by the server on every request; Awaiting is owner-only, drawn as a dashed outline with a clock icon and the words 'Awaiting confirmation'. The Popover explains the rule in plain language. Same badge styles as ProvenanceBadge, with a 44px tap area around the 28px chip.",
     "evidence": "Public profile add-ons build (Collaborators), 2026-10-07"
   },
@@ -101,7 +379,11 @@
     "status": "experimental",
     "implementation": "apps/web/components/missa/liquid-glass-welcome.tsx",
     "route": "/welcome",
-    "composition": ["Button", "Link", "DecorativeCanvas"],
+    "composition": [
+      "Button",
+      "Link",
+      "DecorativeCanvas"
+    ],
     "source": "Installed Base UI Button; original WebGL scene informed by Appllama interaction study. No upstream code/assets copied.",
     "tokens": "components/design-system/welcome-tokens.css and welcome-motion.ts",
     "evidence": "docs/design-references/liquid-glass-welcome.md",
@@ -111,27 +393,46 @@
     "status": "experimental",
     "implementation": "apps/web/components/application-tracker-preview.tsx",
     "route": "/design-system/my-applications",
-    "composition": ["Button", "Field", "Input", "Textarea", "NativeSelect"]
+    "composition": [
+      "Button",
+      "Field",
+      "Input",
+      "Textarea",
+      "NativeSelect"
+    ]
   },
   "applicationPreparationPreview": {
     "status": "experimental",
     "implementation": "apps/web/components/application-preparation-preview.tsx",
     "route": "/design-system/application-preparation",
-    "composition": ["Button", "Field", "Textarea", "NativeSelect"],
+    "composition": [
+      "Button",
+      "Field",
+      "Textarea",
+      "NativeSelect"
+    ],
     "boundary": "Sample materials, local React state; no persistence, upload, or submission integration."
   },
   "creatorWorkspacePreview": {
     "status": "experimental",
     "implementation": "apps/web/components/creator-workspace-preview.tsx",
     "route": "/design-system/creator-workspace",
-    "composition": ["Button", "Checkbox", "Link"],
+    "composition": [
+      "Button",
+      "Checkbox",
+      "Link"
+    ],
     "boundary": "Interactive local-state workspace preview. It does not create applications, save materials, set reminders, or claim external submission status."
   },
   "creatorOnboardingPreview": {
     "status": "experimental",
     "implementation": "apps/web/components/creator-onboarding-preview.tsx",
     "route": "/design-system/creator-onboarding",
-    "composition": ["Checkbox", "Button", "Link"],
+    "composition": [
+      "Checkbox",
+      "Button",
+      "Link"
+    ],
     "boundary": "Two optional questions; local React state only; no account persistence"
   },
   "opportunityDetail": {
@@ -162,7 +463,12 @@
   "manuscriptMatch": {
     "status": "approved",
     "implementation": "apps/web/components/discover/manuscript-match-wizard.tsx",
-    "composition": ["Button", "Card", "Field", "NativeSelect"],
+    "composition": [
+      "Button",
+      "Card",
+      "Field",
+      "NativeSelect"
+    ],
     "adaptation": "The manuscript brief uses the same control hierarchy as the literary magazine index. Match cards retain the deterministic reasons, reported timing, compensation, and source-linked journal dossier.",
     "boundary": "A match is not eligibility, readiness, or submission confirmation."
   },
@@ -344,7 +650,10 @@
       "count": 2,
       "studioObservedCount": 55,
       "notInstalledCount": 53,
-      "variants": ["button-01", "button-41"]
+      "variants": [
+        "button-01",
+        "button-41"
+      ]
     },
     {
       "family": "button-group",
@@ -777,7 +1086,12 @@
       "count": 4,
       "studioObservedCount": 4,
       "notInstalledCount": 0,
-      "variants": ["kanban-01", "kanban-02", "kanban-03", "kanban-04"]
+      "variants": [
+        "kanban-01",
+        "kanban-02",
+        "kanban-03",
+        "kanban-04"
+      ]
     },
     {
       "family": "kbd",
@@ -1082,7 +1396,13 @@
       "count": 5,
       "studioObservedCount": 7,
       "notInstalledCount": 2,
-      "variants": ["sheet-01", "sheet-02", "sheet-03", "sheet-04", "sheet-05"]
+      "variants": [
+        "sheet-01",
+        "sheet-02",
+        "sheet-03",
+        "sheet-04",
+        "sheet-05"
+      ]
     },
     {
       "family": "skeleton",
@@ -1419,7 +1739,9 @@
     "status": "approved",
     "implementation": "apps/web/components/missa/homepage-hero.tsx",
     "legacyImplementation": "apps/web/components/design-system/homepage-hero-preview.tsx",
-    "routes": ["/"],
+    "routes": [
+      "/"
+    ],
     "reviewRoutes": [
       "/design-system/homepage-hero",
       "/design-system/homepage-focused"
@@ -1430,7 +1752,9 @@
     "status": "approved",
     "implementation": "apps/web/components/missa/opportunities-browse.tsx",
     "legacyImplementation": "apps/web/components/design-system/opportunities-browse-v2-preview.tsx",
-    "routes": ["/opportunities"],
+    "routes": [
+      "/opportunities"
+    ],
     "boundary": "Production imports the semantic OpportunitiesBrowse entry without duplicating the reviewed implementation."
   },
   "opportunitiesBrowsePreview": {
@@ -1462,7 +1786,10 @@
     },
     "adaptation": "Missa tokens, deduplicated practices, compact facts, organization-name identity plates for missing or failed images, three-column desktop and single-column mobile",
     "imageBadges": "Opaque Missa canvas and Ochre urgency surfaces; no photo-dependent transparency",
-    "routes": ["/opportunities", "/design-system/opportunities-browse-v2"]
+    "routes": [
+      "/opportunities",
+      "/design-system/opportunities-browse-v2"
+    ]
   },
   "browsePatterns": {
     "status": "approved",
@@ -1509,7 +1836,7 @@
     "journalMedia": "Past issues: three initial portrait issue covers, preview dialog, reveal, and explicit unavailable state with official website link",
     "pressMedia": "Books: portrait cover shelf, three initially, View all books, preview dialog, press-specific empty state",
     "spatialMedia": "Large lead photo plus supporting grid for residency, gallery, foundation and arts profiles; mobile stack; full-image dialog; sourced editorial fallback and missing-photo state",
-    "socialLinks": "apps/web/components/institution-social-links.tsx — header identity, stored URLs, Button ghost/icon"
+    "socialLinks": "apps/web/components/institution-social-links.tsx \u2014 header identity, stored URLs, Button ghost/icon"
   },
   "publicCreatorProfile": {
     "status": "review",
@@ -1612,7 +1939,11 @@
     "status": "experimental",
     "implementation": "apps/web/components/missa/video-world.tsx",
     "route": "/design-system/video-world",
-    "composition": ["Button", "Link", "NativeVideo"],
+    "composition": [
+      "Button",
+      "Link",
+      "NativeVideo"
+    ],
     "source": "Installed Base UI Button and native video. Reference footage: Amir Music, CC BY 4.0. Player authored locally from documented requirements.",
     "tokens": "components/design-system/video-world-tokens.css",
     "evidence": "docs/homepage-cinematic-2026-09-07/06-reference-correction.md"
@@ -1774,25 +2105,35 @@
   },
   "emailChoicePrompt": {
     "implementation": "apps/web/components/missa/email-choice-prompt.tsx",
-    "routes": ["(passport) workspace layout"],
+    "routes": [
+      "(passport) workspace layout"
+    ],
     "source": "Installed Button and next/link, following the CookieConsent permission-question composition",
     "tokens": "--border, --card, --card-foreground, --muted-foreground, --foreground, --destructive, --radius-lg"
   },
   "reminderChannels": {
     "implementation": "apps/web/components/missa/reminder-channels.tsx",
-    "routes": ["(passport)/tracker item sheet", "onboarding completion"],
+    "routes": [
+      "(passport)/tracker item sheet",
+      "onboarding completion"
+    ],
     "source": "Installed Button, UpgradeHint and TextRemindersSettings (PhoneInput, InputOTP, Switch)",
     "tokens": "--muted-foreground, --primary, --border"
   },
   "planProduct": {
     "implementation": "apps/web/components/missa/plan-product.tsx",
-    "routes": ["(passport)/plan"],
+    "routes": [
+      "(passport)/plan"
+    ],
     "source": "Installed Button, following the EmailChoicePrompt card composition",
     "tokens": "--border, --card, --card-foreground, --muted-foreground, --foreground, --destructive, --radius-lg"
   },
   "homepageContinuation": {
     "implementation": "apps/web/components/missa/homepage-continuation.tsx",
-    "routes": ["/", "/design-system/homepage-hero"],
+    "routes": [
+      "/",
+      "/design-system/homepage-hero"
+    ],
     "source": "OpportunityBrowseProjectCard from data.display.opportunity-card, also rendered on /opportunities. Installed Accordion, Button, Skeleton and canonical MissaWordmark. No separate homepage opportunity card markup.",
     "tokens": "components/design-system/homepage-continuation-tokens.css",
     "adaptation": "Canonical opportunity cards unchanged. Directory uses exact backend profile names, kinds, routes and media. Headlands is featured with a credited official campus image, followed by installed Avatar organization rows with fallbacks. Approved full-width marketing colour bands; shared operational cards unchanged.",
@@ -1800,7 +2141,10 @@
   },
   "homepageWorkspace": {
     "implementation": "apps/web/components/missa/homepage-workspace.tsx",
-    "routes": ["/", "/design-system/homepage-hero"],
+    "routes": [
+      "/",
+      "/design-system/homepage-hero"
+    ],
     "source": "Installed Tabs/Studio tabs-09, Table/table-01, Switch/switch-01, Button and Skeleton. Actual CreatorPortfolioStudio embedded variant and GoalSubmissionProgress reused.",
     "tokens": "components/design-system/homepage-continuation-tokens.css",
     "adaptation": "Photographic feature stories beside interactive product views. Original fictional campaign artwork, distinct existing palette tokens and large editorial titles. The portfolio view is a compact one-work teaser with theme and format controls; actual public deadlines, local notification switches and resettable sample submission goals remain interactive. No account writes or notification delivery. Approved full-width marketing colour bands; shared operational cards unchanged. White is the initial local portfolio preview theme.",
@@ -1864,7 +2208,10 @@
   "ApplicationReminders": {
     "status": "approved-adapt",
     "implementation": "apps/web/components/missa/application-reminders.tsx",
-    "routes": ["/tracker", "/inbox?view=reminders"],
+    "routes": [
+      "/tracker",
+      "/inbox?view=reminders"
+    ],
     "composition": [
       "Button",
       "Dialog",
@@ -1948,5 +2295,43 @@
     "adaptation": "Compact operator editor paired with a responsive applicant preview. Controlled brand color is configuration data; Missa layout, typography, contrast boundaries, and interaction tokens remain authoritative.",
     "states": "New draft, saved draft, in review, approved, published, empty form inventory, empty Opportunity inventory, pending, success, error and relational-authority unavailable.",
     "boundary": "Local implementation against relational configuration APIs. Hosted migration, real logo upload, physical-device checks, and production data are not certified."
+  },
+  "WritingDrive": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/writing-drive.tsx",
+    "composition": [
+      "Sheet",
+      "Button",
+      "Checkbox",
+      "Field",
+      "Alert"
+    ],
+    "source": "Installed Missa controls; no registry installation or token changes.",
+    "adaptation": "Explicit author-controlled connection and import actions.",
+    "boundary": "Explicit file selection imports a new piece; explicit export creates a DOCX copy. No automatic sync. Account-bound encrypted OAuth credentials and drive.file scope."
+  },
+  "WritingZotero": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/writing-zotero.tsx",
+    "composition": [
+      "Dialog",
+      "Button",
+      "Field",
+      "Input",
+      "Checkbox"
+    ],
+    "source": "Installed Missa controls; no registry installation or token changes.",
+    "adaptation": "Explicit author-controlled connection and import actions. Viewport-sized scrollable Dialog keeps enlarged controls and long reference titles reachable.",
+    "boundary": "Explicit selected reference import only; dedicated read-only personal-library credentials remain encrypted server-side. Imported sources do not alter prose."
+  },
+  "WritingToolSyncStatus": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/writing-tool-sync-status.tsx",
+    "composition": [
+      "Button"
+    ],
+    "source": "Installed Missa Button and semantic status text.",
+    "adaptation": "Existing account-recovery feedback for grammar preferences, dictionary and private revision notes.",
+    "boundary": "No controls in the normal saved state; explicit conflict choices and download recovery on failure."
   }
 }

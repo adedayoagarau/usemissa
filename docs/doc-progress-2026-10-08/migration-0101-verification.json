@@ -1,0 +1,263 @@
+{
+  "migration": "0101_creator_writing_studio.sql",
+  "appliedAt": "2026-10-09T09:51:22.308Z",
+  "sha256": "eecb40bebf672660687a0bd40be19e2744ab0c8d5a3e64e25e16b9c845ffce9e",
+  "target": "shared Preview/Production database",
+  "committed": true,
+  "columns": [
+    {
+      "table_name": "creator_writing_reader_comments",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_reader_comments",
+      "column_name": "share_id",
+      "data_type": "uuid",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_reader_comments",
+      "column_name": "account_id",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_reader_comments",
+      "column_name": "piece_id",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_reader_comments",
+      "column_name": "quote",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_reader_comments",
+      "column_name": "body",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_reader_comments",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_reader_shares",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_reader_shares",
+      "column_name": "project_id",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_reader_shares",
+      "column_name": "account_id",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_reader_shares",
+      "column_name": "token_hash",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_reader_shares",
+      "column_name": "checkpoint",
+      "data_type": "jsonb",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_reader_shares",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_reader_shares",
+      "column_name": "expires_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_studios",
+      "column_name": "project_id",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_studios",
+      "column_name": "account_id",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_studios",
+      "column_name": "data",
+      "data_type": "jsonb",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_studios",
+      "column_name": "revision",
+      "data_type": "integer",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_studios",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO"
+    }
+  ],
+  "constraints": [
+    {
+      "table_name": "creator_writing_reader_comments",
+      "conname": "creator_writing_reader_comments_account_id_fkey",
+      "contype": "f",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_reader_comments",
+      "conname": "creator_writing_reader_comments_body_check",
+      "contype": "c",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_reader_comments",
+      "conname": "creator_writing_reader_comments_piece_id_check",
+      "contype": "c",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_reader_comments",
+      "conname": "creator_writing_reader_comments_pkey",
+      "contype": "p",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_reader_comments",
+      "conname": "creator_writing_reader_comments_quote_check",
+      "contype": "c",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_reader_comments",
+      "conname": "creator_writing_reader_comments_share_id_fkey",
+      "contype": "f",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_reader_shares",
+      "conname": "creator_writing_reader_shares_account_id_fkey",
+      "contype": "f",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_reader_shares",
+      "conname": "creator_writing_reader_shares_check",
+      "contype": "c",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_reader_shares",
+      "conname": "creator_writing_reader_shares_checkpoint_check",
+      "contype": "c",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_reader_shares",
+      "conname": "creator_writing_reader_shares_pkey",
+      "contype": "p",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_reader_shares",
+      "conname": "creator_writing_reader_shares_project_id_account_id_fkey",
+      "contype": "f",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_reader_shares",
+      "conname": "creator_writing_reader_shares_token_hash_check",
+      "contype": "c",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_reader_shares",
+      "conname": "creator_writing_reader_shares_token_hash_key",
+      "contype": "u",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_studios",
+      "conname": "creator_writing_studios_account_id_fkey",
+      "contype": "f",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_studios",
+      "conname": "creator_writing_studios_data_check",
+      "contype": "c",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_studios",
+      "conname": "creator_writing_studios_pkey",
+      "contype": "p",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_studios",
+      "conname": "creator_writing_studios_project_id_account_id_fkey",
+      "contype": "f",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_studios",
+      "conname": "creator_writing_studios_revision_check",
+      "contype": "c",
+      "convalidated": true
+    }
+  ],
+  "indexes": [
+    {
+      "tablename": "creator_writing_reader_comments",
+      "indexname": "creator_writing_reader_comments_account_idx"
+    },
+    {
+      "tablename": "creator_writing_reader_comments",
+      "indexname": "creator_writing_reader_comments_pkey"
+    },
+    {
+      "tablename": "creator_writing_reader_comments",
+      "indexname": "creator_writing_reader_comments_share_idx"
+    },
+    {
+      "tablename": "creator_writing_reader_shares",
+      "indexname": "creator_writing_reader_shares_owner_idx"
+    },
+    {
+      "tablename": "creator_writing_reader_shares",
+      "indexname": "creator_writing_reader_shares_pkey"
+    },
+    {
+      "tablename": "creator_writing_reader_shares",
+      "indexname": "creator_writing_reader_shares_token_hash_key"
+    },
+    {
+      "tablename": "creator_writing_studios",
+      "indexname": "creator_writing_studios_pkey"
+    }
+  ]
+}

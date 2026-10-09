@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { isWritingEntryId, type WritingEntrySummary } from "@/lib/writing";
 import { getWritingRepository } from "@/lib/writing-repository";
-import { plannerIncluded } from "@/lib/writing-plan-access";
+import { plannerIncluded, readAloudPlan } from "@/lib/writing-plan-access";
+import type { ReadAloudPlan } from "@/lib/writing-read-aloud";
 import type { WritingProject } from "@/lib/writing-projects";
 import { WritingRoomLoader } from "@/components/missa/writing-room-loader";
 
@@ -43,12 +44,14 @@ export default async function WritePage({
   let projects: WritingProject[] = [];
   let listFailed = false;
   let planner = false;
+  let readAloud: ReadAloudPlan | null = null;
   if (repository) {
     try {
-      [entries, projects, planner] = await Promise.all([
+      [entries, projects, planner, readAloud] = await Promise.all([
         repository.list(session.account.id),
         repository.listProjects(session.account.id),
         plannerIncluded(session.account.id),
+        readAloudPlan(session.account.id),
       ]);
     } catch {
       listFailed = true;
@@ -67,6 +70,7 @@ export default async function WritePage({
       storage={repository ? "account" : "device"}
       listFailed={listFailed}
       planner={planner}
+      readAloud={readAloud}
     />
   );
 }

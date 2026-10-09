@@ -585,6 +585,20 @@ approval. The status below controls new usage.
 When a new registry item is installed, add it to this ledger in the same change.
 An AI-generated component that duplicates an approved item fails review.
 
+Writing integration (8 October 2026): `WritingStudio` is a nonmodal companion
+panel within the original `/doc` shell. It uses installed section Tabs and
+semantic controls. It does not replace the page, original formatting bar,
+typeface controls, timer or footer. Combined manuscript editing is an explicit
+mode in the existing document area; research uses the open editor's selection.
+The earlier full-viewport Dialog adaptation was rejected and removed.
+
+Clean writing and Lock in (8 October 2026): `WritingRoom` uses installed Button
+disclosures for Formatting and Tools. Its optional Lock in session removes
+ordinary chrome, keeps the same editor and save status, and reuses the existing
+timer with Pause, Resume and Leave Lock in actions. Escape exits immediately.
+Flow pages temporarily use the existing draft view for readable mobile text;
+canvas geometry, document formatting and the chosen view are preserved.
+
 ### Product composition map
 
 | Product need                   | Composition                   | Required building blocks                                                                       |
@@ -606,7 +620,12 @@ An AI-generated component that duplicates an approved item fails review.
 | Recover after a decline        | `SimilarOpportunities`        | Explained matches with plain reasons, Save to Tracker, Not for me; never labelled AI           |
 | Check before submitting        | `PreSubmitCheck`              | Passed / Needs attention / Check manually, written out; unverifiable checks are never Passed   |
 | Edit a Work                    | `WorkEditor`                  | `Field`, form controls, `Sortable`, media blocks, `Dialog`/`Sheet`, process feedback           |
-| Write in the writing room      | `WritingRoom`                 | `WritingPages` (printed pages, per-page format), `WritingFormatBar`, `WritingFormatSheet`, ghost `Button`s that fade while the timer runs, `DropdownMenu`, `Popover`, `Sheet` of `Item`s, `AlertDialog`; no AI, suggestions or analysis |
+| Write in the writing room      | `WritingRoom`                 | `WritingPages` (printed pages, per-page format), `WritingFormatBar`, `WritingFormatSheet`, ghost `Button`s that fade while the timer runs, `DropdownMenu`, `Popover`, `Sheet` of `Item`s; no prose generation; optional local Harper checks and explicitly requested tiered Kokoro read-aloud authorized 8 October 2026 |
+| Work across a manuscript      | `WritingStudio`, `WritingManuscript` | Existing `/doc` shell with a nonmodal companion panel, section `Tabs`, optional combined manuscript mode in the document area and existing `WritingPages`; original controls preserved, draft autosave and project-note save distinct |
+| Plan and research a project    | `WritingStructure`, `WritingResearch` | Installed `Field`, `Table`, `Dialog`, `Empty` and form controls; `DatePickerField` for dates; author-entered plans and separately stored notes |
+| Keep and share a reading copy  | `WritingStudio`, `WritingReader` | Explicit checkpoints and reader-copy feedback; `ConfirmDialog` before removing a checkpoint; copies exclude private project notes |
+| Listen to writing             | `WritingReadAloud` | Compact bottom player with installed `Popover`, `Button`, `Field`, and `NativeSelect`; author chooses text and voice; closing stops audio |
+| Check and export writing       | `WritingChecks`, `WritingExport` | On-request local checking in installed `Dialog`; export choices in installed `Sheet`; no automatic rewriting |
 | Gather pieces into a project   | `WritingLibrary`              | `Sheet` of projects and loose pieces, a `Sortable` binder with Move up/Move down in each piece's `DropdownMenu`, outline and compile `Dialog`s; never touches the text |
 | Manage calendar                | `OpportunityCalendar`         | `Calendar`, labelled events, `Popover` or side panel, provider sync status                     |
 | Configure Profile              | `ProfileSettingsForm`         | Grouped section navigation; visibility `RadioGroup` beside each public field with a live preview; `Collapsible` groups; one sticky save bar per section |

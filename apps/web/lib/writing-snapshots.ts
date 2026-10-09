@@ -8,6 +8,10 @@ import { WRITING_BODY_MAX, WRITING_TITLE_MAX } from "./writing.ts";
 
 export const SNAPSHOTS_PER_PIECE = 100;
 export const SNAPSHOT_NAME_MAX = 120;
+export const NAMED_VERSIONS_PER_PIECE = 100;
+export class NamedVersionLimitError extends Error {
+  constructor() { super("This piece already has 100 named versions. Remove a named version before keeping another."); }
+}
 
 const SNAPSHOT_ID =
   /^snapshot_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;

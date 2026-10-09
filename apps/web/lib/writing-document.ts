@@ -87,6 +87,8 @@ export type FlowPage = {
 
 export type WritingDocument = {
   version: 1;
+  /** Research pieces stay outside manuscript compilation. */
+  purpose?: "draft" | "research";
   pageSize: PageSizeId;
   typeface: string;
   /** In points, as printed. */
@@ -227,17 +229,70 @@ const BLOCKS = new Set([
   "listItem",
   "bulletList",
   "orderedList",
+  "taskList",
+  "taskItem",
   "horizontalRule",
+  "table",
+  "tableRow",
+  "tableCell",
+  "tableHeader",
 ]);
 
-function nodeText(node: JsonNode): string {
+export function nodeText(node: JsonNode): string {
+  if (node.marks?.some((mark) => mark.type === "writingDeletion")) return "";
   if (node.type === "text") return node.text ?? "";
   if (node.type === "hardBreak") return "\n";
+  if (node.type === "image")
+    return typeof node.attrs?.caption === "string" ? node.attrs.caption : "";
   const children = node.content ?? [];
   if (children.some((child) => BLOCKS.has(child.type))) {
     return children.map(nodeText).join("\n");
   }
   return children.map(nodeText).join("");
+}
+
+export type WritingFootnoteEntry = {
+  id: string;
+  note: string;
+  number: number;
+  pageId: string;
+};
+
+/** Stable identity, sequential numbering across every page and canvas box. */
+export function documentFootnotes(
+  document: WritingDocument,
+): WritingFootnoteEntry[] {
+  const result: WritingFootnoteEntry[] = [];
+  const seen = new Set<string>();
+  const visit = (node: JsonNode, pageId: string) => {
+    const id = node.attrs?.id;
+    const note = node.attrs?.note;
+    if (
+      node.type === "footnote" &&
+      typeof id === "string" &&
+      id &&
+      typeof note === "string" &&
+      note.trim() &&
+      !seen.has(id)
+    ) {
+      seen.add(id);
+      result.push({
+        id,
+        note: note.slice(0, 2_000),
+        number: result.length + 1,
+        pageId,
+      });
+    }
+    node.content?.forEach((child) => visit(child, pageId));
+  };
+  for (const page of document.pages) {
+    if (page.kind === "canvas")
+      readingOrder(page.blocks ?? []).forEach((block) =>
+        visit(block.content, page.id),
+      );
+    else visit(page.content, page.id);
+  }
+  return result;
 }
 
 /**
@@ -347,6 +402,12 @@ export function parseWritingDocument(value: unknown): WritingDocument | null {
   if (!parsed || typeof parsed !== "object") return null;
   const document = parsed as WritingDocument;
   if (document.version !== 1) return null;
+  if (
+    document.purpose !== undefined &&
+    document.purpose !== "draft" &&
+    document.purpose !== "research"
+  )
+    return null;
   if (!(document.pageSize in PAGE_SIZES)) return null;
   if (typeof document.typeface !== "string" || document.typeface.length > 60)
     return null;
@@ -410,4 +471,14 @@ export function parseWritingDocument(value: unknown): WritingDocument | null {
 /** Serialises a document the same way every time, so equal documents are equal strings. */
 export function serializeDocument(document: WritingDocument): string {
   return JSON.stringify(document);
+}
+
+/** Published copies contain the proposed reading, never private deleted wording. */
+export function proposedWritingDocument(document: WritingDocument): WritingDocument {
+  const clean = (node: JsonNode): JsonNode[] => node.marks?.some((mark) => mark.type === "writingDeletion") ? [] : [{
+    ...node,
+    ...(node.marks ? { marks: node.marks.filter((mark) => mark.type !== "writingInsertion") } : {}),
+    ...(node.content ? { content: node.content.flatMap(clean) } : {}),
+  }];
+  return { ...document, pages: document.pages.map((page) => ({ ...page, content: clean(page.content)[0] ?? { type: "doc", content: [] }, ...(page.blocks ? { blocks: page.blocks.map((block) => ({ ...block, content: clean(block.content)[0] ?? { type: "doc", content: [] } })) } : {}) })) };
 }

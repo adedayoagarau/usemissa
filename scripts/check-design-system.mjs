@@ -161,7 +161,9 @@ if (writeCatalogue) {
 const sourceFiles = (await walk(webRoot)).filter((file) =>
   /\.(?:css|mjs|js|jsx|ts|tsx)$/.test(file),
 );
+// Machine-generated vendor/runtime CSS/JS; authored offline source remains validated.
 const excludedPrefixes = [
+  "public/writing-offline/generated/",
   "components/ui/",
   "components/shadcn-studio/",
   "components/design-system/",

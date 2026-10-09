@@ -53,6 +53,21 @@ export const PROJECT_TEMPLATES = {
     note: "A draft and its sources.",
     pieces: ["Draft", "Sources and notes"],
   },
+  article: {
+    label: "Article",
+    note: "A draft, reporting notes and sources.",
+    pieces: ["Draft", "Reporting notes", "Sources"],
+  },
+  report: {
+    label: "Report",
+    note: "Sections for findings and supporting material.",
+    pieces: ["Summary", "Introduction", "Findings", "Conclusion", "Sources"],
+  },
+  script: {
+    label: "Script",
+    note: "Scenes, characters and notes.",
+    pieces: ["Scene 1", "Scene 2", "Characters", "Notes"],
+  },
 } as const satisfies Record<
   string,
   { label: string; note: string; pieces: readonly string[] }
@@ -245,6 +260,7 @@ export function compileProject(
   options: CompileOptions,
   typeface: string,
 ): WritingDocument {
+  pieces = pieces.filter((piece) => !piece.document || parseWritingDocument(piece.document)?.purpose !== "research");
   const compiled = newDocument(typeface, options.pageSize);
   const pages: FlowPage[] = [];
   const used = new Set<string>();
@@ -317,7 +333,7 @@ export function compileProjectText(
   pieces: CompilePiece[],
   options: Pick<CompileOptions, "titlePage" | "pieceTitles">,
 ): string {
-  const parts = pieces.map((piece) => {
+  const parts = pieces.filter((piece) => !piece.document || parseWritingDocument(piece.document)?.purpose !== "research").map((piece) => {
     const text = piece.document
       ? (() => {
           const document = parseWritingDocument(piece.document);

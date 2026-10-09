@@ -3,6 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
 const relational = process.env.MISSA_E2E_RELATIONAL === "1";
+const relationalSuite = process.env.MISSA_E2E_SUITE;
 const relationalDatabaseUrl = process.env.DATABASE_URL?.trim() ?? "";
 const savedBrowserState = "./e2e/storage-state.json";
 
@@ -17,17 +18,31 @@ const relationalSpecs = [
   "**/creator-home.spec.ts",
   "**/creator-profile-relational.spec.ts",
   "**/writing-room.spec.ts",
+  "**/writing-rich-editor.spec.ts",
+  "**/writing-preferences-export.spec.ts",
+  "**/writing-export-print.spec.ts",
+  "**/writing-tool-sync.spec.ts",
+  "**/writing-piece-actions.spec.ts",
+  "**/writing-revision.spec.ts",
+  "**/writing-navigation.spec.ts",
+  "**/writing-research-links.spec.ts",
+  "**/writing-project-restore.spec.ts",
+  "**/writing-zotero.spec.ts",
+  "**/writing-drive.spec.ts",
 ];
 
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: relational ? relationalSpecs : undefined,
+  testMatch: relational ? relationalSpecs.filter(spec =>
+    relationalSuite === "writing" ? spec.includes("writing-") :
+    relationalSuite === "workspace" ? !spec.includes("writing-") : true,
+  ) : undefined,
   testIgnore: relational ? undefined : relationalSpecs,
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: "html",
+  reporter: process.env.CI ? [["line"], ["html", { open: "never" }]] : "html",
   use: {
     baseURL: externalBaseUrl ?? "http://127.0.0.1:3100",
     trace: "on-first-retry",

@@ -1,0 +1,270 @@
+{
+  "appliedAt": "2026-10-09T11:19:54.335Z",
+  "environment": "shared Preview/Production database",
+  "authorization": "Owner: Do All then merge and migrate",
+  "migrations": [
+    {
+      "file": "0102_creator_writing_connections.sql",
+      "sha256": "ac88ac950cb0d962c6bc55aabbafda8e0aa2eb5c5c5b21591510b3156457af8a"
+    },
+    {
+      "file": "0103_creator_writing_tool_records.sql",
+      "sha256": "aeb2e11cc1ffa4f4e2eeac6e90892311049d7f65b148429b1a3fc18046e30ca2"
+    }
+  ],
+  "columns": [
+    {
+      "table_name": "creator_writing_connections",
+      "column_name": "account_id",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_connections",
+      "column_name": "provider",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_connections",
+      "column_name": "credential_ciphertext",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_connections",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_drive_exports",
+      "column_name": "account_id",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_drive_exports",
+      "column_name": "operation_id",
+      "data_type": "uuid",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_drive_exports",
+      "column_name": "file_id",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_drive_exports",
+      "column_name": "payload_hash",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_drive_exports",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_oauth_states",
+      "column_name": "state_hash",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_oauth_states",
+      "column_name": "account_id",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_oauth_states",
+      "column_name": "verifier_ciphertext",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_oauth_states",
+      "column_name": "redirect_uri",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_oauth_states",
+      "column_name": "return_path",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_oauth_states",
+      "column_name": "expires_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_oauth_states",
+      "column_name": "consumed_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "creator_writing_tool_records",
+      "column_name": "account_id",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_tool_records",
+      "column_name": "kind",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_tool_records",
+      "column_name": "scope_id",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_tool_records",
+      "column_name": "revision",
+      "data_type": "integer",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_tool_records",
+      "column_name": "data",
+      "data_type": "jsonb",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "creator_writing_tool_records",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO"
+    }
+  ],
+  "constraints": [
+    {
+      "table_name": "creator_writing_connections",
+      "conname": "creator_writing_connections_account_id_fkey",
+      "contype": "f",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_connections",
+      "conname": "creator_writing_connections_credential_ciphertext_check",
+      "contype": "c",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_connections",
+      "conname": "creator_writing_connections_pkey",
+      "contype": "p",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_connections",
+      "conname": "creator_writing_connections_provider_check",
+      "contype": "c",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_drive_exports",
+      "conname": "creator_writing_drive_exports_account_id_fkey",
+      "contype": "f",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_drive_exports",
+      "conname": "creator_writing_drive_exports_file_id_check",
+      "contype": "c",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_drive_exports",
+      "conname": "creator_writing_drive_exports_payload_hash_check",
+      "contype": "c",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_drive_exports",
+      "conname": "creator_writing_drive_exports_pkey",
+      "contype": "p",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_oauth_states",
+      "conname": "creator_writing_oauth_states_account_id_fkey",
+      "contype": "f",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_oauth_states",
+      "conname": "creator_writing_oauth_states_pkey",
+      "contype": "p",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_tool_records",
+      "conname": "creator_writing_tool_records_account_id_fkey",
+      "contype": "f",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_tool_records",
+      "conname": "creator_writing_tool_records_check",
+      "contype": "c",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_tool_records",
+      "conname": "creator_writing_tool_records_data_check",
+      "contype": "c",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_tool_records",
+      "conname": "creator_writing_tool_records_kind_check",
+      "contype": "c",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_tool_records",
+      "conname": "creator_writing_tool_records_pkey",
+      "contype": "p",
+      "convalidated": true
+    },
+    {
+      "table_name": "creator_writing_tool_records",
+      "conname": "creator_writing_tool_records_revision_check",
+      "contype": "c",
+      "convalidated": true
+    }
+  ],
+  "indexes": [
+    {
+      "tablename": "creator_writing_connections",
+      "indexname": "creator_writing_connections_pkey"
+    },
+    {
+      "tablename": "creator_writing_drive_exports",
+      "indexname": "creator_writing_drive_exports_pkey"
+    },
+    {
+      "tablename": "creator_writing_oauth_states",
+      "indexname": "creator_writing_oauth_states_expiry"
+    },
+    {
+      "tablename": "creator_writing_oauth_states",
+      "indexname": "creator_writing_oauth_states_pkey"
+    },
+    {
+      "tablename": "creator_writing_tool_records",
+      "indexname": "creator_writing_tool_records_pkey"
+    }
+  ],
+  "existingWritingRewritten": false
+}

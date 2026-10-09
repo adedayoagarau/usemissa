@@ -589,3 +589,48 @@ dbTest(
     assert.equal(left[0]?.n, 0);
   },
 );
+
+dbTest("revision history protects named versions, prunes automatic history and scopes renaming", async () => {
+  const owner = await account(), stranger = await account(), id = newWritingEntryId();
+  await repository().save(owner,id,{title:"History",body:"Original",document:null,baseRevision:0});
+  const named = await repository().createSnapshot(owner,id,{id:newWritingSnapshotId(),name:"First draft",title:"History",body:"Original",document:null});
+  for (let n=0;n<101;n++) await repository().createSnapshot(owner,id,{id:newWritingSnapshotId(),name:"",title:"History",body:`Automatic ${n}`,document:null});
+  const versions = await repository().listSnapshots(owner,id);
+  assert.equal(versions.filter(version=>!version.name).length,100);
+  assert.ok(versions.some(version=>version.id===named!.id),"named version is not pruned");
+  assert.equal(await repository().renameSnapshot(stranger,id,named!.id,"Unauthorized"),null);
+  const renamed = await repository().renameSnapshot(owner,id,named!.id,"Submission draft");
+  assert.equal(renamed?.name,"Submission draft");
+  assert.equal(renamed?.createdAt,named?.createdAt,"renaming preserves date");
+  assert.equal((await repository().getSnapshot(owner,id,named!.id))?.body,"Original");
+});
+
+dbTest("named history has an atomic per-piece capacity and allows idempotent retry", async () => {
+  const owner = await account(), id = newWritingEntryId();
+  await repository().save(owner,id,{title:"History",body:"Original",document:null,baseRevision:0});
+  let finalRequest;
+  for (let n=0;n<99;n++) { finalRequest={id:newWritingSnapshotId(),name:`Named ${n}`,title:"History",body:"Original",document:null}; await repository().createSnapshot(owner,id,finalRequest); }
+  assert.ok(await repository().createSnapshot(owner,id,finalRequest!));
+  const concurrent = await Promise.allSettled(Array.from({length:5},(_,n)=>repository().createSnapshot(owner,id,{id:newWritingSnapshotId(),name:`Concurrent ${n}`,title:"History",body:"Original",document:null})));
+  assert.equal(concurrent.filter(result=>result.status==="fulfilled").length,1,"row lock permits only the final available named slot");
+  assert.equal((await repository().listSnapshots(owner,id)).filter(version=>version.name).length,100);
+  await assert.rejects(repository().createSnapshot(owner,id,{id:newWritingSnapshotId(),name:"One more",title:"History",body:"Original",document:null}),/100 named versions/);
+  const automatic = await repository().createSnapshot(owner,id,{id:newWritingSnapshotId(),name:"",title:"History",body:"Automatic",document:null});
+  assert.ok(automatic);
+  await assert.rejects(repository().renameSnapshot(owner,id,automatic!.id,"One more"),/100 named versions/);
+});
+
+dbTest("research material keeps its words but contributes zero to manuscript totals", async () => {
+  const { plainTextToDocument, serializeDocument } = await import("./writing-document.ts");
+  const owner = await account();
+  const id = newWritingEntryId();
+  const doc = { ...plainTextToDocument("Private source notes", "newsreader"), purpose: "research" as const };
+  const result = await repository().save(owner, id, { title: "Research", body: "Private source notes", document: serializeDocument(doc), baseRevision: 0 });
+  assert.equal(result.kind, "saved");
+  const stored = await repository().get(owner, id);
+  assert.equal(stored?.body, "Private source notes");
+  assert.equal(stored?.wordCount, 0);
+  const draft = { ...doc, purpose: "draft" as const };
+  await repository().save(owner, id, { title: "Draft", body: "Private source notes", document: serializeDocument(draft), baseRevision: stored!.revision });
+  assert.equal((await repository().get(owner, id))?.wordCount, 3);
+});
