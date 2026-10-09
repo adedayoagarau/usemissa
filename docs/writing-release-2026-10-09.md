@@ -36,3 +36,9 @@ The fresh production build, full ESLint, design-system/language checks and migra
 Google Cloud access setup awaits the separate browser-required confirmation; Drive remains unavailable until its explicit environment configuration and real consent succeed. Zotero requires a user's read-only personal-library key; no real library key was provided. Mocked provider tests do not establish live provider acceptance.
 
 Physical iOS/Android selection handles and Microsoft Word rendering are not certified by emulation or LibreOffice. Screenplay starting guides do not provide professional screenplay pagination. Structural/formatting edits are direct edits rather than tracked prose suggestions. These boundaries are not hidden by a claim that every possible writing feature is finished.
+
+## Final CI and title-edit correction
+
+All five CI jobs passed on `9c7ee3506`: workspace browsers 21 passed; writing browsers 51 passed and one passed on retry. Investigation of that retry found a real Piece details form reload when a background save replaced the parent callback. The keyed form now loads only until it becomes editable. A deterministic test gates a real save acknowledgement while the title is edited: the original effect fails, while the fix preserves and persists the typed title and background body. Both piece-actions browser tests passed (8.8 seconds).
+
+CI now separates writing and workspace browser jobs without dropping tests, installs WebKit for touch coverage, and retains failure reports. Full web unit CI reports 1,062 passed, 49 database-dependent skips and zero failures.

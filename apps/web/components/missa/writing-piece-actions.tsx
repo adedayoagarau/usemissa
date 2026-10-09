@@ -131,7 +131,9 @@ export function WritingPieceDetails({
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(!onLoad);
   useEffect(() => {
-    if (!onLoad) return;
+    // This dialog is keyed by piece. Background saves may replace onLoad, but
+    // must not reload an already editable form and discard the writer's edits.
+    if (!onLoad || loaded) return;
     let active = true;
     onLoad(piece.id).then(
       (details) => {
@@ -152,7 +154,7 @@ export function WritingPieceDetails({
     return () => {
       active = false;
     };
-  }, [onLoad, piece.id]);
+  }, [onLoad, piece.id, loaded]);
   async function save() {
     const checked = pieceTarget(target);
     if (checked === null) {

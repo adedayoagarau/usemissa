@@ -146,3 +146,54 @@ test("binder details preserve text and duplicate creates a separate piece", asyn
     page.locator('[data-slot="writing-page-text"]').first(),
   ).toContainText("A source paragraph.");
 });
+
+test("background save preserves a title being edited in piece details", async ({ page }) => {
+  const { sourceId } = await setup(page);
+  let releaseSave!: () => void;
+  const saveGate = new Promise<void>(resolve => { releaseSave = resolve; });
+  let savedOnServer!: () => void;
+  const savedRequest = new Promise<void>(resolve => { savedOnServer = resolve; });
+  let detailsReads = 0;
+  let gated = false;
+  await page.route(`**/api/me/writing/${sourceId}`, async route => {
+    if (route.request().method() === "GET") {
+      detailsReads++;
+      await route.continue();
+      return;
+    }
+    if (route.request().method() === "PUT" && !gated) {
+      gated = true;
+      const response = await route.fetch();
+      expect(response.status()).toBe(200);
+      savedOnServer();
+      await saveGate;
+      await route.fulfill({ response });
+      return;
+    }
+    await route.continue();
+  });
+  await page.locator('[data-slot="writing-page-text"]').first().fill("A background edit.");
+  await savedRequest;
+  await page.getByRole("button", { name: "Library", exact: true }).click();
+  await page.getByRole("button", { name: "Options for Source piece", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Piece details", exact: true }).click();
+  const dialog = page.getByRole("dialog").filter({ has: page.getByRole("heading", { name: "Piece details", exact: true }) });
+  const title = dialog.getByLabel("Title", { exact: true });
+  await expect(title).toBeEnabled();
+  await title.fill("Title typed while saving");
+  const initialDetailsReads = detailsReads;
+  const completedSave = page.waitForResponse(response => response.url().endsWith(`/api/me/writing/${sourceId}`) && response.request().method() === "PUT");
+  releaseSave();
+  await completedSave;
+  await expect(page.locator("footer").getByText("Saved to account", { exact: true })).toHaveText("Saved to account");
+  // Drain the render/effect turns caused by the acknowledgement. A details
+  // refetch here would overwrite the local title with the server's old title.
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  expect(detailsReads).toBe(initialDetailsReads);
+  await expect(title).toHaveValue("Title typed while saving");
+  await dialog.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect.poll(async () => (await (await page.request.get(`/api/me/writing/${sourceId}`)).json()).entry.title).toBe("Title typed while saving");
+  const entry = (await (await page.request.get(`/api/me/writing/${sourceId}`)).json()).entry;
+  expect(entry.body).toBe("A background edit.");
+});
