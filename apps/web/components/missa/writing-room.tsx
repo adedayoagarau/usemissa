@@ -1420,6 +1420,8 @@ export function WritingRoom({
       ? "Opening…"
       : current.state === "failed"
         ? ""
+        : rejection
+          ? "Needs attention · account save declined"
         : pending && !syncState.device
           ? "Needs attention · download a backup"
           : pending
@@ -2090,11 +2092,11 @@ export function WritingRoom({
           </Button>
           {status ? <Popover>
             <PopoverTrigger render={<Button variant="ghost" size="xs" aria-label={`Save status: ${status}`} />}>
-              {status === "Saved to account" ? "Saved" : status === "Saving…" || status === "Opening…" ? status : !syncState.device ? "Needs attention" : "On this device"}
+              {status === "Saved to account" ? "Saved" : status === "Saving…" || status === "Opening…" ? status : status.startsWith("Needs attention") ? "Needs attention" : "On this device"}
             </PopoverTrigger>
             <PopoverContent side="top" align="start">
               <PopoverHeader><PopoverTitle>{status}</PopoverTitle></PopoverHeader>
-              <p className="text-sm text-muted-foreground">{current.state === "opening" ? "Loading this entry from your account." : pending ? !syncState.device ? "This browser could not keep your latest changes. Download a copy before leaving." : deviceOnly ? "This draft is saved in this browser only. Download a copy to keep it elsewhere." : "Your latest changes are on this device. They will appear on other devices after your account save completes." : "This entry is saved to your Missa account."}</p>
+              <p className="text-sm text-muted-foreground">{current.state === "opening" ? "Loading this entry from your account." : rejection ? `${rejection} Your latest changes are kept on this device only if browser storage is available.` : pending ? !syncState.device ? "This browser could not keep your latest changes. Download a copy before leaving." : deviceOnly ? "This draft is saved in this browser only. Download a copy to keep it elsewhere." : "Your latest changes are on this device. They will appear on other devices after your account save completes." : "This entry is saved to your Missa account."}</p>
               <Button variant="outline" disabled={current.state !== "ready"} onClick={downloadEntry}>Download text copy</Button>
             </PopoverContent>
           </Popover> : null}
