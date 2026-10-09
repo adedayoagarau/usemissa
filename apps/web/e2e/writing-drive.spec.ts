@@ -87,6 +87,16 @@ test("Drive controls import as a new piece and retry a stable explicit copy", as
   ).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
+  const bounds = await panel.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.width).toBeLessThanOrEqual(320);
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+  await expect(page.getByRole("button", { name: "Google Drive", exact: true })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(panel).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await panel.getByRole("button", { name: "Save a copy to Drive" }).click();
   await expect(

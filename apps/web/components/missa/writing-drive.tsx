@@ -7,13 +7,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+  Popover,
+  PopoverContent,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverDescription,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   serializeDocument,
   type WritingDocument,
@@ -182,7 +182,7 @@ export function WritingDrive({
   }
   const report = inspectWritingExport(document, "docx", flatten);
   return (
-    <Sheet
+    <Popover
       open={open}
       onOpenChange={(next) => {
         if (!busy) {
@@ -191,19 +191,18 @@ export function WritingDrive({
         }
       }}
     >
-      <SheetTrigger render={<Button variant="ghost" disabled={readOnly} />}>
+      <PopoverTrigger render={<Button variant="ghost" disabled={readOnly} />}>
         <Cloud aria-hidden="true" />
         Google Drive
-      </SheetTrigger>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle>Google Drive</SheetTitle>
-          <SheetDescription>
-            Import a chosen file as a new piece, or save a DOCX copy to your
-            Drive.
-          </SheetDescription>
-        </SheetHeader>
-        <div className="space-y-6 px-6 pb-6">
+      </PopoverTrigger>
+      <PopoverContent side="top" align="end" className="max-h-(--available-height) overflow-y-auto">
+        <PopoverHeader>
+          <PopoverTitle>Google Drive</PopoverTitle>
+          <PopoverDescription>
+            Import a file or save a copy.
+          </PopoverDescription>
+        </PopoverHeader>
+        <div className="space-y-3">
           {!checked ? (
             <p role="status">Checking connection…</p>
           ) : !configured ? (
@@ -213,8 +212,7 @@ export function WritingDrive({
           ) : !connected ? (
             <>
               <p className="text-sm text-muted-foreground">
-                Missa requests access to files you choose and copies it creates.
-                Your draft stays in Missa.
+                Only files you choose or create with Missa.
               </p>
               <Button
                 render={
@@ -314,7 +312,7 @@ export function WritingDrive({
             </Alert>
           ) : null}
         </div>
-      </SheetContent>
-    </Sheet>
+      </PopoverContent>
+    </Popover>
   );
 }
