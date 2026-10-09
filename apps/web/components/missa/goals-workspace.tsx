@@ -35,6 +35,7 @@ import { GoalSubmissionProgress } from "./goal-submission-progress";
 import { HueTile } from "./hue-tile";
 import { PageHeader } from "./page-header";
 import { personHue } from "./person-avatar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 type Target = {
   id: string;
@@ -587,11 +588,12 @@ export function GoalsWorkspace() {
                       onChange={(e) => setEnd(e.target.value)}
                     />
                   </label>
-                  <details className="mt-6">
-                    <summary className="cursor-pointer py-2 text-sm">
+                  <Collapsible className="mt-6">
+                    <CollapsibleTrigger render={<Button variant="disclosure" size="sm" />}>
                       Location, fees
                       {direction === "residency" ? " and attendance dates" : ""}
-                    </summary>
+                    </CollapsibleTrigger>
+<CollapsibleContent>
                     <div className="mt-4 grid gap-5 sm:grid-cols-2">
                       <label className="grid gap-2 text-sm">
                         Preferred locations
@@ -668,7 +670,8 @@ export function GoalsWorkspace() {
                         </>
                       ) : null}
                     </div>
-                  </details>
+                  </CollapsibleContent>
+</Collapsible>
                   <h3 className="mt-8 mb-3 font-semibold">
                     Have somewhere in mind?{" "}
                     <span className="font-normal text-muted-foreground">
@@ -778,10 +781,11 @@ export function GoalsWorkspace() {
                   <p className="mt-2 text-xs text-muted-foreground">
                     In your Missa inbox. You can pause anytime.
                   </p>
-                  <details className="mt-6">
-                    <summary className="cursor-pointer py-2 text-sm">
+                  <Collapsible className="mt-6">
+                    <CollapsibleTrigger render={<Button variant="disclosure" size="sm" />}>
                       Name &amp; recommendation settings
-                    </summary>
+                    </CollapsibleTrigger>
+<CollapsibleContent>
                     <label className="mt-3 grid gap-2 text-sm">
                       Goal name
                       <Input
@@ -792,15 +796,15 @@ export function GoalsWorkspace() {
                       />
                     </label>
                     <label className="mt-4 flex items-center gap-3 text-sm">
-                      <input
-                        type="checkbox"
+                      <Checkbox
+                        
                         checked={influence}
-                        onChange={(e) => setInfluence(e.target.checked)}
-                        className="size-4 accent-primary"
+                        onCheckedChange={(checked) => setInfluence(checked === true)}
                       />
                       Use this goal for recommendations
                     </label>
-                  </details>
+                  </CollapsibleContent>
+</Collapsible>
                 </>
               )}
               <footer className="mt-8 flex flex-wrap justify-between gap-3 border-t border-border pt-5">

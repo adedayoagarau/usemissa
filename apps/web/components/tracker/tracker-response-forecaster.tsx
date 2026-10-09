@@ -11,6 +11,7 @@ import {
 import type { EditorialIntelligenceFullProfile } from "@missa/radar-adapters";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 interface TrackerResponseForecasterProps {
   opportunityId: string;
@@ -194,10 +195,9 @@ export function TrackerResponseForecaster({
             If this piece was submitted simultaneously to other journals, remember to promptly withdraw it from their queues.
           </p>
 
-          <button
+          <Button variant="outline" size="sm"
             type="button"
-            onClick={copyWithdrawalTemplate}
-            className="inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-3 py-1.5 font-sans text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--surface-secondary)]/80 transition"
+            onClick={copyWithdrawalTemplate} className="inline-flex"
           >
             {copiedWithdrawal ? (
               <Check className="size-3.5 text-[var(--text-primary)]" />
@@ -207,7 +207,7 @@ export function TrackerResponseForecaster({
             {copiedWithdrawal
               ? "Template Copied!"
               : "Copy Polite Withdrawal Email Template"}
-          </button>
+          </Button>
         </div>
       )}
     </div>

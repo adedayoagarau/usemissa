@@ -78,7 +78,7 @@ export default async function OrganizationSettingsPage({ params, searchParams }:
   return (
     <main id="organization-main" className={styles.main}>
       <header className="grid gap-1 border-b border-border pb-5">
-        <h1 className="font-heading text-3xl font-medium tracking-tight text-foreground">Settings & billing</h1>
+        <h1 className="font-sans text-3xl font-semibold tracking-tight text-foreground">Settings & billing</h1>
         <p className="text-sm text-muted-foreground">Your organization’s details, teams, brand, letters, review privacy and billing. Anything not built yet says so.</p>
       </header>
       <div className="grid gap-8 pt-6 md:grid-cols-[13.5rem_minmax(0,1fr)]">

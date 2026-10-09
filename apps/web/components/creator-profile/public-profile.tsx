@@ -503,14 +503,14 @@ function IdentityHeader({
             </span>
           </div>
           {identity}
-          <button
+          <Button variant="ghost"
             type="button"
             className={styles.plateCredit}
             onClick={() => onOpen(featured)}
           >
             {featured.title}
             <ArrowRight aria-hidden="true" />
-          </button>
+          </Button>
         </div>
       </header>
     );
@@ -550,14 +550,14 @@ function FeaturedFigure({
           {excerpt && (
             <div className={styles.featuredExcerpt}>
               <p className="font-heading">{excerpt}</p>
-              <button type="button" onClick={() => onOpen(work)}>
+              <Button variant="outline" size="sm" type="button" onClick={() => onOpen(work)}>
                 Read the work <ArrowRight aria-hidden="true" />
-              </button>
+              </Button>
             </div>
           )}
         </div>
       ) : (
-        <button
+        <Button variant="link"
           type="button"
           className={styles.featuredText}
           onClick={() => onOpen(work)}
@@ -567,16 +567,15 @@ function FeaturedFigure({
           <span className={styles.readLink}>
             Read the work <ArrowRight aria-hidden="true" />
           </span>
-        </button>
+        </Button>
       )}
       <figcaption className={styles.featuredCaption}>
-        <button
+        <Button variant="outline" size="sm"
           type="button"
-          className="font-heading"
           onClick={() => onOpen(work)}
         >
           {work.title}
-        </button>
+        </Button>
         <span className="font-mono">
           {[formats.join(" · "), work.year].filter(Boolean).join(" — ")}
         </span>

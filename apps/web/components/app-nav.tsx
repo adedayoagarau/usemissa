@@ -10,6 +10,7 @@ import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, C
 import { Menu, X } from 'lucide-react';
 import { MissaWordmark } from '@/components/missa-wordmark';
 import { Sp } from "@/components/missa/spelling";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 
 /** Shared authenticated identity shell. Tracker owns Submissions and Calendar;
  * Inbox and Profile remain utilities rather than competing primary products. */
@@ -74,13 +75,13 @@ export function AppNav({ email, userId, isAdmin = false, organizations = [] }: {
     return (
       <label className={`flex min-w-0 items-center gap-2 ${className}`}>
         <span className="sr-only"><Sp>Organization</Sp></span>
-        <select aria-label="Organization" value={organizations.some((organization) => organization.id === currentOrganizationId) ? currentOrganizationId! : (organizations[0]?.id ?? '')} onChange={(event) => handleOrganizationChange(event.target.value)} className="min-h-11 max-w-52 min-w-0 rounded-md border border-border bg-background px-2.5 text-xs font-medium text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+        <NativeSelect aria-label="Organization" value={organizations.some((organization) => organization.id === currentOrganizationId) ? currentOrganizationId! : (organizations[0]?.id ?? '')} onChange={(event) => handleOrganizationChange(event.target.value)} className="max-w-52 min-w-0">
           {organizations.map((organization) => (
-            <option key={organization.id} value={organization.id}>
+            <NativeSelectOption key={organization.id} value={organization.id}>
               {organization.name}
-            </option>
+            </NativeSelectOption>
           ))}
-        </select>
+        </NativeSelect>
       </label>
     );
   }
@@ -120,9 +121,9 @@ export function AppNav({ email, userId, isAdmin = false, organizations = [] }: {
         {organizationPicker('ml-1')}
       </div>
 
-      <button type="button" className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg border border-border text-foreground hover:bg-muted lg:hidden" aria-label={mobileNavOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}>
+      <Button variant="outline" size="sm" type="button" className="inline-flex shrink-0 lg:hidden" aria-label={mobileNavOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}>
         {mobileNavOpen ? <X className="size-4" /> : <Menu className="size-4" />}
-      </button>
+      </Button>
 
       <DropdownMenu>
         <DropdownMenuTrigger render={<Button variant="account" size="account" />} className="ml-auto shrink-0">

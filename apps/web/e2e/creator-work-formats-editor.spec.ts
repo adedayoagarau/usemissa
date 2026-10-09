@@ -171,7 +171,7 @@ test("case-study fields are on request, and open for the Design lens", async ({
     .getByRole("button", { name: /^Appearance/ })
     .click();
   await editor(page)
-    .getByRole("radio", { name: /^Design/ })
+    .getByRole("button", { name: /^Design/ })
     .click();
   await rail(page)
     .getByRole("button", { name: /^Selected work/ })

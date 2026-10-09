@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusPipelineBoard } from '@/components/status-pipeline-board';
 import { TrackerItemRow } from '@/components/tracker-item-row';
 import type { TrackerItem, PipelineStage, CustomList, CustomListMembership, LibraryWork } from '@missa/radar-engine';
+import { Button } from "@/components/ui/button";
 
 type ViewMode = 'pipeline' | 'deadline' | 'work' | 'type' | 'organization' | 'list';
 
@@ -126,8 +127,8 @@ export function TrackerViewSwitcher({
       {mode === 'list' && (
         <div className="mt-4 space-y-2">
           <div className="flex flex-wrap gap-2" aria-label="Filter by List">
-            <button type="button" onClick={() => setListId('all')} className={`min-h-11 rounded-md border px-3 text-sm ${listId === 'all' ? 'border-primary bg-accent text-primary' : 'border-border'}`}>All tracked</button>
-            {lists.map((list) => <button type="button" key={list.id} onClick={() => setListId(list.id)} className={`min-h-11 rounded-md border px-3 text-sm ${listId === list.id ? 'border-primary bg-accent text-primary' : 'border-border'}`}>{list.name}</button>)}
+            <Button variant={listId === 'all' ? 'secondary' : 'outline'} aria-pressed={listId === 'all'} type="button" onClick={() => setListId('all')}>All tracked</Button>
+            {lists.map((list) => <Button variant={listId === list.id ? 'secondary' : 'outline'} aria-pressed={listId === list.id} type="button" key={list.id} onClick={() => setListId(list.id)}>{list.name}</Button>)}
           </div>
           {(listId === 'all' ? allItems : allItems.filter((item) => memberships.some((membership) => membership.listId === listId && membership.opportunityId === item.opportunityId))).map((item) => (
             <TrackerItemRow key={item.opportunityId} userId={userId} item={item} works={works} />

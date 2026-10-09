@@ -1,15 +1,15 @@
 .main { width: min(100% - 48px, 1320px); margin: 0 auto; padding: 38px 0 80px; }
 .eyebrow { margin: 0; color: var(--accent-deep); font-size: .66rem; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
 .header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
-.header h1 { margin: 7px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: clamp(2.6rem, 5vw, 4.6rem); font-weight: 520; letter-spacing: -.05em; line-height: 1; }
+.header h1 { margin: 7px 0 0; font-weight: 600; letter-spacing: -0.01em; font-size: 1.875rem; font-weight: 520; letter-spacing: -.05em; line-height: 1.2; }
 .header p:last-child { max-width: 700px; margin: 12px 0 0; color: var(--muted-foreground); font-size: .86rem; line-height: 1.55; }
 .role { flex: 0 0 auto; padding: 7px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--accent-deep); font-size: .7rem; font-weight: 700; }
 .empty, .limited { margin-top: 28px; padding: 28px; border: 1px solid var(--border); border-radius: 12px; }
 .empty h2, .limited h2, .empty p, .limited p { margin: 0; }
-.empty h2, .limited h2 { font-family: var(--font-heading), Georgia, serif; font-size: 1.55rem; }
+.empty h2, .limited h2 { font-weight: 600; letter-spacing: -0.01em; font-size: 1.55rem; }
 .empty p, .limited p { max-width: 680px; margin-top: 9px; color: var(--muted-foreground); font-size: .8rem; line-height: 1.6; }
 .limited dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 22px 0 0; }
 .limited dl div { padding: 15px; border: 1px solid var(--border); border-radius: 9px; }
 .limited dt { color: var(--muted-foreground); font-size: .65rem; }
-.limited dd { margin: 7px 0 0; font-family: var(--font-mono), monospace; font-size: 1.1rem; }
+.limited dd { margin: 7px 0 0; font-variant-numeric: tabular-nums; font-size: 1.1rem; }
 @media (max-width: 680px) { .main { width: min(100% - 32px, 620px); padding-top: 26px; } .header { display: grid; } .role { width: fit-content; } .limited dl { grid-template-columns: 1fr; } }

@@ -62,9 +62,9 @@ export default function AdminChartNotes({ notes }: { notes: Array<ChartNoteMark 
             <li key={note.id} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 py-0.5 pr-1 pl-2.5 text-xs text-foreground">
               <span className="font-mono text-muted-foreground">{note.day}</span>
               {note.label}
-              <button type="button" onClick={() => remove(note.id)} aria-label={`Remove note: ${note.label}`} className="inline-flex size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary">
+              <Button variant="outline" size="sm" type="button" onClick={() => remove(note.id)} aria-label={`Remove note: ${note.label}`} className="inline-flex">
                 <X className="size-3" aria-hidden="true" />
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

@@ -210,12 +210,11 @@ export function FollowingWorkspace() {
               </p>
               <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {data.items.map((item) => (
-                  <button
+                  <Button variant="outline" size="sm"
                     key={item.id}
                     type="button"
                     aria-label={`Open ${item.name}`}
                     onClick={() => open(item)}
-                    className="flex min-h-56 flex-col items-start gap-5 rounded-xl border border-border bg-card p-5 text-start outline-offset-4 hover:border-primary focus-visible:outline-2 focus-visible:outline-ring"
                   >
                     <div className="flex w-full items-center justify-between gap-3">
                       <Avatar className="size-12">
@@ -256,7 +255,7 @@ export function FollowingWorkspace() {
                       </span>
                       <ArrowRight className="size-4 text-primary" />
                     </div>
-                  </button>
+                  </Button>
                 ))}
               </div>
               {!data.items.length ? (
@@ -481,15 +480,14 @@ function FollowingDetail({
                     <Sp>Programs</Sp>
                   </h2>
                   {data.programs.map((p) => (
-                    <button
+                    <Button variant="outline" size="sm"
                       key={p.id}
-                      type="button"
-                      className="flex min-h-14 w-full items-center justify-between gap-3 border-b border-border py-3 text-start text-primary"
+                      type="button" className="w-full"
                       onClick={() => onOpen({ kind: "program", id: p.id })}
                     >
                       {p.name}
                       <ArrowRight className="size-4 shrink-0" />
-                    </button>
+                    </Button>
                   ))}
                 </section>
               ) : null}

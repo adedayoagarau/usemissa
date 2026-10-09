@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from '@/app/home.module.css';
+import { Button } from "@/components/ui/button";
 
 type FinalVideoProps = {
   videoUrl: string;
@@ -104,7 +105,7 @@ export function FinalVideo({ videoUrl, poster }: FinalVideoProps) {
         <video ref={videoRef} muted loop playsInline preload="none" poster={poster} />
         <div className={styles.halftone} />
       </div>
-      <button
+      <Button variant="ghost"
         className={styles.finalVideoControl}
         type="button"
         onClick={togglePlayback}
@@ -119,7 +120,7 @@ export function FinalVideo({ videoUrl, poster }: FinalVideoProps) {
         aria-pressed={isPlaying}
       >
         {isPlaying ? 'Pause film' : 'Play film'}
-      </button>
+      </Button>
     </>
   );
 }

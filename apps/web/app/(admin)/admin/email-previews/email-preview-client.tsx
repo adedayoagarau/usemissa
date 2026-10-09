@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 
 export interface EmailTemplateDefinition {
   key: string;
@@ -79,28 +80,27 @@ export function EmailPreviewStudioClient({
           <label htmlFor="template-selector" className="text-xs font-medium text-muted-foreground">
             Template:
           </label>
-          <select
+          <NativeSelect
             id="template-selector"
             value={selectedKey}
             onChange={(e) => {
               setSelectedKey(e.target.value);
               setTestStatus(null);
             }}
-            className="h-9 rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-primary"
           >
             {templates.map((t) => (
-              <option key={t.key} value={t.key}>
+              <NativeSelectOption key={t.key} value={t.key}>
                 {t.label} ({t.category})
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
+          </NativeSelect>
         </div>
 
         {/* Device & Format Toggles */}
         <div className="flex items-center gap-3">
           {/* Device Toggle */}
           <div className="inline-flex rounded-lg border border-border bg-muted/40 p-0.5">
-            <button
+            <Button variant="link"
               type="button"
               onClick={() => setDevice('desktop')}
               className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
@@ -110,8 +110,8 @@ export function EmailPreviewStudioClient({
               }`}
             >
               Desktop (600px)
-            </button>
-            <button
+            </Button>
+            <Button variant="link"
               type="button"
               onClick={() => setDevice('mobile')}
               className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
@@ -121,12 +121,12 @@ export function EmailPreviewStudioClient({
               }`}
             >
               Mobile (390px)
-            </button>
+            </Button>
           </div>
 
           {/* Format Toggle */}
           <div className="inline-flex rounded-lg border border-border bg-muted/40 p-0.5">
-            <button
+            <Button variant="link"
               type="button"
               onClick={() => setFormat('html')}
               className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
@@ -136,8 +136,8 @@ export function EmailPreviewStudioClient({
               }`}
             >
               HTML
-            </button>
-            <button
+            </Button>
+            <Button variant="link"
               type="button"
               onClick={() => setFormat('text')}
               className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
@@ -147,7 +147,7 @@ export function EmailPreviewStudioClient({
               }`}
             >
               Plain text
-            </button>
+            </Button>
           </div>
         </div>
       </div>

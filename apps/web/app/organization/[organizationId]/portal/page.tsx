@@ -19,7 +19,7 @@ export default async function OrganizationPortalPage({ params }: { params: Promi
   if (!organization) notFound();
 
   if (!workspaceRelationalAuthorityEnabled()) {
-    return <main className="mx-auto w-[min(calc(100%-48px),1180px)] py-12"><p className="text-xs font-semibold uppercase tracking-[.1em] text-primary">Submission portal</p><h1 className="mt-2 font-heading text-4xl">Relational authority is required</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Portal configuration cannot be edited against the compatibility workspace. Enable the relational authority after migration 0056 is applied.</p></main>;
+    return <main className="mx-auto w-[min(calc(100%-48px),1180px)] py-12"><p className="text-xs font-semibold uppercase tracking-[.1em] text-primary">Submission portal</p><h1 className="mt-2 font-sans text-4xl">Relational authority is required</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Portal configuration cannot be edited against the compatibility workspace. Enable the relational authority after migration 0056 is applied.</p></main>;
   }
 
   const workspace = await getRelationalWorkspace();

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Check, CircleCheck, FileText, Mail, MoreHorizontal, Star } from 'lucide-react';
 import styles from './org.module.css';
+import { Button } from "@/components/ui/button";
 
 const modes = [
   { id: 'portal', label: 'Public portal' },
@@ -56,11 +57,11 @@ export function OrgProductShowcase() {
   return (
     <div className={styles.showcase}>
       <p className={styles.showcaseIndex}>Illustrative product views</p>
-      <div className={styles.showcaseTabs} role="tablist" aria-label="Product views">
+      <div className={styles.showcaseTabs} role="group" aria-label="Product views">
         {modes.map((item) => (
-          <button key={item.id} type="button" role="tab" aria-selected={mode === item.id} className={mode === item.id ? styles.showcaseTabActive : styles.showcaseTab} onClick={() => setMode(item.id)}>
+          <Button variant="ghost" key={item.id} type="button" aria-pressed={mode === item.id} className={mode === item.id ? styles.showcaseTabActive : styles.showcaseTab} onClick={() => setMode(item.id)}>
             {item.label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -101,9 +102,9 @@ export function OrgProductShowcase() {
               </span>
               <strong>Aug 28, 2026</strong>
             </div>
-            <button type="button" className={styles.mockButton}>
+            <Button variant="ghost" type="button" className={styles.mockButton}>
               Start application <ArrowRight aria-hidden="true" size={14} />
-            </button>
+            </Button>
             <small>Powered by Missa · Review every answer before sending.</small>
           </div>
         </div>
@@ -133,9 +134,9 @@ export function OrgProductShowcase() {
                 <span>Northline Arts Foundation</span>
                 <strong>2027 Studio Residency</strong>
               </div>
-              <button type="button" aria-label="More review options">
+              <Button variant="outline" size="sm" type="button" aria-label="More review options">
                 <MoreHorizontal size={17} />
-              </button>
+              </Button>
             </div>
             <div className={styles.workspaceTabs}>
               <span className={styles.workspaceTabActive}>All 132</span>

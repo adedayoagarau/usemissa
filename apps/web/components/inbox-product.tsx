@@ -425,8 +425,7 @@ export function InboxProduct({
                                     {dateLabel(item.createdAt)}
                                   </time>
                                 </div>
-                                <button
-                                  className="text-start outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
+                                <Button variant="outline" size="sm"
                                   onClick={() => void openItem(item)}
                                   aria-label={`${item.actionLabel}: ${item.title}`}
                                 >
@@ -436,7 +435,7 @@ export function InboxProduct({
                                   <span className="mt-2 block text-sm leading-relaxed text-muted-foreground">
                                     {item.summary}
                                   </span>
-                                </button>
+                                </Button>
                                 <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                                   <span>
                                     <span className="font-medium text-foreground">

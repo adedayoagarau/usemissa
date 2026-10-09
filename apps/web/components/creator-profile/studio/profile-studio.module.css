@@ -642,7 +642,7 @@
 .choice:hover {
   border-color: var(--input);
 }
-.choice[aria-checked="true"] {
+.choice[aria-pressed="true"] {
   border-color: var(--primary);
   background: var(--accent-tint);
   box-shadow: inset 0 0 0 1px var(--primary);
@@ -670,7 +670,7 @@
   border-radius: 12px;
   font-size: 12px;
 }
-.theme[aria-checked="true"] {
+.theme[aria-pressed="true"] {
   border-color: var(--primary);
   box-shadow: inset 0 0 0 1px var(--primary);
 }

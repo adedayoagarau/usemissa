@@ -2,7 +2,7 @@
 .back { display: inline-flex; min-height: 44px; align-items: center; color: var(--primary); font-size: .78rem; font-weight: 700; text-decoration: none; }
 .header { margin-top: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
 .header p:first-child { margin: 0; color: var(--accent-deep); font-size: .68rem; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
-.header h1 { margin: 7px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: clamp(2.4rem, 6vw, 4rem); font-weight: 520; letter-spacing: -.045em; }
+.header h1 { margin: 7px 0 0; font-weight: 600; letter-spacing: -0.01em; font-size: 1.875rem; font-weight: 520; letter-spacing: -.045em; }
 .header p:last-child { max-width: 620px; margin: 12px 0 0; color: var(--muted-foreground); font-size: .84rem; line-height: 1.6; }
 .main form { display: grid; gap: 24px; margin-top: 28px; }
 .main form > div { display: grid; gap: 8px; }

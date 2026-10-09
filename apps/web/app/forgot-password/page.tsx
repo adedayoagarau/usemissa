@@ -89,13 +89,12 @@ export default function ForgotPasswordPage() {
           </Link>
           <p className="mt-4 text-center text-sm text-muted-foreground">
             No email?{" "}
-            <button
-              type="button"
-              className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline"
+            <Button variant="outline" size="sm"
+              type="button" className="inline-flex"
               onClick={() => setSubmitted(false)}
             >
               Try another address
-            </button>
+            </Button>
           </p>
         </section>
       ) : (

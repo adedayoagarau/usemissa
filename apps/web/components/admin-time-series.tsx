@@ -2,6 +2,8 @@
 
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, ReferenceLine, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Button } from "@/components/ui/button";
 
 export interface SeriesSpec {
   key: string;
@@ -98,8 +100,9 @@ export default function TimeSeriesChart({
           </AreaChart>
         )}
       </ChartContainer>
-      <details className="mt-2 text-xs text-muted-foreground">
-        <summary className="cursor-pointer">View as table</summary>
+      <Collapsible className="mt-2">
+        <CollapsibleTrigger render={<Button variant="disclosure" size="sm" />}>View as table</CollapsibleTrigger>
+<CollapsibleContent>
         <div className="mt-2 max-h-64 overflow-auto">
           <table className="w-full text-left">
             <caption className="sr-only">{caption}</caption>
@@ -119,7 +122,8 @@ export default function TimeSeriesChart({
             </tbody>
           </table>
         </div>
-      </details>
+      </CollapsibleContent>
+</Collapsible>
     </div>
   );
 }

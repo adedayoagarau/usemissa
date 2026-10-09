@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from '@/app/home.module.css';
+import { Button } from "@/components/ui/button";
 
 type HeroVideoProps = {
   videoUrl: string;
@@ -74,7 +75,7 @@ export function HeroVideo({ videoUrl, poster }: HeroVideoProps) {
         <div className={styles.videoWash} />
         <div className={styles.halftone} />
       </div>
-      <button
+      <Button variant="ghost"
         className={styles.videoControl}
         type="button"
         onClick={togglePlayback}
@@ -83,7 +84,7 @@ export function HeroVideo({ videoUrl, poster }: HeroVideoProps) {
         aria-pressed={isPlaying}
       >
         {isPlaying ? 'Pause film' : 'Play film'}
-      </button>
+      </Button>
     </>
   );
 }

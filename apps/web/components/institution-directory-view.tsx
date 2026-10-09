@@ -3,6 +3,8 @@ import { getSemanticUrlForProfile } from "@missa/radar-adapters";
 import Link from "next/link";
 import { Search, Building2, BookOpen, Sparkles, Trophy, Palette, ArrowRight } from "lucide-react";
 import { MagazineScheduleBadge } from "./ui/magazine-schedule-badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export const KIND_METADATA: Record<string, { label: string; plural: string; path: string; icon: typeof Building2; countLabel: string }> = {
   gallery: { label: "Art Gallery", plural: "Galleries & arts organizations", path: "/organizations", icon: Palette, countLabel: "galleries" },
@@ -120,21 +122,19 @@ export function InstitutionDirectoryView({
       >
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <input
+          <Input
             id="directory-search"
             name="q"
             defaultValue={query}
-            placeholder={`Search ${activeKind ? KIND_METADATA[activeKind]?.plural.toLowerCase() : "institutions, residencies, presses..."}`}
-            className="min-h-11 w-full rounded-xl border border-input bg-card pl-10 pr-4 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary"
+            placeholder={`Search ${activeKind ? KIND_METADATA[activeKind]?.plural.toLowerCase() : "institutions, residencies, presses..."}`} className="w-full"
           />
         </div>
         {activeKind ? <input type="hidden" name="kind" value={activeKind} /> : null}
-        <button
-          type="submit"
-          className="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-primary"
+        <Button size="sm"
+          type="submit" className="inline-flex"
         >
           Search
-        </button>
+        </Button>
       </form>
 
       {/* Count Ledger */}

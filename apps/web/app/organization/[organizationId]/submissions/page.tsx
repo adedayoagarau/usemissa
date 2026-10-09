@@ -79,7 +79,7 @@ export default async function OrganizationSubmissionsPage({ params, searchParams
   return (
     <main id="organization-main" className={styles.main}>
       <header className="grid gap-1 border-b border-border pb-5">
-        <h1 className="font-heading text-3xl font-medium tracking-tight text-foreground">Submissions</h1>
+        <h1 className="font-sans text-3xl font-semibold tracking-tight text-foreground">Submissions</h1>
         <p className="text-sm text-muted-foreground">Everything that came in, in sections by what it needs next. Receipt, review and decision stay separate.</p>
       </header>
       <div className="pt-6">

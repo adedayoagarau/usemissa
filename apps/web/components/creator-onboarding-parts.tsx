@@ -12,6 +12,7 @@ import type {
   OnboardingMatch,
   OnboardingMatches,
 } from "@/lib/onboardingMatches";
+import { Button } from "@/components/ui/button";
 
 /**
  * Presentational parts of CreatorOnboarding. State, persistence, and step
@@ -83,11 +84,10 @@ export function OnboardingStepper({
                 />
               ) : null}
               {reachable ? (
-                <button
+                <Button variant="outline" size="sm"
                   type="button"
                   disabled={disabled}
                   onClick={() => onSelect(index)}
-                  className="flex min-h-11 items-center gap-2 rounded-lg px-2 outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
                 >
                   {marker}
                   {label}
@@ -95,7 +95,7 @@ export function OnboardingStepper({
                     {active ? "" : step.label}
                     {done ? " (done)" : ""}
                   </span>
-                </button>
+                </Button>
               ) : (
                 <span
                   className="flex min-h-11 items-center gap-2 px-2"

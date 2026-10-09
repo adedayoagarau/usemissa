@@ -7,6 +7,7 @@ import type { ReviewerAssignmentView } from '@/lib/reviewerProduct';
 import { reviewerAssignmentStateLabel } from '@/lib/reviewerProduct';
 import styles from '@/app/reviews/reviews.module.css';
 import { DeclareConflictButton, ReviewerScoreForm, RoundBriefPanel } from '@/components/reviewer-score-form';
+import { Button } from "@/components/ui/button";
 
 type MobilePane = 'work' | 'review';
 
@@ -34,7 +35,7 @@ export function ReviewerEvidenceDesk({ assignment, queue }: { assignment: Review
       </div>
       <span className={styles.state} data-state={assignment.state}>{assignment.state === 'legacy-submitted' ? <CheckCircle2 aria-hidden="true" /> : <FileText aria-hidden="true" />}{reviewerAssignmentStateLabel(assignment.state)}</span>
     </header>
-    <div className={styles.mobileSwitch} aria-label="Assignment workspace view"><button type="button" aria-pressed={pane === 'work'} onClick={() => setPane('work')}><BookOpen aria-hidden="true" />Work</button><button type="button" aria-pressed={pane === 'review'} onClick={() => setPane('review')}><Scale aria-hidden="true" />Review</button></div>
+    <div className={styles.mobileSwitch} aria-label="Assignment workspace view"><Button variant="outline" size="sm" type="button" aria-pressed={pane === 'work'} onClick={() => setPane('work')}><BookOpen aria-hidden="true" />Work</Button><Button variant="outline" size="sm" type="button" aria-pressed={pane === 'review'} onClick={() => setPane('review')}><Scale aria-hidden="true" />Review</Button></div>
     <div className={styles.desk} data-mobile-pane={pane}>
       <nav className={styles.assignmentRail} aria-labelledby="queue-title">
         <header className="flex items-baseline justify-between gap-2"><h2 id="queue-title">Your queue</h2><span className="text-xs text-muted-foreground tabular-nums">{open} to do</span></header>
