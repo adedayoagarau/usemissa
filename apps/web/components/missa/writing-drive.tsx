@@ -24,17 +24,19 @@ export function WritingDrive({
   document,
   title,
   prepareConnection,
+  connectionReturn,
   readOnly,
   onImport,
 }: {
   document: WritingDocument;
   title: string;
   prepareConnection: () => string | undefined;
+  connectionReturn?: { result: string | null; action: string | null };
   readOnly: boolean;
   onImport: (document: WritingDocument, title: string) => void;
 }) {
   const [open, setOpen] = useState(
-      () => new URLSearchParams(location.search).get("drive") === "connected",
+      () => (connectionReturn?.result ?? new URLSearchParams(location.search).get("drive")) === "connected",
     ),
     [busy, setBusy] = useState(false),
     [connected, setConnected] = useState(false),
@@ -44,7 +46,7 @@ export function WritingDrive({
     [flatten, setFlatten] = useState(false),
     [copy, setCopy] = useState<{ url: string; name: string } | null>(null);
   const [savePreview, setSavePreview] = useState(
-    () => new URLSearchParams(location.search).get("driveAction") === "save",
+    () => (connectionReturn?.action ?? new URLSearchParams(location.search).get("driveAction")) === "save",
   );
   const [operation, setOperation] = useState<{
     id: string;
@@ -54,7 +56,7 @@ export function WritingDrive({
   } | null>(null);
   useEffect(() => {
     const url = new URL(location.href);
-    const result = url.searchParams.get("drive");
+    const result = connectionReturn?.result ?? url.searchParams.get("drive");
     if (result === "connected") {
       toast.success("Google Drive connected.");
       void check();
@@ -68,7 +70,7 @@ export function WritingDrive({
       url.searchParams.delete("driveNew");
       history.replaceState(history.state, "", url);
     }
-  }, []);
+  }, [connectionReturn]);
   async function check() {
     setChecked(false);
     setError("");

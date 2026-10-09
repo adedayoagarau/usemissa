@@ -120,6 +120,7 @@ test("Drive controls import as a new piece and retry a stable explicit copy", as
   await expect(editor).toContainText("Imported words from Drive.");
   await expect(editor).not.toContainText("Original Missa words.");
   await page.getByRole("button", { name: "Library", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Open library", exact: true }).click();
   await expect(
     page.getByRole("link").filter({ hasText: "Original Missa words." }).first(),
   ).toBeVisible();

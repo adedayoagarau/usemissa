@@ -61,6 +61,7 @@ test("whole project restores separately, retains private notes, retries safely a
   );
   await page.goto("/doc");
   await page.getByRole("button", { name: "Library", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Open library", exact: true }).click();
   await page
     .getByRole("button", { name: "Restore project", exact: true })
     .click();

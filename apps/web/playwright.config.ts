@@ -29,6 +29,7 @@ const relationalSpecs = [
   "**/writing-project-restore.spec.ts",
   "**/writing-zotero.spec.ts",
   "**/writing-drive.spec.ts",
+  "**/writing-polish.spec.ts",
 ];
 
 export default defineConfig({
