@@ -104,8 +104,8 @@ jobs:
         env:
           DISPOSABLE_CREATOR_DATABASE_URL: postgres://missa:missa@localhost:5432/missa_story_16_2_ci
 
-      - name: Install Playwright Chromium
-        run: npm exec --workspace=@missa/web -- playwright install --with-deps chromium
+      - name: Install Playwright Chromium and WebKit
+        run: npm exec --workspace=@missa/web -- playwright install --with-deps chromium webkit
 
       - name: Test relational surfaces against Postgres
         run: npm run test:e2e --workspace=@missa/web
