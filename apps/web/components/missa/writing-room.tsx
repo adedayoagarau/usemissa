@@ -2095,7 +2095,7 @@ export function WritingRoom({
             <PopoverContent side="top" align="start">
               <PopoverHeader><PopoverTitle>{status}</PopoverTitle></PopoverHeader>
               <p className="text-sm text-muted-foreground">{current.state === "opening" ? "Loading this entry from your account." : pending ? !syncState.device ? "This browser could not keep your latest changes. Download a copy before leaving." : deviceOnly ? "This draft is saved in this browser only. Download a copy to keep it elsewhere." : "Your latest changes are on this device. They will appear on other devices after your account save completes." : "This entry is saved to your Missa account."}</p>
-              <Button variant="outline" disabled={current.state !== "ready"} onClick={downloadEntry}>Download a copy</Button>
+              <Button variant="outline" disabled={current.state !== "ready"} onClick={downloadEntry}>Download text copy</Button>
             </PopoverContent>
           </Popover> : null}
         </div>

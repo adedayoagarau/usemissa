@@ -36,7 +36,7 @@ test("compact writing controls and dark contrast", async ({
     .fill("A draft to keep and return to.");
   await page.getByRole("button", { name: /Save status:/ }).click();
   await expect(
-    page.getByRole("button", { name: "Download a copy", exact: true }),
+    page.getByRole("button", { name: "Download text copy", exact: true }),
   ).toBeVisible();
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "New entry", exact: true }).click();
