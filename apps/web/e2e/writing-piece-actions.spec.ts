@@ -75,6 +75,7 @@ test("binder details preserve text and duplicate creates a separate piece", asyn
 }) => {
   const { sourceId } = await setup(page);
   await page.getByRole("button", { name: "Library", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Open library", exact: true }).click();
   await page
     .getByRole("button", { name: "Options for Source piece", exact: true })
     .click();
@@ -175,6 +176,7 @@ test("background save preserves a title being edited in piece details", async ({
   await page.locator('[data-slot="writing-page-text"]').first().fill("A background edit.");
   await savedRequest;
   await page.getByRole("button", { name: "Library", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Open library", exact: true }).click();
   await page.getByRole("button", { name: "Options for Source piece", exact: true }).click();
   await page.getByRole("menuitem", { name: "Piece details", exact: true }).click();
   const dialog = page.getByRole("dialog").filter({ has: page.getByRole("heading", { name: "Piece details", exact: true }) });

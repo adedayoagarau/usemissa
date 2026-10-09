@@ -419,6 +419,7 @@ test("the writing room saves as you type, reopens entries and deletes them", asy
   await writing.pressSequentially("Second page.");
   await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Library" }).click();
+  await page.getByRole("menuitem", { name: "Open library", exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "Your writing" });
   await expect(sheet.getByRole("link")).toHaveCount(2);
   await expectSettledOverlay(sheet);
@@ -436,6 +437,7 @@ test("the writing room saves as you type, reopens entries and deletes them", asy
   await expect(sheet).toBeHidden();
   await expect(writing).toHaveText("Second page. More.");
   await page.getByRole("button", { name: "Library" }).click();
+  await page.getByRole("menuitem", { name: "Open library", exact: true }).click();
   await sheet.getByRole("link", { name: /The river does not wait/ }).click();
   await expect(writing).toHaveText(
     "The river does not wait for anyone. Neither do I.",
@@ -617,6 +619,7 @@ test("projects gather pieces in an order, outline them and compile them", async 
 
   // A project starts from a template.
   await page.getByRole("button", { name: "Library" }).click();
+  await page.getByRole("menuitem", { name: "Open library", exact: true }).click();
   await page.getByRole("button", { name: "New project" }).click();
   const create = page.getByRole("dialog", { name: "New project" });
   await create.getByLabel("Title").fill("Harmattan");
@@ -700,6 +703,7 @@ test("projects gather pieces in an order, outline them and compile them", async 
   await writing.pressSequentially("Loose words.");
   await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Library" }).click();
+  await page.getByRole("menuitem", { name: "Open library", exact: true }).click();
   await page.getByRole("button", { name: "Options for Loose words." }).click();
   await page.getByRole("menuitemradio", { name: "Harmattan" }).click();
   const library = page.locator('[data-slot="sheet-content"]');
@@ -1313,6 +1317,7 @@ test("the planner: cards, plotlines, a corkboard and an outline with totals, wit
 
   // A project from the short story template: Draft and Notes.
   await page.getByRole("button", { name: "Library" }).click();
+  await page.getByRole("menuitem", { name: "Open library", exact: true }).click();
   await page.getByRole("button", { name: "New project" }).click();
   const create = page.getByRole("dialog", { name: "New project" });
   await create.getByLabel("Title").fill("Harmattan");
@@ -1351,6 +1356,7 @@ test("the planner: cards, plotlines, a corkboard and an outline with totals, wit
   }
   await page.reload();
   await page.getByRole("button", { name: "Library" }).click();
+  await page.getByRole("menuitem", { name: "Open library", exact: true }).click();
   await page
     .getByRole("button", { name: /Harmattan/ })
     .first()
@@ -1424,6 +1430,7 @@ test("the planner: cards, plotlines, a corkboard and an outline with totals, wit
   await page.keyboard.press("Escape");
   await page.reload();
   await page.getByRole("button", { name: "Library" }).click();
+  await page.getByRole("menuitem", { name: "Open library", exact: true }).click();
   await page
     .getByRole("button", { name: /Harmattan/ })
     .first()

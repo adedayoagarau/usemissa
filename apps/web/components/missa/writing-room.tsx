@@ -17,7 +17,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { ArrowLeft, ChevronUp, Ellipsis, Lock } from "lucide-react";
+import { ArrowLeft, ChevronUp, Ellipsis, Lock, Plus, Library, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import {
   Alert,
@@ -434,6 +434,7 @@ export function WritingRoom({
   const [studioOpen, setStudioOpen] = useState(false);
   const [studioTab, setStudioTab] = useState<"manuscript" | "research">("manuscript");
   const [formattingOpen, setFormattingOpen] = useState(false);
+  const [driveReturn, setDriveReturn] = useState<{ entryId: string; result: string | null; action: string | null } | undefined>(() => ({ entryId: current.id, result: new URLSearchParams(location.search).get("drive"), action: new URLSearchParams(location.search).get("driveAction") }));
   const [writingToolsOpen, setWritingToolsOpen] = useState(() => new URLSearchParams(location.search).has("drive"));
   const [lockedIn, setLockedIn] = useState(false);
   const [manuscriptPieces, setManuscriptPieces] = useState<StudioPiece[] | null>(null);
@@ -1422,7 +1423,9 @@ export function WritingRoom({
         : pending && !syncState.device
           ? "Needs attention · download a backup"
           : pending
-          ? syncState.account === "offline"
+          ? deviceOnly
+            ? "Saved on this device"
+            : syncState.account === "offline"
             ? "Offline · kept on this device"
             : syncState.account === "retrying"
               ? "Kept on this device · retrying"
@@ -1985,7 +1988,7 @@ export function WritingRoom({
         data-hidden={!lockedIn && hideChrome}
         // The compiled manuscript has its own actions; the piece's controls step aside.
         hidden={compiled !== null}
-        className={`flex flex-wrap items-center justify-between gap-x-6 gap-y-1 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 print:hidden ${chrome}`}
+        className={`flex flex-wrap items-center justify-between gap-x-1 gap-y-1 px-2 sm:gap-x-6 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 print:hidden ${chrome}`}
       >
         {!lockedIn ? <>
         <div className={formattingOpen ? "flex items-center gap-1" : "hidden"}>
@@ -2058,7 +2061,7 @@ export function WritingRoom({
           </Button>
         </div>
 
-        <p className="text-xs text-muted-foreground">
+        <div className="flex w-full items-center text-xs text-muted-foreground sm:w-auto">
           <Button
             variant="ghost"
             size="xs"
@@ -2085,18 +2088,24 @@ export function WritingRoom({
               </span>
             )}
           </Button>
-          {status ? (
-            <>
-              <span aria-hidden="true" className="mx-1.5">
-                ·
-              </span>
-              <span>{status}</span>
-            </>
-          ) : null}
-        </p>
+          {status ? <Popover>
+            <PopoverTrigger render={<Button variant="ghost" size="xs" aria-label={`Save status: ${status}`} />}>
+              {status === "Saved to account" ? "Saved" : status === "Saving…" || status === "Opening…" ? status : !syncState.device ? "Needs attention" : "On this device"}
+            </PopoverTrigger>
+            <PopoverContent side="top" align="start">
+              <PopoverHeader><PopoverTitle>{status}</PopoverTitle></PopoverHeader>
+              <p className="text-sm text-muted-foreground">{current.state === "opening" ? "Loading this entry from your account." : pending ? !syncState.device ? "This browser could not keep your latest changes. Download a copy before leaving." : deviceOnly ? "This draft is saved in this browser only. Download a copy to keep it elsewhere." : "Your latest changes are on this device. They will appear on other devices after your account save completes." : "This entry is saved to your Missa account."}</p>
+              <Button variant="outline" disabled={current.state !== "ready"} onClick={downloadEntry}>Download a copy</Button>
+            </PopoverContent>
+          </Popover> : null}
+        </div>
 
         <div className="flex flex-wrap items-center gap-1">
-          <div id="writing-tools" className={writingToolsOpen ? "flex flex-wrap items-center gap-1" : "hidden"}>
+          <Popover open={writingToolsOpen} onOpenChange={(open) => { setWritingToolsOpen(open); if (!open) setDriveReturn(undefined); }}>
+          <PopoverTrigger render={<Button variant="ghost" size="icon" aria-label="Tools" title="Tools" />}><SlidersHorizontal aria-hidden="true" /></PopoverTrigger>
+          <PopoverContent side="top" align="start" className="w-72">
+          <PopoverHeader><PopoverTitle>Tools</PopoverTitle></PopoverHeader>
+          <div id="writing-tools" className="flex flex-wrap items-center gap-1">
           {timerControls}
           {canFullscreen ? (
             // On narrow screens full screen moves into More, keeping the bar to two rows.
@@ -2121,7 +2130,7 @@ export function WritingRoom({
             });
           }} /> : null}
           {currentProject ? <Button variant="ghost" disabled={current.state !== "ready"} onClick={() => setStudioOpen(true)}>Project workspace</Button> : null}
-          <WritingDrive key={current.id} document={current.doc} title={current.title} prepareConnection={() => {
+          <WritingDrive key={current.id} connectionReturn={driveReturn?.entryId === current.id ? driveReturn : undefined} document={current.doc} title={current.title} prepareConnection={() => {
               sync.flush({ keepalive: true });
               if (sync.unprotected()) throw new Error("Your draft could not be saved on this device. Download a backup before connecting.");
               return sync.saved(current.id) || sync.draft(current.id) ? current.id : undefined;
@@ -2130,17 +2139,23 @@ export function WritingRoom({
           <WritingExport document={current.doc} title={current.title} readOnly={current.state !== "ready"}
             onImport={importDocument} onPrint={printPages} />
           </div>
-          <Button variant="ghost" aria-expanded={writingToolsOpen} aria-controls="writing-tools" onClick={() => setWritingToolsOpen((value) => !value)}>Tools</Button>
-          <Button variant="ghost" onClick={newEntry}>New entry</Button>
-          <Button
-            variant="ghost"
-            onClick={() => {
-              setLibraryProject(current.projectId);
-              setSheetOpen(true);
-            }}
-          >
-            Library
-          </Button>
+          </PopoverContent>
+          </Popover>
+          <Button variant="ghost" size="icon" aria-label="New entry" title="New entry" onClick={newEntry}><Plus aria-hidden="true" /></Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label="Library" title="Library" />}><Library aria-hidden="true" /></DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="end" className="w-72">
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Recent drafts</DropdownMenuLabel>
+                {pieces.filter((piece) => piece.id !== current.id).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 5).map((piece) => (
+                  <DropdownMenuItem key={piece.id} onClick={() => void openEntry(piece.id)}><span className="truncate">{piece.title || "Untitled"}</span></DropdownMenuItem>
+                ))}
+                {!pieces.some((piece) => piece.id !== current.id) ? <DropdownMenuItem disabled>No other drafts yet</DropdownMenuItem> : null}
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => { setLibraryProject(current.projectId); setSheetOpen(true); }}>Open library</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <DropdownMenu>
             <DropdownMenuTrigger
               render={<Button variant="ghost" size="icon" aria-label="More" />}
