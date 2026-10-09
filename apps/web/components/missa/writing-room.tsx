@@ -1631,7 +1631,7 @@ export function WritingRoom({
   const timerControls = (
     <ButtonGroup>
       <Button
-        variant="ghost"
+        variant={running ? "writingActive" : "ghost"}
         aria-label={`${timerLabel} (${clock(remaining)})`}
         onClick={toggleTimer}
       >
@@ -1742,7 +1742,7 @@ export function WritingRoom({
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Button variant="ghost" className="max-w-full whitespace-normal" disabled={Boolean(compiled || manuscriptPieces)} aria-expanded={formattingOpen} aria-controls="writing-formatting" onClick={() => setFormattingOpen((value) => !value)}>Formatting</Button>
-          <Button variant="outline" className="max-w-full flex-wrap whitespace-normal" disabled={current.state !== "ready" || Boolean(compiled)} aria-label="Lock in" onClick={enterLockIn}>Lock in <span className="text-muted-foreground">{remaining > 0 && remaining < prefs.minutes * 60_000 ? clock(remaining) : `${prefs.minutes} min`}</span></Button>
+          <Button variant="writingFocus" className="max-w-full flex-wrap whitespace-normal" disabled={current.state !== "ready" || Boolean(compiled)} aria-label="Lock in" onClick={enterLockIn}>Lock in <span>{remaining > 0 && remaining < prefs.minutes * 60_000 ? clock(remaining) : `${prefs.minutes} min`}</span></Button>
         </div>
         <div id="writing-formatting" className={compiled || manuscriptPieces || !formattingOpen ? "hidden" : "flex justify-center"}>
                   <WritingFormatBar

@@ -421,3 +421,13 @@ body {
   --index-facilities: var(--color-sky-400);
   --index-star: var(--color-amber-400);
 }
+
+/* Writing actions: approved lemon/lime hues, preserving their dark-mode pairs. */
+:root {
+  --writing-focus-bg: var(--hue-yellow-subtle);
+  --writing-focus-ink: var(--hue-yellow-ink);
+  --writing-focus-hover: color-mix(in srgb, var(--hue-yellow-subtle) 90%, var(--hue-yellow-ink));
+  --writing-active-bg: var(--hue-lime-subtle);
+  --writing-active-ink: var(--hue-lime-ink);
+  --writing-active-hover: color-mix(in srgb, var(--hue-lime-subtle) 90%, var(--hue-lime-ink));
+}

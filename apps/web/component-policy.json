@@ -1071,6 +1071,16 @@
       "appearance": "submission-brief-beside-a-deterministic-submission-plan-and-searchable-sortable-ranked-lists-of-evidence-led-matches-with-a-browser-saved-shortlist",
       "boundary": "Fit, odds, payoff and cost are deterministic scores from recorded facts, versioned with the decision model; the plan is guidance, not eligibility or a submission claim. Journal destinations remain source-linked and external."
     },
+    "action.writing-focus": {
+      "primitive": "Button",
+      "variant": "writingFocus",
+      "boundary": "Lemon treatment for entering Lock in; neutral document canvas remains unchanged."
+    },
+    "action.writing-active": {
+      "primitive": "Button",
+      "variant": "writingActive",
+      "boundary": "Lime treatment for active writing controls; retain text, icons and pressed state as non-color cues."
+    },
     "action.primary": {
       "primitive": "Button",
       "variant": "default"
