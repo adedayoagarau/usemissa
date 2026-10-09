@@ -2308,7 +2308,7 @@
     ],
     "source": "Installed Missa controls; no registry installation or token changes.",
     "adaptation": "Explicit author-controlled connection and import actions.",
-    "boundary": "Explicit file selection imports a new piece; explicit export creates a DOCX copy. No automatic sync. Account-bound encrypted OAuth credentials and drive.file scope."
+    "boundary": "Compact action-first popover: Open from Drive imports a new piece; Save to Drive previews a DOCX copy. Connection preserves the draft and selected action. No automatic sync. Account-bound encrypted OAuth credentials and drive.file scope."
   },
   "WritingZotero": {
     "status": "experimental",
