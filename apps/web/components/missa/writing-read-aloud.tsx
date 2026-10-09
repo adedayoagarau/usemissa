@@ -163,7 +163,7 @@ export function WritingReadAloud({ text, ref, plan, disabled = false }: {
       <span role="status" className="sr-only">{state === "loading" ? "Preparing audio" : state === "playing" ? `Reading part ${part + 1}` : state === "paused" ? "Paused" : state === "complete" ? "Finished" : ""}</span>
       <ButtonGroup>
         <Tooltip>
-          <TooltipTrigger render={<Button variant="ghost" size="icon" aria-label={label} disabled={(!active && (disabled || !plan || !passage.trim())) || state === "loading"} aria-busy={state === "loading" || undefined} onClick={() => {
+          <TooltipTrigger render={<Button variant={active ? "writingActive" : "ghost"} size="icon" aria-label={label} disabled={(!active && (disabled || !plan || !passage.trim())) || state === "loading"} aria-busy={state === "loading" || undefined} onClick={() => {
             if (state === "playing") { audio.current?.pause(); setState("paused"); }
             else if (state === "paused" && audio.current) {
               const session = generation.current;

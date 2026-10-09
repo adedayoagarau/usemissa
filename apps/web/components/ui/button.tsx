@@ -10,6 +10,10 @@ const buttonVariantClasses = cva(
       variant: {
         default:
           "bg-primary text-primary-foreground shadow-control hover:bg-accent-deep active:bg-accent-deep dark:hover:bg-primary/90",
+        writingFocus:
+          "bg-(--writing-focus-bg) text-(--writing-focus-ink) hover:bg-(--writing-focus-hover) active:bg-(--writing-focus-hover)",
+        writingActive:
+          "bg-(--writing-active-bg) text-(--writing-active-ink) hover:bg-(--writing-active-hover) active:bg-(--writing-active-hover)",
         outline:
           "border-border-strong bg-background text-foreground shadow-control hover:bg-row-hover aria-expanded:bg-muted dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:

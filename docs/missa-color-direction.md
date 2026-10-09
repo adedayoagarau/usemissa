@@ -51,8 +51,10 @@ values directly.
 
 ## Product rules
 
-- Forest is the only brand action color. Do not introduce a second brand
-  accent per feature.
+- Forest is the default brand action color. In the writing room, the approved
+  writingFocus and writingActive Button variants use existing yellow and lime
+  tokens for Lock in and active controls (founder direction, 2026-10-09).
+  Keep the document canvas neutral; do not introduce feature-level colors.
 - Lichen, ochre, and Mineral blue are semantic companions, not competing
   brands.
 - Use a true-white canvas. Do not tint the page cream, beige, parchment, or

@@ -275,6 +275,8 @@
       "Button": [
         "account",
         "accentOutline",
+        "writingFocus",
+        "writingActive",
         "choice",
         "field",
         "rowTitle",

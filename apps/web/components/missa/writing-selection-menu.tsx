@@ -252,7 +252,7 @@ export function WritingSelectionMenu({
     pressed?: boolean,
   ) => (
     <Button
-      variant="ghost"
+      variant={pressed ? "writingActive" : "ghost"}
       size="icon"
       aria-label={label}
       title={label}
