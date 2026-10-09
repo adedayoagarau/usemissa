@@ -388,7 +388,7 @@ test("the writing room saves as you type, reopens entries and deletes them", asy
   const writing = pageText(page);
   await expect(writing).toBeFocused();
   await writing.pressSequentially("The river does not wait for anyone.");
-  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save status: Saved to account", exact: true })).toBeVisible();
   await expect(page.getByText("7 words")).toBeVisible();
   await expect(page).toHaveURL(/\/doc\?entry=writing_/);
 
@@ -403,7 +403,7 @@ test("the writing room saves as you type, reopens entries and deletes them", asy
   await writing.pressSequentially(" Neither do I.");
   await expect(page.getByText("Offline · kept on this device")).toBeVisible();
   await page.context().setOffline(false);
-  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save status: Saved to account", exact: true })).toBeVisible();
   const entryId = new URL(page.url()).searchParams.get("entry")!;
   const stored = (await (
     await page.request.get(`/api/me/writing/${entryId}`)
@@ -417,7 +417,7 @@ test("the writing room saves as you type, reopens entries and deletes them", asy
   await expect(writing).toHaveText("");
   await expect(writing).toBeFocused();
   await writing.pressSequentially("Second page.");
-  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save status: Saved to account", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Library" }).click();
   await page.getByRole("menuitem", { name: "Open library", exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "Your writing" });
@@ -590,7 +590,7 @@ test("pages keep their own format and every space and tab", async ({
       return [computed.textAlign, computed.letterSpacing];
     });
   expect(await style(1)).not.toEqual(await style(0));
-  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save status: Saved to account", exact: true })).toBeVisible();
 
   // Reloaded, the pages, their format and the exact spacing come back.
   await page.reload();
@@ -644,7 +644,7 @@ test("projects gather pieces in an order, outline them and compile them", async 
   await binder.getByRole("link", { name: /^Draft/ }).click();
   await expect(writing).toBeFocused();
   await writing.pressSequentially("Dust on the louvres.");
-  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save status: Saved to account", exact: true })).toBeVisible();
 
   // The header names the project; the binder reorders by its menu.
   await page.getByRole("button", { name: /Project: Harmattan/ }).click();
@@ -701,7 +701,7 @@ test("projects gather pieces in an order, outline them and compile them", async 
   // A loose piece moves into the project.
   await page.getByRole("button", { name: "New entry" }).click();
   await writing.pressSequentially("Loose words.");
-  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save status: Saved to account", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Library" }).click();
   await page.getByRole("menuitem", { name: "Open library", exact: true }).click();
   await page.getByRole("button", { name: "Options for Loose words." }).click();
@@ -750,7 +750,7 @@ test("text flows onto the next page and back as it is written", async ({
   await expect(first).not.toContainText("Line 45");
   await page.keyboard.type(" and on");
   await expect(second).toContainText("Line 45 and on");
-  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save status: Saved to account", exact: true })).toBeVisible();
 
   // Deleting lines on the first page brings text back, and the empty page goes.
   await first.getByText("Line 1", { exact: true }).click();
@@ -764,7 +764,7 @@ test("text flows onto the next page and back as it is written", async ({
   await page.keyboard.press("Backspace");
   await expect(pageText(page, 1)).toHaveCount(0);
   await expect(first).toContainText("Line 45 and on");
-  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save status: Saved to account", exact: true })).toBeVisible();
 });
 
 test("a page becomes a free canvas with boxes placed by hand and kept", async ({
@@ -800,7 +800,7 @@ test("a page becomes a free canvas with boxes placed by hand and kept", async ({
   await page.getByRole("menuitem", { name: "Add a text box" }).click();
   await expect(box).toHaveCount(2);
   await page.keyboard.type("sand");
-  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save status: Saved to account", exact: true })).toBeVisible();
   await expect(
     (
       await new AxeBuilder({ page })
@@ -833,7 +833,7 @@ test("snapshots keep a version to compare and restore; find replaces across page
   const first = pageText(page, 0);
   await expect(first).toBeFocused();
   await first.pressSequentially("The rain came early.");
-  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save status: Saved to account", exact: true })).toBeVisible();
 
   const originalId = new URL(page.url()).searchParams.get("entry");
   // A named version, then a change.
@@ -857,7 +857,7 @@ test("snapshots keep a version to compare and restore; find replaces across page
   await page.keyboard.press("Enter");
   await page.keyboard.type("It stayed. The rain is still here.");
   await expect(first).toHaveText("The rain came early.It stayed. The rain is still here.");
-  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save status: Saved to account", exact: true })).toBeVisible();
 
   // Compare marks the new line.
   await page.getByRole("button", { name: "More" }).click();
@@ -890,7 +890,7 @@ test("snapshots keep a version to compare and restore; find replaces across page
   await expect(find.getByRole("status")).toHaveText("No matches");
   await page.keyboard.press("Escape");
   await expect(find).toBeHidden();
-  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save status: Saved to account", exact: true })).toBeVisible();
 
   // Restoring opens a new piece and preserves the current original.
   await page.getByRole("button", { name: "More" }).click();
@@ -899,7 +899,7 @@ test("snapshots keep a version to compare and restore; find replaces across page
   await page.getByRole("menuitem", { name: "Restore as a copy…" }).click();
   await page.getByRole("button", { name: "Open restored copy", exact: true }).click();
   await expect(pageText(page, 0)).toHaveText("The rain came early.");
-  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save status: Saved to account", exact: true })).toBeVisible();
   expect(new URL(page.url()).searchParams.get("entry")).not.toBe(originalId);
   const original = await page.request.get(`/api/me/writing/${originalId}`);
   expect((await original.json()).entry.body).toContain("harmattan");
@@ -969,7 +969,7 @@ test("a piece is written for a call: its limit counted and its blind reading che
   const writing = pageText(page);
   await expect(writing).toBeFocused();
   await writing.pressSequentially("Adaeze Writer walks out into the rain.");
-  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save status: Saved to account", exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "More" }).click();
   await page.getByRole("menuitem", { name: "Write for a call…" }).click();
@@ -1004,7 +1004,7 @@ test("a piece is written for a call: its limit counted and its blind reading che
   await page.keyboard.press("Shift+End");
   await page.keyboard.type("She walks out into the rain and on into the dark.");
   await expect(page.getByText("11 / 8 words")).toBeVisible();
-  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save status: Saved to account", exact: true })).toBeVisible();
 
   // The link is kept with the piece; the name is gone, so the check passes.
   await page.reload();
@@ -1046,7 +1046,7 @@ test("Ctrl+Enter breaks the page as in Google Docs; Backspace joins it again", a
   await expect(second).toHaveText("after it");
   const breaks = page.locator('[data-slot="writing-break"]');
   await expect(breaks).toHaveText(["Page break"]);
-  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save status: Saved to account", exact: true })).toBeVisible();
 
   // A page break keeps the section's format: a change reaches both pages.
   await showFormatting(page);

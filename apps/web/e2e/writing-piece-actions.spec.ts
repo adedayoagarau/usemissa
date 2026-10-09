@@ -187,7 +187,7 @@ test("background save preserves a title being edited in piece details", async ({
   const completedSave = page.waitForResponse(response => response.url().endsWith(`/api/me/writing/${sourceId}`) && response.request().method() === "PUT");
   releaseSave();
   await completedSave;
-  await expect(page.locator("footer").getByText("Saved to account", { exact: true })).toHaveText("Saved to account");
+  await expect(page.locator("footer").getByRole("button", { name: "Save status: Saved to account", exact: true })).toHaveText("Saved");
   // Drain the render/effect turns caused by the acknowledgement. A details
   // refetch here would overwrite the local title with the server's old title.
   await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
