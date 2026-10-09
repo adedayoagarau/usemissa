@@ -19,6 +19,8 @@ const relationalSpecs = [
   "**/writing-room.spec.ts",
   "**/writing-rich-editor.spec.ts",
   "**/writing-preferences-export.spec.ts",
+  "**/writing-export-print.spec.ts",
+  "**/writing-tool-sync.spec.ts",
   "**/writing-piece-actions.spec.ts",
   "**/writing-revision.spec.ts",
   "**/writing-navigation.spec.ts",

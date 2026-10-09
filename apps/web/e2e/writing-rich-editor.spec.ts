@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, webkit, type Page } from "@playwright/test";
 import { newWritingEntryId } from "../lib/writing";
 import { newWritingProjectId } from "../lib/writing-projects";
 import {
@@ -675,3 +675,42 @@ test("local image replacement and width preserve metadata across reload", async 
   await expect(text.locator("img")).toHaveAttribute("data-width-percent", "50");
   await expect(text.locator("figcaption")).toHaveText("Figure one");
 });
+
+
+for (const engine of ["chromium", "webkit"] as const) {
+  test(`touch selection speaker preserves the native passage in ${engine} emulation`, async ({ browser, baseURL }) => {
+    const owned = engine === "webkit" ? await webkit.launch() : null;
+    const context = await (owned ?? browser).newContext({ baseURL, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" });
+    try {
+      const page = await context.newPage();
+      await signIn(page);
+      await page.goto("/doc");
+      const text = page.locator('[data-slot="writing-page-text"]').first();
+      await text.fill("Before. Listen to this. After.");
+      const passages: string[] = [];
+      await page.route("**/api/me/writing/read-aloud", async route => {
+        passages.push(route.request().postDataJSON().text);
+        await route.fulfill({ status: 503, json: { error: "Test passage received" } });
+      });
+      // Browser-native selection state, rather than a mocked editor selection.
+      // OS selection handles and physical long press remain device-only checks.
+      await text.evaluate(element => {
+        const node = element.querySelector("p")!.firstChild!;
+        const range = window.document.createRange(); range.setStart(node, 8); range.setEnd(node, 23);
+        const selection = window.getSelection()!; selection.removeAllRanges(); selection.addRange(range);
+        window.document.dispatchEvent(new Event("selectionchange"));
+      });
+      const speaker = page.getByRole("button", { name: "Read selection aloud", exact: true });
+      await expect(speaker).toBeVisible();
+      expect(await page.evaluate(() => window.getSelection()?.toString())).toBe("Listen to this.");
+      await speaker.tap();
+      await expect.poll(() => passages).toEqual(["Listen to this."]);
+      expect(await text.innerText()).toBe("Before. Listen to this. After.");
+      // The explicit speaker action snapshots the native passage even on touch.
+      await page.screenshot({ path: `/tmp/missa-release-touch-listening-${engine}.png` });
+    } finally {
+      await context.close();
+      await owned?.close();
+    }
+  });
+}

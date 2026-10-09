@@ -1687,9 +1687,9 @@ export function WritingRoom({
         data-hidden={hideChrome}
         className={`flex flex-col border-b border-border px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1 sm:px-4 print:hidden ${chrome}`}
       >
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-1 items-center gap-1">
-            <Link href="/home" className={buttonVariants({ variant: "ghost" })}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1">
+            <Link href="/home" className={buttonVariants({ variant: "ghost", className: "max-w-full whitespace-normal" })}>
               <ArrowLeft aria-hidden="true" />
               Home
             </Link>
@@ -1708,7 +1708,7 @@ export function WritingRoom({
             ) : null}
           </div>
           <Popover>
-            <PopoverTrigger render={<Button variant="ghost" />}>
+            <PopoverTrigger render={<Button variant="ghost" className="max-w-full whitespace-normal" />}>
               <Lock aria-hidden="true" />
               Private
             </PopoverTrigger>
@@ -1737,9 +1737,9 @@ export function WritingRoom({
             </PopoverContent>
           </Popover>
         </div>
-        <div className="flex items-center justify-between gap-2">
-          <Button variant="ghost" disabled={Boolean(compiled || manuscriptPieces)} aria-expanded={formattingOpen} aria-controls="writing-formatting" onClick={() => setFormattingOpen((value) => !value)}>Formatting</Button>
-          <Button variant="outline" disabled={current.state !== "ready" || Boolean(compiled)} aria-label="Lock in" onClick={enterLockIn}>Lock in <span className="text-muted-foreground">{remaining > 0 && remaining < prefs.minutes * 60_000 ? clock(remaining) : `${prefs.minutes} min`}</span></Button>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Button variant="ghost" className="max-w-full whitespace-normal" disabled={Boolean(compiled || manuscriptPieces)} aria-expanded={formattingOpen} aria-controls="writing-formatting" onClick={() => setFormattingOpen((value) => !value)}>Formatting</Button>
+          <Button variant="outline" className="max-w-full flex-wrap whitespace-normal" disabled={current.state !== "ready" || Boolean(compiled)} aria-label="Lock in" onClick={enterLockIn}>Lock in <span className="text-muted-foreground">{remaining > 0 && remaining < prefs.minutes * 60_000 ? clock(remaining) : `${prefs.minutes} min`}</span></Button>
         </div>
         <div id="writing-formatting" className={compiled || manuscriptPieces || !formattingOpen ? "hidden" : "flex justify-center"}>
                   <WritingFormatBar
@@ -2441,7 +2441,7 @@ export function WritingRoom({
 
       <WritingPractice open={practiceOpen} onOpenChange={setPracticeOpen} accountKey={deviceKey}
         onCreateTemplate={(title, text, preparedDocument) => importDocument(preparedDocument ?? plainTextToDocument(text, prefs.typeface), title)} />
-      {revisionOpen && !compiled ? <WritingRevisionTools key={`${deviceKey}:${current.id}`} accountId={deviceKey} documentId={current.id}
+      {revisionOpen && !compiled ? <WritingRevisionTools key={`${deviceKey}:${current.id}`} accountId={deviceKey} accountSync={!deviceOnly} documentId={current.id}
         trackingEnabled={trackingEntry === current.id} onTrackingChange={(enabled) => {
           setTrackingEntry(enabled ? current.id : null);
           for (const editor of editors.values()) setWritingTracking(editor, { enabled });
@@ -2449,10 +2449,12 @@ export function WritingRoom({
         editor={active?.editor ?? null} editors={editors} readOnly={current.state !== "ready" || Boolean(manuscriptPieces)} onClose={() => setRevisionOpen(false)} /> : null}
       {checksOpen && !compiled ? (
         <WritingChecks
+          accountId={deviceOnly ? undefined : deviceKey}
+          documentId={current.id}
           preferenceKey={`${deviceKey}:${current.id}`}
           dictionaryKey={deviceKey}
           selectionKey={active?.pageId}
-          key={current.mount}
+          key={`${deviceKey}:${current.mount}`}
           document={current.doc}
           editors={editors}
           readOnly={current.state !== "ready"}
@@ -2662,7 +2664,7 @@ export function WritingRoom({
 
       {/* Printing draws each page on its own sheet of the chosen paper. */}
       <style>{`@page { size: ${PAGE_SIZES[(compiled?.doc ?? current.doc).pageSize].width}mm ${PAGE_SIZES[(compiled?.doc ?? current.doc).pageSize].height}mm; margin: 0; }
-@media print { [data-slot="writing-page"] { zoom: 1 !important; break-after: page; } section:last-of-type > [data-slot="writing-page"] { break-after: auto; } [data-sonner-toaster] { display: none !important; } }`}</style>
+@media print { [data-slot="sheet-content"], [data-slot="sheet-overlay"] { display: none !important; } [data-slot="writing-page"] [data-writing-review-layer] { display: inline !important; color: inherit !important; text-decoration: inherit !important; } [data-slot="writing-page"] ins[data-writing-tracked="writingInsertion"] { display: inline !important; color: inherit !important; text-decoration: none !important; } [data-slot="writing-page"] del[data-writing-tracked="writingDeletion"] { display: none !important; } [data-slot="writing-page"] { --background: var(--bg); --foreground: var(--ink); --muted-foreground: var(--ink-2); --primary: var(--brand-accent); color-scheme: light; background: var(--background) !important; color: var(--foreground) !important; zoom: 1 !important; break-after: page; } section:last-of-type > [data-slot="writing-page"] { break-after: auto; } [data-sonner-toaster] { display: none !important; } }`}</style>
     </div>
   );
 }

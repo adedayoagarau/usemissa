@@ -1,188 +1,369 @@
 import { expect, test, type Page } from "@playwright/test";
 const modifier = process.platform === "darwin" ? "Meta" : "Control";
 async function signIn(page: Page) {
- const response = await page.request.post("/api/auth/signup", { data: { email: `revision-${Date.now()}-${Math.random()}@example.com`, password: "correct-horse-battery", givenName: "Ada", familyName: "Writer" } });
- expect(response.status()).toBe(201);
- const cookie = response.headers()["set-cookie"]?.match(/(?:^|,\s*)missa_session=([^;]+)/)?.[1];
- await page.context().addCookies([{ name: "missa_session", value: cookie!, url: new URL(response.url()).origin, httpOnly: true, sameSite: "Lax" }]);
- await page.goto("/doc");
- await expect(page.locator('[data-slot="writing-page-text"]').first()).toBeVisible();
+  const response = await page.request.post("/api/auth/signup", {
+    data: {
+      email: `revision-${Date.now()}-${Math.random()}@example.com`,
+      password: "correct-horse-battery",
+      givenName: "Ada",
+      familyName: "Writer",
+    },
+  });
+  expect(response.status()).toBe(201);
+  const cookie = response
+    .headers()
+    ["set-cookie"]?.match(/(?:^|,\s*)missa_session=([^;]+)/)?.[1];
+  await page
+    .context()
+    .addCookies([
+      {
+        name: "missa_session",
+        value: cookie!,
+        url: new URL(response.url()).origin,
+        httpOnly: true,
+        sameSite: "Lax",
+      },
+    ]);
+  await page.goto("/doc");
+  await expect(
+    page.locator('[data-slot="writing-page-text"]').first(),
+  ).toBeVisible();
 }
 async function openRevisions(page: Page) {
- await page.getByRole("button", { name: "More", exact: true }).click({ timeout: 10000 });
- await page.getByRole("menuitem", { name: "Revision notes and cuttings", exact: true }).click();
- return page.getByRole("dialog", { name: "Revise", exact: true });
+  await page
+    .getByRole("button", { name: "More", exact: true })
+    .click({ timeout: 10000 });
+  await page
+    .getByRole("menuitem", { name: "Revision notes and cuttings", exact: true })
+    .click();
+  return page.getByRole("dialog", { name: "Revise", exact: true });
 }
 async function selectAll(page: Page) {
- const editor = page.locator('[data-slot="writing-page-text"]').first();
- await editor.click(); await editor.press(`${modifier}+a`);
+  const editor = page.locator('[data-slot="writing-page-text"]').first();
+  await editor.click();
+  await editor.press(`${modifier}+a`);
 }
-test("human suggestions leave clean text and can accept, reject and undo", async ({ page }) => {
- test.setTimeout(90_000); await signIn(page);
- const editor = page.locator('[data-slot="writing-page-text"]').first();
- await editor.fill("Original passage"); await selectAll(page);
- await page.getByRole("button", { name: "Formatting", exact: true }).click();
- await page.getByRole("button", { name: "Bold", exact: true }).click();
- await expect(editor.locator("strong")).toHaveText("Original passage");
- const sheet = await openRevisions(page);
- await sheet.getByLabel("Your replacement or comment").fill("Revised passage");
- await sheet.getByRole("button", { name: "Suggest replacement", exact: true }).click();
- await expect(editor).toHaveText("Original passage");
- await sheet.getByRole("button", { name: "Reject", exact: true }).click();
- await expect(sheet.getByText("No suggestions yet.")).toBeVisible();
- await sheet.getByLabel("Your replacement or comment").fill("Revised passage");
- await sheet.getByRole("button", { name: "Suggest replacement", exact: true }).click();
- await expect(sheet.getByLabel("Proposed changes").locator("del")).toHaveText("Original");
- await sheet.getByRole("button", { name: "Accept", exact: true }).click();
- await expect(sheet.getByRole("button", { name: "Copy for reuse", exact: true })).toBeVisible();
- await expect(editor).toHaveText("Revised passage");
- await expect(editor.locator("strong")).toHaveText("Revised passage");
- await page.keyboard.press("Escape"); await editor.click(); await editor.press(`${modifier}+z`);
- await expect(editor).toHaveText("Original passage");
+test("human suggestions leave clean text and can accept, reject and undo", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signIn(page);
+  const editor = page.locator('[data-slot="writing-page-text"]').first();
+  await editor.fill("Original passage");
+  await selectAll(page);
+  await page.getByRole("button", { name: "Formatting", exact: true }).click();
+  await page.getByRole("button", { name: "Bold", exact: true }).click();
+  await expect(editor.locator("strong")).toHaveText("Original passage");
+  const sheet = await openRevisions(page);
+  await sheet.getByLabel("Your replacement or comment").fill("Revised passage");
+  await sheet
+    .getByRole("button", { name: "Suggest replacement", exact: true })
+    .click();
+  await expect(editor).toHaveText("Original passage");
+  await sheet.getByRole("button", { name: "Reject", exact: true }).click();
+  await expect(sheet.getByText("No suggestions yet.")).toBeVisible();
+  await sheet.getByLabel("Your replacement or comment").fill("Revised passage");
+  await sheet
+    .getByRole("button", { name: "Suggest replacement", exact: true })
+    .click();
+  await expect(sheet.getByLabel("Proposed changes").locator("del")).toHaveText(
+    "Original",
+  );
+  await sheet.getByRole("button", { name: "Accept", exact: true }).click();
+  await expect(
+    sheet.getByRole("button", { name: "Copy for reuse", exact: true }),
+  ).toBeVisible();
+  await expect(editor).toHaveText("Revised passage");
+  await expect(editor.locator("strong")).toHaveText("Revised passage");
+  await page.keyboard.press("Escape");
+  await editor.click();
+  await editor.press(`${modifier}+z`);
+  await expect(editor).toHaveText("Original passage");
 });
-test("cuttings survive reopen and storage failure keeps text, private notes become stale safely", async ({ page }) => {
- test.setTimeout(90_000); await signIn(page);
- const editor = page.locator('[data-slot="writing-page-text"]').first();
- await editor.fill("Keep these words"); await selectAll(page);
- let sheet = await openRevisions(page);
- await sheet.getByRole("button", { name: "Verify this", exact: true }).click();
- await sheet.getByLabel("Your replacement or comment").fill("Wrong later replacement");
- await sheet.getByRole("button", { name: "Suggest replacement", exact: true }).click();
- await sheet.getByRole("button", { name: "Cut and keep", exact: true }).click();
- await expect(editor).toHaveText("");
- await page.keyboard.press("Escape");
- sheet = await openRevisions(page);
- await expect(sheet.getByRole("button", { name: "Copy for reuse", exact: true })).toBeVisible();
- await sheet.getByRole("button", { name: "Insert at cursor", exact: true }).click();
- await expect(editor).toHaveText("Keep these words");
- // An identical restored passage has the original JSON again; make a further edit to invalidate it.
- await page.keyboard.press("Escape"); await editor.click(); await editor.press("End"); await editor.press("!");
- sheet = await openRevisions(page);
- await sheet.getByRole("button", { name: "Accept", exact: true }).click();
- await expect(sheet.getByRole("alert")).toContainText("passage has changed");
- await expect(editor).not.toContainText("Wrong later replacement");
- await sheet.getByRole("button", { name: "Resolve", exact: true }).click();
- await expect(sheet.getByText("No unresolved comments.")).toBeVisible();
- await page.keyboard.press("Escape"); await selectAll(page);
- sheet = await openRevisions(page);
- await page.evaluate(() => { Storage.prototype.setItem = () => { throw new Error("quota"); }; });
- const before = await editor.innerText();
- await sheet.getByRole("button", { name: "Cut and keep", exact: true }).click();
- await expect(sheet.getByRole("alert")).toContainText("passage has been kept");
- await expect(editor).toHaveText(before);
+test("cuttings survive reopen and storage failure keeps text, private notes become stale safely", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signIn(page);
+  const editor = page.locator('[data-slot="writing-page-text"]').first();
+  await editor.fill("Keep these words");
+  await selectAll(page);
+  let sheet = await openRevisions(page);
+  await sheet.getByRole("button", { name: "Verify this", exact: true }).click();
+  await sheet
+    .getByLabel("Your replacement or comment")
+    .fill("Wrong later replacement");
+  await sheet
+    .getByRole("button", { name: "Suggest replacement", exact: true })
+    .click();
+  await sheet
+    .getByRole("button", { name: "Cut and keep", exact: true })
+    .click();
+  await expect(editor).toHaveText("");
+  await page.keyboard.press("Escape");
+  sheet = await openRevisions(page);
+  await expect(
+    sheet.getByRole("button", { name: "Copy for reuse", exact: true }),
+  ).toBeVisible();
+  await sheet
+    .getByRole("button", { name: "Insert at cursor", exact: true })
+    .click();
+  await expect(editor).toHaveText("Keep these words");
+  // An identical restored passage has the original JSON again; make a further edit to invalidate it.
+  await page.keyboard.press("Escape");
+  await editor.click();
+  await editor.press("End");
+  await editor.press("!");
+  sheet = await openRevisions(page);
+  await sheet.getByRole("button", { name: "Accept", exact: true }).click();
+  await expect(sheet.getByRole("alert")).toContainText("passage has changed");
+  await expect(editor).not.toContainText("Wrong later replacement");
+  await sheet.getByRole("button", { name: "Resolve", exact: true }).click();
+  await expect(sheet.getByText("No unresolved comments.")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await selectAll(page);
+  sheet = await openRevisions(page);
+  await page.evaluate(() => {
+    Storage.prototype.setItem = () => {
+      throw new Error("quota");
+    };
+  });
+  const before = await editor.innerText();
+  await sheet
+    .getByRole("button", { name: "Cut and keep", exact: true })
+    .click();
+  await expect(sheet.getByRole("alert")).toContainText("passage has been kept");
+  await expect(editor).toHaveText(before);
 });
-test("revision sheet fits 390px, keyboard closes and 200 percent text remains reachable", async ({ page }) => {
- test.setTimeout(90_000); await page.setViewportSize({ width: 390, height: 844 }); await signIn(page);
- const editor = page.locator('[data-slot="writing-page-text"]').first();
- await editor.fill("A passage for a small screen"); await selectAll(page);
- const sheet = await openRevisions(page);
- await sheet.getByLabel("Your replacement or comment").fill("Revisit the ending");
- await sheet.getByRole("button", { name: "Revisit", exact: true }).click();
- await expect(sheet.getByRole("button", { name: "Next unresolved", exact: true })).toBeEnabled();
- await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
- await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
- await sheet.getByRole("button", { name: "Download revision backup", exact: true }).scrollIntoViewIfNeeded();
- await expect(sheet.getByRole("button", { name: "Download revision backup", exact: true })).toBeVisible();
- await page.keyboard.press("Escape"); await expect(sheet).not.toBeVisible();
+test("revision sheet fits 390px, keyboard closes and 200 percent text remains reachable", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page);
+  const editor = page.locator('[data-slot="writing-page-text"]').first();
+  await editor.fill("A passage for a small screen");
+  await selectAll(page);
+  const sheet = await openRevisions(page);
+  await sheet
+    .getByLabel("Your replacement or comment")
+    .fill("Revisit the ending");
+  await sheet.getByRole("button", { name: "Revisit", exact: true }).click();
+  await expect(
+    sheet.getByRole("button", { name: "Next unresolved", exact: true }),
+  ).toBeEnabled();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    )
+    .toBe(true);
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = "200%";
+  });
+  await sheet
+    .getByRole("button", { name: "Download revision backup", exact: true })
+    .scrollIntoViewIfNeeded();
+  await expect(
+    sheet.getByRole("button", {
+      name: "Download revision backup",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(sheet).not.toBeVisible();
 });
-test("explicit insertion and deletion show differences and retain deleted rich text", async ({ page }) => {
- test.setTimeout(90_000); await signIn(page);
- const editor = page.locator('[data-slot="writing-page-text"]').first();
- await editor.fill("Start"); await editor.press("End");
- let sheet = await openRevisions(page);
- await sheet.getByLabel("Your replacement or comment").fill(" ending");
- await sheet.getByRole("button", { name: "Suggest insertion here", exact: true }).click();
- await expect(sheet.getByLabel("Proposed changes").locator("ins")).toHaveText(" ending");
- await sheet.getByRole("button", { name: "Accept", exact: true }).click();
- await expect(editor).toHaveText("Start ending");
- await page.keyboard.press("Escape"); await selectAll(page);
- sheet = await openRevisions(page);
- await sheet.getByRole("button", { name: "Suggest deletion", exact: true }).click();
- await expect(sheet.getByLabel("Proposed changes").locator("del")).toHaveText("Start ending");
- await sheet.getByRole("button", { name: "Accept", exact: true }).click();
- await expect(editor).toHaveText("");
- await sheet.getByRole("button", { name: "Insert at cursor", exact: true }).click();
- await expect(editor).toHaveText("Start ending");
+test("explicit insertion and deletion show differences and retain deleted rich text", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signIn(page);
+  const editor = page.locator('[data-slot="writing-page-text"]').first();
+  await editor.fill("Start");
+  await editor.press("End");
+  let sheet = await openRevisions(page);
+  await sheet.getByLabel("Your replacement or comment").fill(" ending");
+  await sheet
+    .getByRole("button", { name: "Suggest insertion here", exact: true })
+    .click();
+  await expect(sheet.getByLabel("Proposed changes").locator("ins")).toHaveText(
+    " ending",
+  );
+  await sheet.getByRole("button", { name: "Accept", exact: true }).click();
+  await expect(editor).toHaveText("Start ending");
+  await page.keyboard.press("Escape");
+  await selectAll(page);
+  sheet = await openRevisions(page);
+  await sheet
+    .getByRole("button", { name: "Suggest deletion", exact: true })
+    .click();
+  await expect(sheet.getByLabel("Proposed changes").locator("del")).toHaveText(
+    "Start ending",
+  );
+  await sheet.getByRole("button", { name: "Accept", exact: true }).click();
+  await expect(editor).toHaveText("");
+  await sheet
+    .getByRole("button", { name: "Insert at cursor", exact: true })
+    .click();
+  await expect(editor).toHaveText("Start ending");
 });
-test("corrupt revision notes stay untouched and recovery download retains original bytes", async ({ page }) => {
- test.setTimeout(90_000); await signIn(page);
- const editor = page.locator('[data-slot="writing-page-text"]').first();
- await editor.fill("Safe draft"); await selectAll(page);
- let sheet = await openRevisions(page);
- await sheet.getByRole("button", { name: "Revisit", exact: true }).click();
- await page.keyboard.press("Escape");
- const originalRaw = '{broken original notes: "keep all these bytes"';
- const storageKey = await page.evaluate(raw => {
-  const key = Object.keys(localStorage).find(key => key.startsWith("missa:revision-tools:"));
-  if (!key) throw new Error("Revision scope not created");
-  localStorage.setItem(key, raw); return key;
- }, originalRaw);
- sheet = await openRevisions(page);
- await expect(sheet.getByRole("alert")).toContainText("could not be loaded");
- await expect(sheet.getByRole("button", { name: "Suggest deletion", exact: true })).toBeDisabled();
- const downloadPromise = page.waitForEvent("download");
- await sheet.getByRole("button", { name: "Download revision backup", exact: true }).click();
- const download = await downloadPromise;
- const stream = await download.createReadStream();
- const chunks: Buffer[] = [];
- for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
- const backup = JSON.parse(Buffer.concat(chunks).toString());
- expect(backup.originalRaw).toBe(originalRaw);
- expect(await page.evaluate(key => localStorage.getItem(key), storageKey)).toBe(originalRaw);
- await expect(editor).toHaveText("Safe draft");
+test("corrupt revision notes stay untouched and recovery download retains original bytes", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signIn(page);
+  const editor = page.locator('[data-slot="writing-page-text"]').first();
+  await editor.fill("Safe draft");
+  await selectAll(page);
+  let sheet = await openRevisions(page);
+  await sheet.getByRole("button", { name: "Revisit", exact: true }).click();
+  await page.keyboard.press("Escape");
+  const originalRaw = '{broken original notes: "keep all these bytes"';
+  const storageKey = await page.evaluate((raw) => {
+    const key = Object.keys(localStorage).find(
+      (key) =>
+        key.startsWith("missa:revision-tools:") &&
+        !key.includes(":account-sync"),
+    );
+    if (!key) throw new Error("Revision scope not created");
+    localStorage.setItem(key, raw);
+    return key;
+  }, originalRaw);
+  sheet = await openRevisions(page);
+  await expect(sheet.getByRole("alert")).toContainText("could not be loaded");
+  await expect(
+    sheet.getByRole("button", { name: "Suggest deletion", exact: true }),
+  ).toBeDisabled();
+  const downloadPromise = page.waitForEvent("download");
+  await sheet
+    .getByRole("button", { name: "Download revision backup", exact: true })
+    .click();
+  const download = await downloadPromise;
+  const stream = await download.createReadStream();
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
+  const backup = JSON.parse(Buffer.concat(chunks).toString());
+  expect(backup.originalRaw).toBe(originalRaw);
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), storageKey),
+  ).toBe(originalRaw);
+  await expect(editor).toHaveText("Safe draft");
 });
-test("opt-in tracking persists typing, clean views, rejection and composition commits", async ({ page }) => {
- test.setTimeout(90_000); await signIn(page);
- let editor = page.locator('[data-slot="writing-page-text"]').first();
- await editor.fill("Original"); await editor.press("End");
- let sheet = await openRevisions(page);
- await sheet.getByRole("button", { name: "Track typing", exact: true }).click();
- await page.keyboard.press("Escape");
- await editor.click(); await editor.press("End"); await editor.pressSequentially(" addition");
- await expect(editor.locator("ins[data-writing-change-id]")).toHaveText(" addition");
- sheet = await openRevisions(page);
- await sheet.getByRole("button", { name: "Read original", exact: true }).click();
- await expect.poll(() => editor.innerText()).toBe("Original");
- await expect(editor).toHaveAttribute("contenteditable", "false");
- await sheet.getByRole("button", { name: "Show changes", exact: true }).click();
- await expect(editor).toHaveAttribute("contenteditable", "true");
- await expect(editor).toHaveText("Original addition");
- await page.keyboard.press("Escape");
- await expect.poll(() => new URL(page.url()).searchParams.get("entry")).not.toBeNull();
- const entry = new URL(page.url()).searchParams.get("entry");
- await expect.poll(async () => (await (await page.request.get(`/api/me/writing/${entry}`)).json()).entry?.document ?? "").toContain("writingInsertion");
- await page.reload(); editor = page.locator('[data-slot="writing-page-text"]').first();
- await expect(editor.locator("ins[data-writing-change-id]")).toHaveText(" addition");
- sheet = await openRevisions(page);
- await sheet.getByRole("button", { name: "Reject tracked change", exact: true }).click();
- await expect(editor).toHaveText("Original");
- if (await sheet.getByRole("button", { name: "Track typing", exact: true }).count()) await sheet.getByRole("button", { name: "Track typing", exact: true }).click();
- await page.keyboard.press("Escape"); await editor.click(); await editor.press("End");
- await editor.dispatchEvent("compositionstart", { data: "" });
- await page.keyboard.insertText("日本");
- await editor.dispatchEvent("compositionend", { data: "日本" });
- await expect(editor).toContainText("日本");
- await expect(editor.locator("ins[data-writing-change-id]")).toHaveText("日本");
+test("opt-in tracking persists typing, clean views, rejection and composition commits", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signIn(page);
+  let editor = page.locator('[data-slot="writing-page-text"]').first();
+  await editor.fill("Original");
+  await editor.press("End");
+  let sheet = await openRevisions(page);
+  await sheet
+    .getByRole("button", { name: "Track typing", exact: true })
+    .click();
+  await page.keyboard.press("Escape");
+  await editor.click();
+  await editor.press("End");
+  await editor.pressSequentially(" addition");
+  await expect(editor.locator("ins[data-writing-change-id]")).toHaveText(
+    " addition",
+  );
+  sheet = await openRevisions(page);
+  await sheet
+    .getByRole("button", { name: "Read original", exact: true })
+    .click();
+  await expect.poll(() => editor.innerText()).toBe("Original");
+  await expect(editor).toHaveAttribute("contenteditable", "false");
+  await sheet
+    .getByRole("button", { name: "Show changes", exact: true })
+    .click();
+  await expect(editor).toHaveAttribute("contenteditable", "true");
+  await expect(editor).toHaveText("Original addition");
+  await page.keyboard.press("Escape");
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("entry"))
+    .not.toBeNull();
+  const entry = new URL(page.url()).searchParams.get("entry");
+  await expect
+    .poll(
+      async () =>
+        (await (await page.request.get(`/api/me/writing/${entry}`)).json())
+          .entry?.document ?? "",
+    )
+    .toContain("writingInsertion");
+  await page.reload();
+  editor = page.locator('[data-slot="writing-page-text"]').first();
+  await expect(editor.locator("ins[data-writing-change-id]")).toHaveText(
+    " addition",
+  );
+  sheet = await openRevisions(page);
+  await sheet
+    .getByRole("button", { name: "Reject tracked change", exact: true })
+    .click();
+  await expect(editor).toHaveText("Original");
+  if (
+    await sheet
+      .getByRole("button", { name: "Track typing", exact: true })
+      .count()
+  )
+    await sheet
+      .getByRole("button", { name: "Track typing", exact: true })
+      .click();
+  await page.keyboard.press("Escape");
+  await editor.click();
+  await editor.press("End");
+  await editor.dispatchEvent("compositionstart", { data: "" });
+  await page.keyboard.insertText("日本");
+  await editor.dispatchEvent("compositionend", { data: "日本" });
+  await expect(editor).toContainText("日本");
+  await expect(editor.locator("ins[data-writing-change-id]")).toHaveText(
+    "日本",
+  );
 });
-test("tracked removal accepts into rich cuttings and can restore or undo", async ({ page }) => {
- test.setTimeout(90_000); await signIn(page);
- const editor = page.locator('[data-slot="writing-page-text"]').first();
- await editor.fill("A sentence."); await selectAll(page);
- await page.getByRole("button", { name: "Formatting", exact: true }).click();
- await page.getByRole("button", { name: "Bold", exact: true }).click();
- await editor.click(); await editor.press("End");
- let sheet = await openRevisions(page);
- await sheet.getByRole("button", { name: "Track typing", exact: true }).click();
- await page.keyboard.press("Escape"); await editor.click(); await editor.press("End"); await editor.press("Backspace");
- await expect(editor.locator("del[data-writing-change-id]")).toHaveText(".");
- sheet = await openRevisions(page);
- await sheet.getByRole("button", { name: "Read proposed", exact: true }).click();
- await expect.poll(() => editor.innerText()).toBe("A sentence");
- await sheet.getByRole("button", { name: "Show changes", exact: true }).click();
- await sheet.getByRole("button", { name: "Accept tracked change", exact: true }).click();
- await expect(editor).toHaveText("A sentence");
- await expect(sheet.getByRole("button", { name: "Copy for reuse", exact: true })).toBeVisible();
- await sheet.getByRole("button", { name: "Insert at cursor", exact: true }).click();
- await expect(editor).toContainText(".");
- await expect.poll(async () => (await editor.locator("strong").allTextContents()).join("")).toBe("A sentence.");
+test("tracked removal accepts into rich cuttings and can restore or undo", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signIn(page);
+  const editor = page.locator('[data-slot="writing-page-text"]').first();
+  await editor.fill("A sentence.");
+  await selectAll(page);
+  await page.getByRole("button", { name: "Formatting", exact: true }).click();
+  await page.getByRole("button", { name: "Bold", exact: true }).click();
+  await editor.click();
+  await editor.press("End");
+  let sheet = await openRevisions(page);
+  await sheet
+    .getByRole("button", { name: "Track typing", exact: true })
+    .click();
+  await page.keyboard.press("Escape");
+  await editor.click();
+  await editor.press("End");
+  await editor.press("Backspace");
+  await expect(editor.locator("del[data-writing-change-id]")).toHaveText(".");
+  sheet = await openRevisions(page);
+  await sheet
+    .getByRole("button", { name: "Read proposed", exact: true })
+    .click();
+  await expect.poll(() => editor.innerText()).toBe("A sentence");
+  await sheet
+    .getByRole("button", { name: "Show changes", exact: true })
+    .click();
+  await sheet
+    .getByRole("button", { name: "Accept tracked change", exact: true })
+    .click();
+  await expect(editor).toHaveText("A sentence");
+  await expect(
+    sheet.getByRole("button", { name: "Copy for reuse", exact: true }),
+  ).toBeVisible();
+  await sheet
+    .getByRole("button", { name: "Insert at cursor", exact: true })
+    .click();
+  await expect(editor).toContainText(".");
+  await expect
+    .poll(async () =>
+      (await editor.locator("strong").allTextContents()).join(""),
+    )
+    .toBe("A sentence.");
 });

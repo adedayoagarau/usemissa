@@ -14,8 +14,9 @@ editor**, installed shadcn Button/Input primitives, the canonical app stylesheet
 and self-hosted interface/writer typefaces. It can search downloaded pieces,
 read formatted documents, create new offline pieces, edit separate rich copies,
 rename those copies, change local reading order, switch downloaded projects and
-remove downloads. Bookmark the reader address: the normal `/doc` route still
-requires a connection.
+remove downloads. The normal `/doc` address also reopens this anonymous editor
+on network failure after restart. It resolves a requested downloaded entry within
+the active device account, or the first downloaded project when no entry is specified.
 
 Original rich document JSON remains unchanged. Editing creates a separate rich
 copy with a new entry ID and revision zero, queued into the account's existing
@@ -32,7 +33,10 @@ rich copy; the surface asks for a backup and online recovery instead.
 
 ## Storage and privacy
 
-The service worker scope is `/writing-offline/`. Its cache allowlist contains only
+Two narrow service worker scopes cover `/writing-offline/` and `/doc`; only exact
+`/doc` document navigations receive a fallback, and only when the network rejects.
+Online responses pass through without being cached. A worker response header
+permits these registrations, but no root-scope worker is registered. Its cache allowlist contains only
 anonymous static shell, generated editor JS/CSS and local fonts. It never caches
 `/doc`, login, authenticated HTML, API responses or user text. Project snapshots
 use explicit account-partitioned local storage. Account/project selectors are in
@@ -70,7 +74,13 @@ document is not cached.
 
 ## Evidence
 
-Persistent Chromium was closed and reopened with networking disabled. The actual
+Persistent Chromium was closed and reopened after the test origin was shut down.
+That origin forwarded actual Next static assets and the service-worker header
+before disconnecting; the shared Next server stayed running. This physically
+blocks worker network requests as well as page requests. Chromium simulated
+offline mode alone can leave worker fetches online and return an opaque auth
+redirect; online auth redirects remain authoritative. Both requested-entry and
+bare `/doc` navigation, followed by reload, passed with the origin unreachable. The actual
 rich editor loaded from cached assets; editing preserved bold marks and a table,
 left the downloaded original JSON unchanged, and created a distinct revision-zero
 rich copy. Rename, reload, search and creating another piece worked offline. At

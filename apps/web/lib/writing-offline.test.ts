@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { activateOfflineAccount, offlineProjectKey, offlineProjectUrl, readOfflineProject, removeOfflineProject } from "./writing-offline.ts";
+import { activateOfflineAccount, offlineRoomLocation, offlineProjectKey, offlineProjectUrl, readOfflineProject, removeOfflineProject } from "./writing-offline.ts";
 
 test("offline projects are partitioned by account and URL fragments never send account keys to the server", () => {
   const values = new Map<string, string>();
@@ -32,4 +32,23 @@ test("storage errors never claim that a copy was downloaded or removed", () => {
     assert.equal(readOfflineProject("one", "project"), null);
     assert.equal(removeOfflineProject("one", "project"), false);
   } finally { Object.defineProperty(globalThis, "localStorage", { value: original, configurable: true }); }
+});
+
+
+test("normal room fallback selects requested entries only within the active account", () => {
+  const values: Record<string, string> = {
+    "missa.write.offline.active.v1": "one",
+    [offlineProjectKey("two", "private")]: JSON.stringify({version:1,accountKey:"two",project:{id:"private"},entries:[{id:"secret"}]}),
+    [offlineProjectKey("one", "download")]: JSON.stringify({version:1,accountKey:"one",project:{id:"download"},entries:[{id:"mine"}]}),
+  };
+  Object.defineProperty(values, "getItem", { value: (key: string) => values[key] ?? null });
+  const original = globalThis.localStorage;
+  Object.defineProperty(globalThis, "localStorage", { value: values, configurable: true });
+  try {
+    assert.deepEqual(offlineRoomLocation("?entry=mine"), {account:"one",projectId:"download"});
+    assert.deepEqual(offlineRoomLocation(""), {account:"one",projectId:"download"});
+    assert.deepEqual(offlineRoomLocation("?entry=secret"), {account:"one",projectId:""});
+    delete values["missa.write.offline.active.v1"];
+    assert.deepEqual(offlineRoomLocation("?entry=mine"), {account:"",projectId:""});
+  } finally { Object.defineProperty(globalThis, "localStorage", {value:original, configurable:true}); }
 });

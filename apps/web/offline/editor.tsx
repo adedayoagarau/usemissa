@@ -7,11 +7,12 @@ import { WritingPages, type PageEditors } from "@/components/missa/writing-pages
 import { documentText, parseWritingDocument, plainTextToDocument, serializeDocument, type WritingDocument } from "@/lib/writing-document";
 import { newWritingEntryId, type WritingEntry } from "@/lib/writing";
 import type { WritingDraft } from "@/lib/writing-sync";
-import { OFFLINE_ACTIVE_ACCOUNT, offlineProjectKey, offlineProjectUrl, type OfflineWritingProject } from "@/lib/writing-offline";
+import { OFFLINE_ACTIVE_ACCOUNT, offlineRoomLocation, offlineProjectKey, offlineProjectUrl, type OfflineWritingProject } from "@/lib/writing-offline";
 
 function OfflineEditor() {
   const params = new URLSearchParams(location.hash.slice(1));
-  const account = params.get("account") ?? "", projectId = params.get("project") ?? "";
+  const room = location.pathname === "/doc" ? offlineRoomLocation(location.search) : null;
+  const account = room?.account ?? params.get("account") ?? "", projectId = room?.projectId ?? params.get("project") ?? "";
   const draftKey = `missa.write.drafts.v1:${account}`;
   const [project, setProject] = useState<OfflineWritingProject | null>(() => {
     try {

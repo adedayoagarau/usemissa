@@ -18,7 +18,7 @@ import type { WritingFork } from "@/lib/writing-sync";
 import { EMPTY_STUDIO, studioDataSchema as studioSchema, type StudioData, type StudioRecord, type ReaderCopy } from "@/lib/writing-studio-data";
 import { mergeManuscriptPieces } from "@/lib/writing-manuscript";
 import { createProjectBackup } from "@/lib/writing-project-backup";
-import { revisionToolsKey } from "@/lib/writing-revision-tools";
+import { collectProjectRevisionBackup } from "@/lib/writing-project-revision-backup";
 import { revisionSchema, type WritingCheckpoint } from "@/lib/writing-revisions";
 
 export type StudioPiece = { id: string; title: string; doc: WritingDocument };
@@ -68,11 +68,12 @@ export function WritingStudio({ project, libraryPieces, currentPiece, deviceKey,
   const alive = useRef(true);
   const storageKey = `missa.write.studio.v1:${deviceKey}:${project.id}`;
   const endpoint = `/api/me/writing/projects/${encodeURIComponent(project.id)}`;
-  function downloadProjectBackup() {
+  async function downloadProjectBackup() {
     if (loading || !record) { setError("Wait for the complete project to load before downloading its backup."); return; }
-    const deviceRevisions: Record<string, string | null> = {};
-    try { for (const piece of pieces) deviceRevisions[piece.id] = localStorage.getItem(revisionToolsKey(deviceKey, piece.id)); }
-    catch { setError("Revision notes could not be read from this device. Download their backup in Revision notes before closing."); return; }
+    let deviceRevisions: Record<string, string | null>;
+    try { deviceRevisions = await collectProjectRevisionBackup(pieces.map(piece => piece.id), deviceKey, key => localStorage.getItem(key)); }
+    catch (failure) { setError(failure instanceof Error ? failure.message : "Revision notes could not be checked. Retry online before downloading a whole-project backup."); return; }
+    if (!alive.current) return;
     let backup;
     try { backup = createProjectBackup(project, pieces, data, deviceRevisions, libraryPieces); }
     catch (failure) { setError(failure instanceof Error ? failure.message : "This project backup could not be prepared."); return; }

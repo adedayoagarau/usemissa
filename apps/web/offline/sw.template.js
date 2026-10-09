@@ -17,7 +17,18 @@ self.addEventListener("activate", event => {
 });
 self.addEventListener("fetch", event => {
   const url = new URL(event.request.url);
-  if (event.request.method !== "GET" || url.origin !== self.location.origin || !ASSETS.includes(url.pathname) || url.search) return;
+  if (event.request.method !== "GET" || url.origin !== self.location.origin) return;
+  // Network first and never cached: only the writing document gets an anonymous fallback.
+  if (event.request.mode === "navigate" && url.pathname === "/doc") {
+    const fallback = async () => {
+      const shell = await (await caches.open(CACHE)).match("/writing-offline/index.html");
+      // Keep the requested /doc URL rather than inheriting the cached shell response URL.
+      return shell ? new Response(shell.body, { status: 200, headers: { "Content-Type": "text/html; charset=UTF-8", "Cache-Control": "no-store" } }) : Response.error();
+    };
+    event.respondWith(self.navigator.onLine === false ? fallback() : fetch(event.request, { cache: "no-store" }).catch(fallback));
+    return;
+  }
+  if (!ASSETS.includes(url.pathname) || url.search) return;
   event.respondWith(caches.open(CACHE).then(async cache => {
     const saved = await cache.match(url.pathname);
     return saved ?? fetch(event.request);

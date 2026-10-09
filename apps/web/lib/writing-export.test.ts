@@ -484,7 +484,93 @@ test("proposed-reading exports omit tracked deletions, remove insertion marks an
   );
 });
 
-test("plain text copies preserve numbered footnote text",()=>{
- const document=sample();document.pages[0]!.content.content=[{type:"paragraph",content:[{type:"text",text:"Words"},{type:"footnote",attrs:{id:"stable",note:"Source context"}}]}];
- assert.equal(exportPlainText(document,false),"Words[1]\n\nNotes\n[1] Source context");
+test("plain text copies preserve numbered footnote text", () => {
+  const document = sample();
+  document.pages[0]!.content.content = [
+    {
+      type: "paragraph",
+      content: [
+        { type: "text", text: "Words" },
+        { type: "footnote", attrs: { id: "stable", note: "Source context" } },
+      ],
+    },
+  ];
+  assert.equal(
+    exportPlainText(document, false),
+    "Words[1]\n\nNotes\n[1] Source context",
+  );
+});
+
+test("DOCX pagination keeps headings and figure captions together and handles merged cells with notes", async () => {
+  const document = sample();
+  document.pages[0]!.content.content!.push(
+    {
+      type: "table",
+      content: [
+        {
+          type: "tableRow",
+          content: [
+            {
+              type: "tableCell",
+              attrs: { rowspan: 2 },
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: "Merged vertically" }],
+                },
+              ],
+            },
+            {
+              type: "tableCell",
+              content: [
+                { type: "paragraph", content: [{ type: "text", text: "Top" }] },
+              ],
+            },
+          ],
+        },
+        {
+          type: "tableRow",
+          content: [
+            {
+              type: "tableCell",
+              content: [
+                {
+                  type: "paragraph",
+                  content: [
+                    { type: "text", text: "Bottom" },
+                    {
+                      type: "footnote",
+                      attrs: {
+                        id: "table-note",
+                        note: "Table footnote source",
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      type: "image",
+      attrs: {
+        src: `data:image/png;base64,${png}`,
+        alt: "Figure",
+        caption: "Figure caption",
+      },
+    },
+  );
+  const files = unzipSync(await exportDocx(document, metadata));
+  const xml = strFromU8(files["word/document.xml"]!);
+  assert.match(xml, /<w:keepNext/);
+  assert.match(xml, /<w:widowControl/);
+  assert.match(xml, /<w:vMerge w:val="restart"/);
+  assert.match(xml, /<w:vMerge w:val="continue"/);
+  assert.match(xml, /Bottom/);
+  assert.match(
+    strFromU8(files["word/footnotes.xml"]!),
+    /Table footnote source/,
+  );
 });

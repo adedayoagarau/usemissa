@@ -655,7 +655,10 @@ export async function exportDocx(
           return paragraphs(node.content ?? [], depth, list, true);
         if (node.type === "image")
           return [
-            new d.Paragraph({ children: runs(node) }),
+            new d.Paragraph({
+              children: runs(node),
+              keepNext: Boolean(node.attrs?.caption),
+            }),
             ...(typeof node.attrs?.caption === "string" && node.attrs.caption
               ? [
                   new d.Paragraph({
@@ -771,6 +774,8 @@ export async function exportDocx(
                     )
                   ]
                 : undefined,
+            keepNext: node.type === "heading",
+            widowControl: true,
             alignment: align,
             numbering: list,
             indent: quote ? { left: 720, right: 720 } : undefined,

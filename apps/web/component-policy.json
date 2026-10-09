@@ -1750,7 +1750,15 @@
         "Input",
         "Checkbox"
       ],
-      "boundary": "Explicit selected reference import only; dedicated read-only personal-library credentials remain encrypted server-side. Imported sources do not alter prose."
+      "boundary": "Explicit selected reference import only; dedicated read-only personal-library credentials remain encrypted server-side. Imported sources do not alter prose. The installed Dialog remains within the viewport at enlarged text sizes and scrolls without clipping actions."
+    },
+    "feedback.writing-tool-sync": {
+      "semantic": "WritingToolSyncStatus",
+      "implementation": "components/missa/writing-tool-sync-status.tsx",
+      "composition": [
+        "Button"
+      ],
+      "boundary": "Concise account-save status. Recovery and conflict actions appear only when needed; both copies remain recoverable. No new tokens or primitives."
     }
   },
   "semanticComponents": {

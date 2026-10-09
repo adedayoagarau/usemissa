@@ -168,5 +168,14 @@ export default defineConfig([
       "react-hooks/set-state-in-effect": "off",
     },
   },
-  globalIgnores([".next/**", "playwright-report/**", "test-results/**"]),
+  {
+    // Standalone Node browser checks deliberately use CommonJS.
+    files: ["e2e/*.cjs"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
+  globalIgnores([
+    ".next/**", "playwright-report/**", "test-results/**",
+    // Reproducible bundles: lint their source, not vendored/minified output.
+    "public/harper/**", "public/writing-offline/generated/**",
+  ]),
 ]);

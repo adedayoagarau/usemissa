@@ -42,7 +42,7 @@ const { createHash } = await import("node:crypto");
 const worker = await readFile(resolve(web,"offline/sw.template.js"),"utf8");
 const digest = createHash("sha256").update(await readFile(resolve(output,"editor.js"))).update(await readFile(resolve(output,"editor.css")));
 for (const font of [...fonts, ...interfaceFonts]) digest.update(await readFile(resolve(output,font.name)));
-digest.update(worker);
+digest.update(worker).update(await readFile(resolve(web,"public/writing-offline/index.html")));
 const hash = digest.digest("hex").slice(0,16);
 await writeFile(resolve(web,"public/writing-offline/sw.js"), worker.replace("__CACHE_VERSION__",hash).replace("__ASSETS__",JSON.stringify(assets)));
 console.log(`Offline WritingPages bundle prepared (${hash}); ${fonts.length} local typefaces.`);

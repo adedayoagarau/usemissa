@@ -2321,7 +2321,17 @@
       "Checkbox"
     ],
     "source": "Installed Missa controls; no registry installation or token changes.",
-    "adaptation": "Explicit author-controlled connection and import actions.",
+    "adaptation": "Explicit author-controlled connection and import actions. Viewport-sized scrollable Dialog keeps enlarged controls and long reference titles reachable.",
     "boundary": "Explicit selected reference import only; dedicated read-only personal-library credentials remain encrypted server-side. Imported sources do not alter prose."
+  },
+  "WritingToolSyncStatus": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/writing-tool-sync-status.tsx",
+    "composition": [
+      "Button"
+    ],
+    "source": "Installed Missa Button and semantic status text.",
+    "adaptation": "Existing account-recovery feedback for grammar preferences, dictionary and private revision notes.",
+    "boundary": "No controls in the normal saved state; explicit conflict choices and download recovery on failure."
   }
 }

@@ -33,7 +33,8 @@ export function removeOfflineProject(accountKey: string, projectId: string): boo
 export async function downloadOfflineProject(accountKey: string, project: WritingProject, entries: WritingEntry[]) {
   if (!window.isSecureContext || !("serviceWorker" in navigator)) throw new Error("This browser cannot prepare an offline copy. Download a project backup instead.");
   if (entries.some(entry => entry.projectId !== project.id)) throw new Error("The project copy contains a piece from another project.");
-  const registration = await navigator.serviceWorker.register("/writing-offline/sw.js", { scope: "/writing-offline/" });
+  for (const scope of ["/writing-offline/", "/doc"]) {
+  const registration = await navigator.serviceWorker.register("/writing-offline/sw.js", { scope });
   // A first install must finish caching before the download is reported ready.
   const worker = registration.installing ?? registration.waiting ?? registration.active;
   if (worker && worker.state !== "activated") await new Promise<void>((resolve, reject) => {
@@ -46,6 +47,7 @@ export async function downloadOfflineProject(accountKey: string, project: Writin
     };
     worker.addEventListener("statechange", change); change();
   });
+  }
   const snapshot: OfflineWritingProject = { version: 1, accountKey, project, entries, downloadedAt: new Date().toISOString() };
   try {
     localStorage.setItem(offlineProjectKey(accountKey, project.id), JSON.stringify(snapshot));
@@ -54,4 +56,22 @@ export async function downloadOfflineProject(accountKey: string, project: Writin
   let persistent = false;
   try { persistent = await navigator.storage?.persist?.() ?? false; } catch { /* The browser may decline persistence. */ }
   return { snapshot, persistent, url: offlineProjectUrl(accountKey, project.id) };
+}
+
+/** Resolve the normal room's fallback using only the currently active device account. */
+export function offlineRoomLocation(search: string): { account: string; projectId: string } {
+  try {
+    const account = localStorage.getItem(OFFLINE_ACTIVE_ACCOUNT) ?? "";
+    if (!account) return { account: "", projectId: "" };
+    const entryId = new URLSearchParams(search).get("entry");
+    const prefix = `missa.write.offline.v1:${encodeURIComponent(account)}:`;
+    const projects = Object.keys(localStorage).filter(key => key.startsWith(prefix)).flatMap(key => {
+      try {
+        const value = JSON.parse(localStorage.getItem(key) ?? "null");
+        return value?.version === 1 && value.accountKey === account && Array.isArray(value.entries) ? [value as OfflineWritingProject] : [];
+      } catch { return []; }
+    });
+    const project = entryId ? projects.find(item => item.entries.some(entry => entry.id === entryId)) : projects[0];
+    return { account, projectId: project?.project.id ?? "" };
+  } catch { return { account: "", projectId: "" }; }
 }

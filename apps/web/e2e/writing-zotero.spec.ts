@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { newWritingEntryId } from "../lib/writing";
 import { newWritingProjectId } from "../lib/writing-projects";
@@ -74,6 +75,19 @@ test("Zotero import explicitly selects a reference without changing the draft", 
   page,
 }) => {
   const { sourceId, projectId } = await setup(page);
+  const consent = page.getByRole("region", { name: "Analytics consent", exact: true });
+  if (await consent.isVisible()) {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.evaluate(() => { document.documentElement.style.zoom = "2"; });
+    await expect.poll(() => consent.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    for (const button of await consent.getByRole("button").all()) {
+      const bounds = await button.boundingBox();
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
+    }
+    await consent.getByRole("button", { name: "Decline", exact: true }).click();
+    await page.evaluate(() => { document.documentElement.style.zoom = "1"; });
+    await page.setViewportSize({ width: 1280, height: 720 });
+  }
   await page.route("**/api/me/writing/zotero**", async (route) => {
     const request = route.request();
     if (request.method() === "POST") {
@@ -96,6 +110,12 @@ test("Zotero import explicitly selects a reference without changing the draft", 
             sourceType: "book",
             author: "Ada Writer",
             publicationDate: "2025",
+          },
+          {
+            id: "zotero_1234_LONG1234",
+            title: "A long reference title " + "manuscript".repeat(15),
+            sourceType: "book",
+            author: "A researcher with a long name and several collaborators",
           },
         ],
         nextStart: null,
@@ -134,17 +154,13 @@ test("Zotero import explicitly selects a reference without changing the draft", 
   await page.evaluate(() => {
     document.body.style.zoom = "2";
   });
-  expect(
-    await dialog.evaluate(
-      (element) => element.scrollWidth <= element.clientWidth,
-    ),
-  ).toBe(true);
-  const bounds = await dialog.boundingBox();
-  expect(bounds!.x).toBeGreaterThanOrEqual(0);
-  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
-  await page.evaluate(() => {
-    document.body.style.zoom = "1";
-  });
+  // ResizeObserver applies the zoom-aware geometry on the next layout turn.
+  // Assert settled visible bounds, rather than a frame from before the resize.
+  await expect.poll(() => dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await expect.poll(async () => { const bounds = await dialog.boundingBox(); return bounds?.x ?? -1; }).toBeGreaterThanOrEqual(0);
+  await expect.poll(async () => { const bounds = await dialog.boundingBox(); return bounds ? bounds.x + bounds.width : Infinity; }).toBeLessThanOrEqual(390);
+  await expect.poll(async () => { const bounds = await dialog.boundingBox(); return bounds?.y ?? -1; }).toBeGreaterThanOrEqual(0);
+  await expect.poll(async () => { const bounds = await dialog.boundingBox(); return bounds ? bounds.y + bounds.height : Infinity; }).toBeLessThanOrEqual(844);
   await dialog
     .getByRole("button", { name: "Browse references", exact: true })
     .focus();
@@ -158,7 +174,11 @@ test("Zotero import explicitly selects a reference without changing the draft", 
   await expect(dialog.getByRole("status")).toContainText(
     "1 references imported",
   );
+  await dialog.getByRole("button", { name: "Close", exact: true }).scrollIntoViewIfNeeded();
+  expect((await new AxeBuilder({ page }).include('[data-slot="dialog-content"]').analyze()).violations).toEqual([]);
+  await page.screenshot({ path: "/tmp/missa-release-zotero-mobile-zoom.png" });
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  await page.evaluate(() => { document.body.style.zoom = "1"; });
   await page
     .getByRole("button", { name: "Save notes and plans", exact: true })
     .click();
@@ -179,6 +199,14 @@ test("Zotero import explicitly selects a reference without changing the draft", 
     await (await page.request.get(`/api/me/writing/${sourceId}`)).json()
   ).entry;
   expect(original.body).toBe("A source paragraph.");
+  await page.getByRole("complementary", { name: "Linked project · project tools", exact: true }).getByRole("button", { name: "Close", exact: true }).click();
+  await page.evaluate(() => { document.documentElement.style.zoom = "2"; });
+  const overflow = await page.evaluate(() => [...document.querySelectorAll("header, footer, main, header button, footer button")].filter(element => element.getBoundingClientRect().right > window.innerWidth + 1).map(element => ({ tag: element.tagName, text: element.textContent?.slice(0, 80), right: element.getBoundingClientRect().right })));
+  expect(overflow).toEqual([]);
+  await expect(page.locator('[data-ending-style]')).toHaveCount(0);
+  const documentLayout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, width: window.innerWidth, overflow: [...document.querySelectorAll("body *")].filter(element => { const rect = element.getBoundingClientRect(); return rect.width > 0 && rect.right > window.innerWidth + 1 && getComputedStyle(element).visibility !== "hidden"; }).map(element => ({ tag: element.tagName, className: element.getAttribute("class")?.slice(0, 160), text: element.textContent?.slice(0, 60), right: element.getBoundingClientRect().right })).slice(0, 20) }));
+  expect(documentLayout.scrollWidth, JSON.stringify(documentLayout)).toBeLessThanOrEqual(documentLayout.width);
+  await page.screenshot({ path: "/tmp/missa-release-doc-mobile-zoom.png" });
   expect(
     await page.evaluate(() =>
       Object.values(localStorage).some((value) =>

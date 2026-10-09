@@ -33,7 +33,7 @@ test("Harper regional preferences, dictionary and kept wording survive panel reo
   await expect(panel.getByLabel("English variety")).toHaveValue("1");
   await expect(panel.getByText(/1 dictionary words/)).toBeVisible();
   await panel.getByRole("button", { name: "Check this piece", exact: true }).click();
-  await expect(panel.getByRole("status")).toContainText("No remaining suggestions");
+  await expect(panel.getByRole("status").filter({ hasText: "No remaining suggestions" })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);

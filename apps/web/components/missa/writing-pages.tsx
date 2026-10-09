@@ -725,7 +725,9 @@ export function WritingPages({
     const size = PAGE_SIZES[document.pageSize];
     const resize = () => {
       const available = element.clientWidth - 32;
-      setScale(Math.max(0.3, Math.min(1.25, available / (size.width * MM))));
+      // Fit the saved paper even when enlarged browser text leaves a narrow desk.
+      // A scale floor could make the paper wider than its own scroll container.
+      setScale(Math.min(1.25, Math.max(1, available) / (size.width * MM)));
     };
     resize();
     const observer = new ResizeObserver(resize);

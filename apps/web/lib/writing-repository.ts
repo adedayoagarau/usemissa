@@ -1,7 +1,16 @@
+import {
+  parseToolData,
+  emptyToolData,
+  type WritingToolKind,
+  type WritingToolRecord,
+} from "./writing-tool-data.ts";
 import { readerCheckpoint } from "./writing-revisions.ts";
 import { isDeepStrictEqual } from "node:util";
 import { documentText, parseWritingDocument } from "./writing-document.ts";
-import { parseProjectBackup, type PreparedProjectRestore } from "./writing-project-backup.ts";
+import {
+  parseProjectBackup,
+  type PreparedProjectRestore,
+} from "./writing-project-backup.ts";
 import { CreatorRepositoryBase, creatorPoolFor } from "@missa/radar-adapters";
 import {
   countWords,
@@ -159,6 +168,49 @@ function entry(row: Row): WritingEntry {
 export class WritingRepository extends CreatorRepositoryBase {
   constructor(databaseUrl: string) {
     super(creatorPoolFor(databaseUrl));
+  }
+
+  async getToolRecord(
+    accountId: string,
+    kind: WritingToolKind,
+    scopeId: string,
+  ): Promise<WritingToolRecord | null> {
+    if (kind !== "dictionary" && !(await this.get(accountId, scopeId)))
+      return null;
+    const result = await this.query<{ revision: number; data: unknown }>(
+      "select revision,data from creator_writing_tool_records where account_id=$1 and kind=$2 and scope_id=$3",
+      [accountId, kind, scopeId],
+    );
+    const row = result.rows[0];
+    return row
+      ? { revision: row.revision, data: parseToolData(kind, row.data) }
+      : { revision: 0, data: emptyToolData(kind) };
+  }
+  async saveToolRecord(
+    accountId: string,
+    kind: WritingToolKind,
+    scopeId: string,
+    data: unknown,
+    baseRevision: number,
+  ) {
+    const checked = parseToolData(kind, data);
+    // Ownership is rechecked inside the atomic statement, including initial creation.
+    const owned =
+      "($2='dictionary' OR EXISTS(select 1 from creator_writing_entries e where e.account_id=$1 and e.id=$3))";
+    const result = await this.query<{ revision: number; data: unknown }>(
+      baseRevision === 0
+        ? `insert into creator_writing_tool_records(account_id,kind,scope_id,data) select $1,$2,$3,$4::jsonb where ${owned} on conflict(account_id,kind,scope_id) do nothing returning revision,data`
+        : `update creator_writing_tool_records set data=$4::jsonb,revision=revision+1,updated_at=now() where account_id=$1 and kind=$2 and scope_id=$3 and revision=$5 and ${owned} returning revision,data`,
+      baseRevision === 0
+        ? [accountId, kind, scopeId, JSON.stringify(checked)]
+        : [accountId, kind, scopeId, JSON.stringify(checked), baseRevision],
+    );
+    if (result.rows[0])
+      return { kind: "saved" as const, record: result.rows[0] };
+    const current = await this.getToolRecord(accountId, kind, scopeId);
+    return current
+      ? { kind: "conflict" as const, current }
+      : { kind: "not-found" as const };
   }
 
   /** An absent studio is an empty revision zero, only for an owned project. */
@@ -510,8 +562,15 @@ export class WritingRepository extends CreatorRepositoryBase {
     id: string,
     request: WritingSaveRequest,
   ): Promise<WritingSaveResult> {
-    const savedDocument = request.document ? parseWritingDocument(request.document) : null;
-    const wordCount = savedDocument?.purpose === "research" ? 0 : countWords(savedDocument ? documentText(savedDocument) : request.body);
+    const savedDocument = request.document
+      ? parseWritingDocument(request.document)
+      : null;
+    const wordCount =
+      savedDocument?.purpose === "research"
+        ? 0
+        : countWords(
+            savedDocument ? documentText(savedDocument) : request.body,
+          );
     const written =
       request.baseRevision === 0
         ? await this.query<Row>(
@@ -579,44 +638,137 @@ export class WritingRepository extends CreatorRepositoryBase {
   }
 
   /** All restored data lands together in a separate project; retries never overwrite a row. */
-  async restoreProjectBackup(accountId: string, input: PreparedProjectRestore): Promise<{ kind: "restored" | "exists"; project: WritingProject; entries: WritingEntrySummary[] } | { kind: "taken" | "limit" }> {
+  async restoreProjectBackup(
+    accountId: string,
+    input: PreparedProjectRestore,
+  ): Promise<
+    | {
+        kind: "restored" | "exists";
+        project: WritingProject;
+        entries: WritingEntrySummary[];
+      }
+    | { kind: "taken" | "limit" }
+  > {
     const backup = parseProjectBackup(JSON.stringify(input));
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
-      await client.query("select id from radar_accounts where id=$1 for update", [accountId]);
-      const existing = await client.query<ProjectRow & { account_id: string }>(`select ${PROJECT_COLUMNS},account_id from creator_writing_projects where id=$1 for update`, [backup.project.id]);
+      await client.query(
+        "select id from radar_accounts where id=$1 for update",
+        [accountId],
+      );
+      const existing = await client.query<ProjectRow & { account_id: string }>(
+        `select ${PROJECT_COLUMNS},account_id from creator_writing_projects where id=$1 for update`,
+        [backup.project.id],
+      );
       if (existing.rows[0]) {
         const old = existing.rows[0];
-        const oldPieces = await client.query<Row>(`select ${ENTRY_COLUMNS} from creator_writing_entries where account_id=$1 and project_id=$2 order by position,id`, [accountId, backup.project.id]);
-        const oldStudio = await client.query<{ data: unknown }>("select data from creator_writing_studios where account_id=$1 and project_id=$2", [accountId, backup.project.id]);
-        const matches = old.account_id === accountId && old.title === backup.project.title && old.template === backup.project.template && isDeepStrictEqual(storedPlan(old.plan), backup.project.plan) && isDeepStrictEqual(oldStudio.rows[0]?.data, backup.studio) && oldPieces.rows.length === backup.pieces.length && backup.pieces.every((piece, index) => {
-          const stored = oldPieces.rows[index];
-          return stored?.id === piece.id && stored.title === piece.title && stored.document === piece.document && stored.synopsis === piece.synopsis && stored.status === piece.status && isDeepStrictEqual(storedCard(stored.card), piece.card);
-        });
+        const oldPieces = await client.query<Row>(
+          `select ${ENTRY_COLUMNS} from creator_writing_entries where account_id=$1 and project_id=$2 order by position,id`,
+          [accountId, backup.project.id],
+        );
+        const oldStudio = await client.query<{ data: unknown }>(
+          "select data from creator_writing_studios where account_id=$1 and project_id=$2",
+          [accountId, backup.project.id],
+        );
+        const matches =
+          old.account_id === accountId &&
+          old.title === backup.project.title &&
+          old.template === backup.project.template &&
+          isDeepStrictEqual(storedPlan(old.plan), backup.project.plan) &&
+          isDeepStrictEqual(oldStudio.rows[0]?.data, backup.studio) &&
+          oldPieces.rows.length === backup.pieces.length &&
+          backup.pieces.every((piece, index) => {
+            const stored = oldPieces.rows[index];
+            return (
+              stored?.id === piece.id &&
+              stored.title === piece.title &&
+              stored.document === piece.document &&
+              stored.synopsis === piece.synopsis &&
+              stored.status === piece.status &&
+              isDeepStrictEqual(storedCard(stored.card), piece.card)
+            );
+          });
         await client.query("ROLLBACK");
-        return matches ? { kind: "exists", project: project(old), entries: oldPieces.rows.map(summary) } : { kind: "taken" };
+        return matches
+          ? {
+              kind: "exists",
+              project: project(old),
+              entries: oldPieces.rows.map(summary),
+            }
+          : { kind: "taken" };
       }
-      const counts = await client.query<{ projects: number; entries: number }>("select (select count(*)::int from creator_writing_projects where account_id=$1) as projects,(select count(*)::int from creator_writing_entries where account_id=$1) as entries", [accountId]);
-      if (counts.rows[0]!.projects >= PROJECTS_MAX || counts.rows[0]!.entries + backup.pieces.length > WRITING_LIST_LIMIT) { await client.query("ROLLBACK"); return { kind: "limit" }; }
-      const created = await client.query<ProjectRow>(`insert into creator_writing_projects(id,account_id,title,template,plan) values($1,$2,$3,$4,$5::jsonb) returning ${PROJECT_COLUMNS}`, [backup.project.id, accountId, backup.project.title, backup.project.template, JSON.stringify(backup.project.plan)]);
+      const counts = await client.query<{ projects: number; entries: number }>(
+        "select (select count(*)::int from creator_writing_projects where account_id=$1) as projects,(select count(*)::int from creator_writing_entries where account_id=$1) as entries",
+        [accountId],
+      );
+      if (
+        counts.rows[0]!.projects >= PROJECTS_MAX ||
+        counts.rows[0]!.entries + backup.pieces.length > WRITING_LIST_LIMIT
+      ) {
+        await client.query("ROLLBACK");
+        return { kind: "limit" };
+      }
+      const created = await client.query<ProjectRow>(
+        `insert into creator_writing_projects(id,account_id,title,template,plan) values($1,$2,$3,$4,$5::jsonb) returning ${PROJECT_COLUMNS}`,
+        [
+          backup.project.id,
+          accountId,
+          backup.project.title,
+          backup.project.template,
+          JSON.stringify(backup.project.plan),
+        ],
+      );
       const entries: WritingEntrySummary[] = [];
       for (const [position, piece] of backup.pieces.entries()) {
         const document = parseWritingDocument(piece.document)!;
         const body = documentText(document);
-        const saved = await client.query<Row>(`insert into creator_writing_entries(id,account_id,title,body,document,project_id,position,synopsis,status,card,word_count) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11) returning ${ENTRY_COLUMNS}`, [piece.id, accountId, piece.title, body, piece.document, backup.project.id, position, piece.synopsis, piece.status, JSON.stringify(piece.card), document.purpose === "research" ? 0 : countWords(body)]);
+        const saved = await client.query<Row>(
+          `insert into creator_writing_entries(id,account_id,title,body,document,project_id,position,synopsis,status,card,word_count) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11) returning ${ENTRY_COLUMNS}`,
+          [
+            piece.id,
+            accountId,
+            piece.title,
+            body,
+            piece.document,
+            backup.project.id,
+            position,
+            piece.synopsis,
+            piece.status,
+            JSON.stringify(piece.card),
+            document.purpose === "research" ? 0 : countWords(body),
+          ],
+        );
         entries.push(summary(saved.rows[0]!));
       }
-      await client.query("insert into creator_writing_studios(project_id,account_id,data) values($1,$2,$3::jsonb)", [backup.project.id, accountId, JSON.stringify(backup.studio)]);
-      await client.query("insert into audit_events(account_id,action,target_type,target_id,detail) values($1,'writing.project_restored','writing_project',$2,$3::jsonb)", [accountId, backup.project.id, JSON.stringify({ pieces: backup.pieces.length })]);
+      await client.query(
+        "insert into creator_writing_studios(project_id,account_id,data) values($1,$2,$3::jsonb)",
+        [backup.project.id, accountId, JSON.stringify(backup.studio)],
+      );
+      await client.query(
+        "insert into audit_events(account_id,action,target_type,target_id,detail) values($1,'writing.project_restored','writing_project',$2,$3::jsonb)",
+        [
+          accountId,
+          backup.project.id,
+          JSON.stringify({ pieces: backup.pieces.length }),
+        ],
+      );
       await client.query("COMMIT");
       return { kind: "restored", project: project(created.rows[0]!), entries };
     } catch (error) {
       await client.query("ROLLBACK").catch(() => undefined);
       // A conflicting piece ID cannot leave the project or earlier pieces partially restored.
-      if (error && typeof error === "object" && "code" in error && error.code === "23505") return { kind: "taken" };
+      if (
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        error.code === "23505"
+      )
+        return { kind: "taken" };
       throw error;
-    } finally { client.release(); }
+    } finally {
+      client.release();
+    }
   }
 
   async listProjects(accountId: string): Promise<WritingProject[]> {
@@ -870,15 +1022,25 @@ export class WritingRepository extends CreatorRepositoryBase {
   ): Promise<WritingSnapshotSummary | null> {
     const client = await this.pool.connect();
     try {
-    await client.query("BEGIN");
-    const owned = await client.query("select id from creator_writing_entries where account_id=$1 and id=$2 for update", [accountId, entryId]);
-    if (!owned.rows.length) { await client.query("ROLLBACK"); return null; }
-    if (request.name) {
-      const count = await client.query<{ n: number }>("select count(*)::int as n from creator_writing_snapshots where account_id=$1 and entry_id=$2 and name<>'' and id<>$3", [accountId, entryId, request.id]);
-      if (count.rows[0]!.n >= NAMED_VERSIONS_PER_PIECE) throw new NamedVersionLimitError();
-    }
-    const result = await client.query<SnapshotRow>(
-      `with owned as (
+      await client.query("BEGIN");
+      const owned = await client.query(
+        "select id from creator_writing_entries where account_id=$1 and id=$2 for update",
+        [accountId, entryId],
+      );
+      if (!owned.rows.length) {
+        await client.query("ROLLBACK");
+        return null;
+      }
+      if (request.name) {
+        const count = await client.query<{ n: number }>(
+          "select count(*)::int as n from creator_writing_snapshots where account_id=$1 and entry_id=$2 and name<>'' and id<>$3",
+          [accountId, entryId, request.id],
+        );
+        if (count.rows[0]!.n >= NAMED_VERSIONS_PER_PIECE)
+          throw new NamedVersionLimitError();
+      }
+      const result = await client.query<SnapshotRow>(
+        `with owned as (
          select id from creator_writing_entries where account_id=$1 and id=$2
        ), kept as (
          insert into creator_writing_snapshots (id,account_id,entry_id,name,title,body,document,word_count)
@@ -890,30 +1052,37 @@ export class WritingRepository extends CreatorRepositoryBase {
        union all
        select ${SNAPSHOT_SUMMARY} from creator_writing_snapshots
        where id=$3 and account_id=$1 and entry_id=$2 and not exists (select 1 from kept)`,
-      [
-        accountId,
-        entryId,
-        request.id,
-        request.name,
-        request.title,
-        request.body,
-        request.document,
-        countWords(request.body),
-      ],
-    );
-    const row = result.rows[0];
-    if (!row) { await client.query("ROLLBACK"); return null; }
-    await client.query(
-      `delete from creator_writing_snapshots where account_id=$1 and entry_id=$2 and id in (
+        [
+          accountId,
+          entryId,
+          request.id,
+          request.name,
+          request.title,
+          request.body,
+          request.document,
+          countWords(request.body),
+        ],
+      );
+      const row = result.rows[0];
+      if (!row) {
+        await client.query("ROLLBACK");
+        return null;
+      }
+      await client.query(
+        `delete from creator_writing_snapshots where account_id=$1 and entry_id=$2 and id in (
          select id from creator_writing_snapshots where account_id=$1 and entry_id=$2 and name=''
          order by created_at desc offset $3
        )`,
-      [accountId, entryId, SNAPSHOTS_PER_PIECE],
-    );
-    await client.query("COMMIT");
-    return snapshotSummary(row);
-    } catch (error) { await client.query("ROLLBACK"); throw error; }
-    finally { client.release(); }
+        [accountId, entryId, SNAPSHOTS_PER_PIECE],
+      );
+      await client.query("COMMIT");
+      return snapshotSummary(row);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async getSnapshot(
@@ -937,21 +1106,43 @@ export class WritingRepository extends CreatorRepositoryBase {
   }
 
   /** Naming protects a version from automatic-history pruning. Content never changes. */
-  async renameSnapshot(accountId: string, entryId: string, id: string, name: string): Promise<WritingSnapshotSummary | null> {
+  async renameSnapshot(
+    accountId: string,
+    entryId: string,
+    id: string,
+    name: string,
+  ): Promise<WritingSnapshotSummary | null> {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
-      const owned = await client.query("select id from creator_writing_entries where account_id=$1 and id=$2 for update", [accountId, entryId]);
-      if (!owned.rows.length) { await client.query("ROLLBACK"); return null; }
-      if (name) {
-        const count = await client.query<{ n: number }>("select count(*)::int as n from creator_writing_snapshots where account_id=$1 and entry_id=$2 and name<>'' and id<>$3", [accountId, entryId, id]);
-        if (count.rows[0]!.n >= NAMED_VERSIONS_PER_PIECE) throw new NamedVersionLimitError();
+      const owned = await client.query(
+        "select id from creator_writing_entries where account_id=$1 and id=$2 for update",
+        [accountId, entryId],
+      );
+      if (!owned.rows.length) {
+        await client.query("ROLLBACK");
+        return null;
       }
-      const result = await client.query<SnapshotRow>(`update creator_writing_snapshots set name=$4 where account_id=$1 and entry_id=$2 and id=$3 returning ${SNAPSHOT_SUMMARY}`, [accountId, entryId, id, name]);
+      if (name) {
+        const count = await client.query<{ n: number }>(
+          "select count(*)::int as n from creator_writing_snapshots where account_id=$1 and entry_id=$2 and name<>'' and id<>$3",
+          [accountId, entryId, id],
+        );
+        if (count.rows[0]!.n >= NAMED_VERSIONS_PER_PIECE)
+          throw new NamedVersionLimitError();
+      }
+      const result = await client.query<SnapshotRow>(
+        `update creator_writing_snapshots set name=$4 where account_id=$1 and entry_id=$2 and id=$3 returning ${SNAPSHOT_SUMMARY}`,
+        [accountId, entryId, id, name],
+      );
       await client.query("COMMIT");
       return result.rows[0] ? snapshotSummary(result.rows[0]) : null;
-    } catch (error) { await client.query("ROLLBACK"); throw error; }
-    finally { client.release(); }
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async deleteSnapshot(

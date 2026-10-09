@@ -77,6 +77,7 @@ test("only the writing room and its routes use the writing repository", () => {
     path.startsWith("apps/web/app/api/writing/read/") ||
     path === "apps/web/lib/writing-repository.test.ts" ||
     path === "apps/web/lib/writing-studio-repository.test.ts" ||
+    path === "apps/web/lib/writing-tool-repository.test.ts" ||
     path === "apps/web/lib/writing-boundary.test.ts";
   const offenders = sources
     .filter(

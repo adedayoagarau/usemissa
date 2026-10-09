@@ -2,6 +2,8 @@
 
 Code and local tests do not establish a working Google connection in production. No live OAuth consent, real Drive upload/download or production migration was exercised by this development session.
 
+Current rollout status supersedes the historical pass below: see [the release record](writing-release-2026-10-09.md). The owner has authorized migrations. The existing stable credential-encryption key is now enabled for both Preview and Production; no key rotation occurred. Google access setup awaits a separate browser-policy confirmation.
+
 ## Google Drive
 
 Enable Google Drive API and Google Picker API in one Google Cloud project. Use a Web application OAuth client. Add the `drive.file` scope to the consent configuration; this integration does not request all-Drive read/write access. Testing mode requires the intended Google users to be allowed testers. Register the exact callback URI and authorized browser origins for each environment.

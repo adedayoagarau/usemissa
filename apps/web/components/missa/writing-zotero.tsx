@@ -27,6 +27,23 @@ export function WritingZotero({
 }) {
   const id = useId();
   const [open, setOpen] = useState(false);
+  const [viewport, setViewport] = useState<{ width: number; height: number; left: number; top: number }>();
+  useEffect(() => {
+    if (!open) return;
+    const measure = () => {
+      // The installed fixed dialog uses viewport units. CSS root/body zoom
+      // enlarges those units too, so limit the popup in visible CSS space.
+      const zoom = [window.document.documentElement, window.document.body]
+        .reduce((value, element) => value * (Number.parseFloat(getComputedStyle(element).zoom) || 1), 1);
+      setViewport({ width: (window.innerWidth - 32) / zoom, height: (window.innerHeight - 32) / zoom, left: window.innerWidth / (2 * zoom), top: window.innerHeight / (2 * zoom) });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(window.document.documentElement);
+    observer.observe(window.document.body);
+    window.addEventListener("resize", measure);
+    return () => { observer.disconnect(); window.removeEventListener("resize", measure); };
+  }, [open]);
   const [connected, setConnected] = useState(false);
   const [userId, setUserId] = useState("");
   const [key, setKey] = useState("");
@@ -180,7 +197,10 @@ export function WritingZotero({
           }
         }}
       >
-        <DialogContent className="max-h-[90dvh] min-w-0 overflow-y-auto [&>*]:min-w-0">
+        <DialogContent
+          className="max-h-[90dvh] min-w-0 overflow-y-auto [&>*]:min-w-0"
+          style={viewport ? { maxWidth: viewport.width, maxHeight: viewport.height, left: viewport.left, top: viewport.top } : undefined}
+        >
           <DialogHeader className="min-w-0">
             <DialogTitle className="break-words">Zotero references</DialogTitle>
             <DialogDescription>
@@ -299,7 +319,7 @@ export function WritingZotero({
                   />
                   <div className="min-w-0">
                     <FieldLabel htmlFor={`${id}-${source.id}`}>
-                      {source.title}
+                      <span className="min-w-0 break-words [overflow-wrap:anywhere]">{source.title}</span>
                     </FieldLabel>
                     <p className="text-xs break-words text-muted-foreground">
                       {source.author}
