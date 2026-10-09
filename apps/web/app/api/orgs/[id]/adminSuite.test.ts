@@ -323,6 +323,8 @@ test('decision dates, readable history and the setup checklist reflect recorded 
   assert.equal((await setDecisionDate(requestAs(owner, '/decision-date', { method: 'PATCH', body: JSON.stringify({ date: '2026-12-12' }) }), params)).status, 200);
   assert.equal(radar.store.organizations.get(id)!.customization?.decisionDates?.[data.openCall.id], '2026-12-12');
 
+  // A fast runner can otherwise record receipt and decision in the same millisecond.
+  data.unassigned.submittedAt = '2020-01-01T00:00:00.000Z';
   const assignment = workspace.assignReviewer(round.id, data.unassigned.id, reviewer);
   workspace.recordReview(assignment.id, 75, 'Promising');
   workspace.recordDecision(id, workspace.worksForSubmission(data.unassigned.id)[0]!.id, 'waitlisted', owner);
