@@ -111,3 +111,13 @@ test("project requests are checked", () => {
   assert.ok("error" in parsePieceChange({ callId: "not/a/call" }));
   assert.ok("error" in parsePieceChange({ callId: "x".repeat(201) }));
 });
+
+test("research material stays out of compiled text and pages without changing its source", () => {
+  const research = { ...plainTextToDocument("Private source notes", "newsreader"), purpose: "research" as const };
+  const source = serializeDocument(research);
+  const pieces = [{ title: "Draft", body: "Public manuscript", document: null }, { title: "Research", body: "Private source notes", document: source }];
+  const options = { pageSize: "a4" as const, titlePage: false, pieceTitles: true };
+  assert.ok(!compileProjectText("Project", pieces, options).includes("Private source"));
+  assert.ok(!documentText(compileProject("Project", pieces, options, "newsreader")).includes("Private source"));
+  assert.equal(serializeDocument(research), source);
+});

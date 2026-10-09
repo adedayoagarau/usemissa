@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   documentText,
+  documentFootnotes,
   emptyPage,
   newDocument,
   parseWritingDocument,
@@ -220,4 +221,54 @@ test("page breaks keep a section together; section breaks start a new one", () =
     null,
     "a canvas page starts its own section",
   );
+});
+
+test("footnotes number by page order and keep identities when reordered", () => {
+  const doc = newDocument("literata");
+  const withNote = (id: string, note: string) => ({
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [{ type: "footnote", attrs: { id, note } }],
+      },
+    ],
+  });
+  doc.pages[0]!.content = withNote("first", "First source");
+  doc.pages.push({
+    ...emptyPage(doc.pages[0]!.format),
+    id: "page_second",
+    content: withNote("second", "Second source"),
+  });
+  assert.deepEqual(
+    documentFootnotes(doc).map(({ id, number }) => ({ id, number })),
+    [
+      { id: "first", number: 1 },
+      { id: "second", number: 2 },
+    ],
+  );
+  doc.pages.reverse();
+  assert.deepEqual(
+    documentFootnotes(doc).map(({ id, number }) => ({ id, number })),
+    [
+      { id: "second", number: 1 },
+      { id: "first", number: 2 },
+    ],
+  );
+  doc.pages[0]!.content.content!.push({
+    type: "paragraph",
+    content: [{ type: "footnote", attrs: { id: "second", note: "Duplicate" } }],
+  });
+  assert.equal(documentFootnotes(doc).length, 2);
+});
+
+test("research designation is optional, validated and preserved in storage", () => {
+  const doc = newDocument("literata");
+  assert.ok(parseWritingDocument(serializeDocument(doc)));
+  doc.purpose = "research";
+  assert.equal(
+    parseWritingDocument(serializeDocument(doc))?.purpose,
+    "research",
+  );
+  assert.equal(parseWritingDocument({ ...doc, purpose: "unknown" }), null);
 });

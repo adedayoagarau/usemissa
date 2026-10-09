@@ -17,6 +17,15 @@ const relationalSpecs = [
   "**/creator-home.spec.ts",
   "**/creator-profile-relational.spec.ts",
   "**/writing-room.spec.ts",
+  "**/writing-rich-editor.spec.ts",
+  "**/writing-preferences-export.spec.ts",
+  "**/writing-piece-actions.spec.ts",
+  "**/writing-revision.spec.ts",
+  "**/writing-navigation.spec.ts",
+  "**/writing-research-links.spec.ts",
+  "**/writing-project-restore.spec.ts",
+  "**/writing-zotero.spec.ts",
+  "**/writing-drive.spec.ts",
 ];
 
 export default defineConfig({

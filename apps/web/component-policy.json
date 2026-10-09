@@ -51,82 +51,396 @@
     "forbidArbitraryAnimation": true
   },
   "intents": {
+    "composition.writing-selection-menu": {
+      "semantic": "WritingSelectionMenu",
+      "implementation": "components/missa/writing-selection-menu.tsx",
+      "composition": [
+        "Button",
+        "Popover",
+        "Field",
+        "Input",
+        "Textarea",
+        "NativeSelect"
+      ],
+      "boundary": "Selection formatting, contextual links and images, checklists and numbered footnotes; native browser context menu stays available. Icon-only speaker action reads highlighted text without changing the draft or opening a range form."
+    },
+    "composition.writing-navigation": {
+      "semantic": "WritingNavigation",
+      "implementation": "components/missa/writing-navigation.tsx",
+      "composition": [
+        "Button",
+        "Command",
+        "Collapsible"
+      ],
+      "boundary": "Searchable document commands, heading outline and account-scoped device bookmarks; stale locations do not jump to another passage."
+    },
+    "composition.writing-revision-tools": {
+      "semantic": "WritingRevisionTools",
+      "implementation": "components/missa/writing-revision-tools.tsx",
+      "composition": [
+        "Sheet",
+        "Button",
+        "Label",
+        "Textarea",
+        "NativeSelect"
+      ],
+      "boundary": "Explicit human suggestions and private comments on device; accept or reject individually, retain cuttings before removal and refuse stale anchors."
+    },
+    "composition.writing-practice": {
+      "semantic": "WritingPractice",
+      "implementation": "components/missa/writing-practice.tsx",
+      "composition": [
+        "Sheet",
+        "Button",
+        "Input",
+        "Checkbox"
+      ],
+      "boundary": "Opt-in writing and revision sessions, rest days and author-marked milestones; genre guides create separate new pieces."
+    },
+    "composition.writing-offline": {
+      "semantic": "WritingOfflineProject",
+      "implementation": "components/missa/writing-offline.tsx",
+      "composition": [
+        "Button"
+      ],
+      "boundary": "Explicit downloaded project snapshots; offline editor reuses WritingPages; edits recover as separate rich copies without flattening the rich original."
+    },
+    "composition.writing-reader": {
+      "semantic": "WritingReader",
+      "implementation": "apps/web/components/missa/writing-reader.tsx",
+      "composition": [
+        "Button",
+        "Input",
+        "Textarea",
+        "Label",
+        "NativeSelect"
+      ],
+      "boundary": "An expiring revocable checkpoint link, read-only prose and authenticated comments; original drafts are never edited."
+    },
+    "composition.writing-export": {
+      "semantic": "WritingExport",
+      "implementation": "apps/web/components/missa/writing-export.tsx",
+      "composition": [
+        "Sheet",
+        "Button",
+        "Field",
+        "Input",
+        "NativeSelect",
+        "Checkbox",
+        "Alert"
+      ],
+      "boundary": "Local file export and bounded text import; imports create new pieces; canvas flattening requires a choice."
+    },
+    "composition.writing-research": {
+      "semantic": "WritingResearch",
+      "implementation": "apps/web/components/missa/writing-research.tsx",
+      "composition": [
+        "Field",
+        "Input",
+        "Textarea",
+        "NativeSelect",
+        "Button",
+        "Dialog",
+        "AlertDialog",
+        "Alert",
+        "Empty",
+        "ConfirmDialog"
+      ],
+      "boundary": "Private source records and explicit quote/context anchors; ambiguous anchors stay orphaned; citations enter the draft only on request."
+    },
+    "composition.writing-structure": {
+      "semantic": "WritingStructure",
+      "implementation": "apps/web/components/missa/writing-structure.tsx",
+      "composition": [
+        "Tabs",
+        "Field",
+        "Input",
+        "Textarea",
+        "NativeSelect",
+        "Checkbox",
+        "Table",
+        "Button",
+        "Empty",
+        "DatePickerField",
+        "ConfirmDialog"
+      ],
+      "boundary": "Plus planning from writer-entered records; dates and word counts are deterministic; no prose inference."
+    },
+    "composition.writing-manuscript": {
+      "semantic": "WritingManuscript",
+      "implementation": "apps/web/components/missa/writing-manuscript.tsx",
+      "composition": [
+        "WritingPages",
+        "WritingFormatBar",
+        "WritingFormatSheet",
+        "WritingFind",
+        "Button"
+      ],
+      "boundary": "Live edits preserve piece identities and independent undo; shared search writes to the original editors."
+    },
+    "composition.writing-studio": {
+      "semantic": "WritingStudio",
+      "implementation": "apps/web/components/missa/writing-studio.tsx",
+      "composition": [
+        "Tabs",
+        "Button",
+        "Input",
+        "NativeSelect",
+        "WritingStructure",
+        "WritingResearch",
+        "WritingExport",
+        "ConfirmDialog"
+      ],
+      "approvedVariants": {
+        "TabsList": [
+          "section"
+        ]
+      },
+      "boundary": "Account-owned project tools alongside the existing writing page; no replacement editor shell. Device backup, optimistic revision checks and explicit checkpoint sharing."
+    },
+    "composition.writing-checks": {
+      "semantic": "WritingChecks",
+      "implementation": "apps/web/components/missa/writing-checks.tsx",
+      "composition": [
+        "Dialog",
+        "Button"
+      ],
+      "boundary": "On-request Harper suggestions, local worker, stale ranges rejected, author-applied undoable changes."
+    },
     "composition.liquid-glass-welcome": {
       "semantic": "LiquidGlassWelcome",
-      "composition": ["Button", "Link", "DecorativeCanvas"],
+      "composition": [
+        "Button",
+        "Link",
+        "DecorativeCanvas"
+      ],
       "appearance": "white-editorial-with-refractive-forest-scene",
       "boundary": "Optional /welcome entry; finite gesture-driven artwork; real /onboarding and /opportunities links; does not alter account onboarding state."
     },
     "composition.reader-operations": {
       "semantic": "ReaderOperations",
       "implementation": "apps/web/components/reader-operations.tsx",
-      "composition": ["Progress", "Table", "Tabs", "Sheet", "DropdownMenu", "Popover", "Dialog", "Field", "Input", "Avatar", "Checkbox", "Switch", "Button", "Alert", "Empty", "Sonner", "CountBadge", "CalibrationBadge", "WorkDecisionBadge", "SegmentedChoice", "ListGroup", "DetailFields"],
+      "composition": [
+        "Progress",
+        "Table",
+        "Tabs",
+        "Sheet",
+        "DropdownMenu",
+        "Popover",
+        "Dialog",
+        "Field",
+        "Input",
+        "Avatar",
+        "Checkbox",
+        "Switch",
+        "Button",
+        "Alert",
+        "Empty",
+        "Sonner",
+        "CountBadge",
+        "CalibrationBadge",
+        "WorkDecisionBadge",
+        "SegmentedChoice",
+        "ListGroup",
+        "DetailFields"
+      ],
       "boundary": "One round at a time. Progress and calibration are derived from recorded assignments and scores; distribution previews a deterministic plan with conflict reasons before writing, and the commit applies only the previewed plan. Decisions remain per Work through the existing decision route."
     },
     "composition.submissions-workspace": {
       "semantic": "SubmissionsWorkspace",
       "implementation": "apps/web/components/submissions-workspace.tsx",
-      "composition": ["InputGroup", "Select", "Table", "Checkbox", "Sheet", "DropdownMenu", "Dialog", "Button", "Empty", "Sonner", "ListGroup", "DetailFields", "PersonAvatar", "DecisionSummaryBadge", "IntakeFlagBadge", "WorkDecisionBadge"],
+      "composition": [
+        "InputGroup",
+        "Select",
+        "Table",
+        "Checkbox",
+        "Sheet",
+        "DropdownMenu",
+        "Dialog",
+        "Button",
+        "Empty",
+        "Sonner",
+        "ListGroup",
+        "DetailFields",
+        "PersonAvatar",
+        "DecisionSummaryBadge",
+        "IntakeFlagBadge",
+        "WorkDecisionBadge"
+      ],
       "boundary": "The organization's submission list. Filters live in the address and are applied on the server. Sections order rows by the next step; bulk decisions only fill undecided Works after a confirmation, and bulk letters are drafts that still pass approval. Receipt, review and decision stay separate facts."
     },
     "composition.decisions-workspace": {
       "semantic": "DecisionsWorkspace",
       "implementation": "apps/web/components/decisions-workspace.tsx",
-      "composition": ["InputGroup", "Select", "Table", "Sheet", "Dialog", "RadioGroup", "Button", "Empty", "Sonner", "ListGroup", "DetailFields", "PersonAvatar", "WorkDecisionBadge"],
+      "composition": [
+        "InputGroup",
+        "Select",
+        "Table",
+        "Sheet",
+        "Dialog",
+        "RadioGroup",
+        "Button",
+        "Empty",
+        "Sonner",
+        "ListGroup",
+        "DetailFields",
+        "PersonAvatar",
+        "WorkDecisionBadge"
+      ],
       "boundary": "One row per Work in sections by recorded outcome (Not decided, Accepted, Waitlisted, Declined). Filters live in the address and are applied on the server; search matches the whole submission so a piece is never shown apart from its siblings. Each Work is decided in its own dialog with the consequence stated; recording a decision never sends a letter."
     },
     "composition.delivery-workspace": {
       "semantic": "DeliveryWorkspace",
       "implementation": "apps/web/components/delivery-workspace.tsx",
-      "composition": ["InputGroup", "Select", "Table", "Sheet", "Dialog", "Button", "Empty", "Sonner", "ListGroup", "DetailFields", "PersonAvatar", "DeliveryPlanBadge", "DatePickerField"],
+      "composition": [
+        "InputGroup",
+        "Select",
+        "Table",
+        "Sheet",
+        "Dialog",
+        "Button",
+        "Empty",
+        "Sonner",
+        "ListGroup",
+        "DetailFields",
+        "PersonAvatar",
+        "DeliveryPlanBadge",
+        "DatePickerField"
+      ],
       "boundary": "Accepted Works only, in sections by what their delivery task needs: Overdue, Needs setup, Active, Complete. One task per accepted Work with an optional due date; completing it in Missa proves no payment, signature, publication or external handoff."
     },
     "composition.organization-settings": {
       "semantic": "OrganizationSettingsPage",
       "implementation": "apps/web/app/organization/[organizationId]/settings/page.tsx",
-      "composition": ["Button", "Select", "SettingsStateBadge", "Alert", "Empty", "SettingsRow", "DetailFields", "HueTile", "OrganizationCustomizationForm"],
+      "composition": [
+        "Button",
+        "Select",
+        "SettingsStateBadge",
+        "Alert",
+        "Empty",
+        "SettingsRow",
+        "DetailFields",
+        "HueTile",
+        "OrganizationCustomizationForm"
+      ],
       "boundary": "One section at a time, chosen from a list of links (a Select on a phone). Read-only and not-yet-built sections say so with a badge; no commercial, security or destructive control is offered."
     },
     "composition.communications-manager": {
       "semantic": "CommunicationsManager",
       "implementation": "apps/web/components/communications-manager.tsx",
-      "composition": ["Table", "Sheet", "Select", "DropdownMenu", "Field", "Input", "Textarea", "Checkbox", "Avatar", "Button", "Dialog", "Tabs", "Alert", "Empty", "Sonner", "ListGroup", "DetailFields", "HueTile", "PersonAvatar", "DatePickerField", "LetterStateBadge"],
+      "composition": [
+        "Table",
+        "Sheet",
+        "Select",
+        "DropdownMenu",
+        "Field",
+        "Input",
+        "Textarea",
+        "Checkbox",
+        "Avatar",
+        "Button",
+        "Dialog",
+        "Tabs",
+        "Alert",
+        "Empty",
+        "Sonner",
+        "ListGroup",
+        "DetailFields",
+        "HueTile",
+        "PersonAvatar",
+        "DatePickerField",
+        "LetterStateBadge"
+      ],
       "boundary": "Letters are organization words sent through Missa. A batch is sent only after approval bound to its wording; a test send goes to the admin only; per-recipient results come from the durable mail ledger and are never inferred."
     },
     "composition.edit-submission": {
       "semantic": "EditSubmissionDialog",
       "implementation": "apps/web/components/edit-submission-dialog.tsx",
-      "composition": ["Dialog", "Field", "Input", "Textarea", "Button", "Alert", "Sonner"],
+      "composition": [
+        "Dialog",
+        "Field",
+        "Input",
+        "Textarea",
+        "Button",
+        "Alert",
+        "Sonner"
+      ],
       "boundary": "A submitter changes Work titles, Work files and text or file answers only while the call is open, no reader is assigned and no decision exists, unless the organization locked the opportunity. Files must be the submitter's own Missa uploads; every change is recorded and shown in the organization's history."
     },
     "composition.round-rubric": {
       "semantic": "RubricDialog",
       "implementation": "apps/web/components/reader-round-actions.tsx",
-      "composition": ["Dialog", "Field", "Input", "Textarea", "SegmentedChoice", "Button", "Alert", "Sonner"],
+      "composition": [
+        "Dialog",
+        "Field",
+        "Input",
+        "Textarea",
+        "SegmentedChoice",
+        "Button",
+        "Alert",
+        "Sonner"
+      ],
       "boundary": "Each save creates an immutable rubric version; reads already scored keep their version. Readers score whole numbers per criterion in the reviewer score form, and the server computes the weighted 0 to 100 score used for ranking and calibration."
     },
     "composition.submitter-questions": {
       "semantic": "SubmitterQuestions",
       "implementation": "apps/web/components/submitter-questions.tsx",
-      "composition": ["Table", "Sheet", "Field", "Textarea", "Button", "Alert", "Empty", "Sonner", "ListGroup", "DetailFields", "PersonAvatar", "QuestionStateBadge"],
+      "composition": [
+        "Table",
+        "Sheet",
+        "Field",
+        "Textarea",
+        "Button",
+        "Alert",
+        "Empty",
+        "Sonner",
+        "ListGroup",
+        "DetailFields",
+        "PersonAvatar",
+        "QuestionStateBadge"
+      ],
       "boundary": "A submitter asks about their own submission from its receipt; the organization answers or closes it from Messages. Answers appear on the receipt and are emailed; who answered is never shown to the submitter."
     },
     "composition.organization-customization": {
       "semantic": "OrganizationCustomizationForm",
       "implementation": "apps/web/components/organization-customization-form.tsx",
-      "composition": ["SettingsRow", "Field", "Input", "RadioGroup", "SegmentedChoice", "Checkbox", "Switch", "DropdownMenu", "Button", "Alert", "Sonner", "OrganizationMark"],
+      "composition": [
+        "SettingsRow",
+        "Field",
+        "Input",
+        "RadioGroup",
+        "SegmentedChoice",
+        "Checkbox",
+        "Switch",
+        "DropdownMenu",
+        "Button",
+        "Alert",
+        "Sonner",
+        "OrganizationMark"
+      ],
       "boundary": "Accent choices are names for existing palette mappings in components/design-system/organization-palette.css; no raw colour is accepted or stored. Stage labels and transparency change wording and visibility only, never the recorded facts."
     },
     "composition.submission-receipt": {
       "semantic": "SubmissionReceipt",
       "implementation": "apps/web/app/(passport)/tracker/submissions/[submissionId]/page.tsx",
-      "composition": ["Button", "AlertDialog", "DetailFields", "HueTile", "WorkDecisionBadge", "SubmissionStatusTimeline", "SubmitterQuestions", "EditSubmissionDialog"],
+      "composition": [
+        "Button",
+        "AlertDialog",
+        "DetailFields",
+        "HueTile",
+        "WorkDecisionBadge",
+        "SubmissionStatusTimeline",
+        "SubmitterQuestions",
+        "EditSubmissionDialog"
+      ],
       "boundary": "The submitter's own record of one hosted submission: where it stands, each Work with its own recorded decision, their answers, questions, history and payment. Withdrawal is confirmed in an AlertDialog. No reader, score or note is ever shown."
     },
     "composition.submission-status-timeline": {
       "semantic": "SubmissionStatusTimeline",
       "implementation": "apps/web/components/submission-status-timeline.tsx",
-      "composition": ["SubmissionStageBadge"],
+      "composition": [
+        "SubmissionStageBadge"
+      ],
       "boundary": "Submitter-facing journey derived from receipt, sent stage letters and recorded decisions under the organization's transparency setting. Never names readers, scores or notes."
     },
     "composition.admin-publication-review": {
@@ -146,7 +460,13 @@
     },
     "composition.application-tracker-preview": {
       "semantic": "ApplicationTrackerPreview",
-      "composition": ["Button", "Field", "Input", "Textarea", "NativeSelect"],
+      "composition": [
+        "Button",
+        "Field",
+        "Input",
+        "Textarea",
+        "NativeSelect"
+      ],
       "boundary": "Device-local preview; no notification delivery or live calendar sync."
     },
     "composition.application-preparation": {
@@ -166,7 +486,11 @@
     },
     "input.creator-handle": {
       "semantic": "PortfolioHandleField",
-      "composition": ["Input", "Button", "status text"],
+      "composition": [
+        "Input",
+        "Button",
+        "status text"
+      ],
       "appearance": "optional-draft-handle-with-availability-and-publish-confirmation"
     },
     "choice.publication-directory": {
@@ -215,7 +539,11 @@
         "ProfileConnect"
       ],
       "appearance": "craft-lens-composition-with-portrait-plate-or-type-hero",
-      "variants": ["page", "preview", "embedded"],
+      "variants": [
+        "page",
+        "preview",
+        "embedded"
+      ],
       "lenses": [
         "mixed",
         "writing",
@@ -237,30 +565,65 @@
         "ShowKindTag"
       ],
       "appearance": "ruled-rows-in-the-profile-grammar-with-type-only-plates",
-      "sections": ["editions", "shows", "services", "teaching", "support"],
+      "sections": [
+        "editions",
+        "shows",
+        "services",
+        "teaching",
+        "support"
+      ],
       "boundary": "Visitor sections for the Editions, Shows and performances, Services, Teaching and Support add-ons. Enquiries open the profile's message form with a topic and a first line naming the item; there is no checkout and no price on Editions. Places left show only when stated. Support is one outbound link that says it leaves Missa and opens in a new tab. Embedded mode never shows them.",
       "customRationale": "Installed Item, Card and Table were inspected and not used for the rows: they fix a density and type scale that the profile's editorial rows (Newsreader titles, ruled lists, mono facts) do not share, and Badge is reachable only through the two semantic wrappers above. The rows follow the Track record and Upcoming grammar in public-profile.module.css."
     },
     "composition.creator-profile-inbox": {
       "semantic": "ProfileInbox",
       "implementation": "components/creator-profile/profile-inbox.tsx",
-      "composition": ["Tabs", "Button", "Empty", "Link"],
+      "composition": [
+        "Tabs",
+        "Button",
+        "Empty",
+        "Link"
+      ],
       "appearance": "tabbed-messages-invitations-followers-following-with-archive",
       "boundary": "Senders never see the creator's address unless the creator replies by email; organizations are not told when an invitation is declined."
     },
     "composition.creator-share-kit": {
       "semantic": "SharePanel",
       "implementation": "components/creator-profile/studio/share-panel.tsx",
-      "composition": ["Button", "Alert", "Empty", "Skeleton", "Input", "Textarea", "EventCard", "QrCodeSvg"],
+      "composition": [
+        "Button",
+        "Alert",
+        "Empty",
+        "Skeleton",
+        "Input",
+        "Textarea",
+        "EventCard",
+        "QrCodeSvg"
+      ],
       "appearance": "stacked-sections-with-generated-previews-downloads-event-links-signature-and-copy-actions",
-      "states": ["not-published", "needs-an-account", "published", "published-with-changes", "loading-picture", "picture-failed", "copied", "copy-refused", "no-events", "no-featured-image"],
+      "states": [
+        "not-published",
+        "needs-an-account",
+        "published",
+        "published-with-changes",
+        "loading-picture",
+        "picture-failed",
+        "copied",
+        "copy-refused",
+        "no-events",
+        "no-featured-image"
+      ],
       "boundary": "Drawn only from the published profile: before the first publish it explains what is coming and offers Publish through the studio's own dialog; after changes it says the kit shows the last published version. Pictures come from /@handle/share.png and /@handle/story.png, event cards from /@handle/events/<id>. The signature (emails/creator-signature.ts) is text-only HTML with no stylesheet, image or tracking, and every field escaped. Copying uses the async Clipboard API, then a selection copy, then hands the text over to copy by hand."
     },
     "composition.creator-event-card": {
       "semantic": "EventCard",
       "implementation": "components/creator-profile/share/event-card.tsx",
       "page": "components/creator-profile/share/event-card-page.tsx",
-      "composition": ["Button", "QrCodeSvg", "PrintStyles"],
+      "composition": [
+        "Button",
+        "QrCodeSvg",
+        "PrintStyles"
+      ],
       "appearance": "a6-print-card-sized-from-its-own-width-with-a-qr-code-to-the-profile",
       "boundary": "One upcoming, published event with an id; unknown, past and unpublished events are the same 404 and the page is never indexed. The QR code (lib/qr-code.ts, inline SVG, error correction M, four-module quiet zone) always encodes the profile's https address. Print uses the browser's print dialog, which also saves a PDF; the page sets the A6 paper size in millimetres."
     },
@@ -268,38 +631,112 @@
       "semantic": "CreatorShareImages",
       "implementation": "components/creator-profile/share-image.tsx",
       "story": "components/creator-profile/share/story-image.tsx",
-      "composition": ["EditorialTypography"],
+      "composition": [
+        "EditorialTypography"
+      ],
       "appearance": "link-card-1200x630-and-story-1080x1920-drawn-through-next-og",
       "boundary": "Generated PNGs. next/og cannot read CSS variables or the page's fonts, so colours come from the shared email constants (the Missa tokens as hex) and Newsreader, Instrument Sans and Fragment Mono are fetched as TTF, with the renderer's default face as the fallback. The story quotes the featured work only in the maker's own line breaks and never writes about the work."
     },
     "composition.creator-work-page": {
       "semantic": "CreatorWorkPage",
       "implementation": "components/creator-profile/work-page/work-page.tsx",
-      "composition": ["Breadcrumb", "Button", "Collapsible", "Item", "Alert", "ProvenanceBadge", "ProfileConnect"],
+      "composition": [
+        "Breadcrumb",
+        "Button",
+        "Collapsible",
+        "Item",
+        "Alert",
+        "ProvenanceBadge",
+        "ProfileConnect"
+      ],
       "appearance": "creator-theme-reading-page-with-contents-beside-ordered-parts",
       "typography": "Newsreader for the title, standfirst and reading text; Fragment Mono for counts, years and part numbers only; Instrument Sans for everything else",
-      "states": ["default", "hover", "focus-visible", "empty", "media-error", "audio-error", "loading-lazy-media"],
+      "states": [
+        "default",
+        "hover",
+        "focus-visible",
+        "empty",
+        "media-error",
+        "audio-error",
+        "loading-lazy-media"
+      ],
       "boundary": "Only a work the published profile shows has a page, so an unshown work or an unknown address is a 404 and an alias handle redirects. The page never carries decision ids; Confirmed is whatever the server derived for the track-record entry that names the work. A work with parts shows its parts; without parts it shows its own text, picture and audio."
     },
     "composition.creator-work-page-fields": {
       "semantic": "WorkPageFields",
       "implementation": "components/creator-profile/studio/work-page-fields.tsx",
-      "composition": ["Collapsible", "Button", "Input", "Textarea", "NativeSelect", "ItemList", "MediaField"],
+      "composition": [
+        "Collapsible",
+        "Button",
+        "Input",
+        "Textarea",
+        "NativeSelect",
+        "ItemList",
+        "MediaField"
+      ],
       "appearance": "one-disclosure-per-work-with-address-context-rights-credits-and-parts",
       "reorder": "explicit-move-up-down-buttons",
       "boundary": "The page address is tidied as it is typed and the studio says in a sentence when the address a work gets is not the one asked for (reserved word, or an address another work has)."
     },
+    "composition.writing-read-aloud": {
+      "semantic": "WritingReadAloud",
+      "implementation": "components/missa/writing-read-aloud.tsx",
+      "composition": [
+        "Popover",
+        "Button",
+        "ButtonGroup",
+        "Tooltip",
+        "Field",
+        "NativeSelect"
+      ],
+      "appearance": "footer-icon-controls-with-on-demand-listening-settings",
+      "boundary": "Free: 5,000 characters/month; Plus: 100,000; Pro: no monthly character cap, with fair-use rate limits. Text is frozen when playback starts; only the speaker button sends it to the authenticated quota-limited Kokoro endpoint. Changing documents stops playback and clears in-memory audio. No prose generation or automatic document uploads. Highlight-menu speaker reads only the selected passage through the shared player. No range form; playback freezes text on the explicit speaker action."
+    },
     "composition.writing-room": {
       "semantic": "WritingRoom",
       "implementation": "components/missa/writing-room.tsx",
-      "composition": ["WritingPages", "WritingFormatBar", "WritingFormatSheet", "WritingLibrary", "WritingSnapshots", "WritingFind", "WritingCall", "WritingWordCount", "WritingPlanner", "UpgradeHint", "Button", "ButtonGroup", "DropdownMenu", "Popover", "Dialog", "Alert", "AlertDialog", "Sonner"],
+      "composition": [
+        "WritingPages",
+        "WritingFormatBar",
+        "WritingFormatSheet",
+        "WritingLibrary",
+        "WritingSnapshots",
+        "WritingFind",
+        "WritingCall",
+        "WritingWordCount",
+        "WritingPlanner",
+        "UpgradeHint",
+        "Button",
+        "ButtonGroup",
+        "DropdownMenu",
+        "Popover",
+        "Dialog",
+        "Alert",
+        "AlertDialog",
+        "Sonner"
+      ],
       "appearance": "full-page-printed-pages-with-controls-that-fade-while-the-timer-runs",
-      "boundary": "Rich text on printed pages the creator writes. Kept on the device until the account confirms it, and never overwritten by another device: refused text becomes a separate entry. No AI, suggestions, rewriting or analysis; only apps/web/lib/writing-repository.ts reads the text (enforced by lib/writing-boundary.test.ts). No WebMCP tools on /doc (or the old /write address, which redirects there)."
+      "boundary": "Rich text on printed pages the creator writes. Kept on the device until the account confirms it, and never overwritten by another device: refused text becomes a separate entry. No prose generation; optional Harper checks run locally on request. Tiered read-aloud sends explicitly requested text to DeepInfra for Kokoro speech through an authenticated, quota-limited endpoint. Only apps/web/lib/writing-repository.ts accesses account writing (enforced by lib/writing-boundary.test.ts). No WebMCP tools on /doc (or the old /write address, which redirects there). Formatting and secondary tools are disclosed on request. Lock in uses the same editor, removes ordinary chrome, shows a pausable timer and save status, and exits with Escape. Flowing text uses draft view during the session; saved document formatting and the chosen view are retained."
     },
     "composition.writing-library": {
       "semantic": "WritingLibrary",
       "implementation": "components/missa/writing-library.tsx",
-      "composition": ["Sheet", "Item", "Sortable", "DropdownMenu", "Dialog", "AlertDialog", "Field", "Input", "Textarea", "NativeSelect", "RadioGroup", "Checkbox", "Empty", "Button"],
+      "composition": [
+        "Sheet",
+        "Item",
+        "Sortable",
+        "DropdownMenu",
+        "Dialog",
+        "AlertDialog",
+        "Field",
+        "Input",
+        "Textarea",
+        "NativeSelect",
+        "RadioGroup",
+        "Checkbox",
+        "Empty",
+        "Button"
+      ],
       "appearance": "sheet-of-projects-and-loose-pieces-with-a-sortable-binder-outline-and-compile-dialogs",
       "reorder": "sortable-drag-handle-plus-move-up-down-menu-items",
       "boundary": "Gathers, orders and opens pieces; never reads or changes their text. Projects, piece order, synopsis and status are kept only through apps/web/lib/writing-repository.ts (creator_writing_projects, migration 0097). Deleting a project keeps its pieces. Compile joins pieces in order for print, PDF or plain text in the browser."
@@ -311,7 +748,11 @@
     "composition.auth-shell": {
       "semantic": "AuthShell",
       "implementation": "apps/web/components/auth-shell.tsx",
-      "composition": ["MissaWordmark", "Link", "Image"],
+      "composition": [
+        "MissaWordmark",
+        "Link",
+        "Image"
+      ],
       "appearance": "white-form-column-with-inset-campaign-photograph-and-editorial-caption",
       "usedBy": [
         "AuthForm (/login, /signup)",
@@ -341,7 +782,11 @@
     },
     "composition.creator-workspace": {
       "semantic": "CreatorWorkspace",
-      "composition": ["Button", "Checkbox", "Link"],
+      "composition": [
+        "Button",
+        "Checkbox",
+        "Link"
+      ],
       "appearance": "editorial-private-workspace-with-one-priority-next-action",
       "boundary": "Never infer an external application status or submission from a link open."
     },
@@ -366,7 +811,14 @@
         "Collapsible"
       ],
       "appearance": "work-grid-with-series-groups-wall-labels-film-posters-listening-strips-and-case-study-facts",
-      "variants": ["text", "image", "audio", "film", "link", "case-study"],
+      "variants": [
+        "text",
+        "image",
+        "audio",
+        "film",
+        "link",
+        "case-study"
+      ],
       "states": [
         "default",
         "hover",
@@ -380,25 +832,45 @@
     "media.creator-film": {
       "semantic": "Screening",
       "implementation": "components/creator-profile/work-media/screening.tsx",
-      "composition": ["Button", "Collapsible"],
+      "composition": [
+        "Button",
+        "Collapsible"
+      ],
       "appearance": "click-to-load-poster-with-chapters-beside-the-player-and-a-transcript-disclosure",
-      "states": ["poster", "playing", "external-link"],
+      "states": [
+        "poster",
+        "playing",
+        "external-link"
+      ],
       "boundary": "The poster is the creator's own picture, so opening a page makes no request to YouTube or Vimeo. The frame is built only after a press, from the film id, on youtube-nocookie.com or player.vimeo.com (Vimeo with do-not-track on); the content-security-policy frame-src lists exactly those two origins (lib/video-embed-origins.ts). Any other link opens as an ordinary link in a new tab. A chapter reloads the frame at its start time; no provider script runs on Missa."
     },
     "player.creator-audio": {
       "semantic": "ProfileAudioPlayer",
       "implementation": "components/creator-profile/work-media/mini-player.tsx",
       "base": "Button",
-      "composition": ["Button", "Progress", "Spinner"],
+      "composition": [
+        "Button",
+        "Progress",
+        "Spinner"
+      ],
       "appearance": "docked-card-with-title-position-and-elapsed-over-total-time",
-      "states": ["idle", "playing", "paused", "loading", "error"],
+      "states": [
+        "idle",
+        "playing",
+        "paused",
+        "loading",
+        "error"
+      ],
       "boundary": "One recording at a time for the whole profile, kept playing while the visitor scrolls or closes a dialog. Nothing is fetched until someone presses play. Loading is also said in words; an error says what failed and Try again loads the file again; Close stops the recording. Chapters jump to a time and the current one is marked with aria-current."
     },
     "feedback.creator-media-error": {
       "semantic": "MediaError",
       "implementation": "components/creator-profile/work-media/media-image.tsx",
       "base": "Empty",
-      "composition": ["Empty", "Button"],
+      "composition": [
+        "Empty",
+        "Button"
+      ],
       "appearance": "bordered-tile-in-the-place-of-the-picture",
       "boundary": "Says the image didn't load and the work is still here, and offers Try again. The work still opens; a failed picture never blocks its text, audio or film."
     },
@@ -406,14 +878,22 @@
       "semantic": "Transcript",
       "implementation": "components/creator-profile/work-media/transcript.tsx",
       "base": "Collapsible",
-      "composition": ["Collapsible", "Button"],
+      "composition": [
+        "Collapsible",
+        "Button"
+      ],
       "appearance": "outline-button-opening-the-text-in-flow",
       "boundary": "The words of a film or recording, opened on request with line breaks kept. Shown wherever the player is."
     },
     "composition.organization-profile": {
       "semantic": "InstitutionProfileView",
       "appearance": "kind-specific-information-architecture",
-      "composition": ["Avatar", "Button", "Card", "Empty"]
+      "composition": [
+        "Avatar",
+        "Button",
+        "Card",
+        "Empty"
+      ]
     },
     "composition.submission-portal-studio": {
       "semantic": "PortalStudio",
@@ -510,29 +990,84 @@
     },
     "disclosure.organization-media": {
       "semantic": "InstitutionMediaGallery",
-      "composition": ["Button", "Dialog", "Tabs"]
+      "composition": [
+        "Button",
+        "Dialog",
+        "Tabs"
+      ]
     },
     "action.opportunity-detail-persistent": {
       "semantic": "OpportunityDetailStickyActions",
-      "composition": ["SaveToTrackerButton", "Button", "Link"]
+      "composition": [
+        "SaveToTrackerButton",
+        "Button",
+        "Link"
+      ]
     },
     "composition.collection-cover": {
       "semantic": "DiscoveryCollectionPage",
       "appearance": "editorial-collection-palette",
-      "composition": ["EditorialTypography", "EditorialMotif", "Link"]
+      "composition": [
+        "EditorialTypography",
+        "EditorialMotif",
+        "Link"
+      ]
     },
     "composition.guide-article": {
       "semantic": "GuideArticle",
       "implementation": "apps/web/components/missa/guide-article.tsx",
       "appearance": "editorial-collection-palette",
-      "composition": ["GuideTypography", "EditorialMotif", "Breadcrumb", "GuideToc", "Card", "Alert", "Table", "GuideChecklist", "OpportunityBrowseProjectCard", "Accordion", "Collapsible", "Item", "PersonAvatar", "Button"],
-      "studioReferences": ["card-05", "card-06", "typography-01", "typography-02", "typography-03"],
+      "composition": [
+        "GuideTypography",
+        "EditorialMotif",
+        "Breadcrumb",
+        "GuideToc",
+        "Card",
+        "Alert",
+        "Table",
+        "GuideChecklist",
+        "OpportunityBrowseProjectCard",
+        "Accordion",
+        "Collapsible",
+        "Item",
+        "PersonAvatar",
+        "Button"
+      ],
+      "studioReferences": [
+        "card-05",
+        "card-06",
+        "typography-01",
+        "typography-02",
+        "typography-03"
+      ],
       "boundary": "Primitives keep their own variants; feature code passes them layout classes only (shadcn/no-restyle). Editorial type, density spacing (Spacious) and the cover palette live on plain elements. Guide cards use Card variant=interactive; open calls use the discovery collections' OpportunityBrowseProjectCard; callouts are default Alerts with a meaning icon; questions use the default Accordion; tables are ruled Tables that read as labelled records under a 36rem column."
     },
     "composition.manuscript-match": {
       "semantic": "ManuscriptMatchWizard",
       "implementation": "apps/web/components/discover/manuscript-match-wizard.tsx",
-      "composition": ["FieldSet", "RadioGroup", "InputGroup", "Slider", "Collapsible", "Textarea", "Combobox", "FilterChip", "Switch", "NativeSelect", "Button", "Select", "Sheet", "Tabs", "Empty", "Skeleton", "Spinner", "CountBadge", "MatchExplanationTrigger", "RankingTierBadge", "PlanTierBadge"],
+      "composition": [
+        "FieldSet",
+        "RadioGroup",
+        "InputGroup",
+        "Slider",
+        "Collapsible",
+        "Textarea",
+        "Combobox",
+        "FilterChip",
+        "Switch",
+        "NativeSelect",
+        "Button",
+        "Select",
+        "Sheet",
+        "Tabs",
+        "Empty",
+        "Skeleton",
+        "Spinner",
+        "CountBadge",
+        "MatchExplanationTrigger",
+        "RankingTierBadge",
+        "PlanTierBadge"
+      ],
       "appearance": "submission-brief-beside-a-deterministic-submission-plan-and-searchable-sortable-ranked-lists-of-evidence-led-matches-with-a-browser-saved-shortlist",
       "boundary": "Fit, odds, payoff and cost are deterministic scores from recorded facts, versioned with the decision model; the plan is guidance, not eligibility or a submission claim. Journal destinations remain source-linked and external."
     },
@@ -571,10 +1106,16 @@
       "container": "AlertDialog"
     },
     "input.short-text": {
-      "composition": ["Field", "Input"]
+      "composition": [
+        "Field",
+        "Input"
+      ]
     },
     "input.long-text": {
-      "composition": ["Field", "Textarea"]
+      "composition": [
+        "Field",
+        "Textarea"
+      ]
     },
     "choice.single-visible": {
       "primitive": "RadioGroup"
@@ -610,14 +1151,28 @@
     },
     "view.peer-switch": {
       "primitive": "Tabs",
-      "listVariants": ["default", "line", "section"],
-      "listSizes": ["compact", "responsive"],
-      "triggerSizes": ["compact", "touch"]
+      "listVariants": [
+        "default",
+        "line",
+        "section"
+      ],
+      "listSizes": [
+        "compact",
+        "responsive"
+      ],
+      "triggerSizes": [
+        "compact",
+        "touch"
+      ]
     },
     "navigation.authenticated-app": {
       "primitive": "NavigationMenu",
       "variant": "app",
-      "composition": ["NavigationMenuList", "NavigationMenuLink", "Button"]
+      "composition": [
+        "NavigationMenuList",
+        "NavigationMenuLink",
+        "Button"
+      ]
     },
     "feedback.empty-card": {
       "primitive": "Card",
@@ -643,12 +1198,21 @@
     },
     "feedback.content-correction": {
       "semantic": "ContentIssueReportDialog",
-      "composition": ["Dialog", "Button", "NativeSelect", "Textarea", "Input"],
+      "composition": [
+        "Dialog",
+        "Button",
+        "NativeSelect",
+        "Textarea",
+        "Input"
+      ],
       "boundary": "Authenticated reports enter the support review queue; a report never changes public information automatically."
     },
     "action.authentication.social": {
       "semantic": "SocialAuthButton",
-      "composition": ["Button", "status text"],
+      "composition": [
+        "Button",
+        "status text"
+      ],
       "appearance": "full-width-outline-provider-action-with-explicit-connecting-state",
       "boundary": "Rendered only for a configured provider; the OAuth callback provisions or links the existing Missa account before navigation."
     },
@@ -666,17 +1230,29 @@
     },
     "feedback.empty": {
       "primitive": "Empty",
-      "variants": ["default", "bordered"],
-      "sizes": ["default", "spacious"]
+      "variants": [
+        "default",
+        "bordered"
+      ],
+      "sizes": [
+        "default",
+        "spacious"
+      ]
     },
     "loading.structure": {
       "primitive": "Skeleton"
     },
     "loading.indeterminate": {
-      "composition": ["Spinner", "status text"]
+      "composition": [
+        "Spinner",
+        "status text"
+      ]
     },
     "loading.determinate": {
-      "composition": ["Progress", "status text"]
+      "composition": [
+        "Progress",
+        "status text"
+      ]
     },
     "data.comparison": {
       "primitive": "Table"
@@ -698,10 +1274,16 @@
       "implementation": "@/components/design-system/opportunity-browse-project-card"
     },
     "navigation.opportunity-pages": {
-      "composition": ["Pagination", "OpportunityBrowsePagination"]
+      "composition": [
+        "Pagination",
+        "OpportunityBrowsePagination"
+      ]
     },
     "disclosure.opportunity-collections": {
-      "composition": ["Button", "OpportunityCollectionsStrip"]
+      "composition": [
+        "Button",
+        "OpportunityCollectionsStrip"
+      ]
     },
     "date.selection": {
       "primitive": "Calendar"
@@ -711,7 +1293,10 @@
       "requiresSemanticWrapperForDomainState": true
     },
     "data.display.directory-profile": {
-      "composition": ["Card", "Link"],
+      "composition": [
+        "Card",
+        "Link"
+      ],
       "semantic": "DirectoryBrowseView",
       "appearance": "white-index"
     },
@@ -778,7 +1363,11 @@
     },
     "composition.residency-comparison": {
       "semantic": "ResidencyComparisonView",
-      "composition": ["Button", "Link", "Badge"],
+      "composition": [
+        "Button",
+        "Link",
+        "Badge"
+      ],
       "appearance": "white-editorial-comparison",
       "boundary": "Side-by-side residency comparison across funding, solitude, meals, and community feedback."
     },
@@ -811,7 +1400,11 @@
       "status": "approved",
       "semantic": "HomepageHero",
       "implementation": "apps/web/components/missa/homepage-hero.tsx",
-      "composition": ["MissaWordmark", "Link", "ResponsiveImage"],
+      "composition": [
+        "MissaWordmark",
+        "Link",
+        "ResponsiveImage"
+      ],
       "appearance": "full-bleed-photographic-editorial-hero",
       "boundary": "Shipped homepage hero. The semantic entry delegates to the reviewed legacy implementation; design-system routes continue to import the preview entry directly. One licensed documentary studio photograph is responsively cropped from a 3840px master and carries source, photographer and license metadata beside the asset; Forest remains an action accent rather than the dominant viewport field."
     },
@@ -831,7 +1424,11 @@
     },
     "composition.video-world": {
       "semantic": "VideoWorld",
-      "composition": ["Button", "Link", "NativeVideo"],
+      "composition": [
+        "Button",
+        "Link",
+        "NativeVideo"
+      ],
       "appearance": "fullscreen-photographic-world-with-local-glass-controller",
       "boundary": "Experimental attributed reference study. Persistent video layers, user-requested forward/reverse clips, no live generation; not original Missa footage. Scoped 980ms controller choreography follows explicit cinematic direction."
     },
@@ -898,7 +1495,8 @@
         "NativeSelect",
         "Sheet",
         "Dialog",
-        "GoalSubmissionProgress", "HueTile"
+        "GoalSubmissionProgress",
+        "HueTile"
       ],
       "boundary": "Account-owned persisted goals using canonical catalogue IDs and server scheduling"
     },
@@ -926,13 +1524,19 @@
     "composition.cookie-consent": {
       "semantic": "CookieConsent",
       "implementation": "apps/web/components/missa/cookie-consent.tsx",
-      "composition": ["Button", "Link"],
+      "composition": [
+        "Button",
+        "Link"
+      ],
       "boundary": "Site-wide analytics permission question. Decline leaves both the third-party analytics client and the first-party client event ledger unstarted. The choice is stored in localStorage with a cookie mirror and never gates product functionality."
     },
     "composition.email-choice-prompt": {
       "semantic": "EmailChoicePrompt",
       "implementation": "apps/web/components/missa/email-choice-prompt.tsx",
-      "composition": ["Button", "Link"],
+      "composition": [
+        "Button",
+        "Link"
+      ],
       "boundary": "One-time email question in the creator workspace for accounts created before reminder emails and the weekly digest were on by default. Shown only while notification_preferences.email_choice_at is null; accepting turns on email, reminders and the weekly digest, declining changes nothing, and either answer stops the question. On Free, which keeps reminders in the Inbox, the question and its confirmation are only about the weekly digest."
     },
     "composition.homepage-workspace": {
@@ -987,7 +1591,20 @@
     "composition.creator-home": {
       "semantic": "CreatorHome",
       "implementation": "apps/web/components/missa/creator-home.tsx",
-      "composition": ["Button", "Link", "Tabs", "Popover", "Checkbox", "Skeleton", "Empty", "Sonner", "ApplicationStateBadge", "ApplicationRunway", "StartByDate", "CountBadge"],
+      "composition": [
+        "Button",
+        "Link",
+        "Tabs",
+        "Popover",
+        "Checkbox",
+        "Skeleton",
+        "Empty",
+        "Sonner",
+        "ApplicationStateBadge",
+        "ApplicationRunway",
+        "StartByDate",
+        "CountBadge"
+      ],
       "appearance": "newsreader-greeting-with-situation-sentence-and-goal-pace-then-one-lead-move-with-runway-two-supporting-moves-week-tiles-and-tracker-tabs",
       "boundary": "Derived entirely from Tracker state by lib/creator-home.ts. Names the week (busy, waiting, quiet, first run) in one generated sentence. This week's three ranks start-by passed or due, ready but unrecorded, closing this week, response check-ins, and Selected for you, one per application; the lead move carries the page's one Forest action. Home edits only through the record's own APIs: a lead preparation step is completed with PATCH /api/me/checklist-items/:id, and a due check-in is snoozed a week with PATCH /api/me/reminders/:id; every other row opens /tracker?application=<id>&section=<tab>. Goal pace compares an even spread from the goal's start with recorded submissions; preparing never counts as submitted. Replaces the former Your space at /workspace for creators."
     },
@@ -1089,37 +1706,130 @@
         "Button",
         "NativeSelect",
         "Collapsible",
-        "CalendarFeedButton", "Dialog", "Input", "Textarea", "HueTile"
+        "CalendarFeedButton",
+        "Dialog",
+        "Input",
+        "Textarea",
+        "HueTile"
       ],
       "boundary": "Retains existing calendar grid and editor. Separate application dates, goal dates, personal time and reminder instants; owned application links and overlap feedback. Provider connection is not delivery confirmation."
+    },
+    "composition.writing-context-menu": {
+      "semantic": "WritingContextMenu",
+      "implementation": "components/missa/writing-context-menu.tsx",
+      "composition": [
+        "ContextMenu",
+        "ContextMenuTrigger",
+        "ContextMenuContent",
+        "ContextMenuItem",
+        "ContextMenuGroup",
+        "ContextMenuSeparator",
+        "Button"
+      ],
+      "boundary": "Editor context actions for selected text, links, headings and embedded local images. Shift-right-click and native touch long-press retain browser actions. Stable section links; view-only draft folding; atomic undoable sibling moves remain within one editor."
+    },
+    "composition.writing-drive": {
+      "semantic": "WritingDrive",
+      "implementation": "components/missa/writing-drive.tsx",
+      "composition": [
+        "Sheet",
+        "Button",
+        "Checkbox",
+        "Field",
+        "Alert"
+      ],
+      "boundary": "Explicit file selection imports a new piece; explicit export creates a DOCX copy. No automatic sync. Account-bound encrypted OAuth credentials and drive.file scope."
+    },
+    "composition.writing-zotero": {
+      "semantic": "WritingZotero",
+      "implementation": "components/missa/writing-zotero.tsx",
+      "composition": [
+        "Dialog",
+        "Button",
+        "Field",
+        "Input",
+        "Checkbox"
+      ],
+      "boundary": "Explicit selected reference import only; dedicated read-only personal-library credentials remain encrypted server-side. Imported sources do not alter prose."
     }
   },
   "semanticComponents": {
+    "WritingReader": {
+      "base": "installed-composition",
+      "implementation": "components/missa/writing-reader.tsx",
+      "boundary": "An expiring revocable checkpoint link, read-only prose and authenticated comments; original drafts are never edited."
+    },
+    "WritingExport": {
+      "base": "installed-composition",
+      "implementation": "components/missa/writing-export.tsx",
+      "boundary": "Local file export and bounded text import; imports create new pieces; canvas flattening requires a choice."
+    },
+    "WritingResearch": {
+      "base": "installed-composition",
+      "implementation": "components/missa/writing-research.tsx",
+      "boundary": "Private source records and explicit quote/context anchors; ambiguous anchors stay orphaned; citations enter the draft only on request."
+    },
+    "WritingStructure": {
+      "base": "installed-composition",
+      "implementation": "components/missa/writing-structure.tsx",
+      "boundary": "Plus planning from writer-entered records; dates and word counts are deterministic; no prose inference."
+    },
+    "WritingManuscript": {
+      "base": "installed-composition",
+      "implementation": "components/missa/writing-manuscript.tsx",
+      "boundary": "Live edits preserve piece identities and independent undo; shared search writes to the original editors."
+    },
+    "WritingStudio": {
+      "base": "installed-composition",
+      "implementation": "components/missa/writing-studio.tsx",
+      "boundary": "Account-owned workspace; device backup and optimistic revision conflict protection; checkpoints shared only on explicit action."
+    },
+    "WritingChecks": {
+      "base": "installed-composition",
+      "implementation": "components/missa/writing-checks.tsx",
+      "boundary": "On-request Harper suggestions, local worker, stale ranges rejected, author-applied undoable changes."
+    },
     "CategoryBadge": {
       "base": "Badge",
-      "studioCandidates": ["badge-04", "badge-09", "badge-10"],
+      "studioCandidates": [
+        "badge-04",
+        "badge-09",
+        "badge-10"
+      ],
       "motion": "never"
     },
     "OpportunityStatusBadge": {
       "base": "Badge",
-      "studioCandidates": ["badge-05", "badge-10"],
+      "studioCandidates": [
+        "badge-05",
+        "badge-10"
+      ],
       "motion": "never"
     },
     "MagazineScheduleBadge": {
       "base": "Badge",
-      "studioCandidates": ["badge-05", "badge-10"],
+      "studioCandidates": [
+        "badge-05",
+        "badge-10"
+      ],
       "motion": "never"
     },
     "UrgencyBadge": {
       "base": "Badge",
-      "studioCandidates": ["badge-05", "badge-10"],
+      "studioCandidates": [
+        "badge-05",
+        "badge-10"
+      ],
       "motion": "never",
       "implementation": "components/missa/deadline-badges.tsx",
       "boundary": "Time pressure only: ochre within seven days of a close, a calm neutral otherwise. Text is customer language such as 'Closes in 6 days'. Never pulses."
     },
     "FeeBadge": {
       "base": "Badge",
-      "studioCandidates": ["badge-02", "badge-04"],
+      "studioCandidates": [
+        "badge-02",
+        "badge-04"
+      ],
       "motion": "never",
       "implementation": "components/missa/deadline-badges.tsx",
       "boundary": "An entry fee or 'No fee'. Renders nothing when the fee is unknown."
@@ -1133,7 +1843,9 @@
     },
     "AuthorityBadge": {
       "base": "Badge",
-      "studioCandidates": ["badge-10"],
+      "studioCandidates": [
+        "badge-10"
+      ],
       "motion": "never"
     },
     "MatchExplanationTrigger": {
@@ -1145,12 +1857,21 @@
     },
     "PublicationStateBadge": {
       "base": "Badge",
-      "studioCandidates": ["badge-16", "badge-18", "badge-19"],
+      "studioCandidates": [
+        "badge-16",
+        "badge-18",
+        "badge-19"
+      ],
       "motion": "active-transition-only"
     },
     "ProcessBadge": {
       "base": "Badge",
-      "studioCandidates": ["badge-16", "badge-17", "badge-20", "badge-21"],
+      "studioCandidates": [
+        "badge-16",
+        "badge-17",
+        "badge-20",
+        "badge-21"
+      ],
       "motion": "indicator-while-confirmed-active",
       "implementation": "components/missa/deadline-badges.tsx",
       "boundary": "Background process state (syncing, synced, waiting, not synced). A failed state is always paired with a recovery action."
@@ -1176,7 +1897,10 @@
     "SegmentedChoice": {
       "base": "RadioGroup",
       "variant": "segmented",
-      "variants": ["segmented", "scale"],
+      "variants": [
+        "segmented",
+        "scale"
+      ],
       "motion": "never",
       "implementation": "components/missa/segmented-choice.tsx",
       "boundary": "One visible choice from a short ordered set: a rubric score from 0 to the criterion's scale, a rubric's scale, or a Work decision. More than six options switch to the scale variant, which wraps to two rows of 44px targets below the small breakpoint and joins into one row above it. It is a radio group, so arrow keys move between options and each option has an accessible name; it never commits a destructive action on its own."
@@ -1285,7 +2009,10 @@
     },
     "CountBadge": {
       "base": "Badge",
-      "studioCandidates": ["badge-07", "badge-23"],
+      "studioCandidates": [
+        "badge-07",
+        "badge-23"
+      ],
       "motion": "finite-entrance-when-becoming-nonzero",
       "implementation": "components/missa/count-badge.tsx"
     },
@@ -1297,20 +2024,30 @@
     },
     "FilterChip": {
       "base": "Button",
-      "studioReferences": ["badge-12", "badge-13"],
+      "studioReferences": [
+        "badge-12",
+        "badge-13"
+      ],
       "motion": "never",
       "implementation": "components/missa/filter-chip.tsx",
       "boundary": "Toggle choice announced with aria-pressed and shown with a check mark plus Forest outline; never a filled primary action."
     },
     "SaveAction": {
       "base": "Button",
-      "studioCandidates": ["button-01"],
-      "browserObservedReferences": ["button-23", "button-31"],
+      "studioCandidates": [
+        "button-01"
+      ],
+      "browserObservedReferences": [
+        "button-23",
+        "button-31"
+      ],
       "motion": "finite-state-transition"
     },
     "BetaBadge": {
       "base": "Badge",
-      "studioCandidates": ["badge-10"],
+      "studioCandidates": [
+        "badge-10"
+      ],
       "motion": "never",
       "implementation": "apps/web/components/ui/beta-badge.tsx"
     },
@@ -1334,7 +2071,7 @@
       "base": "Button",
       "implementation": "components/missa/application-calendar-delivery.tsx",
       "motion": "indicator-while-confirmed-active",
-      "boundary": "Read-only delivery state for one application: private feed on/off, each provider connection (synced or reconnect), and planned sessions with Syncing…, Synced, Sync failed + Retry. Synced only after the provider queue reports success; the spinner shows only while a job is queued or running."
+      "boundary": "Read-only delivery state for one application: private feed on/off, each provider connection (synced or reconnect), and planned sessions with Syncing\u2026, Synced, Sync failed + Retry. Synced only after the provider queue reports success; the spinner shows only while a job is queued or running."
     },
     "ApplicationEmailEvidence": {
       "base": "Button",
@@ -1364,7 +2101,19 @@
       "base": "typography",
       "motion": "never",
       "implementation": "components/missa/guide-typography.ts",
-      "studioReferences": ["typography-01", "typography-02", "typography-03", "typography-05", "typography-06", "typography-08", "typography-09", "typography-10", "typography-11", "typography-12", "typography-15"],
+      "studioReferences": [
+        "typography-01",
+        "typography-02",
+        "typography-03",
+        "typography-05",
+        "typography-06",
+        "typography-08",
+        "typography-09",
+        "typography-10",
+        "typography-11",
+        "typography-12",
+        "typography-15"
+      ],
       "boundary": "Class recipes for long-form guide text on plain elements: display and section headings in Newsreader, body large and lists in Instrument Sans, inline code and dates in Fragment Mono, Forest links. Never applied to components/ui primitives."
     },
     "GuideLinks": {
@@ -1377,7 +2126,9 @@
       "base": "Checkbox",
       "motion": "never",
       "implementation": "components/missa/guide-checklist.tsx",
-      "studioReferences": ["card-01"],
+      "studioReferences": [
+        "card-01"
+      ],
       "boundary": "A checklist inside a guide article. Ticks stay in this browser and Copy list puts the items on the clipboard. Not an application record."
     },
     "GuideToc": {
@@ -1395,7 +2146,13 @@
     "ApplicationStateBadge": {
       "base": "Badge",
       "implementation": "components/missa/application-state-badge.tsx",
-      "variants": ["warning", "information", "accent", "success", "outline"],
+      "variants": [
+        "warning",
+        "information",
+        "accent",
+        "success",
+        "outline"
+      ],
       "motion": "never",
       "boundary": "A creator's personal application state (Check-in due, On track, 1 day behind, Ready to record, Not selected). The label states the meaning; declined and withdrawn stay neutral."
     },
@@ -1421,14 +2178,24 @@
       "base": "Switch",
       "implementation": "components/missa/text-reminders-settings.tsx",
       "motion": "never",
-      "composition": ["Field", "PhoneInput", "InputOTP", "Switch", "Button"],
+      "composition": [
+        "Field",
+        "PhoneInput",
+        "InputOTP",
+        "Switch",
+        "Button"
+      ],
       "boundary": "Plus-only text (SMS) reminder settings, in notification preferences and inline in ReminderChannels: Free creators see what Plus adds and a link to /plan; Plus creators add a number with PhoneInput (opened on the country of the browser language, checked with isValidPhoneNumber before a code is sent), confirm it with a six-digit InputOTP code, then use one Switch to turn texts on or off, change or remove the number. Every change saves immediately through /api/me/sms; the plan is plain text, not a Badge. Always states 'Reply STOP to end. Msg & data rates may apply.' Status uses role=status; only failures use role=alert."
     },
     "ReminderChannels": {
       "base": "Button",
       "implementation": "components/missa/reminder-channels.tsx",
       "motion": "never",
-      "composition": ["Button", "UpgradeHint", "TextRemindersSettings"],
+      "composition": [
+        "Button",
+        "UpgradeHint",
+        "TextRemindersSettings"
+      ],
       "boundary": "Where this creator's reminders go, shown where a reminder is set (Tracker item Reminders) and on the last onboarding screen. Free sees the Inbox and an UpgradeHint for email and text, and is never asked for a phone number, so no verification text is sent for a plan that cannot receive one. Plus and Pro see every channel that is on and a Button that opens TextRemindersSettings in place (aria-expanded, aria-controls). Until /api/me/notification-preferences answers, it says only what is true for every plan. Composition over Button because the installed Collapsible adds a second trigger pattern for a single inline form."
     },
     "CookieConsent": {
@@ -1441,7 +2208,11 @@
       "base": "Badge",
       "disclosure": "Popover",
       "implementation": "components/missa/provenance-badge.tsx",
-      "states": ["confirmed", "linked", "added"],
+      "states": [
+        "confirmed",
+        "linked",
+        "added"
+      ],
       "rule": "Confirmed only when the server matched a Missa acceptance; the popover always explains the source in plain language.",
       "motion": "popover-transition-only"
     },
@@ -1449,7 +2220,10 @@
       "base": "Badge",
       "disclosure": "Popover",
       "implementation": "components/missa/collaboration-badge.tsx",
-      "states": ["confirmed", "awaiting"],
+      "states": [
+        "confirmed",
+        "awaiting"
+      ],
       "rule": "Confirmed only when the other creator's published profile credits this creator back, which the server reads on every request. Awaiting is shown to the owner in the studio and never to a visitor. Both states are written out; the dashed outline never carries the meaning alone.",
       "boundary": "Not a ProvenanceBadge state: that mark means an organization recorded an outcome on Missa and has three states for the source of a record entry. A credit between two creators has a different rule and an owner-only state, so it is its own semantic component on the same Popover pattern and badge styles.",
       "motion": "popover-transition-only"
@@ -1457,27 +2231,44 @@
     "AvailabilityChip": {
       "base": "Badge",
       "implementation": "components/missa/availability-chip.tsx",
-      "states": ["open", "from", "booked"],
+      "states": [
+        "open",
+        "from",
+        "booked"
+      ],
       "rule": "A 'from' entry whose date has passed reads as open; meaning never depends on colour alone.",
       "motion": "never"
     },
     "EditionAvailability": {
       "base": "Badge",
       "implementation": "components/missa/addon-badges.tsx",
-      "states": ["available", "last", "sold-out"],
+      "states": [
+        "available",
+        "last",
+        "sold-out"
+      ],
       "rule": "Shown only when the edition size and the number left are both stated and agree: '4 of 12 available', or 'Sold out' at none. The label carries the meaning; the dot and tone only help the eye. No price, no checkout.",
       "motion": "never"
     },
     "ShowKindTag": {
       "base": "Badge",
       "implementation": "components/missa/addon-badges.tsx",
-      "states": ["solo", "group", "premiere", "screening", "performance"],
+      "states": [
+        "solo",
+        "group",
+        "premiere",
+        "screening",
+        "performance"
+      ],
       "rule": "A tiny read-only tag for the kind of show; a show of kind 'other' has no tag.",
       "motion": "never"
     },
     "DateConfidenceBadge": {
       "base": "Badge",
-      "studioCandidates": ["badge-05", "badge-10"],
+      "studioCandidates": [
+        "badge-05",
+        "badge-10"
+      ],
       "motion": "never",
       "implementation": "components/missa/deadline-badges.tsx",
       "boundary": "Whether a date is confirmed by the organization's source, predicted by Missa from past cycles (dotted underline, never presented as the organization's), changed since first recorded, or needs checking. The title carries the plain-language explanation."
@@ -1532,6 +2323,64 @@
     }
   },
   "productCompositions": {
+    "WritingReader": [
+      "Button",
+      "Input",
+      "Textarea",
+      "Label",
+      "NativeSelect"
+    ],
+    "WritingExport": [
+      "Sheet",
+      "Button",
+      "Field",
+      "Input",
+      "NativeSelect",
+      "Checkbox",
+      "Alert"
+    ],
+    "WritingResearch": [
+      "Field",
+      "Input",
+      "Textarea",
+      "NativeSelect",
+      "Button",
+      "Dialog",
+      "AlertDialog",
+      "Alert",
+      "Empty"
+    ],
+    "WritingStructure": [
+      "Tabs",
+      "Field",
+      "Input",
+      "Textarea",
+      "NativeSelect",
+      "Checkbox",
+      "Table",
+      "Button",
+      "Empty"
+    ],
+    "WritingManuscript": [
+      "WritingPages",
+      "WritingFormatBar",
+      "WritingFormatSheet",
+      "WritingFind",
+      "Button"
+    ],
+    "WritingStudio": [
+      "Tabs",
+      "Button",
+      "Input",
+      "NativeSelect",
+      "WritingStructure",
+      "WritingResearch",
+      "WritingExport"
+    ],
+    "WritingChecks": [
+      "Dialog",
+      "Button"
+    ],
     "OpportunityBrowseToolbar": [
       "Field",
       "InputGroup",
@@ -1571,8 +2420,17 @@
       "SelectionControls",
       "ResultCount"
     ],
-    "TrackerBoard": ["Kanban", "WorkflowBadge", "DropdownMenu", "Dialog"],
-    "OpportunityCalendar": ["Calendar", "PopoverOrPanel", "ProcessBadge"],
+    "TrackerBoard": [
+      "Kanban",
+      "WorkflowBadge",
+      "DropdownMenu",
+      "Dialog"
+    ],
+    "OpportunityCalendar": [
+      "Calendar",
+      "PopoverOrPanel",
+      "ProcessBadge"
+    ],
     "WorkEditor": [
       "Field",
       "Sortable",
@@ -1580,7 +2438,16 @@
       "DialogOrSheet",
       "ProcessFeedback"
     ],
-    "ProfileSettingsForm": ["Field", "FormControls", "RadioGroup", "Collapsible", "Switch", "AlertDialog", "InlineFeedback", "StickySaveBar"],
+    "ProfileSettingsForm": [
+      "Field",
+      "FormControls",
+      "RadioGroup",
+      "Collapsible",
+      "Switch",
+      "AlertDialog",
+      "InlineFeedback",
+      "StickySaveBar"
+    ],
     "PortfolioIdentityHeader": [
       "EditorialTypography",
       "AvatarOrMedia",
@@ -1602,15 +2469,88 @@
       "RowActions",
       "ResponsiveLabelledRows"
     ],
-    "CreatorCv": ["EditorialTypography", "PrintStyles", "ProvenanceMark"],
-    "ProfileConnect": ["Button", "Dialog", "Field", "Input", "NativeSelect", "Textarea"],
-    "ProfileInbox": ["Tabs", "Button", "Empty", "Link"],
-    "ShareKit": ["Button", "Alert", "Empty", "Skeleton", "Input", "Textarea", "EventCard"],
-    "EventCard": ["EditorialTypography", "PrintStyles", "QrCodeSvg"],
-    "CreatorWorkPage": ["Breadcrumb", "Button", "Collapsible", "Item", "Alert", "ProvenanceBadge", "ProfileConnect"],
-    "WorkPageFields": ["Collapsible", "Button", "Input", "Textarea", "NativeSelect", "ItemList", "MediaField"],
-    "GuideArticle": ["GuideTypography", "EditorialMotif", "Breadcrumb", "GuideToc", "Card", "Alert", "Table", "GuideChecklist", "OpportunityBrowseProjectCard", "Accordion", "Collapsible", "Item", "PersonAvatar", "Button"],
-    "WritingRoom": ["WritingPages", "WritingFormatBar", "WritingFormatSheet", "WritingLibrary", "Button", "DropdownMenu", "Popover", "Dialog", "AlertDialog", "Alert"]
+    "CreatorCv": [
+      "EditorialTypography",
+      "PrintStyles",
+      "ProvenanceMark"
+    ],
+    "ProfileConnect": [
+      "Button",
+      "Dialog",
+      "Field",
+      "Input",
+      "NativeSelect",
+      "Textarea"
+    ],
+    "ProfileInbox": [
+      "Tabs",
+      "Button",
+      "Empty",
+      "Link"
+    ],
+    "ShareKit": [
+      "Button",
+      "Alert",
+      "Empty",
+      "Skeleton",
+      "Input",
+      "Textarea",
+      "EventCard"
+    ],
+    "EventCard": [
+      "EditorialTypography",
+      "PrintStyles",
+      "QrCodeSvg"
+    ],
+    "CreatorWorkPage": [
+      "Breadcrumb",
+      "Button",
+      "Collapsible",
+      "Item",
+      "Alert",
+      "ProvenanceBadge",
+      "ProfileConnect"
+    ],
+    "WorkPageFields": [
+      "Collapsible",
+      "Button",
+      "Input",
+      "Textarea",
+      "NativeSelect",
+      "ItemList",
+      "MediaField"
+    ],
+    "GuideArticle": [
+      "GuideTypography",
+      "EditorialMotif",
+      "Breadcrumb",
+      "GuideToc",
+      "Card",
+      "Alert",
+      "Table",
+      "GuideChecklist",
+      "OpportunityBrowseProjectCard",
+      "Accordion",
+      "Collapsible",
+      "Item",
+      "PersonAvatar",
+      "Button"
+    ],
+    "WritingRoom": [
+      "WritingPages",
+      "WritingFormatBar",
+      "WritingFormatSheet",
+      "WritingLibrary",
+      "WritingChecks",
+      "WritingStudio",
+      "WritingExport",
+      "Button",
+      "DropdownMenu",
+      "Popover",
+      "Dialog",
+      "AlertDialog",
+      "Alert"
+    ]
   },
   "motion": {
     "requiresChangingState": true,
@@ -1633,7 +2573,9 @@
     "semanticRoot": "@/components/missa",
     "rawPrimitiveRoot": "@/components/ui",
     "studioRoot": "@/components/shadcn-studio",
-    "restrictedPrimitives": ["badge"],
+    "restrictedPrimitives": [
+      "badge"
+    ],
     "studioImportsAllowedOnlyIn": [
       "app/design-system",
       "components/design-system",

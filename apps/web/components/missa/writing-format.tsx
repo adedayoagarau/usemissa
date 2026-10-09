@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
 import { useEditorState, type Editor } from "@tiptap/react";
 import {
   AlignCenter,
@@ -8,6 +8,8 @@ import {
   AlignLeft,
   AlignRight,
   Bold,
+  Highlighter,
+  ListChecks,
   Italic,
   Minus,
   Redo2,
@@ -21,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import {
   Field,
   FieldGroup,
+  FieldDescription,
   FieldLabel,
   FieldLegend,
   FieldSet,
@@ -45,6 +48,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { WRITING_TYPEFACES } from "@/components/missa/writing-typefaces";
+import {
+  localWritingImage,
+  writingImageAlt,
+  writingImageFits,
+  writingLinkHref,
+  WRITING_IMAGE_ALT_MAX,
+  WRITING_CAPTION_MAX,
+  writingImageCaption,
+} from "@/lib/writing-rich";
 import {
   sectionPages,
   LETTER_SPACINGS,
@@ -108,10 +120,13 @@ function ToolButton({
 export function WritingFormatBar({
   editor,
   onOpenFormat,
+  document,
 }: {
   editor: Editor | null;
   onOpenFormat: () => void;
+  document?: WritingDocument;
 }) {
+  const [insertOpen, setInsertOpen] = useState(false);
   const state = useEditorState({
     editor,
     selector: ({ editor: current }) =>
@@ -119,6 +134,8 @@ export function WritingFormatBar({
         ? {
             bold: current.isActive("bold"),
             italic: current.isActive("italic"),
+            highlight: current.isActive("highlight"),
+            checklist: current.isActive("taskList"),
             underline: current.isActive("underline"),
             strike: current.isActive("strike"),
             superscript: current.isActive("superscript"),
@@ -138,7 +155,7 @@ export function WritingFormatBar({
           }
         : null,
   });
-  const off = !editor || !state;
+  const off = !editor || !state || !editor.isEditable;
   const chain = () => editor!.chain().focus();
 
   function setBlock(block: BlockStyle) {
@@ -154,113 +171,451 @@ export function WritingFormatBar({
   }
 
   return (
-    <div
-      role="toolbar"
-      aria-label="Formatting"
-      className="flex max-w-full items-center gap-1 overflow-x-auto"
-    >
-      <NativeSelect
-        aria-label="Text style"
-        value={state?.block ?? "paragraph"}
-        disabled={off}
-        onChange={(event) => setBlock(event.target.value as BlockStyle)}
+    <>
+      <div
+        role="toolbar"
+        aria-label="Formatting"
+        className="flex max-w-full min-w-0 items-center gap-1 overflow-x-auto"
       >
-        <NativeSelectOption value="paragraph">Body text</NativeSelectOption>
-        <NativeSelectOption value="heading1">Heading</NativeSelectOption>
-        <NativeSelectOption value="heading2">Subheading</NativeSelectOption>
-        <NativeSelectOption value="blockquote">Quotation</NativeSelectOption>
-      </NativeSelect>
-      <ToolButton
-        label="Bold"
-        pressed={state?.bold}
-        disabled={off}
-        onClick={() => chain().toggleBold().run()}
-      >
-        <Bold aria-hidden="true" />
-      </ToolButton>
-      <ToolButton
-        label="Italic"
-        pressed={state?.italic}
-        disabled={off}
-        onClick={() => chain().toggleItalic().run()}
-      >
-        <Italic aria-hidden="true" />
-      </ToolButton>
-      <ToolButton
-        label="Underline"
-        pressed={state?.underline}
-        disabled={off}
-        onClick={() => chain().toggleUnderline().run()}
-      >
-        <Underline aria-hidden="true" />
-      </ToolButton>
-      <ToolButton
-        label="Strikethrough"
-        pressed={state?.strike}
-        disabled={off}
-        onClick={() => chain().toggleStrike().run()}
-      >
-        <Strikethrough aria-hidden="true" />
-      </ToolButton>
-      <ToolButton
-        label="Superscript"
-        pressed={state?.superscript}
-        disabled={off}
-        onClick={() => chain().toggleSuperscript().run()}
-      >
-        <Superscript aria-hidden="true" />
-      </ToolButton>
-      <ToolButton
-        label="Subscript"
-        pressed={state?.subscript}
-        disabled={off}
-        onClick={() => chain().toggleSubscript().run()}
-      >
-        <Subscript aria-hidden="true" />
-      </ToolButton>
-      {(
-        [
-          ["left", "Align line left", AlignLeft],
-          ["center", "Center line", AlignCenter],
-          ["right", "Align line right", AlignRight],
-          ["justify", "Justify line", AlignJustify],
-        ] as const
-      ).map(([align, label, Icon]) => (
-        <ToolButton
-          key={align}
-          label={label}
-          pressed={state?.align === align}
+        <NativeSelect
+          aria-label="Text style"
+          value={state?.block ?? "paragraph"}
           disabled={off}
-          onClick={() => chain().setTextAlign(align).run()}
+          onChange={(event) => setBlock(event.target.value as BlockStyle)}
         >
-          <Icon aria-hidden="true" />
+          <NativeSelectOption value="paragraph">Body text</NativeSelectOption>
+          <NativeSelectOption value="heading1">Heading</NativeSelectOption>
+          <NativeSelectOption value="heading2">Subheading</NativeSelectOption>
+          <NativeSelectOption value="blockquote">Quotation</NativeSelectOption>
+        </NativeSelect>
+        <ToolButton
+          label="Bold"
+          pressed={state?.bold}
+          disabled={off}
+          onClick={() => chain().toggleBold().run()}
+        >
+          <Bold aria-hidden="true" />
         </ToolButton>
-      ))}
-      <ToolButton
-        label="Scene break"
-        disabled={off}
-        onClick={() => chain().setHorizontalRule().run()}
-      >
-        <Minus aria-hidden="true" />
-      </ToolButton>
-      <ToolButton
-        label="Undo"
-        disabled={off || !state?.canUndo}
-        onClick={() => chain().undo().run()}
-      >
-        <Undo2 aria-hidden="true" />
-      </ToolButton>
-      <ToolButton
-        label="Redo"
-        disabled={off || !state?.canRedo}
-        onClick={() => chain().redo().run()}
-      >
-        <Redo2 aria-hidden="true" />
-      </ToolButton>
-      <Button variant="ghost" onClick={onOpenFormat}>
-        Page format
-      </Button>
-    </div>
+        <ToolButton
+          label="Italic"
+          pressed={state?.italic}
+          disabled={off}
+          onClick={() => chain().toggleItalic().run()}
+        >
+          <Italic aria-hidden="true" />
+        </ToolButton>
+        <ToolButton
+          label="Underline"
+          pressed={state?.underline}
+          disabled={off}
+          onClick={() => chain().toggleUnderline().run()}
+        >
+          <Underline aria-hidden="true" />
+        </ToolButton>
+        <ToolButton
+          label="Strikethrough"
+          pressed={state?.strike}
+          disabled={off}
+          onClick={() => chain().toggleStrike().run()}
+        >
+          <Strikethrough aria-hidden="true" />
+        </ToolButton>
+        <ToolButton
+          label="Superscript"
+          pressed={state?.superscript}
+          disabled={off}
+          onClick={() => chain().toggleSuperscript().run()}
+        >
+          <Superscript aria-hidden="true" />
+        </ToolButton>
+        <ToolButton
+          label="Subscript"
+          pressed={state?.subscript}
+          disabled={off}
+          onClick={() => chain().toggleSubscript().run()}
+        >
+          <Subscript aria-hidden="true" />
+        </ToolButton>
+        {(
+          [
+            ["left", "Align line left", AlignLeft],
+            ["center", "Center line", AlignCenter],
+            ["right", "Align line right", AlignRight],
+            ["justify", "Justify line", AlignJustify],
+          ] as const
+        ).map(([align, label, Icon]) => (
+          <ToolButton
+            key={align}
+            label={label}
+            pressed={state?.align === align}
+            disabled={off}
+            onClick={() => chain().setTextAlign(align).run()}
+          >
+            <Icon aria-hidden="true" />
+          </ToolButton>
+        ))}
+        <ToolButton
+          label="Highlight"
+          pressed={state?.highlight}
+          disabled={off}
+          onClick={() => chain().toggleMark("highlight").run()}
+        >
+          <Highlighter aria-hidden="true" />
+        </ToolButton>
+        <ToolButton
+          label="Checklist"
+          pressed={state?.checklist}
+          disabled={off}
+          onClick={() => chain().toggleTaskList().run()}
+        >
+          <ListChecks aria-hidden="true" />
+        </ToolButton>
+        <ToolButton
+          label="Scene break"
+          disabled={off}
+          onClick={() => chain().setHorizontalRule().run()}
+        >
+          <Minus aria-hidden="true" />
+        </ToolButton>
+        <ToolButton
+          label="Undo"
+          disabled={off || !state?.canUndo}
+          onClick={() => chain().undo().run()}
+        >
+          <Undo2 aria-hidden="true" />
+        </ToolButton>
+        <ToolButton
+          label="Redo"
+          disabled={off || !state?.canRedo}
+          onClick={() => chain().redo().run()}
+        >
+          <Redo2 aria-hidden="true" />
+        </ToolButton>
+        <Button variant="ghost" onClick={onOpenFormat}>
+          Page format
+        </Button>
+        <Button
+          variant="ghost"
+          disabled={off}
+          onClick={() => setInsertOpen(true)}
+        >
+          Insert
+        </Button>
+      </div>
+      {insertOpen && editor ? (
+        <WritingInsertSheet
+          editor={editor}
+          document={document}
+          onClose={() => setInsertOpen(false)}
+        />
+      ) : null}
+    </>
+  );
+}
+
+/** Links and tables use the editor selection; images come only from a local file. */
+function WritingInsertSheet({
+  editor,
+  document,
+  onClose,
+}: {
+  editor: Editor;
+  document?: WritingDocument;
+  onClose: () => void;
+}) {
+  const id = useId();
+  const [href, setHref] = useState<string>(
+    () => editor.getAttributes("link").href ?? "",
+  );
+  const [src, setSrc] = useState("");
+  const [alt, setAlt] = useState("");
+  const [caption, setCaption] = useState("");
+  const [imageBusy, setImageBusy] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const fileVersion = useRef(0);
+  const state = useEditorState({
+    editor,
+    selector: ({ editor: current }) => ({
+      linked: current.isActive("link"),
+      selection: !current.state.selection.empty,
+      table: current.isActive("table"),
+      canAddRow: current.can().addRowAfter(),
+      canAddColumn: current.can().addColumnAfter(),
+      canDeleteRow: current.can().deleteRow(),
+      canDeleteColumn: current.can().deleteColumn(),
+      canDeleteTable: current.can().deleteTable(),
+    }),
+  });
+  const off = !editor.isEditable || editor.isDestroyed;
+  const safeHref = writingLinkHref(href);
+  const safeAlt = writingImageAlt(alt);
+  const fits =
+    document && safeAlt && src
+      ? writingImageFits(document, src, safeAlt, caption)
+      : false;
+  async function loadImage(file: File | undefined) {
+    const version = ++fileVersion.current;
+    setSrc("");
+    setImageError(null);
+    if (!file) {
+      setImageBusy(false);
+      return;
+    }
+    setImageBusy(true);
+    try {
+      const result = await localWritingImage(file);
+      if (version === fileVersion.current) setSrc(result);
+    } catch (error) {
+      if (version === fileVersion.current)
+        setImageError(
+          error instanceof Error
+            ? error.message
+            : "This image could not be read.",
+        );
+    } finally {
+      if (version === fileVersion.current) setImageBusy(false);
+    }
+  }
+  function insertImage() {
+    if (off || !document || !safeAlt || !src) return;
+    if (!writingImageFits(document, src, safeAlt, caption)) {
+      setImageError(
+        "This image would exceed the piece’s 2 MB limit. Choose a smaller image.",
+      );
+      return;
+    }
+    if (
+      editor
+        .chain()
+        .focus()
+        .insertContent({
+          type: "image",
+          attrs: { src, alt: safeAlt, caption: writingImageCaption(caption) },
+        })
+        .run()
+    )
+      onClose();
+  }
+  return (
+    <Sheet
+      open
+      onOpenChange={(open) => {
+        if (!open) {
+          fileVersion.current += 1;
+          onClose();
+        }
+      }}
+    >
+      <SheetContent side="right">
+        <SheetHeader variant="section">
+          <SheetTitle>Insert</SheetTitle>
+          <SheetDescription>
+            Add a link, table or image at the selection.
+          </SheetDescription>
+        </SheetHeader>
+        <div className="flex min-h-0 flex-1 flex-col gap-8 overflow-y-auto px-4 pb-4">
+          <FieldSet>
+            <FieldLegend>Link</FieldLegend>
+            <Field>
+              <FieldLabel htmlFor={`${id}-link`}>
+                Web address or email link
+              </FieldLabel>
+              <Input
+                id={`${id}-link`}
+                value={href}
+                onChange={(event) => setHref(event.target.value)}
+                placeholder="https://example.com"
+                disabled={off}
+              />
+              <FieldDescription>
+                Select text to add a link, or place the cursor in an existing
+                link to edit it. Links open only through an explicit browser
+                action.
+              </FieldDescription>
+              {href && !safeHref ? (
+                <p role="status" className="text-sm text-muted-foreground">
+                  Use a full http, https or mailto address.
+                </p>
+              ) : null}
+            </Field>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                disabled={
+                  off || !safeHref || (!state?.selection && !state?.linked)
+                }
+                onClick={() => {
+                  if (
+                    safeHref &&
+                    editor
+                      .chain()
+                      .focus()
+                      .extendMarkRange("link")
+                      .setLink({ href: safeHref })
+                      .run()
+                  )
+                    onClose();
+                }}
+              >
+                {state?.linked ? "Update link" : "Add link"}
+              </Button>
+              <Button
+                variant="ghost"
+                disabled={off || !state?.linked}
+                onClick={() => {
+                  editor
+                    .chain()
+                    .focus()
+                    .extendMarkRange("link")
+                    .unsetLink()
+                    .run();
+                  onClose();
+                }}
+              >
+                Remove link
+              </Button>
+            </div>
+          </FieldSet>
+          <FieldSet>
+            <FieldLegend>Table</FieldLegend>
+            <p className="text-sm text-muted-foreground">
+              Insert a table with three rows, three columns and a header row.
+              Place the cursor in a cell to change its table.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                disabled={off || state?.table}
+                onClick={() => {
+                  editor
+                    .chain()
+                    .focus()
+                    .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+                    .run();
+                  onClose();
+                }}
+              >
+                Insert table
+              </Button>
+              <Button
+                variant="outline"
+                disabled={off || !state?.canAddRow}
+                onClick={() => {
+                  editor.chain().focus().addRowAfter().run();
+                  onClose();
+                }}
+              >
+                Add row below
+              </Button>
+              <Button
+                variant="outline"
+                disabled={off || !state?.canAddColumn}
+                onClick={() => {
+                  editor.chain().focus().addColumnAfter().run();
+                  onClose();
+                }}
+              >
+                Add column after
+              </Button>
+              <Button
+                variant="ghost"
+                disabled={off || !state?.canDeleteRow}
+                onClick={() => {
+                  editor.chain().focus().deleteRow().run();
+                  onClose();
+                }}
+              >
+                Delete row
+              </Button>
+              <Button
+                variant="ghost"
+                disabled={off || !state?.canDeleteColumn}
+                onClick={() => {
+                  editor.chain().focus().deleteColumn().run();
+                  onClose();
+                }}
+              >
+                Delete column
+              </Button>
+              <Button
+                variant="ghost"
+                disabled={off || !state?.canDeleteTable}
+                onClick={() => {
+                  editor.chain().focus().deleteTable().run();
+                  onClose();
+                }}
+              >
+                Delete table
+              </Button>
+            </div>
+          </FieldSet>
+          <FieldSet>
+            <FieldLegend>Local image</FieldLegend>
+            <Field>
+              <FieldLabel htmlFor={`${id}-image`}>Image file</FieldLabel>
+              <Input
+                id={`${id}-image`}
+                type="file"
+                accept="image/png,image/jpeg"
+                disabled={off || !document}
+                onChange={(event) => {
+                  void loadImage(event.target.files?.[0]);
+                }}
+              />
+              <FieldDescription>
+                PNG or JPEG, up to 128 KB. The image saves inside this piece.
+                Remote images are not loaded.
+              </FieldDescription>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor={`${id}-alt`}>Image description</FieldLabel>
+              <Input
+                id={`${id}-alt`}
+                value={alt}
+                maxLength={WRITING_IMAGE_ALT_MAX}
+                disabled={off || !document}
+                onChange={(event) => setAlt(event.target.value)}
+              />
+              <FieldDescription>
+                Describe what the image shows. A description is required.
+              </FieldDescription>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor={`${id}-caption`}>Caption</FieldLabel>
+              <Input
+                id={`${id}-caption`}
+                value={caption}
+                maxLength={WRITING_CAPTION_MAX}
+                disabled={off || !document}
+                onChange={(event) => setCaption(event.target.value)}
+              />
+            </Field>
+            {imageBusy ? (
+              <p role="status" className="text-sm text-muted-foreground">
+                Reading image…
+              </p>
+            ) : null}
+            {imageError ? (
+              <p role="alert" className="text-sm text-destructive">
+                {imageError}
+              </p>
+            ) : null}
+            {src && safeAlt && !fits ? (
+              <p role="status" className="text-sm text-muted-foreground">
+                Choose a smaller image to keep this piece within 2 MB.
+              </p>
+            ) : null}
+            <Button
+              variant="outline"
+              disabled={off || imageBusy || !fits}
+              onClick={insertImage}
+            >
+              Insert image
+            </Button>
+          </FieldSet>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

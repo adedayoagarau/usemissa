@@ -49,6 +49,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import type { WritingContent } from "@/lib/writing";
@@ -69,6 +70,7 @@ import {
 
 function when(iso: string) {
   return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
     day: "numeric",
     month: "short",
     hour: "numeric",
@@ -84,7 +86,7 @@ function textOf(content: Pick<WritingContent, "body" | "document">) {
 }
 
 function snapshotName(snapshot: WritingSnapshotSummary) {
-  return snapshot.name || `Snapshot, ${when(snapshot.createdAt)}`;
+  return snapshot.name || `Automatic version, ${when(snapshot.createdAt)}`;
 }
 
 async function call(
@@ -120,6 +122,7 @@ export function WritingSnapshots({
   entryId,
   content,
   onRestore,
+  onRestoreCopy,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -128,6 +131,7 @@ export function WritingSnapshots({
   /** The piece as it stands now. */
   content: WritingContent;
   onRestore: (content: WritingContent) => void;
+  onRestoreCopy?: (content: WritingContent, versionName: string) => Promise<void> | void;
 }) {
   const id = useId();
   const [list, setList] = useState<WritingSnapshotSummary[] | null>(null);
@@ -136,6 +140,12 @@ export function WritingSnapshots({
   const [taking, setTaking] = useState(false);
   const [compare, setCompare] = useState<WritingSnapshot | null>(null);
   const [restore, setRestore] = useState<WritingSnapshotSummary | null>(null);
+  const [deleting, setDeleting] = useState<WritingSnapshotSummary | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [onlyNamed, setOnlyNamed] = useState(false);
+  const [renaming, setRenaming] = useState<WritingSnapshotSummary | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [renameBusy, setRenameBusy] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const base = `/api/me/writing/${encodeURIComponent(entryId)}/snapshots`;
 
@@ -159,6 +169,9 @@ export function WritingSnapshots({
     if (!open) return;
     let cancelled = false;
     void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      setList(null); setCompare(null); setRestore(null);
       const result = await call(base);
       if (cancelled) return;
       if (result.ok && Array.isArray(result.data.snapshots)) {
@@ -201,7 +214,7 @@ export function WritingSnapshots({
 
   async function take() {
     setTaking(true);
-    const result = await keep(name.trim());
+    const result = await keep(name.trim() || `Version, ${when(new Date().toISOString())}`);
     setTaking(false);
     if ("error" in result) {
       toast.error(result.error);
@@ -234,23 +247,27 @@ export function WritingSnapshots({
     }
     // The text as it is now is kept first, so restoring never loses words.
     const before = await keep(
-      `Before restoring ${snapshotName(restore)}`.slice(0, SNAPSHOT_NAME_MAX),
+      onRestoreCopy ? "" : `Before restoring ${snapshotName(restore)}`.slice(0, SNAPSHOT_NAME_MAX),
     );
     if ("error" in before) {
       setRestoring(false);
       toast.error(before.error);
       return;
     }
-    onRestore({
+    const restoredContent = {
       title: snapshot.title,
       body: snapshot.body,
       document: snapshot.document,
-    });
+    };
+    try {
+      if (onRestoreCopy) await onRestoreCopy(restoredContent, snapshotName(restore));
+      else onRestore(restoredContent);
+    } catch { setRestoring(false); toast.error("The version could not be restored. Your current writing is kept."); return; }
     setRestoring(false);
     setRestore(null);
     onOpenChange(false);
     toast.success(
-      `Restored ${snapshotName(restore)}. The text from before is kept as a snapshot.`,
+      onRestoreCopy ? `Opened ${snapshotName(restore)} as a separate copy.` : `Restored ${snapshotName(restore)}. The text from before is kept as a version.`,
     );
   }
 
@@ -268,6 +285,17 @@ export function WritingSnapshots({
     toast.success("Snapshot deleted");
   }
 
+  async function renameVersion() {
+    if (!renaming) return;
+    setRenameBusy(true);
+    const result = await call(`${base}/${encodeURIComponent(renaming.id)}`, { method: "PATCH", body: JSON.stringify({ name: renameValue.trim() }) });
+    setRenameBusy(false);
+    const summary = result.data.snapshot as WritingSnapshotSummary | undefined;
+    if (!result.ok || !summary) { toast.error(failure(result.data, "The version could not be renamed. Try again.")); return; }
+    setList(items => (items ?? []).map(item => item.id === summary.id ? summary : item));
+    setRenaming(null); toast.success("Version name saved");
+  }
+  const visible = (list ?? []).filter(version => !onlyNamed || Boolean(version.name));
   const lines = compare ? diffLines(textOf(compare), textOf(content)) : null;
 
   return (
@@ -275,16 +303,16 @@ export function WritingSnapshots({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="right"
+          className="max-w-full overflow-x-clip data-[side=right]:w-full data-[side=right]:data-starting-style:translate-x-0 data-[side=right]:data-ending-style:translate-x-0"
           finalFocus={() => {
             onClosed();
             return false;
           }}
         >
           <SheetHeader variant="section">
-            <SheetTitle>Snapshots</SheetTitle>
+            <SheetTitle>Revision history</SheetTitle>
             <SheetDescription>
-              This piece as it stood at moments you chose. Compare one with the
-              text now, or bring it back.
+              Dated versions of this piece. Compare changes, name an important version, or open an earlier version as a separate copy.
             </SheetDescription>
           </SheetHeader>
           <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4">
@@ -303,11 +331,11 @@ export function WritingSnapshots({
                   id={`${id}-name`}
                   value={name}
                   maxLength={SNAPSHOT_NAME_MAX}
-                  placeholder="Before cutting the second stanza"
+                  placeholder="Before revising chapter two"
                   onChange={(event) => setName(event.target.value)}
                 />
                 <FieldDescription>
-                  A snapshot keeps the title, every page and its format.
+                  A named version keeps the title, every page and its format. Named versions stay until you remove them.
                 </FieldDescription>
               </Field>
               <Button
@@ -315,12 +343,14 @@ export function WritingSnapshots({
                 disabled={taking}
                 aria-busy={taking || undefined}
               >
-                {taking ? "Keeping…" : "Take a snapshot"}
+                {taking ? "Keeping…" : "Name current version"}
               </Button>
             </form>
+            <Button variant="ghost" size="sm" onClick={() => void load()}>Refresh history</Button>
+            <Field orientation="horizontal"><FieldLabel htmlFor={`${id}-named`}>Only named versions</FieldLabel><Switch id={`${id}-named`} checked={onlyNamed} onCheckedChange={setOnlyNamed} /></Field>
             {list === null ? (
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Spinner /> Loading snapshots…
+                <Spinner /> Loading revision history…
               </p>
             ) : loadError ? (
               <div className="flex flex-col items-start gap-2">
@@ -331,13 +361,14 @@ export function WritingSnapshots({
                   Try again
                 </Button>
               </div>
-            ) : list.length ? (
+            ) : visible.length ? (
               <ItemGroup>
-                {list.map((snapshot) => (
+                {visible.map((snapshot, index) => (
                   <div role="listitem" key={snapshot.id}>
+                    {index === 0 || new Date(visible[index - 1]!.createdAt).toDateString() !== new Date(snapshot.createdAt).toDateString() ? <h3 className="py-2 text-sm font-medium">{new Intl.DateTimeFormat(undefined, { dateStyle: "long" }).format(new Date(snapshot.createdAt))}</h3> : null}
                     <Item variant="outline" size="sm">
                       <ItemContent>
-                        <ItemTitle>{snapshotName(snapshot)}</ItemTitle>
+                        <ItemTitle className="min-w-0 break-words whitespace-normal">{snapshotName(snapshot)}</ItemTitle>
                         <ItemDescription>
                           {snapshot.name
                             ? `${when(snapshot.createdAt)} · `
@@ -370,16 +401,17 @@ export function WritingSnapshots({
                             <Ellipsis aria-hidden="true" />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-52">
+                            <DropdownMenuItem onClick={() => { setRenaming(snapshot); setRenameValue(snapshot.name); }}>Name this version…</DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => setRestore(snapshot)}
                             >
-                              Restore this snapshot…
+                              Restore as a copy…
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               variant="destructive"
-                              onClick={() => void remove(snapshot)}
+                              onClick={() => setDeleting(snapshot)}
                             >
-                              Delete snapshot
+                              Delete version
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -391,9 +423,9 @@ export function WritingSnapshots({
             ) : (
               <Empty>
                 <EmptyHeader>
-                  <EmptyTitle>No snapshots yet</EmptyTitle>
+                  <EmptyTitle>{onlyNamed ? "No named versions yet" : "No earlier versions yet"}</EmptyTitle>
                   <EmptyDescription>
-                    Take one before a big change, so you can always go back.
+                    Name the current version before a big change. Automatic versions appear while you write.
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
@@ -408,7 +440,7 @@ export function WritingSnapshots({
           if (!next) setCompare(null);
         }}
       >
-        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl" onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); setCompare(null); } }}>
           <DialogHeader>
             <DialogTitle>
               {compare ? snapshotName(compare) : "Snapshot"} and now
@@ -418,6 +450,7 @@ export function WritingSnapshots({
               text now are marked new.
             </DialogDescription>
           </DialogHeader>
+          {compare && compare.title !== content.title ? <p className="text-sm">Title changed from “{compare.title || "Untitled"}” to “{content.title || "Untitled"}”.</p> : null}
           {lines === null ? (
             <p className="text-sm text-muted-foreground">
               This piece is too long to compare line by line here. Restoring the
@@ -426,7 +459,7 @@ export function WritingSnapshots({
             </p>
           ) : lines.every((line) => line.kind === "same") ? (
             <p className="text-sm text-muted-foreground">
-              The text is the same as in this snapshot.
+              {compare?.document !== content.document ? "The words match, but formatting or page layout differs." : "The text is the same as in this version."}
             </p>
           ) : (
             <ol className="flex flex-col font-mono text-sm whitespace-pre-wrap [tab-size:4]">
@@ -455,6 +488,8 @@ export function WritingSnapshots({
         </DialogContent>
       </Dialog>
 
+      <Dialog open={renaming !== null} onOpenChange={next => { if (!next && !renameBusy) setRenaming(null); }}><DialogContent><DialogHeader><DialogTitle>Name this version</DialogTitle><DialogDescription>Keep an important draft easy to find. Clearing its name returns it to automatic-history retention.</DialogDescription></DialogHeader><Field><FieldLabel htmlFor={`${id}-rename`}>Version name</FieldLabel><Input id={`${id}-rename`} value={renameValue} maxLength={SNAPSHOT_NAME_MAX} onChange={event => setRenameValue(event.target.value)} /></Field><Button disabled={renameBusy} onClick={() => void renameVersion()}>{renameBusy ? "Saving…" : "Save name"}</Button></DialogContent></Dialog>
+      <AlertDialog open={deleting !== null} onOpenChange={next => { if (!next && !deleteBusy) setDeleting(null); }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete this version?</AlertDialogTitle><AlertDialogDescription>This removes the saved version permanently. Your current piece remains intact.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel disabled={deleteBusy}>Cancel</AlertDialogCancel><Button variant="destructive" disabled={deleteBusy} onClick={async () => { if (!deleting) return; setDeleteBusy(true); await remove(deleting); setDeleteBusy(false); setDeleting(null); }}>{deleteBusy ? "Deleting…" : "Delete version"}</Button></AlertDialogFooter></AlertDialogContent></AlertDialog>
       <AlertDialog
         open={restore !== null}
         onOpenChange={(next) => {
@@ -468,8 +503,7 @@ export function WritingSnapshots({
               ?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              The piece goes back to how it was then. Its text as it is now is
-              kept as a snapshot first, so nothing is lost.
+              {onRestoreCopy ? "A separate copy opens with this version’s text and formatting. Your current piece remains intact." : "The current piece is kept as a version before restoring the earlier text and formatting."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -479,7 +513,7 @@ export function WritingSnapshots({
               aria-busy={restoring || undefined}
               onClick={() => void confirmRestore()}
             >
-              {restoring ? "Restoring…" : "Restore"}
+              {restoring ? "Restoring…" : onRestoreCopy ? "Open restored copy" : "Restore"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

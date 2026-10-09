@@ -1,5 +1,5 @@
 import { isWritingEntryId } from "@/lib/writing";
-import { isWritingSnapshotId } from "@/lib/writing-snapshots";
+import { SNAPSHOT_NAME_MAX, NamedVersionLimitError, isWritingSnapshotId } from "@/lib/writing-snapshots";
 import { json, writingSession } from "../../../_shared";
 
 type Context = { params: Promise<{ id: string; snapshotId: string }> };
@@ -50,4 +50,17 @@ export async function DELETE(request: Request, context: Context) {
       500,
     );
   }
+}
+
+/** Changes a version label without changing its content or date. */
+export async function PATCH(request: Request, context: Context) {
+  const prepared = await prepare(request, context);
+  if ("response" in prepared) return prepared.response;
+  if (Number(request.headers.get("content-length") ?? 0) > 4096) return json({ error: "Version name is too long." }, 413);
+  const value = await request.json().catch(() => null);
+  if (!value || typeof value.name !== "string" || value.name.trim().length > SNAPSHOT_NAME_MAX) return json({ error: `Use a version name of up to ${SNAPSHOT_NAME_MAX} characters.` }, 400);
+  try {
+    const snapshot = await prepared.repository.renameSnapshot(prepared.accountId, prepared.id, prepared.snapshotId, value.name.trim());
+    return snapshot ? json({ snapshot }) : json({ error: "Version not found." }, 404);
+  } catch (error) { if (error instanceof NamedVersionLimitError) return json({ error: error.message }, 409); return json({ error: "The version could not be renamed. Try again." }, 500); }
 }

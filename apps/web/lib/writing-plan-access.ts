@@ -1,4 +1,5 @@
 import "server-only";
+import type { ReadAloudPlan } from "@/lib/writing-read-aloud";
 import {
   creatorFeatures,
   creatorPlan,
@@ -20,5 +21,16 @@ export async function plannerIncluded(accountId: string): Promise<boolean> {
     return creatorFeatures(plan).writingPlanner;
   } catch {
     return false;
+  }
+}
+
+/** Read-aloud resolves the authoritative plan; an outage never becomes Free. */
+export async function readAloudPlan(accountId: string): Promise<ReadAloudPlan | null> {
+  if (!process.env.DATABASE_URL) return null;
+  try {
+    const plan = await creatorPlan(creatorPoolFor(process.env.DATABASE_URL), accountId);
+    return plan;
+  } catch {
+    return null;
   }
 }

@@ -3,9 +3,9 @@
 The room lives at `/doc`. The old `/write` address redirects there, with the
 entry it names, so earlier links keep working.
 
-Status: behind sign-in, not linked from public pages. Migrations 0095, 0096 and
-0097 must be applied before account saving works in an environment. What comes
-next is in `docs/writing-roadmap.md`.
+Status: behind sign-in, not linked from public pages. Account saving requires
+migrations 0095–0101. The 8 October development expansion and its verification
+boundary are in `docs/writing-development-2026-10-08.md`.
 
 ## What it is
 
@@ -22,11 +22,11 @@ native macOS app and Missa is a web app. What carries over is the interaction:
 Freewrite's "chat" button, which sent an entry to ChatGPT or Claude, is not
 carried over.
 
-Stage 1 was write mode: one plain-text page. Step 1 of stage 2 adds rich text
-on printed pages, each with its own format (see **Pages** below). Step 2, a
-free canvas any page can switch to, is not started. Later stages (drafts tied to
-Library Works, word and page limits from a call, standard manuscript export,
-long-form projects, `.scriv` import) are not started.
+The room includes rich printed pages, canvas, projects, snapshots and the
+planner. The project workspace now connects combined editing, structure,
+research, checkpoints and reader feedback. Local DOCX/EPUB export and text/DOCX
+import are implemented. Scrivener and Google Docs import remain future work.
+Calls and Tracker handoffs are outside the core project workspace.
 
 ## The promise and how it is kept
 
@@ -34,9 +34,9 @@ The **Private** popover on the page says:
 
 | Promise shown to the writer | How it is kept |
 | --- | --- |
-| Missa adds no AI here. Nothing suggests, rewrites or finishes your words. | The page has no such feature. `lib/writing-boundary.test.ts` fails if a writing-module file imports an AI or model SDK. |
-| Your writing is never sent to an AI service or used to train one. | Text goes only to `PUT /api/me/writing/[id]` and the database. Sentry drops request bodies and has no session replay; PostHog runs without autocapture or session recording; analytics records the path, never the query or text. |
-| Missa’s automated systems don’t read it. | Only `lib/writing-repository.ts` reads `creator_writing_entries`, and only the writing routes and `/doc` import it. `lib/writing-boundary.test.ts` fails when any other file names the table or imports the repository. `/doc` (and `/write`) send `Permissions-Policy: tools=()` and registers no WebMCP tools. |
+| Nothing writes or finishes your words for you. | `lib/writing-boundary.test.ts` fails if a writing-module file imports an AI or model SDK. Harper supplies optional rule-based spelling and grammar suggestions, not generated prose. |
+| Read aloud sends the text you choose to DeepInfra to make speech, only when you press Read. Ordinary editing does not. | The tiered read-aloud endpoint accepts only explicitly requested text, resolves the account plan and checks shared usage limits before calling Kokoro. Ordinary editing goes to `PUT /api/me/writing/[id]` and the database. Sentry drops request bodies and has no session replay; PostHog runs without autocapture or session recording; analytics records the path, never the query or text. |
+| Optional spelling and grammar checks run on your device, only when you ask. You choose which suggestions to apply. | A same-origin worker and pinned Harper WASM load on the first check; prose is sent only to that worker. Owner-scoped account saving and deliberately shared reading copies go through the writing repository. Boundary tests protect tables and repository imports. `/doc` and `/write` register no WebMCP tools. |
 | Deleting an entry removes it from your account. | `DELETE` removes the row. Audit events record creation and deletion with no text. Database backups follow the provider's retention; the privacy notice should say so before launch. |
 | Extensions you add to your browser can still read pages you open. | Stated plainly, because Missa cannot control them. |
 
@@ -136,9 +136,9 @@ All in More, kept on the device as preferences:
   Escape reaches the page, so Escape then Tab still leaves it; holding Escape
   leaves full screen.
 
-Not built, by choice: parts-of-speech highlighting (iA Writer, Scrivener's
-Linguistic Focus). Even on the device it is automated reading of the writer's
-words, which the room promises not to do (`docs/writing-research.md`).
+Parts-of-speech highlighting is not built. On 8 October the owner approved
+optional Harper spelling and grammar checks on the device. This supersedes
+the earlier blanket prohibition on local linguistic checking. The owner also authorized tiered Kokoro read-aloud on 8 October: it sends text to DeepInfra only on explicit playback requests. Automatic prose generation remains excluded.
 
 ## Snapshots, find and replace, appearance
 

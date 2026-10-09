@@ -1,0 +1,5 @@
+Harper 2.10.0 (harper.js), by Elijah Potter and Harper contributors.
+Source: https://github.com/Automattic/harper/tree/v2.10.0
+Distributed under the Apache License 2.0 (see LICENSE.txt).
+The unmodified slim WASM retains plain-text spelling and grammar checks;
+it excludes the optional Typst parser and thesaurus.

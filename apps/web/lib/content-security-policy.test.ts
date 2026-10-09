@@ -82,3 +82,18 @@ test('the report endpoint accepts reports and ignores oversized or malformed bod
     console.warn = original;
   }
 });
+
+
+test('Drive Picker grants only its two exact origins when configured', () => {
+  const env = {NODE_ENV:'production', GOOGLE_DRIVE_CLIENT_ID:'client', GOOGLE_DRIVE_PICKER_API_KEY:'public-key', GOOGLE_DRIVE_APP_ID:'123'};
+  const policy = directives(buildContentSecurityPolicy(env));
+  assert.ok(policy.get('script-src')!.includes('https://apis.google.com'));
+  assert.ok(policy.get('frame-src')!.includes('https://docs.google.com'));
+  assert.ok(!policy.get('connect-src')!.some(value => value.includes('google')));
+  assert.deepEqual(policy.get('frame-ancestors'), ["'none'"]);
+  for (const key of ['GOOGLE_DRIVE_CLIENT_ID','GOOGLE_DRIVE_PICKER_API_KEY','GOOGLE_DRIVE_APP_ID']) {
+    const incomplete = directives(buildContentSecurityPolicy({...env,[key]:''}));
+    assert.ok(!incomplete.get('script-src')!.includes('https://apis.google.com'));
+    assert.ok(!incomplete.get('frame-src')!.includes('https://docs.google.com'));
+  }
+});

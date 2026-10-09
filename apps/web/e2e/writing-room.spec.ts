@@ -1,11 +1,342 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Locator } from "@playwright/test";
 import pg from "pg";
+import { newWritingProjectId } from "../lib/writing-projects";
+import { newWritingEntryId } from "../lib/writing";
+import { plainTextToDocument, serializeDocument } from "../lib/writing-document";
 
 // Relational only: entries are saved to the account in Postgres (migrations 0095 to 0099).
 
+const modifier = process.platform === "darwin" ? "Meta" : "Control";
+// Collapse the editor's actual select-all range: native Home/End differ on macOS.
+async function moveDocumentCursor(page: Page, edge: "start" | "end") {
+  await page.keyboard.press(`${modifier}+a`);
+  await page.keyboard.press(edge === "start" ? "ArrowLeft" : "ArrowRight");
+  await expect.poll(() => page.evaluate(() => window.getSelection()?.isCollapsed)).toBe(true);
+  // ProseMirror reads native arrow selections asynchronously; wait for its footer state too.
+  await expect(page.getByRole("button", { name: /words selected.*Word count/u, includeHidden: true })).toHaveCount(0);
+}
+
 const pageText = (page: Page, index = 0) =>
   page.locator('[data-slot="writing-page-text"]').nth(index);
+
+test("Lock in keeps the draft editable and saved, pauses, and exits with Escape", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/doc");
+  await pageText(page).fill("A focused draft.");
+  await expect(page.getByRole("button", { name: "Formatting", exact: true })).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("toolbar", { name: "Formatting" })).toBeHidden();
+  await page.clock.install();
+  await page.getByRole("button", { name: "Lock in", exact: true }).click();
+  const session = page.getByRole("region", { name: "Lock in session", exact: true });
+  await expect(session).toBeVisible();
+  await session.getByRole("button", { name: "Timer length", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: "5 minutes", exact: true }).click();
+  await session.getByRole("button", { name: "Timer length", exact: true }).click();
+  await page.clock.runFor(500);
+  await page.clock.resume();
+  await expect(session.getByRole("button", { name: "Start 5-minute timer (5:00)", exact: true })).toBeVisible();
+  await session.getByRole("button", { name: "Start 5-minute timer (5:00)", exact: true }).click();
+  await expect(page.locator("header")).toHaveCount(0);
+  await expect(page.locator("footer")).toBeVisible();
+  await expect(pageText(page)).toBeFocused();
+  await pageText(page).pressSequentially(" The same page, with room to think.");
+  await expect(session.getByRole("status")).toHaveText("Saved to account");
+  const entryId = new URL(page.url()).searchParams.get("entry");
+  await expect.poll(async () => (await (await page.request.get(`/api/me/writing/${entryId}`)).json()).entry.body).toContain("room to think");
+  await session.getByRole("button", { name: /^Pause timer/ }).click();
+  const clock = session.getByRole('button', { name: /timer.*\(/ });
+  const paused = await clock.textContent();
+  await page.waitForTimeout(1100);
+  await expect(clock).toHaveText(paused!);
+  await session.getByRole("button", { name: /^Resume timer/ }).click();
+  await expect(session.getByRole("button", { name: /^Pause timer/ })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.clock.fastForward(15 * 60_000);
+  await expect(session.getByRole("status")).toHaveText("Session complete. Keep writing if you like.");
+  await expect(pageText(page)).toContainText("room to think");
+  await session.getByRole("button", { name: /^Restart .*timer/ }).click();
+  await expect(session.getByRole("button", { name: /^Pause timer/ })).toBeVisible();
+  await pageText(page).press("Escape");
+  await expect(session).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Lock in", exact: true })).toBeVisible();
+  await expect(pageText(page)).toContainText("room to think");
+});
+
+test("highlight speaker reads only the selected passage without a range form", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/doc");
+  const text = pageText(page);
+  await text.fill("Alpha. Middle. Omega.");
+  const requests: string[] = [];
+  await page.route("**/api/me/writing/read-aloud", async route => {
+    requests.push(route.request().postDataJSON().text);
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "Test boundary captured" }) });
+  });
+  async function selectMiddle() {
+    await text.focus();
+    await text.evaluate(element => {
+      const node = element.querySelector("p")!.firstChild!;
+      const range = window.document.createRange(); range.setStart(node, 7); range.setEnd(node, 14);
+      const selection = window.getSelection()!; selection.removeAllRanges(); selection.addRange(range);
+      window.document.dispatchEvent(new Event("selectionchange"));
+    });
+  }
+  await selectMiddle();
+  const speaker = page.getByRole("toolbar", {name:"Selection formatting"}).getByRole("button", {name:"Read selection aloud"});
+  await expect(speaker).toBeVisible();
+  expect(requests).toHaveLength(0);
+  await speaker.click();
+  await expect.poll(() => requests.length).toBe(1);
+  expect(requests[0]).toBe("Middle.");
+  await expect(page.getByLabel("Read from and stop at")).toHaveCount(0);
+  await expect(page.getByText("Test boundary captured")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.setViewportSize({width:390,height:844});
+  await page.emulateMedia({reducedMotion:"reduce"});
+  await selectMiddle();
+  await expect(speaker).toBeVisible();
+  const toolbar = page.getByRole("toolbar", { name: "Selection formatting" });
+  const bounds = await toolbar.boundingBox();
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
+  await page.screenshot({path:"/tmp/missa-highlight-speaker-mobile.png"});
+  expect((await new AxeBuilder({page}).include('[aria-label="Selection formatting"]').analyze()).violations).toEqual([]);
+  await speaker.focus();
+  await page.keyboard.press("Enter");
+  await expect.poll(() => requests.length).toBe(2);
+  expect(requests[1]).toBe("Middle.");
+});
+
+test("read aloud follows Free, Plus and Pro tiers and sends text only on Read", async ({ page }) => {
+  const email = await signIn(page);
+  await page.goto("/doc");
+  await pageText(page).fill("A quiet room. A new beginning.");
+  const dialog = page.getByRole("group", { name: "Read aloud", exact: true });
+  await dialog.getByRole("button", { name: "Read-aloud settings" }).click();
+  await expect(page.getByText(/characters per month with Free/)).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog.getByRole("button", { name: "Read aloud", exact: true })).toBeEnabled();
+  await expect.poll(async () => (await (await page.request.get("/api/me/writing")).json()).entries.length).toBeGreaterThan(0);
+  const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query("insert into creator_plans(account_id,plan) select id,'plus' from radar_accounts where lower(email)=lower($1)", [email]);
+  } finally { await client.end(); }
+  await page.reload();
+  await expect(pageText(page)).toHaveAttribute("contenteditable", "true");
+  await pageText(page).fill("A quiet room. A new beginning.");
+  // A real, silent WAV exercises browser playback without calling a paid provider.
+  const wav = Buffer.alloc(44 + 16_000 * 2 * 5);
+  wav.write("RIFF", 0); wav.writeUInt32LE(wav.length - 8, 4); wav.write("WAVEfmt ", 8);
+  wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22);
+  wav.writeUInt32LE(16_000, 24); wav.writeUInt32LE(32_000, 28);
+  wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34); wav.write("data", 36); wav.writeUInt32LE(wav.length - 44, 40);
+  const requests: { text: string; voice: string }[] = [];
+  await page.route("**/api/me/writing/read-aloud", async (route) => {
+    requests.push(route.request().postDataJSON());
+    await route.fulfill({ status: 200, contentType: "audio/wav", body: wav });
+  });
+  await expect(dialog.getByRole("button", { name: "Read-aloud settings" })).toBeVisible();
+  await expect(page.getByRole("menu", { name: "More", exact: true })).toBeHidden();
+  await page.screenshot({ path: "/tmp/missa-read-aloud-paid.png" });
+  expect(requests).toHaveLength(0);
+  await dialog.getByRole("button", { name: "Read aloud", exact: true }).click();
+  await expect(dialog.getByRole("button", { name: "Pause read aloud", exact: true })).toBeVisible();
+  expect(requests).toEqual([{ text: "A quiet room. A new beginning.", voice: "af_heart" }]);
+  await dialog.getByRole("button", { name: "Pause read aloud", exact: true }).click();
+  await expect(dialog.getByRole("status")).toHaveText("Paused");
+  await dialog.getByRole("button", { name: "Read-aloud settings" }).click();
+  await page.getByLabel("Speed", { exact: true }).selectOption("1.5");
+  await page.keyboard.press("Escape");
+  await dialog.getByRole("button", { name: "Resume read aloud", exact: true }).click();
+  await dialog.getByRole("button", { name: "Stop read aloud", exact: true }).click();
+  await dialog.getByRole("button", { name: "Read aloud", exact: true }).click();
+  await expect(dialog.getByRole("button", { name: "Pause read aloud", exact: true })).toBeVisible();
+  expect(requests).toHaveLength(1);
+  await page.getByRole("button", { name: "Lock in", exact: true }).click();
+  await expect(dialog.getByRole("button", { name: "Pause read aloud", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Leave Lock in", exact: true }).click();
+  await expect(dialog.getByRole("button", { name: "Pause read aloud", exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "Stop read aloud", exact: true }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect((await new AxeBuilder({ page }).include('div[role="group"][aria-label="Read aloud"]').analyze()).violations).toEqual([]);
+  await expect(pageText(page)).toHaveText("A quiet room. A new beginning.");
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await pageText(page).focus();
+  await pageText(page).evaluate((element) => {
+    const text = element.querySelector("p")?.firstChild;
+    if (!text) throw new Error("Missing draft text");
+    const range = document.createRange(); range.setStart(text, 0); range.setEnd(text, 7);
+    const selection = window.getSelection(); selection?.removeAllRanges(); selection?.addRange(range);
+    document.dispatchEvent(new Event("selectionchange"));
+  });
+  await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe("A quiet");
+  await page.unroute("**/api/me/writing/read-aloud");
+  await page.route("**/api/me/writing/read-aloud", async (route) => {
+    requests.push(route.request().postDataJSON());
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "Read aloud is not available yet. Try again later." }) });
+  });
+  await page.evaluate(() => { document.documentElement.style.zoom = "2"; });
+  await dialog.getByRole("button", { name: "Read aloud", exact: true }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "Read aloud" })).toHaveText("Read aloud is not available yet. Try again later.");
+  expect(requests.at(-1)?.text).toBe("A quiet");
+  expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+  await page.evaluate(() => { document.documentElement.style.zoom = "1"; });
+  const proClient = new pg.Client({ connectionString: process.env.DATABASE_URL });
+  await proClient.connect();
+  try { await proClient.query("update creator_plans set plan='pro' where account_id=(select id from radar_accounts where lower(email)=lower($1))", [email]); }
+  finally { await proClient.end(); }
+  await page.reload();
+  await expect(pageText(page)).toHaveAttribute("contenteditable", "true");
+  await dialog.getByRole("button", { name: "Read-aloud settings" }).click();
+  await expect(page.getByText("Unlimited read aloud with Pro. Fair-use rate limits apply.", { exact: false })).toBeVisible();
+  await page.keyboard.press("Escape");
+});
+
+test("Harper checks on request and applies an undoable correction locally", async ({ page }) => {
+  test.setTimeout(90_000);
+  await signIn(page);
+  const harperRequests: string[] = [];
+  page.on("request", (request) => { if (request.url().includes("/harper/")) harperRequests.push(request.url()); });
+  await page.goto("/doc");
+  const writing = pageText(page);
+  await expect(writing).toBeVisible();
+  await writing.fill("😀 This is an test.");
+  await page.getByRole("button", { name: "More", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Writing checks…", exact: true }).click();
+  const checks = page.getByRole("dialog", { name: "Writing checks", exact: true });
+  await expect(checks).toBeVisible();
+  expect(harperRequests).toEqual([]);
+  await checks.getByRole("button", { name: "Check this piece", exact: true }).click();
+  await expect(checks.getByRole("button", { name: "Apply replacement a", exact: true })).toBeVisible({ timeout: 60_000 });
+  expect(harperRequests.length).toBeGreaterThan(0);
+  expect(harperRequests.every((url) => new URL(url).origin === new URL(page.url()).origin)).toBe(true);
+  await checks.getByRole("button", { name: "Apply replacement a", exact: true }).click();
+  await expect(writing).toHaveText("😀 This is a test.");
+  await checks.getByRole("button", { name: "Close", exact: true }).click();
+  await writing.focus();
+  await writing.press(process.platform === "darwin" ? "Meta+z" : "Control+z");
+  await expect(writing).toHaveText("😀 This is an test.");
+});
+
+test("Harper reports a failed first download without changing the draft", async ({ page }) => {
+  test.setTimeout(60_000);
+  await signIn(page);
+  await page.route("**/harper/**/*.wasm", (route) => route.abort());
+  await page.goto("/doc");
+  const writing = pageText(page);
+  await writing.fill("This is an test.");
+  await page.getByRole("button", { name: "More", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Writing checks…", exact: true }).click();
+  const checks = page.getByRole("dialog", { name: "Writing checks", exact: true });
+  await checks.getByRole("button", { name: "Check this piece", exact: true }).click();
+  await expect(checks.getByRole("alert")).toContainText("Your writing is safe", { timeout: 40_000 });
+  await expect(writing).toHaveText("This is an test.");
+});
+
+test("project studio saves combined drafts, research, checkpoints and scoped reader feedback", async ({ page }) => {
+  test.setTimeout(120_000);
+  await signIn(page);
+  const projectId = newWritingProjectId();
+  expect((await page.request.post("/api/me/writing/projects", { data: { id: projectId, title: "Public rooms", template: "blank" } })).status()).toBe(201);
+  const ids = [newWritingEntryId(), newWritingEntryId()];
+  for (const [index, id] of ids.entries()) {
+    const text = index === 0 ? "A public room begins with a promise." : Array(30).fill("The opening hours decide who can stay. A long draft must remain readable as the project grows.").join("\n\n");
+    const title = index === 0 ? "Section 1" : "A longer section title about public rooms, opening hours, access and the promises that shape a shared space";
+    expect((await page.request.put(`/api/me/writing/${id}`, { data: { title, body: text, document: serializeDocument(plainTextToDocument(text, "newsreader")), baseRevision: 0, projectId } })).status()).toBe(200);
+  }
+  await page.goto(`/doc?entry=${ids[0]}`);
+  await page.getByRole("button", { name: "Tools", exact: true }).click();
+  await page.getByRole("button", { name: "Project workspace", exact: true }).click();
+  const studio = page.getByRole("complementary", { name: "Public rooms · project tools", exact: true });
+  // Opening tools must preserve the original editor and its controls, without a modal.
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Section 1");
+  await page.getByRole("main").locator('[data-slot="writing-page-text"]').first().fill("A public room begins with a promise, still on the original page.");
+  await expect.poll(async () => (await (await page.request.get(`/api/me/writing/${ids[0]}`)).json()).entry.body).toBe("A public room begins with a promise, still on the original page.");
+  await expect(studio.getByRole("button", { name: "Save notes and plans", exact: true })).toBeVisible();
+  await studio.getByRole("button", { name: "Edit manuscript together", exact: true }).click();
+  const manuscript = page.getByRole("main");
+  await expect(manuscript.locator("[data-manuscript-piece]")).toHaveCount(2);
+  const draft = manuscript.locator(`[data-manuscript-piece="${ids[0]}"] [data-slot="writing-page-text"]`).first();
+  await draft.fill("A public room begins with a concrete promise.");
+  await expect.poll(async () => (await (await page.request.get(`/api/me/writing/${ids[0]}`)).json()).entry.body).toBe("A public room begins with a concrete promise.");
+  await page.getByRole("button", { name: "Back to piece", exact: true }).click();
+  await studio.getByRole("tab", { name: "Research", exact: true }).click();
+  await studio.getByRole("button", { name: "Add source", exact: true }).click();
+  const source = page.getByRole("dialog", { name: "Edit source", exact: true });
+  await source.getByLabel("Title", { exact: true }).fill("Field notebook");
+  await source.getByRole("button", { name: "Save source", exact: true }).click();
+  await studio.getByRole("button", { name: "Save notes and plans", exact: true }).click();
+  await expect(studio.getByRole("status").filter({ hasText: "Notes and plans saved" })).toBeVisible();
+  await studio.getByRole("tab", { name: "Revision & readers", exact: true }).click();
+  await studio.getByLabel("Project checkpoint name", { exact: true }).fill("Reading copy");
+  await studio.getByRole("button", { name: "Keep checkpoint", exact: true }).click();
+  await studio.getByRole("button", { name: "Save notes and plans", exact: true }).click();
+  await expect(studio.getByRole("button", { name: "Create reader link", exact: true })).toBeEnabled();
+  await studio.getByRole("button", { name: "Create reader link", exact: true }).click();
+  await expect(studio.getByLabel("Reader link — copy and share when ready", { exact: true })).toBeVisible();
+  const readerLink = await studio.getByLabel("Reader link — copy and share when ready", { exact: true }).inputValue();
+  const token = readerLink.split("/").at(-1)!;
+  const reader = await page.context().newPage();
+  await reader.goto(readerLink);
+  await reader.getByLabel("Passage", { exact: true }).fill("concrete promise");
+  await reader.getByLabel("Comment", { exact: true }).fill("This detail makes the opening clearer.");
+  await reader.getByRole("button", { name: "Leave comment", exact: true }).click();
+  await expect(reader.getByRole("status")).toHaveText("Comment saved. The author decides how to use it.");
+  await studio.getByRole("button", { name: "Read feedback", exact: true }).click();
+  await expect(studio.getByRole("region", { name: "Reader feedback", exact: true })).toContainText("This detail makes the opening clearer.");
+  await expect.poll(async () => (await (await page.request.get(`/api/me/writing/${ids[0]}`)).json()).entry.body).toBe("A public room begins with a concrete promise.");
+  await studio.getByRole("button", { name: "Revoke access", exact: true }).click();
+  await expect.poll(async () => (await page.request.get(`/api/writing/read/${token}`)).status()).toBe(404);
+  await reader.close();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await studio.getByRole("tab", { name: "Manuscript", exact: true }).click();
+  const dimensions = await studio.evaluate((element) => ({ width: element.clientWidth, scroll: element.scrollWidth,
+    overflowing: [...element.querySelectorAll("*")].filter((child) => child.getBoundingClientRect().right > element.getBoundingClientRect().right + 1).slice(0, 12).map((child) => ({ tag: child.tagName, slot: child.getAttribute("data-slot"), classes: child.className })) }));
+  expect(dimensions, JSON.stringify(dimensions)).toMatchObject({ scroll: dimensions.width });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(studio.getByRole("tab", { name: "Manuscript", exact: true })).toBeFocused();
+  await studio.getByRole("tab", { name: "Manuscript", exact: true }).press("ArrowRight");
+  await expect(studio.getByRole("tab", { name: "Structure", exact: true })).toBeFocused();
+  await studio.getByRole("tab", { name: "Structure", exact: true }).press("ArrowLeft");
+  expect((await new AxeBuilder({ page }).include('aside[aria-label="Public rooms · project tools"]').analyze()).violations).toEqual([]);
+  // 200% zoom-equivalent reflow, including an unusually long piece title.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.evaluate(() => { document.documentElement.style.zoom = "2"; });
+  await expect.poll(async () => studio.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+  await expect(studio.getByRole("button", { name: "Close", exact: true })).toBeVisible();
+  await page.evaluate(() => { document.documentElement.style.zoom = "1"; });
+  await studio.getByRole("tab", { name: "Revision & readers", exact: true }).click();
+  await studio.getByRole("button", { name: "Remove checkpoint", exact: true }).click();
+  const confirmation = page.getByRole("alertdialog", { name: "Remove this checkpoint?", exact: true });
+  await expect(confirmation).toBeVisible();
+  await confirmation.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(studio.getByRole("button", { name: "Remove checkpoint", exact: true })).toBeVisible();
+});
+
+// Accessibility scans certify the opened surface, not a blended transition frame.
+async function expectSettledOverlay(surface: Locator) {
+  await expect(surface).toBeVisible();
+  await expect(surface).toHaveCSS("opacity", "1");
+  await expect.poll(() => surface.evaluate((element) =>
+    element.getAnimations({ subtree: true }).filter((animation) =>
+      (animation.playState === "running" || animation.pending) &&
+      animation.effect?.getComputedTiming().iterations !== Infinity,
+    ).length,
+  )).toBe(0);
+}
+
+async function showFormatting(page: Page) {
+  const trigger = page.getByRole("button", { name: "Formatting", exact: true });
+  if (await trigger.getAttribute("aria-expanded") !== "true") await trigger.click();
+}
 
 async function signIn(page: Page) {
   const email = `write-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`;
@@ -57,7 +388,7 @@ test("the writing room saves as you type, reopens entries and deletes them", asy
   const writing = pageText(page);
   await expect(writing).toBeFocused();
   await writing.pressSequentially("The river does not wait for anyone.");
-  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
   await expect(page.getByText("7 words")).toBeVisible();
   await expect(page).toHaveURL(/\/doc\?entry=writing_/);
 
@@ -68,11 +399,11 @@ test("the writing room saves as you type, reopens entries and deletes them", asy
   // Offline, text stays on the device and is saved once the connection returns.
   await page.context().setOffline(true);
   await writing.click();
-  await page.keyboard.press("Control+End");
+  await moveDocumentCursor(page, "end");
   await writing.pressSequentially(" Neither do I.");
   await expect(page.getByText("Offline · kept on this device")).toBeVisible();
   await page.context().setOffline(false);
-  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
   const entryId = new URL(page.url()).searchParams.get("entry")!;
   const stored = (await (
     await page.request.get(`/api/me/writing/${entryId}`)
@@ -86,10 +417,11 @@ test("the writing room saves as you type, reopens entries and deletes them", asy
   await expect(writing).toHaveText("");
   await expect(writing).toBeFocused();
   await writing.pressSequentially("Second page.");
-  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Library" }).click();
   const sheet = page.getByRole("dialog", { name: "Your writing" });
   await expect(sheet.getByRole("link")).toHaveCount(2);
+  await expectSettledOverlay(sheet);
   await expect(
     (
       await new AxeBuilder({ page })
@@ -114,7 +446,7 @@ test("the writing room saves as you type, reopens entries and deletes them", asy
   await page.getByRole("button", { name: "Private" }).click();
   await expect(
     page.getByText(
-      "Missa adds no AI here. Nothing suggests, rewrites or finishes your words.",
+      "Nothing writes or finishes your words for you.",
     ),
   ).toBeVisible();
   await page.keyboard.press("Escape");
@@ -143,6 +475,7 @@ test("the timer counts down and hides the controls until it is paused", async ({
   await signIn(page);
   await page.goto("/doc");
   const writing = pageText(page);
+  await page.getByRole("button", { name: "Tools", exact: true }).click();
   await page.getByRole("button", { name: "Start 15-minute timer" }).click();
   const pause = page.getByRole("button", { name: "Pause timer" });
   await expect(pause).toBeVisible();
@@ -175,12 +508,14 @@ test("the writer chooses a typeface and the choice is kept", async ({
     (element) => getComputedStyle(element).fontFamily,
   );
 
+  await showFormatting(page);
   await page.getByRole("button", { name: /^Typeface: Newsreader/ }).click();
   const menu = page.getByRole("menu");
   await expect(
     menu.getByRole("menuitemradio", { name: /Newsreader/ }),
   ).toHaveAttribute("aria-checked", "true");
   await expect(menu.getByRole("group", { name: "Typewriter" })).toBeVisible();
+  await expectSettledOverlay(menu);
   await expect(
     (
       await new AxeBuilder({ page })
@@ -200,6 +535,7 @@ test("the writer chooses a typeface and the choice is kept", async ({
   expect(after).toMatch(/monospace/);
 
   await page.reload();
+  await showFormatting(page);
   await expect(
     page.getByRole("button", { name: /^Typeface: Courier Prime/ }),
   ).toBeVisible();
@@ -230,6 +566,7 @@ test("pages keep their own format and every space and tab", async ({
   const second = pageText(page, 1);
   await expect(second).toBeFocused();
   await second.pressSequentially("waiting");
+  await showFormatting(page);
   await page.getByRole("button", { name: "Page format" }).click();
   const format = page.getByRole("dialog", { name: "Format" });
   await expect(format).toContainText("Page 2 of 2");
@@ -251,7 +588,7 @@ test("pages keep their own format and every space and tab", async ({
       return [computed.textAlign, computed.letterSpacing];
     });
   expect(await style(1)).not.toEqual(await style(0));
-  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
 
   // Reloaded, the pages, their format and the exact spacing come back.
   await page.reload();
@@ -304,7 +641,7 @@ test("projects gather pieces in an order, outline them and compile them", async 
   await binder.getByRole("link", { name: /^Draft/ }).click();
   await expect(writing).toBeFocused();
   await writing.pressSequentially("Dust on the louvres.");
-  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
 
   // The header names the project; the binder reorders by its menu.
   await page.getByRole("button", { name: /Project: Harmattan/ }).click();
@@ -361,7 +698,7 @@ test("projects gather pieces in an order, outline them and compile them", async 
   // A loose piece moves into the project.
   await page.getByRole("button", { name: "New entry" }).click();
   await writing.pressSequentially("Loose words.");
-  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Library" }).click();
   await page.getByRole("button", { name: "Options for Loose words." }).click();
   await page.getByRole("menuitemradio", { name: "Harmattan" }).click();
@@ -409,7 +746,7 @@ test("text flows onto the next page and back as it is written", async ({
   await expect(first).not.toContainText("Line 45");
   await page.keyboard.type(" and on");
   await expect(second).toContainText("Line 45 and on");
-  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
 
   // Deleting lines on the first page brings text back, and the empty page goes.
   await first.getByText("Line 1", { exact: true }).click();
@@ -423,7 +760,7 @@ test("text flows onto the next page and back as it is written", async ({
   await page.keyboard.press("Backspace");
   await expect(pageText(page, 1)).toHaveCount(0);
   await expect(first).toContainText("Line 45 and on");
-  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
 });
 
 test("a page becomes a free canvas with boxes placed by hand and kept", async ({
@@ -459,7 +796,7 @@ test("a page becomes a free canvas with boxes placed by hand and kept", async ({
   await page.getByRole("menuitem", { name: "Add a text box" }).click();
   await expect(box).toHaveCount(2);
   await page.keyboard.type("sand");
-  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
   await expect(
     (
       await new AxeBuilder({ page })
@@ -492,15 +829,17 @@ test("snapshots keep a version to compare and restore; find replaces across page
   const first = pageText(page, 0);
   await expect(first).toBeFocused();
   await first.pressSequentially("The rain came early.");
-  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
 
-  // A snapshot, then a change.
+  const originalId = new URL(page.url()).searchParams.get("entry");
+  // A named version, then a change.
   await page.getByRole("button", { name: "More" }).click();
-  await page.getByRole("menuitem", { name: "Snapshots…" }).click();
-  const sheet = page.getByRole("dialog", { name: "Snapshots" });
+  await page.getByRole("menuitem", { name: "Revision history…" }).click();
+  const sheet = page.getByRole("dialog", { name: "Revision history", includeHidden: true });
   await sheet.getByLabel("Name, if you like").fill("First rain");
-  await sheet.getByRole("button", { name: "Take a snapshot" }).click();
+  await sheet.getByRole("button", { name: "Name current version" }).click();
   await expect(sheet.getByText("First rain")).toBeVisible();
+  await expectSettledOverlay(sheet);
   await expect(
     (
       await new AxeBuilder({ page })
@@ -510,16 +849,17 @@ test("snapshots keep a version to compare and restore; find replaces across page
   ).toEqual([]);
   await page.keyboard.press("Escape");
   await first.click();
-  await page.keyboard.press("Control+End");
+  await moveDocumentCursor(page, "end");
   await page.keyboard.press("Enter");
   await page.keyboard.type("It stayed. The rain is still here.");
-  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(first).toHaveText("The rain came early.It stayed. The rain is still here.");
+  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
 
   // Compare marks the new line.
   await page.getByRole("button", { name: "More" }).click();
-  await page.getByRole("menuitem", { name: "Snapshots…" }).click();
-  await sheet.getByRole("button", { name: "Compare" }).click();
-  const compare = page.getByRole("dialog", { name: "First rain and now" });
+  await page.getByRole("menuitem", { name: "Revision history…" }).click();
+  await sheet.getByRole("button", { name: "Compare" }).first().click();
+  const compare = page.getByRole("dialog", { name: "First rain and now", includeHidden: true });
   await expect(
     compare.getByText("It stayed. The rain is still here."),
   ).toBeVisible();
@@ -528,10 +868,13 @@ test("snapshots keep a version to compare and restore; find replaces across page
   );
   await page.keyboard.press("Escape");
 
+  await expect(compare).toHaveCount(0);
+  await expect.poll(() => sheet.evaluate((element) => element.contains(window.document.activeElement))).toBe(true);
   // Find and replace reaches every match.
   await page.keyboard.press("Escape");
+  await expect(sheet).toHaveCount(0);
   await first.click();
-  await page.keyboard.press("Control+f");
+  await page.keyboard.press(`${modifier}+f`);
   const find = page.getByRole("search", { name: "Find and replace" });
   await find.getByLabel("Find", { exact: true }).fill("rain");
   await expect(find.getByRole("status")).toHaveText("1 of 2");
@@ -543,24 +886,29 @@ test("snapshots keep a version to compare and restore; find replaces across page
   await expect(find.getByRole("status")).toHaveText("No matches");
   await page.keyboard.press("Escape");
   await expect(find).toBeHidden();
-  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
 
-  // Restoring brings the snapshot back and keeps the text from before.
+  // Restoring opens a new piece and preserves the current original.
   await page.getByRole("button", { name: "More" }).click();
-  await page.getByRole("menuitem", { name: "Snapshots…" }).click();
+  await page.getByRole("menuitem", { name: "Revision history…" }).click();
   await sheet.getByRole("button", { name: "Options for First rain" }).click();
-  await page.getByRole("menuitem", { name: "Restore this snapshot…" }).click();
-  await page.getByRole("button", { name: "Restore", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Restore as a copy…" }).click();
+  await page.getByRole("button", { name: "Open restored copy", exact: true }).click();
   await expect(pageText(page, 0)).toHaveText("The rain came early.");
-  await page.getByRole("button", { name: "More" }).click();
-  await page.getByRole("menuitem", { name: "Snapshots…" }).click();
-  await expect(sheet.getByText("Before restoring First rain")).toBeVisible();
-  await page.keyboard.press("Escape");
+  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
+  expect(new URL(page.url()).searchParams.get("entry")).not.toBe(originalId);
+  const original = await page.request.get(`/api/me/writing/${originalId}`);
+  expect((await original.json()).entry.body).toContain("harmattan");
 
   // Dark appearance is kept.
   await page.getByRole("button", { name: "More" }).click();
   await page.getByRole("menuitemradio", { name: "Dark" }).click();
   await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+  await expect(page.locator('[role="menu"][data-ending-style]')).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.document.getAnimations().filter(animation =>
+    (animation.playState === "running" || animation.pending) &&
+    animation.effect?.getComputedTiming().iterations !== Infinity
+  ).length)).toBe(0);
   await expect(
     (await new AxeBuilder({ page }).withTags(["wcag2aa"]).analyze()).violations,
   ).toEqual([]);
@@ -617,7 +965,7 @@ test("a piece is written for a call: its limit counted and its blind reading che
   const writing = pageText(page);
   await expect(writing).toBeFocused();
   await writing.pressSequentially("Adaeze Writer walks out into the rain.");
-  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "More" }).click();
   await page.getByRole("menuitem", { name: "Write for a call…" }).click();
@@ -648,11 +996,11 @@ test("a piece is written for a call: its limit counted and its blind reading che
   // The footer counts against the limit as the piece grows past it.
   await expect(page.getByText("7 / 8 words")).toBeVisible();
   await writing.click();
-  await page.keyboard.press("Control+Home");
+  await moveDocumentCursor(page, "start");
   await page.keyboard.press("Shift+End");
   await page.keyboard.type("She walks out into the rain and on into the dark.");
   await expect(page.getByText("11 / 8 words")).toBeVisible();
-  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
 
   // The link is kept with the piece; the name is gone, so the check passes.
   await page.reload();
@@ -687,16 +1035,17 @@ test("Ctrl+Enter breaks the page as in Google Docs; Backspace joins it again", a
   // editor reads a caret the browser moved on its next selection event.
   await page.keyboard.press("Home");
   await page.waitForTimeout(150);
-  await page.keyboard.press("Control+Enter");
+  await page.keyboard.press(`${modifier}+Enter`);
   const second = pageText(page, 1);
   await expect(second).toBeFocused();
   await expect(first).toHaveText("Before the break");
   await expect(second).toHaveText("after it");
   const breaks = page.locator('[data-slot="writing-break"]');
   await expect(breaks).toHaveText(["Page break"]);
-  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved to account", { exact: true })).toBeVisible();
 
   // A page break keeps the section's format: a change reaches both pages.
+  await showFormatting(page);
   await page.getByRole("button", { name: "Page format" }).click();
   const format = page.getByRole("dialog", { name: "Format" });
   await expect(format).toContainText("This section, 2 pages");
@@ -718,7 +1067,7 @@ test("Ctrl+Enter breaks the page as in Google Docs; Backspace joins it again", a
   // A section break starts a format of its own.
   await pageText(page, 1).click();
   await page.waitForTimeout(150);
-  await page.keyboard.press("End");
+  await moveDocumentCursor(page, "end");
   await page.waitForTimeout(150);
   await page.getByRole("button", { name: "More" }).click();
   await page
@@ -727,6 +1076,7 @@ test("Ctrl+Enter breaks the page as in Google Docs; Backspace joins it again", a
   await expect(pageText(page, 2)).toBeFocused();
   await expect(breaks).toHaveText(["Page break", "Section break"]);
   await page.keyboard.type("a new part");
+  await showFormatting(page);
   await page.getByRole("button", { name: "Page format" }).click();
   await expect(format).toContainText("This page");
   await format.getByRole("radio", { name: "Right" }).click();
@@ -738,7 +1088,7 @@ test("Ctrl+Enter breaks the page as in Google Docs; Backspace joins it again", a
   await pageText(page, 2).click();
   // ProseMirror reads a mouse selection a moment after the click.
   await page.waitForTimeout(150);
-  await page.keyboard.press("Control+Home");
+  await moveDocumentCursor(page, "start");
   await page.waitForTimeout(150);
   await page.keyboard.press("Backspace");
   await expect(page.getByText("This page has its own format.")).toBeVisible();
@@ -748,7 +1098,7 @@ test("Ctrl+Enter breaks the page as in Google Docs; Backspace joins it again", a
   await pageText(page, 1).click();
   // ProseMirror reads a mouse selection a moment after the click.
   await page.waitForTimeout(150);
-  await page.keyboard.press("Control+Home");
+  await moveDocumentCursor(page, "start");
   await page.waitForTimeout(150);
   await page.keyboard.press("Backspace");
   await expect(breaks).toHaveText(["Section break"]);
@@ -782,20 +1132,20 @@ test("the shortcuts writers know from Google Docs, smart punctuation and the wor
 
   // Superscript and subscript, and clearing them.
   await page.keyboard.type("E = mc");
-  await page.keyboard.press("Control+.");
+  await page.keyboard.press(`${modifier}+.`);
   await page.keyboard.type("2");
-  await page.keyboard.press("Control+.");
+  await page.keyboard.press(`${modifier}+.`);
   await page.keyboard.type(" and H");
-  await page.keyboard.press("Control+,");
+  await page.keyboard.press(`${modifier}+,`);
   await page.keyboard.type("2");
-  await page.keyboard.press("Control+,");
+  await page.keyboard.press(`${modifier}+,`);
   await page.keyboard.type("O");
   await expect(text.locator("sup")).toHaveText("2");
   await expect(text.locator("sub")).toHaveText("2");
-  await page.keyboard.press("Control+a");
+  await page.keyboard.press(`${modifier}+a`);
   await page.keyboard.press("Alt+Shift+5");
   await expect(text.locator("s")).toHaveCount(1);
-  await page.keyboard.press("Control+\\");
+  await page.keyboard.press(`${modifier}+\\`);
   await expect(text.locator("s, sup, sub")).toHaveCount(0);
 
   // A dash after a tab stays as typed; at the start of a line it starts a list.
@@ -824,16 +1174,17 @@ test("the shortcuts writers know from Google Docs, smart punctuation and the wor
     .click();
   await page.keyboard.press("Escape");
   await text.click();
-  await page.keyboard.press("Control+End");
+  await moveDocumentCursor(page, "end");
   await page.waitForTimeout(150);
   await page.keyboard.press("Enter");
   await page.keyboard.type('"it\'s late" -- she said...');
   await expect(text).toContainText("“it’s late” — she said…");
 
   // The word count opens from the footer or the keyboard, and counts a selection.
-  await page.keyboard.press("Control+Shift+c");
+  await page.keyboard.press(`${modifier}+Shift+c`);
   const dialog = page.getByRole("dialog", { name: "Word count" });
   await expect(dialog).toContainText("Reading time");
+  await expectSettledOverlay(dialog);
   await expect(
     (
       await new AxeBuilder({ page })
@@ -845,8 +1196,8 @@ test("the shortcuts writers know from Google Docs, smart punctuation and the wor
   // The last line: “it’s late” — she said…, four words.
   await text.click();
   await page.waitForTimeout(150);
-  await page.keyboard.press("Control+End");
-  await page.keyboard.press("Shift+Home");
+  await moveDocumentCursor(page, "end");
+  await page.keyboard.press(process.platform === "darwin" ? "Meta+Shift+ArrowLeft" : "Shift+Home");
   await page.waitForTimeout(150);
   await expect(
     page.getByRole("button", { name: /^4 of \d+ words selected/u }),
@@ -873,9 +1224,9 @@ test("quiet writing: quiet mode, focus on a paragraph or sentence, typewriter sc
   // Quiet mode fades the controls without the timer, and comes back.
   const header = page.locator("header[data-hidden]");
   await expect(header).toHaveAttribute("data-hidden", "false");
-  await page.keyboard.press("Control+Shift+f");
+  await page.keyboard.press(`${modifier}+Shift+f`);
   await expect(header).toHaveAttribute("data-hidden", "true");
-  await page.keyboard.press("Control+Shift+f");
+  await page.keyboard.press(`${modifier}+Shift+f`);
   await expect(header).toHaveAttribute("data-hidden", "false");
 
   // Focus on this paragraph dims the others.
@@ -921,7 +1272,7 @@ test("quiet writing: quiet mode, focus on a paragraph or sentence, typewriter sc
     .click();
   await page.keyboard.press("Escape");
   await text.click();
-  await page.keyboard.press("Control+End");
+  await moveDocumentCursor(page, "end");
   await page.waitForTimeout(150);
   for (let line = 0; line < 30; line += 1) {
     await page.keyboard.press("Enter");
@@ -1015,6 +1366,8 @@ test("the planner: cards, plotlines, a corkboard and an outline with totals, wit
   await plotlines.getByRole("button", { name: "Add" }).click();
   await plotlines.getByLabel("New plotline").fill("The house");
   await plotlines.getByRole("button", { name: "Add" }).click();
+  await expectSettledOverlay(plotlines);
+  await expect(page.locator('[role="dialog"][data-ending-style]')).toHaveCount(0);
   await expect(
     (await new AxeBuilder({ page }).include('[role="dialog"]').analyze())
       .violations,
@@ -1036,6 +1389,8 @@ test("the planner: cards, plotlines, a corkboard and an outline with totals, wit
   await card.getByRole("checkbox", { name: "The search" }).click();
   await card.getByLabel("Word target").fill("2000");
   await card.getByLabel("Goal").fill("Find her sister");
+  await expectSettledOverlay(card);
+  await expect(page.locator('[role="dialog"][data-ending-style]')).toHaveCount(0);
   await expect(
     (await new AxeBuilder({ page }).include('[role="dialog"]').analyze())
       .violations,
@@ -1058,6 +1413,8 @@ test("the planner: cards, plotlines, a corkboard and an outline with totals, wit
   await planner.getByRole("tab", { name: "Outline" }).click();
   await expect(planner.getByRole("table")).toContainText("All pieces");
   await expect(planner.getByRole("table")).toContainText("0 of 2,000 words");
+  await expectSettledOverlay(planner);
+  await expect(page.locator('[role="dialog"][data-ending-style]')).toHaveCount(0);
   await expect(
     (await new AxeBuilder({ page }).include('[role="dialog"]').analyze())
       .violations,

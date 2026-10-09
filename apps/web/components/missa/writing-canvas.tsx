@@ -1,5 +1,7 @@
 "use client";
 
+import { WritingContextMenu } from "./writing-context-menu";
+
 import {
   useEffect,
   useRef,
@@ -23,6 +25,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import {
+  WritingSelectionMenu,
+  WritingFootnotes,
+  type WritingSelectionAction,
+} from "@/components/missa/writing-selection-menu";
 import { writingTypeface } from "@/components/missa/writing-typefaces";
 import {
   pageTextStyle,
@@ -77,6 +84,12 @@ function CanvasBox({
   onChange,
   onRemove,
   onOrder,
+  instructionsId,
+  accessibleLabelPrefix,
+  onSelectionAction,
+  selectionTools = true,
+  sectionLinkBase,
+  sectionFolding = false,
 }: {
   document: WritingDocument;
   page: FlowPage;
@@ -90,6 +103,12 @@ function CanvasBox({
   onChange: (change: Partial<CanvasBlock>) => void;
   onRemove: () => void;
   onOrder: (to: "front" | "back") => void;
+  instructionsId?: string;
+  accessibleLabelPrefix?: string;
+  selectionTools?: boolean;
+  sectionLinkBase?: string;
+  sectionFolding?: boolean;
+  onSelectionAction?: (action: WritingSelectionAction, editor: Editor) => void;
 }) {
   const changeRef = useRef(onChange);
   useEffect(() => {
@@ -104,8 +123,8 @@ function CanvasBox({
       extensions: [...writingExtensions(), TabKeys],
       editorProps: {
         attributes: {
-          "aria-label": `Text box ${number} on page`,
-          "aria-describedby": "writing-page-keys",
+          "aria-label": `${accessibleLabelPrefix ? `${accessibleLabelPrefix}, ` : ""}Text box ${number} on page`,
+          ...(instructionsId ? { "aria-describedby": instructionsId } : {}),
           "data-slot": "writing-box-text",
           class: WRITING_TEXT_CLASS,
         },
@@ -136,9 +155,14 @@ function CanvasBox({
   }, [editor, mounted, readOnly]);
 
   useEffect(() => {
-    if (editor && mounted && viewMounted(editor))
+    if (editor && mounted && viewMounted(editor)) {
       editor.view.dom.setAttribute("spellcheck", String(spellcheck));
-  }, [editor, mounted, spellcheck]);
+      editor.view.dom.setAttribute(
+        "aria-label",
+        `${accessibleLabelPrefix ? `${accessibleLabelPrefix}, ` : ""}Text box ${number} on page`,
+      );
+    }
+  }, [editor, mounted, spellcheck, accessibleLabelPrefix, number]);
 
   const drag = useRef<{
     x: number;
@@ -311,7 +335,31 @@ function CanvasBox({
         )}
         style={pageTextStyle(document, page)}
       >
-        <EditorContent editor={editor} />
+        <WritingContextMenu
+          editor={mounted ? editor : null}
+          enabled={!readOnly && selectionTools}
+          sectionLinkBase={sectionLinkBase}
+          sectionFolding={sectionFolding}
+        >
+          <EditorContent editor={editor} />
+        </WritingContextMenu>
+        {mounted && !readOnly && selectionTools ? (
+          <WritingSelectionMenu
+            editor={editor}
+            onSelectionAction={onSelectionAction}
+            sectionLinkBase={sectionLinkBase}
+            sectionFolding={sectionFolding}
+            writingDocument={document}
+          />
+        ) : null}
+        {mounted ? (
+          <WritingFootnotes
+            editor={editor}
+            document={document}
+            pageId={page.id}
+            showNotes={number === 1}
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -326,6 +374,12 @@ export function CanvasSheet({
   readOnly,
   editors,
   callbacks,
+  instructionsId,
+  accessibleLabelPrefix,
+  onSelectionAction,
+  selectionTools = true,
+  sectionLinkBase,
+  sectionFolding = false,
 }: {
   document: WritingDocument;
   page: FlowPage;
@@ -335,6 +389,12 @@ export function CanvasSheet({
   readOnly: boolean;
   editors: PageEditors;
   callbacks: { current: CanvasCallbacks };
+  instructionsId?: string;
+  accessibleLabelPrefix?: string;
+  selectionTools?: boolean;
+  sectionLinkBase?: string;
+  sectionFolding?: boolean;
+  onSelectionAction?: (action: WritingSelectionAction, editor: Editor) => void;
 }) {
   const size = PAGE_SIZES[document.pageSize];
   const blocks = page.blocks;
@@ -370,7 +430,7 @@ export function CanvasSheet({
 
   return (
     <section
-      aria-label={`Page ${index + 1}, free canvas`}
+      aria-label={`${accessibleLabelPrefix ? `${accessibleLabelPrefix}, ` : ""}Page ${index + 1}, free canvas`}
       className="flex w-full flex-col items-center gap-2"
     >
       <div
@@ -396,6 +456,12 @@ export function CanvasSheet({
             readOnly={readOnly}
             editors={editors}
             callbacks={callbacks}
+            instructionsId={instructionsId}
+            accessibleLabelPrefix={accessibleLabelPrefix}
+            onSelectionAction={onSelectionAction}
+            selectionTools={selectionTools}
+            sectionLinkBase={sectionLinkBase}
+            sectionFolding={sectionFolding}
             onChange={(change) => {
               // Positions are kept to a tenth of a millimetre.
               const tenth = (value: number | undefined) =>
