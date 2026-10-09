@@ -8,8 +8,15 @@ export async function GET(request: Request) {
   const session = await driveSession(request);
   if ("response" in session) return session.response;
   try {
-    const entry = new URL(request.url).searchParams.get("entry");
-    const returnPath = isWritingEntryId(entry) ? `/doc?entry=${entry}` : "/doc";
+    const query = new URL(request.url).searchParams;
+    const entry = query.get("entry");
+    const params = new URLSearchParams();
+    if (isWritingEntryId(entry)) params.set("entry", entry);
+    else params.set("driveNew", "1");
+    const action = query.get("action");
+    if (action === "open" || action === "save")
+      params.set("driveAction", action);
+    const returnPath = params.size ? `/doc?${params}` : "/doc";
     const state = await createWritingOAuthState(
       session.accountId,
       driveConfig().redirectUri!,

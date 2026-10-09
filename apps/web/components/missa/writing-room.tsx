@@ -399,6 +399,9 @@ export function WritingRoom({
             known?.projectId ?? null,
           );
     }
+    if (new URLSearchParams(location.search).get("driveNew") === "1") {
+      return opened(newWritingEntryId(), null, prefs.typeface);
+    }
     const latest = drafts[0];
     return latest
       ? opened(
@@ -431,7 +434,7 @@ export function WritingRoom({
   const [studioOpen, setStudioOpen] = useState(false);
   const [studioTab, setStudioTab] = useState<"manuscript" | "research">("manuscript");
   const [formattingOpen, setFormattingOpen] = useState(false);
-  const [writingToolsOpen, setWritingToolsOpen] = useState(false);
+  const [writingToolsOpen, setWritingToolsOpen] = useState(() => new URLSearchParams(location.search).has("drive"));
   const [lockedIn, setLockedIn] = useState(false);
   const [manuscriptPieces, setManuscriptPieces] = useState<StudioPiece[] | null>(null);
   const [studioForks, setStudioForks] = useState<WritingFork[]>([]);
@@ -2118,7 +2121,11 @@ export function WritingRoom({
             });
           }} /> : null}
           {currentProject ? <Button variant="ghost" disabled={current.state !== "ready"} onClick={() => setStudioOpen(true)}>Project workspace</Button> : null}
-          <WritingDrive key={current.id} document={current.doc} title={current.title} entryId={current.id}
+          <WritingDrive key={current.id} document={current.doc} title={current.title} prepareConnection={() => {
+              sync.flush({ keepalive: true });
+              if (sync.unprotected()) throw new Error("Your draft could not be saved on this device. Download a backup before connecting.");
+              return sync.saved(current.id) || sync.draft(current.id) ? current.id : undefined;
+            }}
             readOnly={current.state !== "ready" || Boolean(manuscriptPieces)} onImport={importDocument} />
           <WritingExport document={current.doc} title={current.title} readOnly={current.state !== "ready"}
             onImport={importDocument} onPrint={printPages} />

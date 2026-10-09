@@ -23,17 +23,19 @@ import { pickDriveFile } from "@/lib/writing-drive-picker";
 export function WritingDrive({
   document,
   title,
-  entryId,
+  prepareConnection,
   readOnly,
   onImport,
 }: {
   document: WritingDocument;
   title: string;
-  entryId: string;
+  prepareConnection: () => string | undefined;
   readOnly: boolean;
   onImport: (document: WritingDocument, title: string) => void;
 }) {
-  const [open, setOpen] = useState(false),
+  const [open, setOpen] = useState(
+      () => new URLSearchParams(location.search).get("drive") === "connected",
+    ),
     [busy, setBusy] = useState(false),
     [connected, setConnected] = useState(false),
     [configured, setConfigured] = useState(false),
@@ -41,6 +43,9 @@ export function WritingDrive({
     [error, setError] = useState(""),
     [flatten, setFlatten] = useState(false),
     [copy, setCopy] = useState<{ url: string; name: string } | null>(null);
+  const [savePreview, setSavePreview] = useState(
+    () => new URLSearchParams(location.search).get("driveAction") === "save",
+  );
   const [operation, setOperation] = useState<{
     id: string;
     document: string;
@@ -50,13 +55,17 @@ export function WritingDrive({
   useEffect(() => {
     const url = new URL(location.href);
     const result = url.searchParams.get("drive");
-    if (result === "connected") toast.success("Google Drive connected.");
-    else if (result === "failed" || result === "unavailable")
+    if (result === "connected") {
+      toast.success("Google Drive connected.");
+      void check();
+    } else if (result === "failed" || result === "unavailable")
       toast.error(
         "Google Drive could not connect. Open Google Drive in Tools to try again.",
       );
     if (result) {
       url.searchParams.delete("drive");
+      url.searchParams.delete("driveAction");
+      url.searchParams.delete("driveNew");
       history.replaceState(history.state, "", url);
     }
   }, []);
@@ -80,6 +89,20 @@ export function WritingDrive({
       );
     } finally {
       setChecked(true);
+    }
+  }
+  function connect(action: "open" | "save") {
+    try {
+      const entry = prepareConnection();
+      const query = new URLSearchParams({ action });
+      if (entry) query.set("entry", entry);
+      location.assign(`/api/me/writing/drive/start?${query}`);
+    } catch (failure) {
+      setError(
+        failure instanceof Error
+          ? failure.message
+          : "Save your draft before connecting.",
+      );
     }
   }
   async function choose() {
@@ -195,12 +218,14 @@ export function WritingDrive({
         <Cloud aria-hidden="true" />
         Google Drive
       </PopoverTrigger>
-      <PopoverContent side="top" align="end" className="max-h-(--available-height) overflow-y-auto">
+      <PopoverContent
+        side="top"
+        align="end"
+        className="max-h-(--available-height) overflow-y-auto"
+      >
         <PopoverHeader>
           <PopoverTitle>Google Drive</PopoverTitle>
-          <PopoverDescription>
-            Import a file or save a copy.
-          </PopoverDescription>
+          <PopoverDescription>Import a file or save a copy.</PopoverDescription>
         </PopoverHeader>
         <div className="space-y-3">
           {!checked ? (
@@ -209,88 +234,99 @@ export function WritingDrive({
             <p className="text-sm text-muted-foreground">
               Google Drive is not available here yet.
             </p>
-          ) : !connected ? (
-            <>
-              <p className="text-sm text-muted-foreground">
-                Only files you choose or create with Missa.
-              </p>
-              <Button
-                render={
-                  <a
-                    href={`/api/me/writing/drive/start?entry=${encodeURIComponent(entryId)}`}
-                  />
-                }
-              >
-                Connect Google Drive
-              </Button>
-            </>
           ) : (
             <>
-              <Button disabled={busy || readOnly} onClick={() => void choose()}>
-                Choose a Drive file
-              </Button>
-              <section className="space-y-3" aria-label="Drive copy preview">
-                <h3 className="font-medium">Save a DOCX copy</h3>
-                <p className="text-sm text-muted-foreground">
-                  The Article preset formats this copy. Check it in Google Drive
-                  before sharing.
-                </p>
-                {document.pages.some((page) => page.kind === "canvas") ? (
-                  <Field orientation="horizontal">
-                    <Checkbox
-                      id="drive-flatten"
-                      checked={flatten}
-                      disabled={busy || Boolean(operation)}
-                      onCheckedChange={(checked) =>
-                        setFlatten(checked === true)
-                      }
-                    />
-                    <FieldLabel htmlFor="drive-flatten">
-                      Turn canvas boxes into reading-order text
-                    </FieldLabel>
-                  </Field>
-                ) : null}
-                <ul className="space-y-2 text-xs text-muted-foreground">
-                  {report.warnings.map((warning) => (
-                    <li key={warning}>{warning}</li>
-                  ))}
-                </ul>
-                {report.errors.map((message) => (
-                  <p className="text-sm text-destructive" key={message}>
-                    {message}
-                  </p>
-                ))}
-                <Button
-                  disabled={
-                    busy || readOnly || (!operation && report.errors.length > 0)
-                  }
-                  onClick={() => void exportCopy()}
-                >
-                  {busy
-                    ? "Working…"
-                    : operation
-                      ? "Retry the same copy"
-                      : "Save a copy to Drive"}
-                </Button>
-                {operation && !busy ? (
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setOperation(null);
-                      setError("");
-                    }}
-                  >
-                    Prepare a new copy
-                  </Button>
-                ) : null}
-              </section>
               <Button
                 variant="ghost"
-                disabled={busy}
-                onClick={() => void disconnect()}
+                className="w-full justify-start"
+                disabled={busy || readOnly}
+                onClick={() => (connected ? void choose() : connect("open"))}
               >
-                Disconnect Drive
+                Open from Drive
               </Button>
+              <Button
+                variant="ghost"
+                className="w-full justify-start"
+                disabled={busy || readOnly}
+                onClick={() =>
+                  connected ? setSavePreview(true) : connect("save")
+                }
+              >
+                Save to Drive
+              </Button>
+              {!connected ? (
+                <p className="text-xs text-muted-foreground">
+                  Connect your Google account when you choose an action.
+                </p>
+              ) : null}
+              {connected && savePreview ? (
+                <section className="space-y-3" aria-label="Drive copy preview">
+                  <h3 className="font-medium">Save a DOCX copy</h3>
+                  <p className="text-sm text-muted-foreground">
+                    The Article preset formats this copy. Check it in Google
+                    Drive before sharing.
+                  </p>
+                  {document.pages.some((page) => page.kind === "canvas") ? (
+                    <Field orientation="horizontal">
+                      <Checkbox
+                        id="drive-flatten"
+                        checked={flatten}
+                        disabled={busy || Boolean(operation)}
+                        onCheckedChange={(checked) =>
+                          setFlatten(checked === true)
+                        }
+                      />
+                      <FieldLabel htmlFor="drive-flatten">
+                        Turn canvas boxes into reading-order text
+                      </FieldLabel>
+                    </Field>
+                  ) : null}
+                  <ul className="space-y-2 text-xs text-muted-foreground">
+                    {report.warnings.map((warning) => (
+                      <li key={warning}>{warning}</li>
+                    ))}
+                  </ul>
+                  {report.errors.map((message) => (
+                    <p className="text-sm text-destructive" key={message}>
+                      {message}
+                    </p>
+                  ))}
+                  <Button
+                    disabled={
+                      busy ||
+                      readOnly ||
+                      (!operation && report.errors.length > 0)
+                    }
+                    onClick={() => void exportCopy()}
+                  >
+                    {busy
+                      ? "Working…"
+                      : operation
+                        ? "Retry the same copy"
+                        : "Save a copy to Drive"}
+                  </Button>
+                  {operation && !busy ? (
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setOperation(null);
+                        setError("");
+                      }}
+                    >
+                      Prepare a new copy
+                    </Button>
+                  ) : null}
+                </section>
+              ) : null}
+              {connected ? (
+                <Button
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() => void disconnect()}
+                >
+                  Disconnect Drive
+                </Button>
+              ) : null}
             </>
           )}
           {copy ? (
