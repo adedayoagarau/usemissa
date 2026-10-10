@@ -102,6 +102,11 @@ export function JsonLd({ data }: { data: Record<string, unknown> }): ReactNode {
  * organizer's own share image, its credit ("Image: <organizer>") goes here as
  * `creditText` and `creator`: Missa records the credit for search engines
  * and anyone inspecting the page, without printing it on the card.
+ *
+ * The credited organizer holds the copyright, so it also goes in
+ * `copyrightNotice`, and the organizer's site is where to ask about reuse
+ * (`acquireLicensePage`). There is no `license`: Missa does not know the terms
+ * an organizer publishes its image under, and must not invent them.
  */
 export function identityImageJsonLd(item: {
   identityAssetUrl?: string;
@@ -111,6 +116,7 @@ export function identityImageJsonLd(item: {
   organizationWebsiteUrl?: string;
 }): Record<string, unknown> {
   const credit = item.identityAssetCredit?.replace(/^image:\s*/iu, '').trim();
+  const creditSite = credit && credit === item.organizationName && item.organizationWebsiteUrl ? item.organizationWebsiteUrl : undefined;
   return {
     '@type': 'ImageObject',
     contentUrl: item.identityAssetUrl,
@@ -118,11 +124,13 @@ export function identityImageJsonLd(item: {
     ...(credit
       ? {
           creditText: credit,
+          copyrightNotice: `© ${credit}`,
           creator: {
             '@type': 'Organization',
             name: credit,
-            ...(item.organizationWebsiteUrl && credit === item.organizationName ? { url: item.organizationWebsiteUrl } : {}),
+            ...(creditSite ? { url: creditSite } : {}),
           },
+          ...(creditSite ? { acquireLicensePage: creditSite } : {}),
         }
       : {}),
   };
