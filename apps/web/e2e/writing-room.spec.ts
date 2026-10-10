@@ -182,6 +182,8 @@ test("read aloud follows Free, Plus and Pro tiers and sends text only on Read", 
     requests.push(route.request().postDataJSON());
     await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "Read aloud is not available yet. Try again later." }) });
   });
+  // The development-only Next indicator sits in the corner the zoomed bar reaches; production has none.
+  await page.addStyleTag({ content: "nextjs-portal { display: none; }" });
   await page.evaluate(() => { document.documentElement.style.zoom = "2"; });
   await dialog.getByRole("button", { name: "Read aloud", exact: true }).click();
   await expect(page.getByRole("alert").filter({ hasText: "Read aloud" })).toHaveText("Read aloud is not available yet. Try again later.");
@@ -401,7 +403,7 @@ test("the writing room saves as you type, reopens entries and deletes them", asy
   await writing.click();
   await moveDocumentCursor(page, "end");
   await writing.pressSequentially(" Neither do I.");
-  await expect(page.getByText("Offline · kept on this device")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save status: Offline · kept on this device", exact: true })).toBeVisible();
   await page.context().setOffline(false);
   await expect(page.getByRole("button", { name: "Save status: Saved to account", exact: true })).toBeVisible();
   const entryId = new URL(page.url()).searchParams.get("entry")!;

@@ -99,7 +99,12 @@ export function missingProfileMetadata(): Metadata {
   return { title: 'Not found', robots: { index: false, follow: true } };
 }
 
-function profileEntity(profile: ProfileForSeo): Record<string, unknown> {
+/**
+ * The ProfilePage's main entity. Google's profile page feature accepts only a
+ * Person or an Organization here, so a magazine is described as the
+ * Organization that publishes it, with its genres as `knowsAbout`.
+ */
+export function profileEntity(profile: ProfileForSeo): Record<string, unknown> {
   const sameAs = [
     profile.websiteUrl,
     ...Object.values(profile.socialLinks ?? {}),
@@ -120,21 +125,15 @@ function profileEntity(profile: ProfileForSeo): Record<string, unknown> {
     ...(sameAs.length ? { sameAs: [...new Set(sameAs)] } : {}),
     ...(profile.logoUrl ? { logo: profile.logoUrl } : {}),
   };
-  if (profile.kind === 'literary_magazine') {
-    return {
-      '@type': 'Periodical',
-      ...common,
-      ...(profile.genres.length ? { genre: profile.genres.slice(0, 8) } : {}),
-    };
-  }
   return {
     '@type': 'Organization',
     ...common,
     ...address,
+    ...(profile.kind === 'literary_magazine' && profile.genres.length ? { knowsAbout: profile.genres.slice(0, 8) } : {}),
   };
 }
 
-/** WebPage → Periodical or Organization, plus breadcrumbs, for a directory profile. */
+/** ProfilePage → Organization, plus breadcrumbs, for a directory profile. */
 export function ProfileJsonLd({ profile }: { profile: ProfileForSeo }) {
   const copy = copyFor(profile.kind);
   const path = profilePath(profile);

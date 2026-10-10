@@ -436,6 +436,12 @@ export function WritingRoom({
   const [formattingOpen, setFormattingOpen] = useState(false);
   const [driveReturn, setDriveReturn] = useState<{ entryId: string; result: string | null; action: string | null } | undefined>(() => ({ entryId: current.id, result: new URLSearchParams(location.search).get("drive"), action: new URLSearchParams(location.search).get("driveAction") }));
   const [writingToolsOpen, setWritingToolsOpen] = useState(() => new URLSearchParams(location.search).has("drive"));
+  const toolsLeaveFocus = useRef(false);
+  // Closing Tools also drops a pending Drive return, however it closes.
+  function setToolsOpen(open: boolean) {
+    setWritingToolsOpen(open);
+    if (!open) setDriveReturn(undefined);
+  }
   const [lockedIn, setLockedIn] = useState(false);
   const [manuscriptPieces, setManuscriptPieces] = useState<StudioPiece[] | null>(null);
   const [studioForks, setStudioForks] = useState<WritingFork[]>([]);
@@ -1376,9 +1382,15 @@ export function WritingRoom({
       timer.remaining > 0 ? timer.remaining : prefs.minutes * 60_000;
     setNow(time);
     setTimer({ endsAt: time + length, remaining: length });
-    // Started with a pointer, the page takes focus so writing can begin; started
-    // from the keyboard (detail 0), focus stays on the button.
-    if (event.detail > 0) focusWriting();
+    // A started timer lives on the bar, so Tools steps aside.
+    setToolsOpen(false);
+    // Started with a pointer, the page takes focus so writing can begin (from
+    // inside Tools, once the popover has closed); started from the keyboard
+    // (detail 0), focus stays with the controls.
+    if (event.detail > 0) {
+      if (writingToolsOpen) toolsLeaveFocus.current = true;
+      else focusWriting();
+    }
   }
 
   function resetTimer(minutes = prefs.minutes) {
@@ -1465,6 +1477,8 @@ export function WritingRoom({
       : remaining < prefs.minutes * 60_000
         ? "Resume timer"
         : `Start ${prefs.minutes}-minute timer`;
+  // Once started, the clock stays on the bar (fading with it) until it is reset.
+  const timerStarted = running || remaining < prefs.minutes * 60_000;
 
   const pieces = useMemo((): LibraryPiece[] => {
     const known = new Set(entries.map((item) => item.id));
@@ -2103,12 +2117,19 @@ export function WritingRoom({
         </div>
 
         <div className="flex flex-wrap items-center gap-1">
-          <Popover open={writingToolsOpen} onOpenChange={(open) => { setWritingToolsOpen(open); if (!open) setDriveReturn(undefined); }}>
+          {timerStarted ? timerControls : null}
+          <Popover open={writingToolsOpen} onOpenChange={setToolsOpen}
+            onOpenChangeComplete={(open) => {
+              if (open || !toolsLeaveFocus.current) return;
+              toolsLeaveFocus.current = false;
+              focusWriting();
+            }}>
           <PopoverTrigger render={<Button variant="ghost" size="icon" aria-label="Tools" title="Tools" />}><SlidersHorizontal aria-hidden="true" /></PopoverTrigger>
-          <PopoverContent side="top" align="start" className="w-72">
+          {/* A timer started with the pointer hands focus to the page, not back to Tools. */}
+          <PopoverContent side="top" align="start" className="w-72" finalFocus={() => !toolsLeaveFocus.current}>
           <PopoverHeader><PopoverTitle>Tools</PopoverTitle></PopoverHeader>
           <div id="writing-tools" className="flex flex-wrap items-center gap-1">
-          {timerControls}
+          {timerStarted ? null : timerControls}
           {canFullscreen ? (
             // On narrow screens full screen moves into More, keeping the bar to two rows.
             <Button
@@ -2131,7 +2152,7 @@ export function WritingRoom({
                 revision: metadata?.revision ?? 0, createdAt: metadata?.createdAt ?? now, updatedAt: metadata?.updatedAt ?? now };
             });
           }} /> : null}
-          {currentProject ? <Button variant="ghost" disabled={current.state !== "ready"} onClick={() => setStudioOpen(true)}>Project workspace</Button> : null}
+          {currentProject ? <Button variant="ghost" disabled={current.state !== "ready"} onClick={() => { setToolsOpen(false); setStudioOpen(true); }}>Project workspace</Button> : null}
           <WritingDrive key={current.id} connectionReturn={driveReturn?.entryId === current.id ? driveReturn : undefined} document={current.doc} title={current.title} prepareConnection={() => {
               sync.flush({ keepalive: true });
               if (sync.unprotected()) throw new Error("Your draft could not be saved on this device. Download a backup before connecting.");
